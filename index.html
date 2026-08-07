@@ -142,6 +142,22 @@
     font-size: 20px;
   }
 
+  .audioToggle {
+    min-width: 64px;
+    font-size: 18px;
+    border-color: rgba(121,255,141,0.58);
+    background: linear-gradient(#24553c, #133322);
+    color: #d7ffe0;
+    box-shadow: 0 5px 0 #081522, 0 8px 18px rgba(0,0,0,0.25), 0 0 14px rgba(103, 255, 134, 0.18);
+  }
+
+  .audioToggle.muted {
+    border-color: rgba(255, 170, 170, 0.5);
+    background: linear-gradient(#5b3640, #321c22);
+    color: #ffe4e4;
+    box-shadow: 0 5px 0 #081522, 0 8px 18px rgba(0,0,0,0.25), 0 0 12px rgba(255, 110, 110, 0.14);
+  }
+
   #dragHint {
     flex: 1;
     max-width: 520px;
@@ -730,10 +746,6 @@
   }
 
 </style>
-<link rel="manifest" href="/site.webmanifest">
-<link rel="icon" type="image/png" sizes="192x192" href="/slime-icon-192.png">
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<meta name="theme-color" content="#10243a">  
 </head>
 <body>
 <section id="menuOverlay" class="frontShell" aria-label="Slime Jump Hauptmenü">
@@ -857,7 +869,8 @@
   <footer id="controls">
     <button id="restartBtn" class="iconBtn" aria-label="Zum Hauptmenü">↻</button>
     <div id="dragHint">Schwarzen Seitenrand oder Slime berühren → ziehen → loslassen</div>
-    <button id="soundBtn" class="iconBtn" aria-label="Ton ein oder aus">🔊</button>
+    <button id="musicBtn" class="iconBtn audioToggle active" aria-label="Musik ein oder aus" title="Musik an oder aus">♫</button>
+    <button id="sfxBtn" class="iconBtn audioToggle active" aria-label="Soundeffekte ein oder aus" title="Soundeffekte an oder aus">FX</button>
     <button id="fullscreenBtn" class="iconBtn" aria-label="Vollbild">⛶</button>
   </footer>
 </div>
@@ -867,7 +880,7 @@
 (() => {
   "use strict";
 
-  // Slime Jump 2.04 – Online-Top-10-Highscores via Supabase; lokale Highscores bleiben als Fallback erhalten.
+  // Slime Jump 2.05 – getrennte Musik-/FX-Mute-Buttons; Online-Top-10-Highscores via Supabase; lokale Highscores bleiben als Fallback erhalten.
 
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
@@ -899,7 +912,8 @@
     highScoresBackBtn: document.getElementById("highScoresBackBtn"),
     restartBtn: document.getElementById("restartBtn"),
     messageRestartBtn: document.getElementById("messageRestartBtn"),
-    soundBtn: document.getElementById("soundBtn"),
+    musicBtn: document.getElementById("musicBtn"),
+    sfxBtn: document.getElementById("sfxBtn"),
     fullscreenBtn: document.getElementById("fullscreenBtn")
   };
 
@@ -1569,7 +1583,8 @@
   let drag = {x: 0, y: 0};
   let lastTime = performance.now();
   let worldTime = 0;
-  let muted = false;
+  let sfxMuted = false;
+  let musicMuted = false;
   let audioCtx = null;
   let musicBus = null;
   let musicTimer = null;
@@ -1593,7 +1608,7 @@
   const MUSIC_BUS_VOLUME = 0.33; // V1.9: +50 % gegenüber V1.8 (0.22 -> 0.33)
 
   function tone(freq, duration = 0.08, type = "sine", volume = 0.05, endFreq = null) {
-    if (muted) return;
+    if (sfxMuted) return;
     const a = getAudio();
     if (!a) return;
     const now = a.currentTime;
@@ -1636,7 +1651,7 @@
 
     if (!musicBus) {
       musicBus = a.createGain();
-      musicBus.gain.value = muted ? 0 : MUSIC_BUS_VOLUME;
+      musicBus.gain.value = musicMuted ? 0 : MUSIC_BUS_VOLUME;
       musicBus.connect(a.destination);
     }
 
@@ -1644,7 +1659,7 @@
   }
 
   function playMusicTone(freq, duration, volume, type = "triangle") {
-    if (muted || !freq) return;
+    if (musicMuted || !freq) return;
 
     const a = getAudio();
     const bus = getMusicBus();
@@ -1737,7 +1752,21 @@
 
     const now = a.currentTime;
     bus.gain.cancelScheduledValues(now);
-    bus.gain.setTargetAtTime(muted ? 0 : MUSIC_BUS_VOLUME, now, 0.035);
+    bus.gain.setTargetAtTime(musicMuted ? 0 : MUSIC_BUS_VOLUME, now, 0.035);
+  }
+
+  function updateAudioButtons() {
+    ui.musicBtn.classList.toggle("muted", musicMuted);
+    ui.musicBtn.classList.toggle("active", !musicMuted);
+    ui.musicBtn.textContent = musicMuted ? "♫×" : "♫";
+    ui.musicBtn.setAttribute("aria-label", musicMuted ? "Musik einschalten" : "Musik ausschalten");
+    ui.musicBtn.title = musicMuted ? "Musik aus" : "Musik an";
+
+    ui.sfxBtn.classList.toggle("muted", sfxMuted);
+    ui.sfxBtn.classList.toggle("active", !sfxMuted);
+    ui.sfxBtn.textContent = sfxMuted ? "FX×" : "FX";
+    ui.sfxBtn.setAttribute("aria-label", sfxMuted ? "Soundeffekte einschalten" : "Soundeffekte ausschalten");
+    ui.sfxBtn.title = sfxMuted ? "Soundeffekte aus" : "Soundeffekte an";
   }
 
   function playLaunch() { tone(240, 0.12, "triangle", 0.07, 520); }
@@ -1998,7 +2027,7 @@
     hideNicknameEntry();
     getAudio();
     setMusicMode("game");
-    if (!muted) startBackgroundMusic("game");
+    if (!musicMuted) startBackgroundMusic("game");
     state = "playing";
     levelIndex = 0;
     lives = 3;
@@ -2030,7 +2059,7 @@
   function returnToMenu() {
     state = "menu";
     setMusicMode("menu");
-    if (!muted) startBackgroundMusic("menu");
+    if (!musicMuted) startBackgroundMusic("menu");
     aiming = false;
     activeTouchId = null;
     drag.x = 0;
@@ -4258,13 +4287,21 @@
   ui.restartBtn.addEventListener("click", returnToMenuWithPendingScore);
   ui.messageRestartBtn.addEventListener("click", returnToMenuWithPendingScore);
   ui.fullscreenBtn.addEventListener("click", toggleFullscreen);
-  ui.soundBtn.addEventListener("click", () => {
-    muted = !muted;
-    ui.soundBtn.textContent = muted ? "🔇" : "🔊";
+  ui.musicBtn.addEventListener("click", () => {
+    musicMuted = !musicMuted;
+    updateAudioButtons();
     updateMusicMute();
 
-    if (!muted) {
+    if (!musicMuted) {
       startBackgroundMusic(state === "playing" ? "game" : "menu");
+    }
+  });
+
+  ui.sfxBtn.addEventListener("click", () => {
+    sfxMuted = !sfxMuted;
+    updateAudioButtons();
+
+    if (!sfxMuted) {
       tone(520, 0.08, "sine", 0.035, 700);
     }
   });
@@ -4272,7 +4309,7 @@
   // Browser erlauben Audio normalerweise erst nach einer Nutzeraktion.
   // Der erste Tap/Klick startet deshalb die Menümusik automatisch.
   function unlockBackgroundMusic(event) {
-    if (musicStarted || muted || event.target === ui.soundBtn) return;
+    if (musicStarted || musicMuted || event.target === ui.musicBtn || event.target === ui.sfxBtn) return;
     startBackgroundMusic(state === "playing" ? "game" : "menu");
     document.removeEventListener("pointerdown", unlockBackgroundMusic, true);
   }
@@ -4283,6 +4320,7 @@
     lastTime = performance.now();
   });
 
+  updateAudioButtons();
   renderHowToAdvancedIcons();
   prepareMenuButtonArtwork();
   updateHighScores();
