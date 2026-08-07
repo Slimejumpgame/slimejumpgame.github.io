@@ -11,7 +11,7 @@
     "sb_publishable_DDpbowG2-g6ZVios1OTrfA_DkUyh2TC";
 
   const TABLE = "slime_jump_highscores";
-  const GAME_VERSION = "2.04";
+  const GAME_VERSION = "2.05";
 
   function isConfigured() {
     return (
