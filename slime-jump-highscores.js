@@ -59,7 +59,7 @@
   function headers(extra = {}) {
     return {
       apikey: SUPABASE_PUBLISHABLE_KEY,
-      Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+     
       ...extra
     };
   }
