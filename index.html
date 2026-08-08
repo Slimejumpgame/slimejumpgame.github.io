@@ -338,6 +338,71 @@
     pointer-events: none;
   }
 
+  #devPanel {
+    position: fixed;
+    top: calc(8px + env(safe-area-inset-top));
+    left: 50%;
+    z-index: 2000;
+    width: max-content;
+    max-width: calc(100vw - 16px);
+    padding: 8px;
+    transform: translateX(-50%);
+    border: 1px solid rgba(121,255,141,0.62);
+    border-radius: 12px;
+    background: rgba(5, 15, 27, 0.94);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.38);
+  }
+
+  #devPanel[hidden] { display: none !important; }
+
+  .devPanelTitle {
+    margin-bottom: 6px;
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-align: center;
+  }
+
+  .devPanelControls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #devPanel button {
+    min-height: 32px;
+    padding: 0 10px;
+    border-radius: 9px;
+    font-size: 12px;
+    box-shadow: none;
+  }
+
+  .devLevelField {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  #devLevelInput {
+    width: 70px;
+    min-height: 32px;
+    padding: 3px 6px;
+    border: 1px solid rgba(255,255,255,0.28);
+    border-radius: 8px;
+    background: #0d2134;
+    color: var(--text);
+    font: inherit;
+    font-weight: 800;
+    text-align: center;
+    touch-action: manipulation;
+    user-select: text;
+  }
+
   @media (orientation: portrait) and (max-width: 700px) {
     #portraitNote { display: block; }
     #hud { min-height: 48px; padding: 6px 8px; }
@@ -809,6 +874,19 @@
 <meta name="theme-color" content="#10243a">
 </head>
 <body>
+<aside id="devPanel" hidden aria-label="Lokale Entwicklersteuerung">
+  <div class="devPanelTitle">DEV MODE</div>
+  <div class="devPanelControls">
+    <button id="devPreviousLevelBtn" type="button">Vorheriges Level</button>
+    <label class="devLevelField" for="devLevelInput">
+      Level:
+      <input id="devLevelInput" type="number" min="1" step="1" value="1">
+    </label>
+    <button id="devStartLevelBtn" type="button">Level starten</button>
+    <button id="devNextLevelBtn" type="button">Nächstes Level</button>
+  </div>
+</aside>
+
 <section id="menuOverlay" class="frontShell" aria-label="Slime Jump Hauptmenü">
   <div class="menuStage">
     <section id="mainMenuScreen" class="menuScreen" aria-label="Hauptmenü">
@@ -900,6 +978,13 @@
   const ctx = canvas.getContext("2d");
   const W = canvas.width;
   const H = canvas.height;
+  const DEV_MODE =
+    location.hostname !== "slimejumpgame.github.io" &&
+    (
+      location.protocol === "file:" ||
+      location.hostname === "localhost" ||
+      location.hostname === "127.0.0.1"
+    );
 
   const ui = {
     level: document.getElementById("levelLabel"),
@@ -930,7 +1015,12 @@
     messageRestartBtn: document.getElementById("messageRestartBtn"),
     musicBtn: document.getElementById("musicBtn"),
     sfxBtn: document.getElementById("sfxBtn"),
-    fullscreenBtn: document.getElementById("fullscreenBtn")
+    fullscreenBtn: document.getElementById("fullscreenBtn"),
+    devPanel: document.getElementById("devPanel"),
+    devPreviousLevelBtn: document.getElementById("devPreviousLevelBtn"),
+    devLevelInput: document.getElementById("devLevelInput"),
+    devStartLevelBtn: document.getElementById("devStartLevelBtn"),
+    devNextLevelBtn: document.getElementById("devNextLevelBtn")
   };
 
   let generatedLevel = null;
@@ -977,7 +1067,7 @@
     ) >>> 0;
 
     const random = createSeededRandom(seed);
-    const difficulty = Math.min(1, Math.max(0, (levelNumber - 1) / 24));
+    const intensityFactor = clamp((levelNumber - 1) / 49, 0, 1);
 
     const adjectives = [
       "Schleimige", "Wackelige", "Tückische", "Sprunghafte",
@@ -1026,8 +1116,8 @@
       (routeRight - routeLeft - routeGap * (routeCount - 1)) / routeCount;
 
     for (let i = 0; i < routeCount; i++) {
-      const baseMinWidth = 118 - difficulty * 18;
-      const baseMaxWidth = 190 - difficulty * 28;
+      const baseMinWidth = 118 - intensityFactor * 18;
+      const baseMaxWidth = 190 - intensityFactor * 28;
       const minWidth = Math.min(baseMinWidth, routeSlotWidth - 10);
       const maxWidth = Math.max(
         minWidth,
@@ -1037,8 +1127,8 @@
 
       let verticalChange = randomRange(
         random,
-        -105 - difficulty * 28,
-        78 + difficulty * 28
+        -105 - intensityFactor * 28,
+        78 + intensityFactor * 28
       );
 
       // Der erste Sprung soll zuverlässig nach oben führen.
@@ -1089,71 +1179,119 @@
     // Ein Stachelbett bestraft Abstürze, blockiert aber nie den Hauptweg.
     spikes.push({x: 235, y: 690, w: 825, h: 30});
 
-    // Neue Mechaniken erscheinen weiterhin nur in jedem zweiten Level.
-    // Level 2 Bounce-Pad, 4 Fallplattform, 6 pinker Geist, 8 bewegliche Plattform,
-    // 10 Förderband, 12 schneller Geist, 14 Fade-Plattform, 16 Eisplattform,
-    // 18 Stachelplattform.
-    let desiredPads = levelNumber >= 2 ? 1 : 0;
-    let desiredFalling = levelNumber >= 4 ? 1 : 0;
-    let desiredEnemies = levelNumber >= 6 ? 1 : 0;
-    let desiredMovers = levelNumber >= 8 ? 1 : 0;
-    let desiredConveyors = levelNumber >= 10 ? 1 : 0;
-    let desiredFastEnemies = levelNumber >= 12 ? 1 : 0;
-    let desiredFade = levelNumber >= 14 ? 1 : 0;
-    let desiredIce = levelNumber >= 16 ? 1 : 0;
-    let desiredSpikePlatforms = levelNumber >= 18 ? 1 : 0;
+    const mechanicPool = [
+      "pad", "falling", "normalEnemy", "moving", "conveyor",
+      "fastEnemy", "fade", "ice", "spike"
+    ];
+    const platformMechanicNames = [
+      "falling", "moving", "conveyor", "fade", "ice", "spike"
+    ];
 
-    // Danach verdichtet sich der bekannte Baukasten langsam weiter.
-    if (levelNumber >= 18) desiredFalling = 2;
-    if (levelNumber >= 20) desiredEnemies = 2;
-    if (levelNumber >= 22) desiredMovers = 2;
-    if (levelNumber >= 24) desiredConveyors = 2;
-    if (levelNumber >= 26) desiredPads = 2;
-    if (levelNumber >= 28) desiredFastEnemies = 2;
-    if (levelNumber >= 30) desiredFade = 2;
-    if (levelNumber >= 32) desiredIce = 2;
-    if (levelNumber >= 34) desiredFalling = 3;
-    if (levelNumber >= 36) desiredEnemies = 3;
-    if (levelNumber >= 38) desiredMovers = 3;
+    let desiredPads = 0;
+    let desiredFalling = 0;
+    let desiredEnemies = 0;
+    let desiredMovers = 0;
+    let desiredConveyors = 0;
+    let desiredFastEnemies = 0;
+    let desiredFade = 0;
+    let desiredIce = 0;
+    let desiredSpikePlatforms = 0;
+    let focusMechanic = null;
 
-    // Ab Level 40 besteht der eigentliche Hauptweg nur noch aus Spezialplattformen.
-    // Welche Typen vorkommen, wird pro Level gemischt; Start und Ziel bleiben sicher.
-    if (levelNumber >= 40) {
-      desiredPads = 0;
-      desiredFalling = 0;
-      desiredMovers = 0;
-      desiredConveyors = 0;
-      desiredFade = 0;
-      desiredIce = 0;
-      desiredSpikePlatforms = 0;
+    // Level 1 bis 19 stellen jede Mechanik in einem isolierten Zweierblock vor.
+    // Das zweite Level des Blocks enthält zwei Exemplare, sofern die Mechanik
+    // und die vorhandene Routengeometrie das zulassen.
+    if (levelNumber >= 2 && levelNumber <= 19) {
+      const focusCount = levelNumber % 2 === 0 ? 1 : 2;
 
-      const lateTypes = ["falling", "moving", "conveyor", "fade", "ice", "spike"];
-      for (let i = lateTypes.length - 1; i > 0; i--) {
+      if (levelNumber <= 3) {
+        focusMechanic = "pad";
+        desiredPads = focusCount;
+      } else if (levelNumber <= 5) {
+        focusMechanic = "falling";
+        desiredFalling = focusCount;
+      } else if (levelNumber <= 7) {
+        focusMechanic = "normalEnemy";
+        desiredEnemies = focusCount;
+      } else if (levelNumber <= 9) {
+        focusMechanic = "moving";
+        desiredMovers = focusCount;
+      } else if (levelNumber <= 11) {
+        focusMechanic = "conveyor";
+        desiredConveyors = focusCount;
+      } else if (levelNumber <= 13) {
+        focusMechanic = "fastEnemy";
+        desiredFastEnemies = focusCount;
+      } else if (levelNumber <= 15) {
+        focusMechanic = "fade";
+        desiredFade = focusCount;
+      } else if (levelNumber <= 17) {
+        focusMechanic = "ice";
+        desiredIce = focusCount;
+      } else {
+        focusMechanic = "spike";
+        desiredSpikePlatforms = focusCount;
+      }
+    } else if (levelNumber >= 20) {
+      const mixFactor = clamp((levelNumber - 20) / 30, 0, 1);
+      focusMechanic = chooseRandom(random, mechanicPool);
+      const selectedMechanics = new Set([focusMechanic]);
+
+      // Ein linear wachsendes Zusatzbudget bestimmt die Mischstärke. Auch bei
+      // 100 % bleibt die konkrete Zusammenstellung zufällig: Der vollständige
+      // Pool ist verfügbar, aber nicht in jedem Level vollständig erzwungen.
+      const additionalMechanicCandidates = mechanicPool.filter(
+        mechanic => mechanic !== focusMechanic
+      );
+      for (let i = additionalMechanicCandidates.length - 1; i > 0; i--) {
         const j = randomInt(random, 0, i);
-        [lateTypes[i], lateTypes[j]] = [lateTypes[j], lateTypes[i]];
+        [additionalMechanicCandidates[i], additionalMechanicCandidates[j]] =
+          [additionalMechanicCandidates[j], additionalMechanicCandidates[i]];
       }
-      for (let i = 0; i < routePlatforms.length; i++) {
-        const type = lateTypes[i % lateTypes.length];
-        if (type === "falling") desiredFalling++;
-        else if (type === "moving") desiredMovers++;
-        else if (type === "conveyor") desiredConveyors++;
-        else if (type === "fade") desiredFade++;
-        else if (type === "ice") desiredIce++;
-        else if (type === "spike") desiredSpikePlatforms++;
+      const targetAdditionalMechanics =
+        mixFactor * (additionalMechanicCandidates.length - 0.5);
+      const additionalMechanicCount =
+        Math.floor(targetAdditionalMechanics) +
+        (random() < targetAdditionalMechanics % 1 ? 1 : 0);
+      for (const mechanic of additionalMechanicCandidates.slice(0, additionalMechanicCount)) {
+        selectedMechanics.add(mechanic);
       }
 
-      desiredEnemies = Math.min(3, routePlatforms.length);
-      desiredFastEnemies = Math.min(2, routePlatforms.length);
+      desiredPads = selectedMechanics.has("pad") ? 1 : 0;
+      desiredFalling = selectedMechanics.has("falling") ? 1 : 0;
+      desiredMovers = selectedMechanics.has("moving") ? 1 : 0;
+      desiredConveyors = selectedMechanics.has("conveyor") ? 1 : 0;
+      desiredFade = selectedMechanics.has("fade") ? 1 : 0;
+      desiredIce = selectedMechanics.has("ice") ? 1 : 0;
+      desiredSpikePlatforms = selectedMechanics.has("spike") ? 1 : 0;
+      desiredEnemies = selectedMechanics.has("normalEnemy") ? 1 : 0;
+      desiredFastEnemies = selectedMechanics.has("fastEnemy") ? 1 : 0;
+
+      // Gegner besitzen ein eigenes, von den Plattformen unabhängiges Budget.
+      // Zusätzliche Exemplare füllen dieses Budget im Erwartungswert linear.
+      const activeEnemyTypes = [];
+      if (desiredEnemies > 0) activeEnemyTypes.push("normal");
+      if (desiredFastEnemies > 0) activeEnemyTypes.push("fast");
+      const enemyCapacity = Math.max(0, routePlatforms.length - 1);
+      const remainingEnemyCapacity = Math.max(
+        0,
+        enemyCapacity - desiredEnemies - desiredFastEnemies
+      );
+      const scaledExtraEnemies = mixFactor * remainingEnemyCapacity;
+      const extraEnemyCount = Math.min(
+        remainingEnemyCapacity,
+        Math.floor(scaledExtraEnemies) +
+          (random() < scaledExtraEnemies % 1 ? 1 : 0)
+      );
+
+      for (let i = 0; i < extraEnemyCount && activeEnemyTypes.length > 0; i++) {
+        if (chooseRandom(random, activeEnemyTypes) === "fast") {
+          desiredFastEnemies++;
+        } else {
+          desiredEnemies++;
+        }
+      }
     }
-
-    // Spezialplattformen ersetzen normale Plattformen des Hauptwegs und
-    // können deshalb nicht umgangen werden. Eine Position erhält nur einen Typ.
-    let moverCount = Math.min(desiredMovers, routePlatforms.length);
-    let fallingDesired = Math.min(desiredFalling, routePlatforms.length);
-    let conveyorDesired = Math.min(desiredConveyors, routePlatforms.length);
-    let fadeDesired = Math.min(desiredFade, routePlatforms.length);
-    let iceDesired = Math.min(desiredIce, routePlatforms.length);
-    let spikePlatformDesired = Math.min(desiredSpikePlatforms, routePlatforms.length);
 
     // Solange Bounce-Pads aktiv sind, bleibt mindestens eine geeignete
     // Routenplattform statisch. Dadurch verschwindet die bereits gelernte
@@ -1170,42 +1308,58 @@
     const maximumSpecialPlatforms =
       routePlatforms.length - (reservedPadRouteIndex === null ? 0 : 1);
 
-    // Falls mehr Spezialplattformen als freie Routenplätze gewünscht sind, wird
-    // schrittweise reduziert. Die jeweils neu eingeführte Plattform bleibt in
-    // Level 14, 16 bzw. 18 garantiert erhalten.
-    const minimumSpecialCounts = {
+    // Spezialplattformen erhalten ein eigenes Budget. Ein Plattform-Fokus wird
+    // zuerst reserviert; alle übrigen gewünschten Typen konkurrieren fair über
+    // eine gemischte Liste um die noch freien Routenpositionen.
+    const desiredPlatformCounts = {
+      falling: desiredFalling,
+      moving: desiredMovers,
+      conveyor: desiredConveyors,
+      fade: desiredFade,
+      ice: desiredIce,
+      spike: desiredSpikePlatforms
+    };
+    const allocatedPlatformCounts = {
       falling: 0,
       moving: 0,
       conveyor: 0,
-      fade: levelNumber === 14 ? 1 : 0,
-      ice: levelNumber === 16 ? 1 : 0,
-      spike: levelNumber === 18 ? 1 : 0
+      fade: 0,
+      ice: 0,
+      spike: 0
     };
+    let remainingSpecialCapacity = maximumSpecialPlatforms;
 
-    function specialTotal() {
-      return moverCount + fallingDesired + conveyorDesired + fadeDesired + iceDesired + spikePlatformDesired;
+    if (
+      remainingSpecialCapacity > 0 &&
+      platformMechanicNames.includes(focusMechanic) &&
+      desiredPlatformCounts[focusMechanic] > 0
+    ) {
+      allocatedPlatformCounts[focusMechanic]++;
+      desiredPlatformCounts[focusMechanic]--;
+      remainingSpecialCapacity--;
     }
 
-    while (specialTotal() > maximumSpecialPlatforms) {
-      const groups = [
-        {name: "falling", value: fallingDesired, min: minimumSpecialCounts.falling},
-        {name: "moving", value: moverCount, min: minimumSpecialCounts.moving},
-        {name: "conveyor", value: conveyorDesired, min: minimumSpecialCounts.conveyor},
-        {name: "fade", value: fadeDesired, min: minimumSpecialCounts.fade},
-        {name: "ice", value: iceDesired, min: minimumSpecialCounts.ice},
-        {name: "spike", value: spikePlatformDesired, min: minimumSpecialCounts.spike}
-      ].filter(group => group.value > group.min)
-       .sort((a, b) => (b.value - b.min) - (a.value - a.min));
-
-      if (!groups.length) break;
-      const chosen = groups[0].name;
-      if (chosen === "falling") fallingDesired--;
-      else if (chosen === "moving") moverCount--;
-      else if (chosen === "conveyor") conveyorDesired--;
-      else if (chosen === "fade") fadeDesired--;
-      else if (chosen === "ice") iceDesired--;
-      else if (chosen === "spike") spikePlatformDesired--;
+    const remainingPlatformRequests = [];
+    for (const type of platformMechanicNames) {
+      for (let i = 0; i < desiredPlatformCounts[type]; i++) {
+        remainingPlatformRequests.push(type);
+      }
     }
+    for (let i = remainingPlatformRequests.length - 1; i > 0; i--) {
+      const j = randomInt(random, 0, i);
+      [remainingPlatformRequests[i], remainingPlatformRequests[j]] =
+        [remainingPlatformRequests[j], remainingPlatformRequests[i]];
+    }
+    for (const type of remainingPlatformRequests.slice(0, remainingSpecialCapacity)) {
+      allocatedPlatformCounts[type]++;
+    }
+
+    const moverCount = allocatedPlatformCounts.moving;
+    const fallingDesired = allocatedPlatformCounts.falling;
+    const conveyorDesired = allocatedPlatformCounts.conveyor;
+    const fadeDesired = allocatedPlatformCounts.fade;
+    const iceDesired = allocatedPlatformCounts.ice;
+    const spikePlatformDesired = allocatedPlatformCounts.spike;
 
     const dynamicCandidates = routePlatforms
       .map((_, index) => index)
@@ -1267,7 +1421,7 @@
         axis = "y";
       }
 
-      const desiredRange = randomRange(random, 28, 48 + difficulty * 28);
+      const desiredRange = randomRange(random, 28, 48 + intensityFactor * 28);
       const safeRange = axis === "x"
         ? Math.min(desiredRange, maximumHorizontalRange)
         : desiredRange;
@@ -1280,7 +1434,7 @@
         axis,
         // Kontrollierte Bewegung, weil die Plattform zum Hauptweg gehört.
         range: safeRange,
-        speed: randomRange(random, 0.82, 1.18 + difficulty * 0.34),
+        speed: randomRange(random, 0.82, 1.18 + intensityFactor * 0.34),
         phase: randomRange(random, 0, Math.PI * 2),
         routeIndex: index
       });
@@ -1297,7 +1451,7 @@
         currentY: platform.y,
         w: platform.w,
         h: platform.h,
-        delay: Math.max(0.68, 1.15 - difficulty * 0.47),
+        delay: Math.max(0.68, 1.15 - intensityFactor * 0.47),
         timer: 0,
         vy: 0,
         triggered: false,
@@ -1318,7 +1472,7 @@
         w: platform.w,
         h: platform.h,
         direction: random() < 0.5 ? -1 : 1,
-        beltSpeed: randomRange(random, 92, 126 + difficulty * 48),
+        beltSpeed: randomRange(random, 92, 126 + intensityFactor * 48) * 0.40,
         phase: randomRange(random, 0, 40),
         routeIndex: index
       });
@@ -1340,7 +1494,7 @@
         y: platform.y,
         w: platform.w,
         h: platform.h,
-        speed: randomRange(random, 1.02, 1.22 + difficulty * 0.18),
+        speed: randomRange(random, 1.02, 1.22 + intensityFactor * 0.18),
         phase,
         startTime: worldTime,
         opacity: 1,
@@ -1433,7 +1587,7 @@
           x: randomRange(random, 390, 950),
           y: 0,
           w: randomRange(random, 30, 50),
-          h: randomRange(random, 95, 175 + difficulty * 85)
+          h: randomRange(random, 95, 175 + intensityFactor * 85)
         };
 
         const protectedPlatforms = [
@@ -1521,10 +1675,10 @@
         y: base.y,
         r: randomRange(random, 24, 29),
         axis: random() < 0.52 ? "x" : "y",
-        range: randomRange(random, 34, 58 + difficulty * 28),
+        range: randomRange(random, 34, 58 + intensityFactor * 28),
         speed: isFast
-          ? randomRange(random, 1.72, 2.15 + difficulty * 0.55)
-          : randomRange(random, 0.9, 1.28 + difficulty * 0.42),
+          ? randomRange(random, 1.72, 2.15 + intensityFactor * 0.55)
+          : randomRange(random, 0.9, 1.28 + intensityFactor * 0.42),
         phase: randomRange(random, 0, Math.PI * 2)
       });
     }
@@ -2037,25 +2191,49 @@
     collected = level.stars.map(() => false);
     particles = [];
     updateHUD();
+    if (DEV_MODE) ui.devLevelInput.value = String(levelIndex + 1);
   }
 
-  function startGame() {
+  function startGame(levelNumber = 1) {
     pendingGameOverScore = null;
     hideNicknameEntry();
     getAudio();
     setMusicMode("game");
     if (!musicMuted) startBackgroundMusic("game");
     state = "playing";
-    levelIndex = 0;
+    levelIndex = levelNumber - 1;
     lives = 3;
     bonusLifePerfectLevels = 0;
     score = 0;
     shots = 0;
-    generatedLevel = generateProceduralLevel(1);
+    generatedLevel = generateProceduralLevel(levelNumber);
     ui.menu.classList.add("hidden");
     showMenuScreen("main");
     ui.message.classList.add("hidden");
     resetLevel(true);
+  }
+
+  function startDevLevel(levelNumber) {
+    if (!DEV_MODE) return;
+    const parsedLevel = Math.floor(Number(levelNumber));
+    const targetLevel = Number.isFinite(parsedLevel) ? Math.max(1, parsedLevel) : levelIndex + 1;
+    startGame(targetLevel);
+  }
+
+  function initializeDevMode() {
+    if (!DEV_MODE) return;
+
+    ui.devPanel.hidden = false;
+    ui.devPreviousLevelBtn.addEventListener("click", () => startDevLevel(levelIndex));
+    ui.devStartLevelBtn.addEventListener("click", () => startDevLevel(ui.devLevelInput.value));
+    ui.devNextLevelBtn.addEventListener("click", () => startDevLevel(levelIndex + 2));
+
+    document.addEventListener("keydown", event => {
+      if (event.key !== "PageUp" && event.key !== "PageDown") return;
+      event.preventDefault();
+      const offset = event.key === "PageUp" ? 1 : -1;
+      startDevLevel(levelIndex + 1 + offset);
+    });
   }
 
   function restartCurrent() {
@@ -2572,7 +2750,7 @@
           }
         }
       } else {
-        platform.vy += 1380 * dt;
+        platform.vy += 1055.7 * dt;
         platform.currentY += platform.vy * dt;
         if (platform.currentY > H + 180) platform.removed = true;
       }
@@ -2835,6 +3013,7 @@
       player.y += player.vy * dt;
     }
 
+    const bouncePadImpactSpeed = Math.max(0, player.vy);
     player.onGround = false;
     player.onIce = false;
     player.conveyorSpeed = 0;
@@ -2859,8 +3038,14 @@
     const level = currentLevel();
 
     for (const pad of level.pads) {
-      if (intersectsRect(player.x, player.y, player.r, pad) && player.vy >= -80) {
-        player.vy = -1050;
+      if (intersectsRect(player.x, player.y, player.r, pad) && bouncePadImpactSpeed > 0) {
+        const impactSpeed = bouncePadImpactSpeed;
+        const minimumBounce = 300;
+        const maximumBounce = 1050;
+        const impactRatio = clamp(impactSpeed / 900, 0, 1);
+        const smoothedImpact = impactRatio * impactRatio * (3 - 2 * impactRatio);
+        const bounceStrength = minimumBounce + (maximumBounce - minimumBounce) * smoothedImpact;
+        player.vy = -Math.min(maximumBounce, bounceStrength);
         player.squish = 1;
         tone(230, 0.13, "square", 0.045, 520);
         spawnBurst(player.x, player.y + player.r, 12, "#68ddff");
@@ -3182,7 +3367,9 @@
       roundedRect(pad.x, pad.y, pad.w, pad.h, 9);
       ctx.fill();
       ctx.fillStyle = "#d1fbff";
-      for (let x = pad.x + 9; x < pad.x + pad.w - 6; x += 18) {
+      const triangleStartX = pad.x + pad.w / 2 - 16;
+      for (let triangleIndex = 0; triangleIndex < 2; triangleIndex++) {
+        const x = triangleStartX + triangleIndex * 18;
         ctx.beginPath();
         ctx.moveTo(x, pad.y + 20);
         ctx.lineTo(x + 7, pad.y + 8);
@@ -4434,6 +4621,7 @@
   prepareMenuButtonArtwork();
   updateHighScores();
   showMenuScreen("main");
+  initializeDevMode();
   resetLevel(true);
   requestAnimationFrame(frame);
 })();
