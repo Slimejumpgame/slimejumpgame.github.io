@@ -128,9 +128,32 @@
     );
   }
 
+  function hasPlausibleStuckAimContact() {
+    const contactRadius = player.r + STUCK_AIM_POSITION_EPSILON;
+    const contactRadiusSquared = contactRadius * contactRadius;
+
+    return getPlatforms().some(platform => {
+      if (platform.fade && !platform.fadeData.solid) return false;
+
+      const closestX = Math.max(
+        platform.x,
+        Math.min(player.x, platform.x + platform.w)
+      );
+      const closestY = Math.max(
+        platform.y,
+        Math.min(player.y, platform.y + platform.h)
+      );
+      const dx = player.x - closestX;
+      const dy = player.y - closestY;
+
+      return dx * dx + dy * dy <= contactRadiusSquared;
+    });
+  }
+
   function canUseStuckAimFallback() {
     return stuckAimStillTime >= STUCK_AIM_DELAY &&
-      getStuckAimDistanceFromReference() <= STUCK_AIM_POSITION_EPSILON;
+      getStuckAimDistanceFromReference() <= STUCK_AIM_POSITION_EPSILON &&
+      hasPlausibleStuckAimContact();
   }
 
   function resetStuckAimTimer() {
@@ -141,8 +164,14 @@
 
   function updateStuckAimTimer(dt) {
     const hasNormalSupport = player.onGround && hasValidAimSupport();
+    const hasCollisionContact = hasPlausibleStuckAimContact();
 
-    if (state !== "playing" || aiming || hasNormalSupport) {
+    if (
+      state !== "playing" ||
+      aiming ||
+      hasNormalSupport ||
+      !hasCollisionContact
+    ) {
       resetStuckAimTimer();
       return;
     }

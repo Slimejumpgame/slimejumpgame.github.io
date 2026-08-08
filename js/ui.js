@@ -7,6 +7,43 @@
   let devPreviewSlimeColor = null;
   let devPreviewSlimeCosmetic = null;
 
+  function initializeMenuBiomeBackground() {
+    const menuBackdrop = document.querySelector(".menuBackdrop");
+    if (
+      !menuBackdrop ||
+      menuBackdrop.querySelector(".menuBiomeBackground") ||
+      !Array.isArray(BIOMES) ||
+      BIOMES.length === 0 ||
+      typeof drawBackground !== "function"
+    ) {
+      return;
+    }
+
+    const selectedBiome = BIOMES[Math.floor(Math.random() * BIOMES.length)];
+    const menuBackground = document.createElement("canvas");
+    const menuBackgroundContext = menuBackground.getContext("2d");
+    if (!menuBackgroundContext) return;
+
+    menuBackground.className = "menuBiomeBackground";
+    menuBackground.width = W;
+    menuBackground.height = H;
+    menuBackground.setAttribute("aria-hidden", "true");
+    menuBackground.dataset.biomeId = selectedBiome.id;
+
+    try {
+      // Ausschließlich den zentralen Biom-Hintergrund rendern und als statischen
+      // Session-Snapshot übernehmen. Gameplay-Objekte werden nicht gezeichnet.
+      drawBackground(selectedBiome);
+      menuBackgroundContext.drawImage(canvas, 0, 0, W, H);
+      menuBackdrop.dataset.biomeId = selectedBiome.id;
+      menuBackdrop.prepend(menuBackground);
+    } catch (error) {
+      console.warn("Menü-Biom-Hintergrund konnte nicht gerendert werden:", error);
+    }
+  }
+
+  initializeMenuBiomeBackground();
+
   function getActiveSlimeColor() {
     return DEV_MODE && devPreviewSlimeColor
       ? normalizeSlimeColor(devPreviewSlimeColor)

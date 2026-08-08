@@ -7,12 +7,17 @@
   const W = canvas.width;
   const H = canvas.height;
   const DEV_MODE =
-    location.hostname !== "slimejumpgame.github.io" &&
+  location.hostname !== "slimejumpgame.github.io" &&
+  (
+    location.protocol === "file:" ||
     (
-      location.protocol === "file:" ||
-      location.hostname === "localhost" ||
-      location.hostname === "127.0.0.1"
-    );
+      location.protocol === "http:" &&
+      (
+        location.hostname === "localhost" ||
+        location.hostname === "127.0.0.1"
+      )
+    )
+  );
 
   const ui = {
     level: document.getElementById("levelLabel"),
