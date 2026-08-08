@@ -5,11 +5,18 @@
   let lastOnlineScoreSubmit = Promise.resolve();
   let gameToastTimer = null;
   let devPreviewSlimeColor = null;
+  let devPreviewSlimeCosmetic = null;
 
   function getActiveSlimeColor() {
     return DEV_MODE && devPreviewSlimeColor
       ? normalizeSlimeColor(devPreviewSlimeColor)
       : selectedSlimeColor;
+  }
+
+  function getActiveSlimeCosmetic() {
+    return DEV_MODE && devPreviewSlimeCosmetic
+      ? normalizeSlimeCosmetic(devPreviewSlimeCosmetic)
+      : selectedSlimeCosmetic;
   }
 
   function hideGameToast() {
@@ -46,6 +53,11 @@
   function createSlimeColorOption(color, unlockMode = false) {
     const unlocked = isSlimeColorUnlocked(color);
     const devPreviewAvailable = DEV_MODE && !unlockMode;
+    const canUnlock =
+      unlockMode &&
+      pendingWardrobeUnlock &&
+      wardrobeUnlockCategory === "color" &&
+      !unlocked;
     const button = document.createElement("button");
     button.type = "button";
     button.className = "slimeColorOption";
@@ -53,8 +65,8 @@
     applySlimePaletteCss(button, color);
     button.classList.toggle("selected", color === getActiveSlimeColor());
     button.classList.toggle("locked", !unlocked && !devPreviewAvailable);
-    button.classList.toggle("unlockable", unlockMode && !unlocked && pendingColorUnlocks > 0);
-    button.disabled = !unlocked && !unlockMode && !devPreviewAvailable;
+    button.classList.toggle("unlockable", canUnlock);
+    button.disabled = unlockMode ? !canUnlock : !unlocked && !devPreviewAvailable;
     button.setAttribute(
       "aria-label",
       unlocked
@@ -62,7 +74,7 @@
         : devPreviewAvailable
           ? `${SLIME_COLOR_NAMES[color]} temporär im Dev Mode ansehen`
           : unlockMode
-            ? `${SLIME_COLOR_NAMES[color]} freischalten`
+            ? `${SLIME_COLOR_NAMES[color]} als Wardrobe-Item freischalten`
             : `${SLIME_COLOR_NAMES[color]} ist gesperrt`
     );
 
@@ -88,14 +100,16 @@
       } else if (devPreviewAvailable) {
         devPreviewSlimeColor = normalizeSlimeColor(color);
       } else {
-        if (!unlockMode || pendingColorUnlocks <= 0) return;
+        if (!canUnlock) return;
         if (!unlockSlimeColor(color)) return;
-        pendingColorUnlocks--;
+        pendingWardrobeUnlock = false;
+        wardrobeUnlockCategory = null;
         showGameToast(`🎨 ${SLIME_COLOR_NAMES[color]} freigeschaltet!`);
       }
 
       renderSlimeColorPicker();
-      renderSlimeColorUnlockPanel();
+      renderSlimeCosmeticPicker();
+      renderWardrobeUnlockPanel();
     });
 
     return button;
@@ -103,45 +117,165 @@
 
   function renderSlimeColorPicker() {
     if (!ui.slimeColorOptions) return;
-    const requiredStars = getNextSlimeColorUnlockRequirement();
+    const requiredStars = getNextWardrobeUnlockRequirement();
     if (ui.slimeColorRequirement) {
       ui.slimeColorRequirement.textContent = requiredStars === null
-        ? "Alle Farben freigeschaltet"
-        : `Nächste Farbe: ${requiredStars} ⭐ in einem Run`;
+        ? "Wardrobe komplett!"
+        : `Nächster Unlock: ${requiredStars} ⭐ in einem Run`;
     }
     ui.slimeColorOptions.replaceChildren(
       ...SLIME_COLOR_ORDER.map(color => createSlimeColorOption(color))
     );
   }
 
-  function hideSlimeColorUnlockPanel() {
-    ui.slimeColorUnlockPanel?.classList.add("hidden");
+  function createSlimeCosmeticPreview(cosmetic) {
+    const preview = document.createElement("canvas");
+    preview.className = "slimeCosmeticPreview";
+    preview.width = 88;
+    preview.height = 70;
+    preview.setAttribute("aria-hidden", "true");
+    drawSlimeCosmeticPreview(preview, cosmetic);
+    return preview;
   }
 
-  function renderSlimeColorUnlockPanel() {
-    if (!ui.slimeColorUnlockPanel || !ui.slimeColorUnlockOptions) return;
-    if (pendingColorUnlocks <= 0) {
-      hideSlimeColorUnlockPanel();
+  function createSlimeCosmeticOption(cosmetic, unlockMode = false) {
+    const unlocked = isSlimeCosmeticUnlocked(cosmetic);
+    const devPreviewAvailable = DEV_MODE && !unlockMode && !unlocked;
+    const canUnlock =
+      unlockMode &&
+      pendingWardrobeUnlock &&
+      wardrobeUnlockCategory === "cosmetic" &&
+      !unlocked;
+    const definition = getSlimeCosmeticDefinition(cosmetic);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "slimeColorOption slimeCosmeticOption";
+    button.dataset.cosmetic = cosmetic;
+    button.classList.toggle("selected", cosmetic === getActiveSlimeCosmetic());
+    button.classList.toggle("locked", !unlocked && !devPreviewAvailable);
+    button.classList.toggle("unlockable", canUnlock);
+    button.disabled = unlockMode ? !canUnlock : !unlocked && !devPreviewAvailable;
+    button.setAttribute(
+      "aria-label",
+      unlocked
+        ? `${definition.name} auswählen`
+        : devPreviewAvailable
+          ? `${definition.name} temporär im Dev Mode ansehen`
+          : unlockMode
+            ? `${definition.name} als Wardrobe-Item freischalten`
+            : `${definition.name} ist gesperrt`
+    );
+
+    button.appendChild(createSlimeCosmeticPreview(cosmetic));
+
+    const label = document.createElement("span");
+    label.className = "slimeColorLabel";
+    label.textContent = definition.name;
+    button.appendChild(label);
+
+    if (!unlocked) {
+      const lock = document.createElement("span");
+      lock.className = "slimeColorLock";
+      lock.textContent = devPreviewAvailable ? "DEV" : "🔒";
+      lock.setAttribute("aria-hidden", "true");
+      button.appendChild(lock);
+    }
+
+    button.addEventListener("click", () => {
+      if (isSlimeCosmeticUnlocked(cosmetic)) {
+        devPreviewSlimeCosmetic = null;
+        selectSlimeCosmetic(cosmetic);
+      } else if (devPreviewAvailable) {
+        devPreviewSlimeCosmetic = normalizeSlimeCosmetic(cosmetic);
+      } else {
+        if (!canUnlock) return;
+        if (!unlockSlimeCosmetic(cosmetic)) return;
+        pendingWardrobeUnlock = false;
+        wardrobeUnlockCategory = null;
+        showGameToast(`🎩 ${definition.name} freigeschaltet!`);
+      }
+
+      renderSlimeColorPicker();
+      renderSlimeCosmeticPicker();
+      renderWardrobeUnlockPanel();
+    });
+
+    return button;
+  }
+
+  function renderSlimeCosmeticPicker() {
+    if (!ui.slimeCosmeticOptions) return;
+    ui.slimeCosmeticOptions.replaceChildren(
+      ...SLIME_COSMETIC_ORDER.map(cosmetic => createSlimeCosmeticOption(cosmetic))
+    );
+  }
+
+  function hideWardrobeUnlockPanel() {
+    ui.wardrobeUnlockPanel?.classList.add("hidden");
+  }
+
+  function createWardrobeCategoryButton(category, label, disabled) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "wardrobeCategoryButton";
+    button.dataset.category = category;
+    button.textContent = label;
+    button.disabled = disabled;
+    button.addEventListener("click", () => {
+      if (button.disabled || !pendingWardrobeUnlock) return;
+      wardrobeUnlockCategory = category;
+      renderWardrobeUnlockPanel();
+    });
+    return button;
+  }
+
+  function renderWardrobeUnlockPanel() {
+    if (!ui.wardrobeUnlockPanel || !ui.wardrobeUnlockOptions) return;
+    if (!pendingWardrobeUnlock || getNextWardrobeUnlockRequirement() === null) {
+      hideWardrobeUnlockPanel();
       return;
     }
 
-    ui.slimeColorUnlockPanel.classList.remove("hidden");
-    ui.slimeColorUnlockText.textContent =
-      `${runStarsCollected} Run-Sterne: Wähle noch ${pendingColorUnlocks} ` +
-      `${pendingColorUnlocks === 1 ? "Farbe" : "Farben"}.`;
-    ui.slimeColorUnlockOptions.replaceChildren(
-      ...SLIME_COLOR_ORDER.map(color => createSlimeColorOption(color, true))
+    const lockedColors = getLockedSlimeColors();
+    const lockedCosmetics = getLockedSlimeCosmetics();
+    if (wardrobeUnlockCategory === "color" && lockedColors.length === 0) {
+      wardrobeUnlockCategory = null;
+    }
+    if (wardrobeUnlockCategory === "cosmetic" && lockedCosmetics.length === 0) {
+      wardrobeUnlockCategory = null;
+    }
+
+    ui.wardrobeUnlockPanel.classList.remove("hidden");
+    ui.wardrobeUnlockCategories.classList.toggle("hidden", wardrobeUnlockCategory !== null);
+    ui.wardrobeUnlockOptions.classList.toggle("hidden", wardrobeUnlockCategory === null);
+    ui.wardrobeUnlockBackBtn.classList.toggle("hidden", wardrobeUnlockCategory === null);
+
+    if (wardrobeUnlockCategory === null) {
+      ui.wardrobeUnlockText.textContent =
+        `${runStarsCollected} Run-Sterne: Was möchtest du freischalten?`;
+      ui.wardrobeUnlockCategories.replaceChildren(
+        createWardrobeCategoryButton("color", "🎨 FARBE", lockedColors.length === 0),
+        createWardrobeCategoryButton("cosmetic", "🎩 COSMETIC", lockedCosmetics.length === 0)
+      );
+      ui.wardrobeUnlockOptions.replaceChildren();
+      return;
+    }
+
+    const unlocksColor = wardrobeUnlockCategory === "color";
+    ui.wardrobeUnlockText.textContent = unlocksColor
+      ? "Wähle eine noch gesperrte Farbe."
+      : "Wähle ein noch gesperrtes Cosmetic.";
+    ui.wardrobeUnlockOptions.replaceChildren(
+      ...(unlocksColor
+        ? lockedColors.map(color => createSlimeColorOption(color, true))
+        : lockedCosmetics.map(cosmetic => createSlimeCosmeticOption(cosmetic, true)))
     );
   }
 
-  function requirePendingColorUnlockSelection() {
-    if (pendingColorUnlocks <= 0) return true;
-    renderSlimeColorUnlockPanel();
-    showGameToast(
-      pendingColorUnlocks === 1
-        ? "🎨 Wähle zuerst deine neue Slime-Farbe."
-        : `🎨 Wähle zuerst deine ${pendingColorUnlocks} neuen Slime-Farben.`
-    );
+  function requirePendingWardrobeUnlockSelection() {
+    if (!pendingWardrobeUnlock) return true;
+    renderWardrobeUnlockPanel();
+    showGameToast("🎁 Wähle zuerst dein neues Wardrobe-Item.");
     return false;
   }
 
@@ -353,7 +487,10 @@
     ui.mainMenuScreen.classList.toggle("hidden", screenName !== "main");
     ui.howToScreen.classList.toggle("hidden", screenName !== "howto");
     ui.highscoreScreen.classList.toggle("hidden", screenName !== "highscores");
-    if (screenName === "main") renderSlimeColorPicker();
+    if (screenName === "main") {
+      renderSlimeColorPicker();
+      renderSlimeCosmeticPicker();
+    }
     if (screenName === "howto") {
       const scrollArea = ui.howToScreen.querySelector(".howToScrollArea");
       initializeHowToScrollbar();

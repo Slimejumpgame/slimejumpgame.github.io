@@ -55,9 +55,10 @@
     score = 0;
     shots = 0;
     runStarsCollected = 0;
-    colorUnlockEarnedThisRun = false;
-    pendingColorUnlocks = 0;
-    hideSlimeColorUnlockPanel();
+    wardrobeUnlockEarnedThisRun = false;
+    pendingWardrobeUnlock = false;
+    wardrobeUnlockCategory = null;
+    hideWardrobeUnlockPanel();
     generatedLevel = generateProceduralLevel(levelNumber);
     ui.menu.classList.add("hidden");
     showMenuScreen("main");
@@ -90,7 +91,7 @@
 
   function restartCurrent() {
     if (state === "gameover") {
-      if (!requirePendingColorUnlockSelection()) return;
+      if (!requirePendingWardrobeUnlockSelection()) return;
       if (!commitPendingHighScore()) return;
       startGame();
       return;
@@ -135,14 +136,14 @@
   function registerRunStarCollected() {
     runStarsCollected++;
 
-    if (colorUnlockEarnedThisRun) return;
+    if (DEV_MODE || wardrobeUnlockEarnedThisRun) return;
 
-    const requiredStars = getNextSlimeColorUnlockRequirement();
+    const requiredStars = getNextWardrobeUnlockRequirement();
     if (requiredStars === null || runStarsCollected < requiredStars) return;
 
-    colorUnlockEarnedThisRun = true;
-    pendingColorUnlocks = 1;
-    showGameToast("🎨 Neue Slime-Farbe verdient!");
+    wardrobeUnlockEarnedThisRun = true;
+    pendingWardrobeUnlock = true;
+    showGameToast("🎁 Neuer Wardrobe-Unlock verdient!");
   }
 
   function showMessage(title, text, buttonText, action) {
@@ -237,7 +238,7 @@
         "gameover"
       );
       showNicknameEntry();
-      renderSlimeColorUnlockPanel();
+      renderWardrobeUnlockPanel();
     } else {
       const level = currentLevel();
       resetFallingPlatforms(level);
@@ -254,7 +255,7 @@
   }
 
   function doContinue() {
-    if (nextAction === "gameover" && !requirePendingColorUnlockSelection()) return;
+    if (nextAction === "gameover" && !requirePendingWardrobeUnlockSelection()) return;
     if (nextAction === "gameover" && !commitPendingHighScore()) return;
     ui.message.classList.add("hidden");
     if (nextAction === "next") {
@@ -369,12 +370,16 @@
   });
 
   function returnToMenuWithPendingScore() {
-    if (nextAction === "gameover" && !requirePendingColorUnlockSelection()) return;
+    if (nextAction === "gameover" && !requirePendingWardrobeUnlockSelection()) return;
     if (nextAction === "gameover" && pendingGameOverScore && !commitPendingHighScore()) return;
     returnToMenu();
   }
 
   ui.continueBtn.addEventListener("click", doContinue);
+  ui.wardrobeUnlockBackBtn.addEventListener("click", () => {
+    wardrobeUnlockCategory = null;
+    renderWardrobeUnlockPanel();
+  });
   ui.restartBtn.addEventListener("click", returnToMenuWithPendingScore);
   ui.messageRestartBtn.addEventListener("click", returnToMenuWithPendingScore);
   ui.fullscreenBtn.addEventListener("click", toggleFullscreen);

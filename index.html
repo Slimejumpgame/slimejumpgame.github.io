@@ -36,6 +36,10 @@
         <div id="slimeColorRequirement" class="slimeColorRequirement"></div>
         <div id="slimeColorOptions" class="slimeColorOptions"></div>
       </aside>
+      <aside id="slimeCosmeticPicker" class="slimeCosmeticPicker" aria-label="Slime-Cosmetic auswählen">
+        <div class="slimeColorPickerTitle">Cosmetics</div>
+        <div id="slimeCosmeticOptions" class="slimeCosmeticOptions"></div>
+      </aside>
     </section>
 
     <section id="howToScreen" class="menuScreen hidden" aria-label="How to Play">
@@ -100,10 +104,12 @@
       <div class="card">
         <h2 id="messageTitle">Level geschafft!</h2>
         <p id="messageText"></p>
-        <section id="slimeColorUnlockPanel" class="slimeColorUnlockPanel hidden" aria-label="Neue Slime-Farben freischalten">
-          <h3>🎨 Neue Slime-Farbe</h3>
-          <p id="slimeColorUnlockText"></p>
-          <div id="slimeColorUnlockOptions" class="slimeColorUnlockOptions"></div>
+        <section id="wardrobeUnlockPanel" class="slimeColorUnlockPanel hidden" aria-label="Neues Wardrobe-Item freischalten">
+          <h3>🎁 Neuer Wardrobe-Unlock</h3>
+          <p id="wardrobeUnlockText"></p>
+          <div id="wardrobeUnlockCategories" class="wardrobeUnlockCategories"></div>
+          <div id="wardrobeUnlockOptions" class="slimeColorUnlockOptions wardrobeUnlockOptions hidden"></div>
+          <button id="wardrobeUnlockBackBtn" class="wardrobeUnlockBackBtn hidden" type="button">Zurück zur Kategorie</button>
         </section>
         <div id="nicknameEntry" class="nicknameEntry hidden">
           <label class="nicknameLabel" for="nicknameInput">Dein Highscore-Name</label>
@@ -128,6 +134,8 @@
 </div>
 
 <script src="./js/slime-colors.js"></script>
+<script src="./js/slime-cosmetics.js"></script>
+<script src="./js/slime-wardrobe.js"></script>
 <script src="./js/slime-jump-highscores.js"></script>
 <script src="./js/core.js"></script>
 <script src="./js/biomes.js"></script>

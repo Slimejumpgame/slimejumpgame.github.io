@@ -733,6 +733,19 @@
     box-shadow: inset 0 0 min(1vw, 1.8vh) rgba(121, 255, 141, 0.08), 0 0 min(1.2vw, 2.1vh) rgba(0, 0, 0, 0.42);
   }
 
+  .slimeCosmeticPicker {
+    position: absolute;
+    right: 1.8%;
+    bottom: 2.3%;
+    z-index: 6;
+    width: 28.5%;
+    padding: min(0.65vw, 1.15vh);
+    border: min(0.16vw, 0.28vh) solid rgba(121, 255, 141, 0.62);
+    border-radius: min(1.25vw, 2.2vh);
+    background: linear-gradient(180deg, rgba(8, 31, 48, 0.9), rgba(5, 18, 31, 0.94));
+    box-shadow: inset 0 0 min(1vw, 1.8vh) rgba(121, 255, 141, 0.08), 0 0 min(1.2vw, 2.1vh) rgba(0, 0, 0, 0.42);
+  }
+
   .slimeColorPickerTitle {
     margin-bottom: min(0.4vw, 0.7vh);
     color: #d9ffe0;
@@ -760,6 +773,25 @@
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: min(0.42vw, 0.75vh);
+  }
+
+  .slimeCosmeticOptions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: min(0.34vw, 0.6vh);
+  }
+
+  .slimeCosmeticOption {
+    padding-top: min(0.14vw, 0.25vh);
+    padding-bottom: min(0.2vw, 0.35vh);
+  }
+
+  .slimeCosmeticPreview {
+    display: block;
+    width: min(2.8vw, 4.98vh);
+    height: min(2.2vw, 3.91vh);
+    margin: 0 auto min(0.08vw, 0.14vh);
+    pointer-events: none;
   }
 
   .slimeColorOption {
@@ -913,6 +945,51 @@
 
   .slimeColorUnlockOptions .slimeColorOption {
     min-height: 66px;
+  }
+
+  .wardrobeUnlockCategories {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .wardrobeUnlockCategories.hidden,
+  .wardrobeUnlockOptions.hidden,
+  .wardrobeUnlockBackBtn.hidden {
+    display: none;
+  }
+
+  .wardrobeCategoryButton,
+  .wardrobeUnlockBackBtn {
+    min-height: 42px;
+    border: 2px solid rgba(121, 255, 141, 0.62);
+    border-radius: 13px;
+    background: linear-gradient(180deg, rgba(89, 51, 145, 0.98), rgba(43, 25, 82, 0.98));
+    color: #ffffff;
+    font-weight: 1000;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  .wardrobeCategoryButton:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .wardrobeCategoryButton:not(:disabled):hover,
+  .wardrobeCategoryButton:not(:disabled):focus-visible,
+  .wardrobeUnlockBackBtn:hover,
+  .wardrobeUnlockBackBtn:focus-visible {
+    border-color: #ffffff;
+    outline: none;
+    box-shadow: 0 0 12px rgba(121, 255, 141, 0.42);
+  }
+
+  .wardrobeUnlockBackBtn {
+    min-height: 34px;
+    margin-top: 9px;
+    padding: 5px 12px;
+    font-size: 12px;
   }
 
   @keyframes slimeUnlockPulse {

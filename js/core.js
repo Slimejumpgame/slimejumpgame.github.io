@@ -42,9 +42,12 @@
     highScoresBackBtn: document.getElementById("highScoresBackBtn"),
     slimeColorOptions: document.getElementById("slimeColorOptions"),
     slimeColorRequirement: document.getElementById("slimeColorRequirement"),
-    slimeColorUnlockPanel: document.getElementById("slimeColorUnlockPanel"),
-    slimeColorUnlockText: document.getElementById("slimeColorUnlockText"),
-    slimeColorUnlockOptions: document.getElementById("slimeColorUnlockOptions"),
+    slimeCosmeticOptions: document.getElementById("slimeCosmeticOptions"),
+    wardrobeUnlockPanel: document.getElementById("wardrobeUnlockPanel"),
+    wardrobeUnlockText: document.getElementById("wardrobeUnlockText"),
+    wardrobeUnlockCategories: document.getElementById("wardrobeUnlockCategories"),
+    wardrobeUnlockOptions: document.getElementById("wardrobeUnlockOptions"),
+    wardrobeUnlockBackBtn: document.getElementById("wardrobeUnlockBackBtn"),
     restartBtn: document.getElementById("restartBtn"),
     messageRestartBtn: document.getElementById("messageRestartBtn"),
     musicBtn: document.getElementById("musicBtn"),
@@ -102,8 +105,9 @@
   let shots = 0;
   let collected = [];
   let runStarsCollected = 0;
-  let colorUnlockEarnedThisRun = false;
-  let pendingColorUnlocks = 0;
+  let wardrobeUnlockEarnedThisRun = false;
+  let pendingWardrobeUnlock = false;
+  let wardrobeUnlockCategory = null;
   let aiming = false;
   let pointer = {x: 0, y: 0};
   let drag = {x: 0, y: 0};
