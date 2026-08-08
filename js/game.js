@@ -114,6 +114,8 @@
     drag.y = 0;
     player.vx = 0;
     player.vy = 0;
+    stuckAimFallbackActive = false;
+    resetStuckAimTimer();
     canvas.classList.remove("aiming");
     ui.message.classList.add("hidden");
     hideNicknameEntry();
@@ -218,6 +220,8 @@
 
   function loseLife() {
     if (state !== "playing") return;
+    stuckAimFallbackActive = false;
+    resetStuckAimTimer();
     levelHadDeath = true;
     if (perfectLevelStreak > 0) {
       perfectLevelStreak = 0;
@@ -258,6 +262,7 @@
       player.onIce = false;
       player.trail = [];
       aiming = false;
+      resetStuckAimTimer();
     }
   }
 

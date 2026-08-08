@@ -96,12 +96,14 @@
   let aimStartClientY = 0;
   const AIM_MAX_ROLL_SPEED = 240;
   const AIM_SUPPORT_TOLERANCE = 4;
-  const STUCK_AIM_SPEED_EPSILON = 5;
-  const STUCK_AIM_DELAY = 0.3;
+  const STUCK_AIM_POSITION_EPSILON = 4;
+  const STUCK_AIM_DELAY = 1.0;
   const MAX_DRAG_DISTANCE = 330;
   const MAX_LAUNCH_SPEED = 205 * 5.7;
   const MIN_LAUNCH_DRAG = 10;
   let stuckAimStillTime = 0;
+  let stuckAimReferenceX = player.x;
+  let stuckAimReferenceY = player.y;
   let stuckAimFallbackActive = false;
 
   function hasValidAimSupport() {
@@ -119,27 +121,38 @@
       Math.abs(player.vx) <= AIM_MAX_ROLL_SPEED;
   }
 
+  function getStuckAimDistanceFromReference() {
+    return Math.hypot(
+      player.x - stuckAimReferenceX,
+      player.y - stuckAimReferenceY
+    );
+  }
+
   function canUseStuckAimFallback() {
     return stuckAimStillTime >= STUCK_AIM_DELAY &&
-      Math.abs(player.vx) <= STUCK_AIM_SPEED_EPSILON &&
-      Math.abs(player.vy) <= STUCK_AIM_SPEED_EPSILON;
+      getStuckAimDistanceFromReference() <= STUCK_AIM_POSITION_EPSILON;
   }
 
   function resetStuckAimTimer() {
     stuckAimStillTime = 0;
+    stuckAimReferenceX = player.x;
+    stuckAimReferenceY = player.y;
   }
 
   function updateStuckAimTimer(dt) {
     const hasNormalSupport = player.onGround && hasValidAimSupport();
-    const isNearlyStill =
-      Math.abs(player.vx) <= STUCK_AIM_SPEED_EPSILON &&
-      Math.abs(player.vy) <= STUCK_AIM_SPEED_EPSILON;
 
-    if (state === "playing" && !aiming && !hasNormalSupport && isNearlyStill) {
-      stuckAimStillTime = Math.min(STUCK_AIM_DELAY, stuckAimStillTime + dt);
-    } else {
+    if (state !== "playing" || aiming || hasNormalSupport) {
       resetStuckAimTimer();
+      return;
     }
+
+    if (getStuckAimDistanceFromReference() > STUCK_AIM_POSITION_EPSILON) {
+      resetStuckAimTimer();
+      return;
+    }
+
+    stuckAimStillTime = Math.min(STUCK_AIM_DELAY, stuckAimStillTime + dt);
   }
 
   function canAim() {
