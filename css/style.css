@@ -78,6 +78,33 @@
     justify-content: center;
   }
 
+  #gameToast {
+    position: absolute;
+    top: clamp(62px, 11%, 96px);
+    left: 50%;
+    z-index: 12;
+    width: max-content;
+    max-width: min(90%, 620px);
+    padding: 12px 20px;
+    transform: translate(-50%, -10px) scale(0.96);
+    border: 2px solid rgba(121, 255, 141, 0.72);
+    border-radius: 18px;
+    background: rgba(5, 15, 27, 0.94);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.42), 0 0 22px rgba(121,255,141,0.18);
+    color: #effff1;
+    font-size: clamp(16px, 2.4vw, 24px);
+    font-weight: 1000;
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 160ms ease, transform 160ms ease;
+  }
+
+  #gameToast.visible {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 1;
+  }
+
   canvas {
     display: block;
     width: 100%;

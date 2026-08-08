@@ -1,5 +1,8 @@
 "use strict";
 
+  const MAX_LIVES = 5;
+  const PERFECT_LEVEL_STREAK_TARGET = 3;
+
   function resetFallingPlatforms(level = currentLevel()) {
     if (!level?.fallingPlatforms) return;
     for (const platform of level.fallingPlatforms) {
@@ -40,13 +43,14 @@
   function startGame(levelNumber = 1) {
     pendingGameOverScore = null;
     hideNicknameEntry();
+    hideGameToast();
     getAudio();
     setMusicMode("game");
     if (!musicMuted) startBackgroundMusic("game");
     state = "playing";
     levelIndex = levelNumber - 1;
     lives = 3;
-    bonusLifePerfectLevels = 0;
+    perfectLevelStreak = 0;
     score = 0;
     shots = 0;
     generatedLevel = generateProceduralLevel(levelNumber);
@@ -130,6 +134,32 @@
     ui.message.classList.remove("hidden");
   }
 
+  function updatePerfectLevelStreak(stars) {
+    if (stars === 3) {
+      perfectLevelStreak++;
+
+      if (perfectLevelStreak >= PERFECT_LEVEL_STREAK_TARGET) {
+        perfectLevelStreak = 0;
+
+        if (lives < MAX_LIVES) {
+          lives = Math.min(MAX_LIVES, lives + 1);
+          return "❤️ BONUSLEBEN! +1";
+        }
+
+        return "";
+      }
+
+      return `⭐ Perfekte Serie: ${perfectLevelStreak}/${PERFECT_LEVEL_STREAK_TARGET}`;
+    }
+
+    if (perfectLevelStreak > 0) {
+      perfectLevelStreak = 0;
+      return "💔 Perfekte Serie verloren! 0/3";
+    }
+
+    return "";
+  }
+
   function finishLevel() {
     if (state !== "playing") return;
 
@@ -140,38 +170,15 @@
       stars * 250;
 
     score += bonus;
-
-    // Bonusleben gibt es nur, wenn bereits mindestens ein Leben fehlt.
-    // Dafür müssen fünf Level in Folge jeweils mit allen drei Sternen
-    // abgeschlossen werden. Ein unvollständiges Stern-Level setzt die Serie zurück.
-    let lifeBonusText = "";
-    if (lives < 3) {
-      if (stars === 3) {
-        bonusLifePerfectLevels++;
-
-        if (bonusLifePerfectLevels >= 5) {
-          lives = Math.min(3, lives + 1);
-          bonusLifePerfectLevels = 0;
-          lifeBonusText = lives < 3
-            ? " Bonusleben erhalten! Neue Bonusleben-Serie: 0/5."
-            : " Bonusleben erhalten! Leben wieder vollständig.";
-        } else {
-          lifeBonusText = ` Bonusleben-Serie: ${bonusLifePerfectLevels}/5.`;
-        }
-      } else {
-        bonusLifePerfectLevels = 0;
-        lifeBonusText = " Bonusleben-Serie zurückgesetzt: 0/5.";
-      }
-    } else {
-      bonusLifePerfectLevels = 0;
-    }
+    const streakMessage = updatePerfectLevelStreak(stars);
 
     updateHUD();
+    if (streakMessage) showGameToast(streakMessage);
     playWin();
 
     showMessage(
       `Level ${completedLevel} geschafft!`,
-      `${stars}/3 Sterne gesammelt. Levelbonus: ${bonus} Punkte.${lifeBonusText}`,
+      `${stars}/3 Sterne gesammelt. Levelbonus: ${bonus} Punkte.`,
       "Nächstes Zufallslevel",
       "next"
     );

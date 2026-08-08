@@ -3,6 +3,21 @@
   const recentScoresStorageKey = "slimejumperRecentScores";
   const highScoresStorageKey = "slimejumperHighscoresV14";
   let lastOnlineScoreSubmit = Promise.resolve();
+  let gameToastTimer = null;
+
+  function hideGameToast() {
+    if (gameToastTimer !== null) window.clearTimeout(gameToastTimer);
+    gameToastTimer = null;
+    ui.gameToast.classList.remove("visible");
+  }
+
+  function showGameToast(message, duration = 1800) {
+    hideGameToast();
+    ui.gameToast.textContent = message;
+    void ui.gameToast.offsetWidth;
+    ui.gameToast.classList.add("visible");
+    gameToastTimer = window.setTimeout(hideGameToast, duration);
+  }
 
   function loadRecentScores() {
     try {

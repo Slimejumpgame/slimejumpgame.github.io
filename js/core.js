@@ -20,6 +20,7 @@
     stars: document.getElementById("starsLabel"),
     shots: document.getElementById("shotsLabel"),
     score: document.getElementById("scoreLabel"),
+    gameToast: document.getElementById("gameToast"),
     menu: document.getElementById("menuOverlay"),
     mainMenuScreen: document.getElementById("mainMenuScreen"),
     howToScreen: document.getElementById("howToScreen"),
@@ -90,7 +91,7 @@
   let state = "menu";
   let levelIndex = 0;
   let lives = 3;
-  let bonusLifePerfectLevels = 0;
+  let perfectLevelStreak = 0;
   let score = 0;
   let shots = 0;
   let collected = [];
