@@ -45,12 +45,13 @@
     hideNicknameEntry();
     hideGameToast();
     getAudio();
-    setMusicMode("game");
-    if (!musicMuted) startBackgroundMusic("game");
     state = "playing";
     levelIndex = levelNumber - 1;
+    setMusicForLevel(levelIndex + 1);
+    if (!musicMuted) startBackgroundMusic();
     lives = 3;
     perfectLevelStreak = 0;
+    levelHadDeath = false;
     score = 0;
     shots = 0;
     generatedLevel = generateProceduralLevel(levelNumber);
@@ -135,7 +136,7 @@
   }
 
   function updatePerfectLevelStreak(stars) {
-    if (stars === 3) {
+    if (stars === 3 && !levelHadDeath) {
       perfectLevelStreak++;
 
       if (perfectLevelStreak >= PERFECT_LEVEL_STREAK_TARGET) {
@@ -186,6 +187,11 @@
 
   function loseLife() {
     if (state !== "playing") return;
+    levelHadDeath = true;
+    if (perfectLevelStreak > 0) {
+      perfectLevelStreak = 0;
+      showGameToast("💔 Perfekte Serie verloren! 0/3");
+    }
     lives--;
     shake = 18;
     playHurt();
@@ -228,6 +234,8 @@
     ui.message.classList.add("hidden");
     if (nextAction === "next") {
       levelIndex++;
+      levelHadDeath = false;
+      setMusicForLevel(levelIndex + 1);
       generatedLevel = generateProceduralLevel(levelIndex + 1);
       state = "playing";
       resetLevel(true);
@@ -350,7 +358,9 @@
     updateMusicMute();
 
     if (!musicMuted) {
-      startBackgroundMusic(state === "playing" ? "game" : "menu");
+      if (state === "playing") setMusicForLevel(levelIndex + 1);
+      else setMusicMode("menu");
+      startBackgroundMusic();
     }
   });
 
@@ -367,7 +377,9 @@
   // Der erste Tap/Klick startet deshalb die Menümusik automatisch.
   function unlockBackgroundMusic(event) {
     if (musicStarted || musicMuted || event.target === ui.musicBtn || event.target === ui.sfxBtn) return;
-    startBackgroundMusic(state === "playing" ? "game" : "menu");
+    if (state === "playing") setMusicForLevel(levelIndex + 1);
+    else setMusicMode("menu");
+    startBackgroundMusic();
     document.removeEventListener("pointerdown", unlockBackgroundMusic, true);
   }
 

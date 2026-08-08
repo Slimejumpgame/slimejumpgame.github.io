@@ -92,6 +92,7 @@
   let levelIndex = 0;
   let lives = 3;
   let perfectLevelStreak = 0;
+  let levelHadDeath = false;
   let score = 0;
   let shots = 0;
   let collected = [];
