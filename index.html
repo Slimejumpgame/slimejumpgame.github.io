@@ -2474,6 +2474,24 @@
   let aimInputMode = "direct";
   let aimStartClientX = 0;
   let aimStartClientY = 0;
+  const MAX_DRAG_DISTANCE = 330;
+  const MAX_LAUNCH_SPEED = 205 * 5.7;
+  const MIN_LAUNCH_DRAG = 10;
+
+  function getSlingshotLaunch() {
+    const dragDistance = Math.hypot(drag.x, drag.y);
+    const dragRatio = clamp(dragDistance / MAX_DRAG_DISTANCE, 0, 1);
+    const forceRatio = dragRatio * dragRatio * (3 - 2 * dragRatio);
+    const launchSpeed = MAX_LAUNCH_SPEED * forceRatio;
+    const directionScale = dragDistance > 0 ? launchSpeed / dragDistance : 0;
+
+    return {
+      dragDistance,
+      forceRatio,
+      vx: drag.x * directionScale,
+      vy: drag.y * directionScale
+    };
+  }
 
   function beginAimAt(clientX, clientY) {
     getAudio();
@@ -2494,11 +2512,9 @@
     aimStartClientX = clientX;
     aimStartClientY = clientY;
 
-    // Am schwarzen Rand gilt der erste Berührungspunkt virtuell als
-    // Mittelpunkt des Slimes. Nur die anschließende Fingerbewegung zählt.
-    pointer = aimInputMode === "sidepad"
-      ? {x: player.x, y: player.y}
-      : p;
+    // Der erste Berührungspunkt gilt als Nullpunkt. Dadurch zählt bei direkter
+    // Eingabe und am seitlichen Touchpad nur die anschließende Ziehbewegung.
+    pointer = {x: player.x, y: player.y};
 
     drag.x = 0;
     drag.y = 0;
@@ -2515,30 +2531,25 @@
   function moveAimTo(clientX, clientY) {
     if (!aiming) return;
 
-    if (aimInputMode === "sidepad") {
-      const m = getCanvasDisplayMetrics();
-      const deltaX = (clientX - aimStartClientX) * m.scaleX;
-      const deltaY = (clientY - aimStartClientY) * m.scaleY;
+    const m = getCanvasDisplayMetrics();
+    const deltaX = (clientX - aimStartClientX) * m.scaleX;
+    const deltaY = (clientY - aimStartClientY) * m.scaleY;
 
-      // Der Rand verhält sich wie ein unsichtbares Touchpad:
-      // Startpunkt = Slime-Mitte, Fingerbewegung = Ziehbewegung.
-      pointer = {
-        x: player.x + deltaX,
-        y: player.y + deltaY
-      };
-    } else {
-      pointer = screenToWorld(clientX, clientY);
-    }
+    // Direkte Eingabe und seitliches Touchpad verwenden dieselbe skalierte
+    // Bewegung ab dem jeweiligen Kontaktpunkt.
+    pointer = {
+      x: player.x + deltaX,
+      y: player.y + deltaY
+    };
 
     drag.x = player.x - pointer.x;
     drag.y = player.y - pointer.y;
 
     const len = Math.hypot(drag.x, drag.y);
-    const maxDrag = 205;
 
-    if (len > maxDrag) {
-      drag.x *= maxDrag / len;
-      drag.y *= maxDrag / len;
+    if (len > MAX_DRAG_DISTANCE) {
+      drag.x *= MAX_DRAG_DISTANCE / len;
+      drag.y *= MAX_DRAG_DISTANCE / len;
     }
   }
 
@@ -2548,12 +2559,11 @@
     aiming = false;
     canvas.classList.remove("aiming");
 
-    const power = Math.hypot(drag.x, drag.y);
+    const launch = getSlingshotLaunch();
 
-    if (power > 10) {
-      const multiplier = 5.7;
-      player.vx = drag.x * multiplier;
-      player.vy = drag.y * multiplier;
+    if (launch.dragDistance > MIN_LAUNCH_DRAG) {
+      player.vx = launch.vx;
+      player.vy = launch.vy;
       shots++;
       player.squish = 1;
       score = Math.max(0, score - 5);
@@ -4337,8 +4347,8 @@
 
   function drawTrajectory() {
     if (!aiming) return;
-    const power = Math.hypot(drag.x, drag.y);
-    if (power < 6) return;
+    const launch = getSlingshotLaunch();
+    if (launch.dragDistance <= MIN_LAUNCH_DRAG) return;
 
     ctx.save();
     ctx.lineCap = "round";
@@ -4350,17 +4360,19 @@
     ctx.lineTo(player.x - drag.x, player.y - drag.y);
     ctx.stroke();
 
-    const maxPower = 185;
-    const ratio = power / maxPower;
+    const ratio = launch.forceRatio;
     ctx.strokeStyle = ratio > 0.82 ? "#ff7b78" : ratio > 0.55 ? "#ffe66a" : "#7cff90";
     ctx.lineWidth = 8;
     ctx.beginPath();
     ctx.moveTo(player.x, player.y);
-    ctx.lineTo(player.x + drag.x * 0.58, player.y + drag.y * 0.58);
+    ctx.lineTo(
+      player.x + launch.vx * (0.58 / 5.7),
+      player.y + launch.vy * (0.58 / 5.7)
+    );
     ctx.stroke();
 
     let x = player.x, y = player.y;
-    let vx = drag.x * 5.5, vy = drag.y * 5.5;
+    let vx = launch.vx, vy = launch.vy;
     for (let i = 0; i < 18; i++) {
       const t = 0.055;
       vy += 1570 * t;
