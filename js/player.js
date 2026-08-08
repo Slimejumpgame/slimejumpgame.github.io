@@ -3,6 +3,7 @@
   const player = {
     x: 0, y: 0, r: 30,
     vx: 0, vy: 0,
+    lastHorizontalDirection: 0,
     onGround: false,
     onIce: false,
     conveyorSpeed: 0,

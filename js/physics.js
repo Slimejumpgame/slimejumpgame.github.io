@@ -1,5 +1,26 @@
 "use strict";
 
+  const BOUNCE_MIN_HORIZONTAL_SPEED = 90;
+
+  function rememberPlayerHorizontalDirection() {
+    // Kleine Physik-Restwerte sollen keine zuvor klare Richtung überschreiben.
+    if (Math.abs(player.vx) >= BOUNCE_MIN_HORIZONTAL_SPEED * 0.1) {
+      player.lastHorizontalDirection = Math.sign(player.vx);
+    }
+  }
+
+  function applyBouncePadMinimumHorizontalSpeed() {
+    if (Math.abs(player.vx) >= BOUNCE_MIN_HORIZONTAL_SPEED) return;
+
+    const direction =
+      player.vx > 0 ? 1 :
+      player.vx < 0 ? -1 :
+      player.lastHorizontalDirection || 1;
+
+    player.vx = direction * BOUNCE_MIN_HORIZONTAL_SPEED;
+    player.lastHorizontalDirection = direction;
+  }
+
   function circleRectCollision(circle, rect) {
     const closestX = Math.max(rect.x, Math.min(circle.x, rect.x + rect.w));
     const closestY = Math.max(rect.y, Math.min(circle.y, rect.y + rect.h));
@@ -89,6 +110,7 @@
   function update(dt) {
     if (state !== "playing") return;
     worldTime += dt;
+    rememberPlayerHorizontalDirection();
     carryAimingPlayerWithMovingPlatform(dt);
     const aimingCarriedByConveyor = carryAimingPlayerWithConveyor(dt);
     updateFallingPlatforms(dt);
@@ -143,6 +165,7 @@
         const smoothedImpact = impactRatio * impactRatio * (3 - 2 * impactRatio);
         const bounceStrength = minimumBounce + (maximumBounce - minimumBounce) * smoothedImpact;
         player.vy = -Math.min(maximumBounce, bounceStrength);
+        applyBouncePadMinimumHorizontalSpeed();
         player.onGround = false;
         player.squish = 1;
         tone(230, 0.13, "square", 0.045, 520);

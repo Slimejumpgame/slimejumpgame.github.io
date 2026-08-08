@@ -216,7 +216,47 @@
     ui.mainMenuScreen.classList.toggle("hidden", screenName !== "main");
     ui.howToScreen.classList.toggle("hidden", screenName !== "howto");
     ui.highscoreScreen.classList.toggle("hidden", screenName !== "highscores");
-    if (screenName === "howto") ui.howToScreen.scrollTop = 0;
+    if (screenName === "howto") {
+      const scrollArea = ui.howToScreen.querySelector(".howToScrollArea");
+      initializeHowToScrollbar();
+      if (scrollArea) scrollArea.scrollTop = 0;
+      window.requestAnimationFrame(updateHowToScrollbar);
+    }
     if (screenName === "highscores") void updateHighScores();
+  }
+
+  function getHowToThumbOffset(scrollTop, scrollHeight, clientHeight, trackHeight, thumbHeight) {
+    const maxScroll = Math.max(0, scrollHeight - clientHeight);
+    const maxThumbTravel = Math.max(0, trackHeight - thumbHeight);
+    if (maxScroll === 0 || maxThumbTravel === 0) return 0;
+    const scrollProgress = Math.min(1, Math.max(0, scrollTop / maxScroll));
+    return scrollProgress * maxThumbTravel;
+  }
+
+  function updateHowToScrollbar() {
+    const scrollArea = ui.howToScreen.querySelector(".howToScrollArea");
+    const track = ui.howToScreen.querySelector(".howToCustomScrollbar");
+    const thumb = ui.howToScreen.querySelector(".howToScrollbarThumb");
+    if (!scrollArea || !track || !thumb) return;
+
+    const thumbOffset = getHowToThumbOffset(
+      scrollArea.scrollTop,
+      scrollArea.scrollHeight,
+      scrollArea.clientHeight,
+      track.clientHeight,
+      thumb.offsetHeight
+    );
+    thumb.style.transform = `translateY(${thumbOffset}px)`;
+  }
+
+  function initializeHowToScrollbar() {
+    const scrollArea = ui.howToScreen.querySelector(".howToScrollArea");
+    if (!scrollArea || scrollArea.dataset.slimeScrollbarReady === "1") return;
+
+    scrollArea.dataset.slimeScrollbarReady = "1";
+    scrollArea.addEventListener("scroll", updateHowToScrollbar, {passive: true});
+    ui.howToScreen.querySelector(".howToLongArtwork")
+      ?.addEventListener("load", updateHowToScrollbar);
+    window.addEventListener("resize", updateHowToScrollbar);
   }
 

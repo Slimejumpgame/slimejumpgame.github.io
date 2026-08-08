@@ -730,20 +730,131 @@
   }
 
 
-  /* V2.08: How-to-Menü komplett als zwei fertige Artwork-Screens aufgebaut. */
+  /* Langes How-to-Artwork mit eigenem Scrollbereich und fester Button-Zeile. */
   #howToScreen {
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    min-width: 0;
+    min-height: 0;
+    background: linear-gradient(180deg, #071127 0%, #10082c 55%, #1d0942 100%);
+  }
+
+  #howToScreen.hidden {
+    display: none;
+  }
+
+  .howToScrollFrame {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(16px, 2vw, 26px);
+    column-gap: clamp(3px, 0.45vw, 7px);
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    padding-right: clamp(3px, 0.45vw, 7px);
+  }
+
+  .howToScrollArea {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
     touch-action: pan-y;
-    background: linear-gradient(180deg, #071127 0%, #10082c 55%, #1d0942 100%);
+    -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    background: #091129;
   }
 
-  #howToScreen::-webkit-scrollbar {
+  .howToScrollArea::-webkit-scrollbar {
     width: 0;
     height: 0;
+    display: none;
+  }
+
+  .howToCustomScrollbar {
+    position: relative;
+    align-self: stretch;
+    min-height: 0;
+    box-sizing: border-box;
+    margin: clamp(5px, 0.8vh, 9px) 0;
+    border: 1px solid rgba(12, 58, 23, 0.92);
+    border-radius: 999px;
+    background:
+      linear-gradient(90deg, #1f702d 0%, #64d94c 38%, #2f9d39 72%, #174f26 100%);
+    box-shadow:
+      inset 2px 0 2px rgba(214, 255, 195, 0.52),
+      inset -2px 0 2px rgba(5, 49, 17, 0.55),
+      0 0 5px rgba(85, 219, 67, 0.28);
+    overflow: hidden;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .howToCustomScrollbar::after {
+    content: "";
+    position: absolute;
+    top: 3%;
+    bottom: 3%;
+    left: 28%;
+    width: 16%;
+    border-radius: 999px;
+    background: rgba(225, 255, 205, 0.34);
+    pointer-events: none;
+  }
+
+  .howToScrollbarThumb {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 2;
+    width: 100%;
+    height: clamp(28px, 4.4vw, 44px);
+    box-sizing: border-box;
+    border: 1px solid rgba(11, 55, 20, 0.94);
+    border-radius: 48% 48% 42% 42% / 44% 44% 56% 56%;
+    background-color: #65cf36;
+    background-image: url("../assets/ui/howto_scrollbar_slime.png");
+    background-repeat: no-repeat;
+    background-size: 560% auto;
+    background-position: center 47.5%;
+    box-shadow:
+      inset 1px 1px 2px rgba(239, 255, 217, 0.7),
+      0 0 5px rgba(100, 238, 67, 0.62);
+    pointer-events: none;
+    user-select: none;
+    will-change: transform;
+  }
+
+  .howToLongArtwork {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  .howToButtonBar {
+    flex: 0 0 17%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    box-sizing: border-box;
+    min-height: 0;
+    padding: 0.7% 2.5%;
+    border-top: 2px solid rgba(114, 237, 91, 0.3);
+    background: linear-gradient(180deg, #10172b 0%, #07111f 100%);
+    box-shadow: 0 -5px 14px rgba(0, 0, 0, 0.32);
+  }
+
+  .howToLegacyArtworkSource {
     display: none;
   }
 
@@ -781,10 +892,13 @@
   }
 
   #howToBackBtn {
-    left: 38.0%;
-    top: 86.7%;
-    width: 23.45%;
-    height: 11.6%;
+    position: relative;
+    left: auto !important;
+    top: auto !important;
+    width: 23.45% !important;
+    height: auto !important;
+    aspect-ratio: 3.5948 / 1;
+    flex: 0 0 auto;
   }
 
 
