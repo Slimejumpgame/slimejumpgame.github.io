@@ -41,6 +41,7 @@
     howToMechanicsPanel: document.getElementById("howToMechanicsPanel"),
     highScoresBackBtn: document.getElementById("highScoresBackBtn"),
     slimeColorOptions: document.getElementById("slimeColorOptions"),
+    slimeColorRequirement: document.getElementById("slimeColorRequirement"),
     slimeColorUnlockPanel: document.getElementById("slimeColorUnlockPanel"),
     slimeColorUnlockText: document.getElementById("slimeColorUnlockText"),
     slimeColorUnlockOptions: document.getElementById("slimeColorUnlockOptions"),
@@ -101,7 +102,7 @@
   let shots = 0;
   let collected = [];
   let runStarsCollected = 0;
-  let processedColorUnlockMilestones = 0;
+  let colorUnlockEarnedThisRun = false;
   let pendingColorUnlocks = 0;
   let aiming = false;
   let pointer = {x: 0, y: 0};

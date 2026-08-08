@@ -55,7 +55,7 @@
     score = 0;
     shots = 0;
     runStarsCollected = 0;
-    processedColorUnlockMilestones = 0;
+    colorUnlockEarnedThisRun = false;
     pendingColorUnlocks = 0;
     hideSlimeColorUnlockPanel();
     generatedLevel = generateProceduralLevel(levelNumber);
@@ -135,27 +135,14 @@
   function registerRunStarCollected() {
     runStarsCollected++;
 
-    const earnedMilestones = Math.floor(
-      runStarsCollected / SLIME_COLOR_UNLOCK_STAR_INTERVAL
-    );
-    if (earnedMilestones <= processedColorUnlockMilestones) return;
+    if (colorUnlockEarnedThisRun) return;
 
-    const newMilestones = earnedMilestones - processedColorUnlockMilestones;
-    processedColorUnlockMilestones = earnedMilestones;
+    const requiredStars = getNextSlimeColorUnlockRequirement();
+    if (requiredStars === null || runStarsCollected < requiredStars) return;
 
-    const availableLockedColors = Math.max(
-      0,
-      getLockedSlimeColors().length - pendingColorUnlocks
-    );
-    const newUnlocks = Math.min(newMilestones, availableLockedColors);
-    if (newUnlocks <= 0) return;
-
-    pendingColorUnlocks += newUnlocks;
-    showGameToast(
-      newUnlocks > 1
-        ? `🎨 ${newUnlocks} neue Slime-Farben verdient!`
-        : "🎨 Neue Slime-Farbe verdient!"
-    );
+    colorUnlockEarnedThisRun = true;
+    pendingColorUnlocks = 1;
+    showGameToast("🎨 Neue Slime-Farbe verdient!");
   }
 
   function showMessage(title, text, buttonText, action) {

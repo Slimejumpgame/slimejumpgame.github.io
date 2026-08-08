@@ -1,9 +1,18 @@
 "use strict";
 
-  // TEMPORAERER TESTWERT: Nach dem Unlock-Test wieder von 3 auf 25 zurueckstellen.
-  const SLIME_COLOR_UNLOCK_STAR_INTERVAL = 25;
+  const SLIME_COLOR_UNLOCK_REQUIREMENTS = Object.freeze([
+    25,
+    30,
+    35,
+    40,
+    50,
+    60,
+    70
+  ]);
   const UNLOCKED_SLIME_COLORS_STORAGE_KEY = "slimejumperUnlockedSlimeColors";
   const SELECTED_SLIME_COLOR_STORAGE_KEY = "slimejumperSelectedSlimeColor";
+  const SLIME_COLOR_PROGRESS_VERSION_STORAGE_KEY = "slimejumperColorProgressVersion";
+  const SLIME_COLOR_PROGRESS_VERSION = "2.32-progressive-unlocks-v1";
 
   const SLIME_COLOR_ORDER = Object.freeze([
     "purple",
@@ -104,6 +113,23 @@
     let selected = "green";
 
     try {
+      const storedProgressVersion = localStorage.getItem(
+        SLIME_COLOR_PROGRESS_VERSION_STORAGE_KEY
+      );
+
+      if (storedProgressVersion !== SLIME_COLOR_PROGRESS_VERSION) {
+        localStorage.setItem(
+          UNLOCKED_SLIME_COLORS_STORAGE_KEY,
+          JSON.stringify(unlocked)
+        );
+        localStorage.setItem(SELECTED_SLIME_COLOR_STORAGE_KEY, selected);
+        localStorage.setItem(
+          SLIME_COLOR_PROGRESS_VERSION_STORAGE_KEY,
+          SLIME_COLOR_PROGRESS_VERSION
+        );
+        return {unlocked, selected};
+      }
+
       const storedUnlocked = JSON.parse(
         localStorage.getItem(UNLOCKED_SLIME_COLORS_STORAGE_KEY) || "[]"
       );
@@ -138,6 +164,10 @@
         JSON.stringify(unlockedSlimeColors)
       );
       localStorage.setItem(SELECTED_SLIME_COLOR_STORAGE_KEY, selectedSlimeColor);
+      localStorage.setItem(
+        SLIME_COLOR_PROGRESS_VERSION_STORAGE_KEY,
+        SLIME_COLOR_PROGRESS_VERSION
+      );
     } catch (_) {}
   }
 
@@ -147,6 +177,14 @@
 
   function getLockedSlimeColors() {
     return SLIME_COLOR_ORDER.filter(color => !unlockedSlimeColors.includes(color));
+  }
+
+  function getNextSlimeColorUnlockRequirement() {
+    const additionalUnlockedColors = unlockedSlimeColors.filter(
+      color => color !== "green"
+    ).length;
+
+    return SLIME_COLOR_UNLOCK_REQUIREMENTS[additionalUnlockedColors] ?? null;
   }
 
   function selectSlimeColor(color) {

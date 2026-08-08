@@ -745,6 +745,16 @@
     text-shadow: 0 0 min(0.5vw, 0.9vh) rgba(121, 255, 141, 0.45);
   }
 
+  .slimeColorRequirement {
+    margin: 0 0 min(0.4vw, 0.7vh);
+    color: #ffe877;
+    font-size: min(0.72vw, 1.28vh);
+    font-weight: 900;
+    line-height: 1.05;
+    text-align: center;
+    text-shadow: 0 0 min(0.42vw, 0.75vh) rgba(255, 232, 119, 0.38);
+  }
+
   .slimeColorOptions,
   .slimeColorUnlockOptions {
     display: grid;

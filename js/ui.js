@@ -103,6 +103,12 @@
 
   function renderSlimeColorPicker() {
     if (!ui.slimeColorOptions) return;
+    const requiredStars = getNextSlimeColorUnlockRequirement();
+    if (ui.slimeColorRequirement) {
+      ui.slimeColorRequirement.textContent = requiredStars === null
+        ? "Alle Farben freigeschaltet"
+        : `Nächste Farbe: ${requiredStars} ⭐ in einem Run`;
+    }
     ui.slimeColorOptions.replaceChildren(
       ...SLIME_COLOR_ORDER.map(color => createSlimeColorOption(color))
     );
