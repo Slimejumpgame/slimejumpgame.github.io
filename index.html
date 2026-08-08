@@ -2595,17 +2595,38 @@
     return verticallyBesideGame && (inLeftBlackBar || inRightBlackBar);
   }
 
-  function canAim() {
-    const speed = Math.hypot(player.vx, player.vy);
-    return state === "playing" && (player.onGround || speed < 240);
-  }
-
   let aimInputMode = "direct";
   let aimStartClientX = 0;
   let aimStartClientY = 0;
+  const AIM_MAX_ROLL_SPEED = 240;
+  const AIM_SUPPORT_TOLERANCE = 4;
   const MAX_DRAG_DISTANCE = 330;
   const MAX_LAUNCH_SPEED = 205 * 5.7;
   const MIN_LAUNCH_DRAG = 10;
+
+  function hasValidAimSupport() {
+    return getPlatforms().some(platform =>
+      (!platform.fade || platform.fadeData.solid) &&
+      player.x + player.r > platform.x + 2 &&
+      player.x - player.r < platform.x + platform.w - 2 &&
+      Math.abs(player.y + player.r - platform.y) <= AIM_SUPPORT_TOLERANCE
+    );
+  }
+
+  function canAim() {
+    return state === "playing" &&
+      player.onGround &&
+      hasValidAimSupport() &&
+      Math.abs(player.vx) < AIM_MAX_ROLL_SPEED;
+  }
+
+  function stopAiming() {
+    aiming = false;
+    drag.x = 0;
+    drag.y = 0;
+    aimInputMode = "direct";
+    canvas.classList.remove("aiming");
+  }
 
   function getSlingshotLaunch() {
     const dragDistance = Math.hypot(drag.x, drag.y);
@@ -2685,12 +2706,11 @@
   function releaseAim() {
     if (!aiming) return;
 
-    aiming = false;
-    canvas.classList.remove("aiming");
-
     const launch = getSlingshotLaunch();
+    const hasSupport = hasValidAimSupport();
+    stopAiming();
 
-    if (launch.dragDistance > MIN_LAUNCH_DRAG) {
+    if (hasSupport && launch.dragDistance > MIN_LAUNCH_DRAG) {
       player.vx = launch.vx;
       player.vy = launch.vy;
       shots++;
@@ -2700,10 +2720,6 @@
       spawnBurst(player.x, player.y, 10, "#7cff90");
       updateHUD();
     }
-
-    drag.x = 0;
-    drag.y = 0;
-    aimInputMode = "direct";
   }
 
   // Maus und moderne Pointer-Eingabe.
@@ -3033,6 +3049,10 @@
           player.squish = Math.min(1, Math.abs(normalVelocity) / 750);
           playBounce();
         }
+
+        // Ein deutlich zurückprallender Slime löst sich bereits wieder von
+        // der Plattform und darf deshalb nicht als geerdet gelten.
+        if (restitution > 0.06) player.onGround = false;
       }
     }
   }
@@ -3141,6 +3161,10 @@
     updateFadePlatforms();
     updateSpikePlatforms();
 
+    // Bleibt nur so lange eingefroren, wie die Plattform ihn wirklich trägt.
+    // Moving Platforms und Conveyors wurden direkt davor bereits mitgeführt.
+    if (aiming && !hasValidAimSupport()) stopAiming();
+
     if (aiming) {
       player.vx *= Math.pow(0.04, dt);
       player.vy *= Math.pow(0.04, dt);
@@ -3185,6 +3209,7 @@
         const smoothedImpact = impactRatio * impactRatio * (3 - 2 * impactRatio);
         const bounceStrength = minimumBounce + (maximumBounce - minimumBounce) * smoothedImpact;
         player.vy = -Math.min(maximumBounce, bounceStrength);
+        player.onGround = false;
         player.squish = 1;
         tone(230, 0.13, "square", 0.045, 520);
         spawnBurst(player.x, player.y + player.r, 12, "#68ddff");
