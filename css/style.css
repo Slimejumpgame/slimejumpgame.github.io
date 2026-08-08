@@ -717,6 +717,15 @@
     font-weight: 1000;
     letter-spacing: 0.08em;
   }
+
+  .slimeLeaderboardPreview {
+    display: block;
+    flex: 0 0 auto;
+    width: min(1.7vw, 3.02vh);
+    height: min(1.35vw, 2.4vh);
+    pointer-events: none;
+  }
+
   .scorePoints { font-size: min(1.10vw, 1.95vh); }
   .scoreLevel { color: #b6ff42; }
 

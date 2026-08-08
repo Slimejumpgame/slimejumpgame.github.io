@@ -11,9 +11,11 @@
     "sb_publishable_DDpbowG2-g6ZVios1OTrfA_DkUyh2TC";
 
   const TABLE = "slime_jump_highscores";
-  const GAME_VERSION = "2.34";
+  const GAME_VERSION = "2.35";
   // Nach der unten dokumentierten Supabase-Migration auf true setzen.
   const SLIME_COLOR_COLUMN_ENABLED = true;
+  // Erst nach dem Anlegen der Spalte slime_cosmetic in Supabase aktivieren.
+  const SLIME_COSMETIC_COLUMN_ENABLED = true;
 
   function isConfigured() {
     return (
@@ -74,10 +76,12 @@
       Math.min(100, Math.floor(Number(limit) || 10))
     );
 
+    const selectedColumns = ["name", "score", "level", "game_version", "created_at"];
+    if (SLIME_COLOR_COLUMN_ENABLED) selectedColumns.push("slime_color");
+    if (SLIME_COSMETIC_COLUMN_ENABLED) selectedColumns.push("slime_cosmetic");
+
     const query = new URLSearchParams({
-      select: SLIME_COLOR_COLUMN_ENABLED
-        ? "name,score,level,game_version,created_at,slime_color"
-        : "name,score,level,game_version,created_at",
+      select: selectedColumns.join(","),
       order: "score.desc,level.desc,created_at.asc",
       limit: String(safeLimit)
     });
@@ -109,13 +113,22 @@
           slimeColor: SLIME_COLOR_COLUMN_ENABLED
             ? normalizeSlimeColor(row.slime_color)
             : "green",
+          slimeCosmetic: SLIME_COSMETIC_COLUMN_ENABLED
+            ? normalizeSlimeCosmetic(row.slime_cosmetic)
+            : "none",
           gameVersion: String(row.game_version || ""),
           createdAt: row.created_at || null
         }))
       : [];
   }
 
-  async function submitScore({ name, score, level, slimeColor = "green" }) {
+  async function submitScore({
+    name,
+    score,
+    level,
+    slimeColor = "green",
+    slimeCosmetic = "none"
+  }) {
     if (!isConfigured()) {
       throw new Error("Online-Highscores sind noch nicht konfiguriert.");
     }
@@ -129,6 +142,9 @@
 
     if (SLIME_COLOR_COLUMN_ENABLED) {
       payload.slime_color = normalizeSlimeColor(slimeColor);
+    }
+    if (SLIME_COSMETIC_COLUMN_ENABLED) {
+      payload.slime_cosmetic = normalizeSlimeCosmetic(slimeCosmetic);
     }
 
     const response = await fetch(
@@ -155,7 +171,10 @@
   window.SlimeJumpHighscores = Object.freeze({
     isConfigured,
     slimeColorColumnEnabled: SLIME_COLOR_COLUMN_ENABLED,
+    slimeCosmeticColumnEnabled: SLIME_COSMETIC_COLUMN_ENABLED,
     getTopScores,
     submitScore
   });
 })();
+
+

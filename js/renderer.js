@@ -764,19 +764,20 @@
     context.restore();
   }
 
-  function drawSlimeCosmeticPreview(canvasElement, cosmetic) {
+  function drawSlimeCosmeticPreview(canvasElement, cosmetic, color = "green") {
     const previewContext = canvasElement.getContext("2d");
+    const palette = getSlimeColorPalette(color);
     previewContext.clearRect(0, 0, canvasElement.width, canvasElement.height);
     previewContext.save();
     previewContext.translate(canvasElement.width / 2, 48);
     previewContext.scale(0.66, 0.66);
 
     const bodyGradient = previewContext.createRadialGradient(-9, -10, 2, 0, 0, 30);
-    bodyGradient.addColorStop(0, "#d9ffde");
-    bodyGradient.addColorStop(0.34, "#79ef8e");
-    bodyGradient.addColorStop(1, "#299d50");
+    bodyGradient.addColorStop(0, palette.light);
+    bodyGradient.addColorStop(0.34, palette.main);
+    bodyGradient.addColorStop(1, palette.dark);
     previewContext.fillStyle = bodyGradient;
-    previewContext.strokeStyle = "#154d2d";
+    previewContext.strokeStyle = palette.outline;
     previewContext.lineWidth = 4;
     previewContext.beginPath();
     previewContext.arc(0, 0, 30, 0, Math.PI * 2);

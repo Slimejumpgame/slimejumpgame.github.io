@@ -50,6 +50,20 @@
     return preview;
   }
 
+  function createLeaderboardSlimePreview(color, cosmetic) {
+    const preview = document.createElement("canvas");
+    preview.className = "slimeLeaderboardPreview";
+    preview.width = 88;
+    preview.height = 70;
+    preview.setAttribute("aria-hidden", "true");
+    drawSlimeCosmeticPreview(
+      preview,
+      normalizeSlimeCosmetic(cosmetic),
+      normalizeSlimeColor(color)
+    );
+    return preview;
+  }
+
   function createSlimeColorOption(color, unlockMode = false) {
     const unlocked = isSlimeColorUnlocked(color);
     const devPreviewAvailable = DEV_MODE && !unlockMode;
@@ -302,7 +316,10 @@
         name: normalizeNickname(entry?.name, "---"),
         score: Math.max(0, Math.floor(Number(entry?.score) || 0)),
         level: Math.max(1, Math.floor(Number(entry?.level) || 1)),
-        slimeColor: normalizeSlimeColor(entry?.slimeColor ?? entry?.slime_color)
+        slimeColor: normalizeSlimeColor(entry?.slimeColor ?? entry?.slime_color),
+        slimeCosmetic: normalizeSlimeCosmetic(
+          entry?.slimeCosmetic ?? entry?.slime_cosmetic
+        )
       }))
       .filter(entry => Number.isFinite(entry.score) && Number.isFinite(entry.level));
   }
@@ -331,7 +348,8 @@
       name: normalizeNickname(name),
       score: Math.max(0, Math.floor(finalScore)),
       level: Math.max(1, Math.floor(reachedLevel)),
-      slimeColor: selectedSlimeColor
+      slimeColor: selectedSlimeColor,
+      slimeCosmetic: selectedSlimeCosmetic
     });
 
     highScores.sort((a, b) => b.score - a.score || b.level - a.level);
@@ -349,7 +367,8 @@
       name: normalizeNickname(name),
       score: Math.max(0, Math.floor(finalScore)),
       level: Math.max(1, Math.floor(reachedLevel)),
-      slimeColor: selectedSlimeColor
+      slimeColor: selectedSlimeColor,
+      slimeCosmetic: selectedSlimeCosmetic
     }).catch(error => {
       console.warn("Online-Highscore konnte nicht gespeichert werden:", error);
     });
@@ -361,7 +380,8 @@
       name: normalizeNickname(name),
       score: Math.max(0, Math.floor(finalScore)),
       level: Math.max(1, Math.floor(reachedLevel)),
-      slimeColor: selectedSlimeColor
+      slimeColor: selectedSlimeColor,
+      slimeCosmetic: selectedSlimeCosmetic
     });
 
     try {
@@ -440,7 +460,10 @@
       name.className = "scoreName";
       if (entry) {
         name.append(
-          createSlimeColorPreview(normalizeSlimeColor(entry.slimeColor), true),
+          createLeaderboardSlimePreview(
+            entry.slimeColor,
+            entry.slimeCosmetic
+          ),
           document.createTextNode(normalizeNickname(entry.name, "---"))
         );
       } else {
