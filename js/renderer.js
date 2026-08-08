@@ -494,10 +494,12 @@
   }
 
   function drawPlayer() {
+    const palette = getSlimeColorPalette(getActiveSlimeColor());
+
     for (let i = player.trail.length - 1; i >= 0; i--) {
       const t = player.trail[i];
       const alpha = (1 - i / player.trail.length) * 0.08;
-      ctx.fillStyle = `rgba(107,255,132,${alpha})`;
+      ctx.fillStyle = `rgba(${palette.trail},${alpha})`;
       ctx.beginPath();
       ctx.arc(t.x, t.y, player.r * (0.45 + alpha), 0, Math.PI * 2);
       ctx.fill();
@@ -519,14 +521,14 @@
     ctx.rotate(speed > 40 ? Math.atan2(player.vy, player.vx) * 0.06 : 0);
     ctx.scale(sx, sy);
 
-    ctx.shadowColor = "#51ff7a";
+    ctx.shadowColor = palette.glow;
     ctx.shadowBlur = 22;
     const g = ctx.createRadialGradient(-10, -12, 3, 0, 0, player.r);
-    g.addColorStop(0, "#c5ffcb");
-    g.addColorStop(0.32, "#70f68a");
-    g.addColorStop(1, "#28a854");
+    g.addColorStop(0, palette.light);
+    g.addColorStop(0.32, palette.main);
+    g.addColorStop(1, palette.dark);
     ctx.fillStyle = g;
-    ctx.strokeStyle = "#154d2d";
+    ctx.strokeStyle = palette.outline;
     ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.arc(0, 0, player.r, 0, Math.PI * 2);

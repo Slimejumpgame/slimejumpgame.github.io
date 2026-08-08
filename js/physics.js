@@ -216,6 +216,7 @@
     level.stars.forEach((s, i) => {
       if (!collected[i] && Math.hypot(player.x - s.x, player.y - s.y) < player.r + 25) {
         collected[i] = true;
+        registerRunStarCollected();
         score += 250;
         playStar();
         spawnBurst(s.x, s.y, 18, "#ffe877");

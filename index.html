@@ -31,6 +31,10 @@
       <button id="startBtn" class="menuHotspot" aria-label="Play">Play</button>
       <button id="howToBtn" class="menuHotspot" aria-label="How to Play">How to Play</button>
       <button id="highScoresBtn" class="menuHotspot" aria-label="Highscores">Highscores</button>
+      <aside id="slimeColorPicker" class="slimeColorPicker" aria-label="Slime-Farbe auswählen">
+        <div class="slimeColorPickerTitle">Slime-Farbe</div>
+        <div id="slimeColorOptions" class="slimeColorOptions"></div>
+      </aside>
     </section>
 
     <section id="howToScreen" class="menuScreen hidden" aria-label="How to Play">
@@ -95,6 +99,11 @@
       <div class="card">
         <h2 id="messageTitle">Level geschafft!</h2>
         <p id="messageText"></p>
+        <section id="slimeColorUnlockPanel" class="slimeColorUnlockPanel hidden" aria-label="Neue Slime-Farben freischalten">
+          <h3>🎨 Neue Slime-Farbe</h3>
+          <p id="slimeColorUnlockText"></p>
+          <div id="slimeColorUnlockOptions" class="slimeColorUnlockOptions"></div>
+        </section>
         <div id="nicknameEntry" class="nicknameEntry hidden">
           <label class="nicknameLabel" for="nicknameInput">Dein Highscore-Name</label>
           <input id="nicknameInput" type="text" maxlength="3" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Drei Buchstaben für den Highscore" placeholder="AAA">
@@ -117,6 +126,7 @@
   </footer>
 </div>
 
+<script src="./js/slime-colors.js"></script>
 <script src="./js/slime-jump-highscores.js"></script>
 <script src="./js/core.js"></script>
 <script src="./js/biomes.js"></script>

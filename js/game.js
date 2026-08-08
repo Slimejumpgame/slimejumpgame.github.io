@@ -54,6 +54,10 @@
     levelHadDeath = false;
     score = 0;
     shots = 0;
+    runStarsCollected = 0;
+    processedColorUnlockMilestones = 0;
+    pendingColorUnlocks = 0;
+    hideSlimeColorUnlockPanel();
     generatedLevel = generateProceduralLevel(levelNumber);
     ui.menu.classList.add("hidden");
     showMenuScreen("main");
@@ -86,6 +90,7 @@
 
   function restartCurrent() {
     if (state === "gameover") {
+      if (!requirePendingColorUnlockSelection()) return;
       if (!commitPendingHighScore()) return;
       startGame();
       return;
@@ -123,6 +128,32 @@
     ui.stars.textContent = `⭐ ${collected.filter(Boolean).length}/${currentLevel().stars.length}`;
     ui.shots.textContent = `Schüsse: ${shots}`;
     ui.score.textContent = `Punkte: ${score}`;
+  }
+
+  function registerRunStarCollected() {
+    runStarsCollected++;
+
+    const earnedMilestones = Math.floor(
+      runStarsCollected / SLIME_COLOR_UNLOCK_STAR_INTERVAL
+    );
+    if (earnedMilestones <= processedColorUnlockMilestones) return;
+
+    const newMilestones = earnedMilestones - processedColorUnlockMilestones;
+    processedColorUnlockMilestones = earnedMilestones;
+
+    const availableLockedColors = Math.max(
+      0,
+      getLockedSlimeColors().length - pendingColorUnlocks
+    );
+    const newUnlocks = Math.min(newMilestones, availableLockedColors);
+    if (newUnlocks <= 0) return;
+
+    pendingColorUnlocks += newUnlocks;
+    showGameToast(
+      newUnlocks > 1
+        ? `🎨 ${newUnlocks} neue Slime-Farben verdient!`
+        : "🎨 Neue Slime-Farbe verdient!"
+    );
   }
 
   function showMessage(title, text, buttonText, action) {
@@ -215,6 +246,7 @@
         "gameover"
       );
       showNicknameEntry();
+      renderSlimeColorUnlockPanel();
     } else {
       const level = currentLevel();
       resetFallingPlatforms(level);
@@ -230,6 +262,7 @@
   }
 
   function doContinue() {
+    if (nextAction === "gameover" && !requirePendingColorUnlockSelection()) return;
     if (nextAction === "gameover" && !commitPendingHighScore()) return;
     ui.message.classList.add("hidden");
     if (nextAction === "next") {
@@ -344,6 +377,7 @@
   });
 
   function returnToMenuWithPendingScore() {
+    if (nextAction === "gameover" && !requirePendingColorUnlockSelection()) return;
     if (nextAction === "gameover" && pendingGameOverScore && !commitPendingHighScore()) return;
     returnToMenu();
   }

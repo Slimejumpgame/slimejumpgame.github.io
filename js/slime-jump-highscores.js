@@ -11,7 +11,9 @@
     "sb_publishable_DDpbowG2-g6ZVios1OTrfA_DkUyh2TC";
 
   const TABLE = "slime_jump_highscores";
-  const GAME_VERSION = "2.30";
+  const GAME_VERSION = "2.31";
+  // Nach der unten dokumentierten Supabase-Migration auf true setzen.
+  const SLIME_COLOR_COLUMN_ENABLED = true;
 
   function isConfigured() {
     return (
@@ -73,7 +75,9 @@
     );
 
     const query = new URLSearchParams({
-      select: "name,score,level,game_version,created_at",
+      select: SLIME_COLOR_COLUMN_ENABLED
+        ? "name,score,level,game_version,created_at,slime_color"
+        : "name,score,level,game_version,created_at",
       order: "score.desc,level.desc,created_at.asc",
       limit: String(safeLimit)
     });
@@ -102,13 +106,16 @@
           name: normalizeNickname(row.name),
           score: normalizeScore(row.score),
           level: normalizeLevel(row.level),
+          slimeColor: SLIME_COLOR_COLUMN_ENABLED
+            ? normalizeSlimeColor(row.slime_color)
+            : "green",
           gameVersion: String(row.game_version || ""),
           createdAt: row.created_at || null
         }))
       : [];
   }
 
-  async function submitScore({ name, score, level }) {
+  async function submitScore({ name, score, level, slimeColor = "green" }) {
     if (!isConfigured()) {
       throw new Error("Online-Highscores sind noch nicht konfiguriert.");
     }
@@ -119,6 +126,10 @@
       level: normalizeLevel(level),
       game_version: GAME_VERSION
     };
+
+    if (SLIME_COLOR_COLUMN_ENABLED) {
+      payload.slime_color = normalizeSlimeColor(slimeColor);
+    }
 
     const response = await fetch(
       `${SUPABASE_URL}/rest/v1/${TABLE}`,
@@ -143,6 +154,7 @@
 
   window.SlimeJumpHighscores = Object.freeze({
     isConfigured,
+    slimeColorColumnEnabled: SLIME_COLOR_COLUMN_ENABLED,
     getTopScores,
     submitScore
   });

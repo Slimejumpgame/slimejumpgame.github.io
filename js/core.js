@@ -40,6 +40,10 @@
     howToBackBtn: document.getElementById("howToBackBtn"),
     howToMechanicsPanel: document.getElementById("howToMechanicsPanel"),
     highScoresBackBtn: document.getElementById("highScoresBackBtn"),
+    slimeColorOptions: document.getElementById("slimeColorOptions"),
+    slimeColorUnlockPanel: document.getElementById("slimeColorUnlockPanel"),
+    slimeColorUnlockText: document.getElementById("slimeColorUnlockText"),
+    slimeColorUnlockOptions: document.getElementById("slimeColorUnlockOptions"),
     restartBtn: document.getElementById("restartBtn"),
     messageRestartBtn: document.getElementById("messageRestartBtn"),
     musicBtn: document.getElementById("musicBtn"),
@@ -96,6 +100,9 @@
   let score = 0;
   let shots = 0;
   let collected = [];
+  let runStarsCollected = 0;
+  let processedColorUnlockMilestones = 0;
+  let pendingColorUnlocks = 0;
   let aiming = false;
   let pointer = {x: 0, y: 0};
   let drag = {x: 0, y: 0};

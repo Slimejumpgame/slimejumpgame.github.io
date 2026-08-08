@@ -4,6 +4,13 @@
   const highScoresStorageKey = "slimejumperHighscoresV14";
   let lastOnlineScoreSubmit = Promise.resolve();
   let gameToastTimer = null;
+  let devPreviewSlimeColor = null;
+
+  function getActiveSlimeColor() {
+    return DEV_MODE && devPreviewSlimeColor
+      ? normalizeSlimeColor(devPreviewSlimeColor)
+      : selectedSlimeColor;
+  }
 
   function hideGameToast() {
     if (gameToastTimer !== null) window.clearTimeout(gameToastTimer);
@@ -17,6 +24,119 @@
     void ui.gameToast.offsetWidth;
     ui.gameToast.classList.add("visible");
     gameToastTimer = window.setTimeout(hideGameToast, duration);
+  }
+
+  function applySlimePaletteCss(element, color) {
+    const palette = getSlimeColorPalette(color);
+    element.style.setProperty("--slime-light", palette.light);
+    element.style.setProperty("--slime-main", palette.main);
+    element.style.setProperty("--slime-dark", palette.dark);
+    element.style.setProperty("--slime-outline", palette.outline);
+    element.style.setProperty("--slime-glow", palette.glow);
+  }
+
+  function createSlimeColorPreview(color, markerOnly = false) {
+    const preview = document.createElement("span");
+    preview.className = markerOnly ? "slimeColorMarker" : "slimeColorPreview";
+    preview.setAttribute("aria-hidden", "true");
+    applySlimePaletteCss(preview, color);
+    return preview;
+  }
+
+  function createSlimeColorOption(color, unlockMode = false) {
+    const unlocked = isSlimeColorUnlocked(color);
+    const devPreviewAvailable = DEV_MODE && !unlockMode;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "slimeColorOption";
+    button.dataset.color = color;
+    applySlimePaletteCss(button, color);
+    button.classList.toggle("selected", color === getActiveSlimeColor());
+    button.classList.toggle("locked", !unlocked && !devPreviewAvailable);
+    button.classList.toggle("unlockable", unlockMode && !unlocked && pendingColorUnlocks > 0);
+    button.disabled = !unlocked && !unlockMode && !devPreviewAvailable;
+    button.setAttribute(
+      "aria-label",
+      unlocked
+        ? `${SLIME_COLOR_NAMES[color]} auswählen`
+        : devPreviewAvailable
+          ? `${SLIME_COLOR_NAMES[color]} temporär im Dev Mode ansehen`
+          : unlockMode
+            ? `${SLIME_COLOR_NAMES[color]} freischalten`
+            : `${SLIME_COLOR_NAMES[color]} ist gesperrt`
+    );
+
+    button.appendChild(createSlimeColorPreview(color));
+
+    const label = document.createElement("span");
+    label.className = "slimeColorLabel";
+    label.textContent = SLIME_COLOR_NAMES[color];
+    button.appendChild(label);
+
+    if (!unlocked) {
+      const lock = document.createElement("span");
+      lock.className = "slimeColorLock";
+      lock.textContent = devPreviewAvailable ? "DEV" : unlockMode ? "+" : "🔒";
+      lock.setAttribute("aria-hidden", "true");
+      button.appendChild(lock);
+    }
+
+    button.addEventListener("click", () => {
+      if (isSlimeColorUnlocked(color)) {
+        devPreviewSlimeColor = null;
+        selectSlimeColor(color);
+      } else if (devPreviewAvailable) {
+        devPreviewSlimeColor = normalizeSlimeColor(color);
+      } else {
+        if (!unlockMode || pendingColorUnlocks <= 0) return;
+        if (!unlockSlimeColor(color)) return;
+        pendingColorUnlocks--;
+        showGameToast(`🎨 ${SLIME_COLOR_NAMES[color]} freigeschaltet!`);
+      }
+
+      renderSlimeColorPicker();
+      renderSlimeColorUnlockPanel();
+    });
+
+    return button;
+  }
+
+  function renderSlimeColorPicker() {
+    if (!ui.slimeColorOptions) return;
+    ui.slimeColorOptions.replaceChildren(
+      ...SLIME_COLOR_ORDER.map(color => createSlimeColorOption(color))
+    );
+  }
+
+  function hideSlimeColorUnlockPanel() {
+    ui.slimeColorUnlockPanel?.classList.add("hidden");
+  }
+
+  function renderSlimeColorUnlockPanel() {
+    if (!ui.slimeColorUnlockPanel || !ui.slimeColorUnlockOptions) return;
+    if (pendingColorUnlocks <= 0) {
+      hideSlimeColorUnlockPanel();
+      return;
+    }
+
+    ui.slimeColorUnlockPanel.classList.remove("hidden");
+    ui.slimeColorUnlockText.textContent =
+      `${runStarsCollected} Run-Sterne: Wähle noch ${pendingColorUnlocks} ` +
+      `${pendingColorUnlocks === 1 ? "Farbe" : "Farben"}.`;
+    ui.slimeColorUnlockOptions.replaceChildren(
+      ...SLIME_COLOR_ORDER.map(color => createSlimeColorOption(color, true))
+    );
+  }
+
+  function requirePendingColorUnlockSelection() {
+    if (pendingColorUnlocks <= 0) return true;
+    renderSlimeColorUnlockPanel();
+    showGameToast(
+      pendingColorUnlocks === 1
+        ? "🎨 Wähle zuerst deine neue Slime-Farbe."
+        : `🎨 Wähle zuerst deine ${pendingColorUnlocks} neuen Slime-Farben.`
+    );
+    return false;
   }
 
   function loadRecentScores() {
@@ -41,7 +161,8 @@
       .map(entry => ({
         name: normalizeNickname(entry?.name, "---"),
         score: Math.max(0, Math.floor(Number(entry?.score) || 0)),
-        level: Math.max(1, Math.floor(Number(entry?.level) || 1))
+        level: Math.max(1, Math.floor(Number(entry?.level) || 1)),
+        slimeColor: normalizeSlimeColor(entry?.slimeColor ?? entry?.slime_color)
       }))
       .filter(entry => Number.isFinite(entry.score) && Number.isFinite(entry.level));
   }
@@ -69,7 +190,8 @@
     highScores.push({
       name: normalizeNickname(name),
       score: Math.max(0, Math.floor(finalScore)),
-      level: Math.max(1, Math.floor(reachedLevel))
+      level: Math.max(1, Math.floor(reachedLevel)),
+      slimeColor: selectedSlimeColor
     });
 
     highScores.sort((a, b) => b.score - a.score || b.level - a.level);
@@ -86,7 +208,8 @@
     lastOnlineScoreSubmit = online.submitScore({
       name: normalizeNickname(name),
       score: Math.max(0, Math.floor(finalScore)),
-      level: Math.max(1, Math.floor(reachedLevel))
+      level: Math.max(1, Math.floor(reachedLevel)),
+      slimeColor: selectedSlimeColor
     }).catch(error => {
       console.warn("Online-Highscore konnte nicht gespeichert werden:", error);
     });
@@ -97,7 +220,8 @@
     recentScores.unshift({
       name: normalizeNickname(name),
       score: Math.max(0, Math.floor(finalScore)),
-      level: Math.max(1, Math.floor(reachedLevel))
+      level: Math.max(1, Math.floor(reachedLevel)),
+      slimeColor: selectedSlimeColor
     });
 
     try {
@@ -174,7 +298,14 @@
 
       const name = document.createElement("span");
       name.className = "scoreName";
-      name.textContent = entry ? normalizeNickname(entry.name, "---") : "—";
+      if (entry) {
+        name.append(
+          createSlimeColorPreview(normalizeSlimeColor(entry.slimeColor), true),
+          document.createTextNode(normalizeNickname(entry.name, "---"))
+        );
+      } else {
+        name.textContent = "—";
+      }
 
       const points = document.createElement("span");
       points.className = "scorePoints";
@@ -216,6 +347,7 @@
     ui.mainMenuScreen.classList.toggle("hidden", screenName !== "main");
     ui.howToScreen.classList.toggle("hidden", screenName !== "howto");
     ui.highscoreScreen.classList.toggle("hidden", screenName !== "highscores");
+    if (screenName === "main") renderSlimeColorPicker();
     if (screenName === "howto") {
       const scrollArea = ui.howToScreen.querySelector(".howToScrollArea");
       initializeHowToScrollbar();
