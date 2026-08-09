@@ -6,6 +6,7 @@
   let gameToastTimer = null;
   let devPreviewSlimeColor = null;
   let devPreviewSlimeCosmetic = null;
+  let devPreviewSlimeBeard = null;
 
   function initializeMenuBiomeBackground() {
     const menuBackdrop = document.querySelector(".menuBackdrop");
@@ -56,6 +57,12 @@
       : selectedSlimeCosmetic;
   }
 
+  function getActiveSlimeBeard() {
+    return DEV_MODE && devPreviewSlimeBeard
+      ? normalizeSlimeBeard(devPreviewSlimeBeard)
+      : selectedSlimeBeard;
+  }
+
   function hideGameToast() {
     if (gameToastTimer !== null) window.clearTimeout(gameToastTimer);
     gameToastTimer = null;
@@ -77,6 +84,7 @@
     element.style.setProperty("--slime-dark", palette.dark);
     element.style.setProperty("--slime-outline", palette.outline);
     element.style.setProperty("--slime-glow", palette.glow);
+    element.style.setProperty("--slime-face", palette.face ?? "#0b2c1a");
   }
 
   function createSlimeColorPreview(color, markerOnly = false) {
@@ -87,15 +95,16 @@
     return preview;
   }
 
-  function createLeaderboardSlimePreview(color, cosmetic) {
+  function createLeaderboardSlimePreview(color, cosmetic, beard = "none") {
     const preview = document.createElement("canvas");
     preview.className = "slimeLeaderboardPreview";
     preview.width = 88;
     preview.height = 70;
     preview.setAttribute("aria-hidden", "true");
-    drawSlimeCosmeticPreview(
+    drawSlimeCharacterPreview(
       preview,
       normalizeSlimeCosmetic(cosmetic),
+      normalizeSlimeBeard(beard),
       normalizeSlimeColor(color)
     );
     return preview;
@@ -107,9 +116,10 @@
     const definition = getSlimeCosmeticDefinition(cosmetic);
     const isHat = definition?.type === "hat";
     const isBow = cosmetic === "bow";
-    drawSlimeCosmeticPreview(
+    drawSlimeCharacterPreview(
       ui.menuMascot,
       cosmetic,
+      getActiveSlimeBeard(),
       getActiveSlimeColor(),
       isHat
         ? {centerY: 128, scale: 1.35}
@@ -121,6 +131,7 @@
 
   function createSlimeColorOption(color, unlockMode = false) {
     const unlocked = isSlimeColorUnlocked(color);
+    const unlockRequirement = getWardrobeUnlockRequirementForTarget("color", color);
     const devPreviewAvailable = DEV_MODE && !unlockMode;
     const canUnlock =
       unlockMode &&
@@ -144,7 +155,9 @@
           ? `${SLIME_COLOR_NAMES[color]} temporär im Dev Mode ansehen`
           : unlockMode
             ? `${SLIME_COLOR_NAMES[color]} als Wardrobe-Item freischalten`
-            : `${SLIME_COLOR_NAMES[color]} ist gesperrt`
+            : unlockRequirement === null
+              ? `${SLIME_COLOR_NAMES[color]} ist gesperrt`
+              : `${SLIME_COLOR_NAMES[color]} ist gesperrt und benötigt ${unlockRequirement} Sterne in einem Run`
     );
 
     button.appendChild(createSlimeColorPreview(color));
@@ -157,7 +170,13 @@
     if (!unlocked) {
       const lock = document.createElement("span");
       lock.className = "slimeColorLock";
-      lock.textContent = devPreviewAvailable ? "DEV" : unlockMode ? "+" : "🔒";
+      lock.textContent = devPreviewAvailable
+        ? "DEV"
+        : unlockMode
+          ? "+"
+          : unlockRequirement === null
+            ? "🔒"
+            : `${unlockRequirement}★`;
       lock.setAttribute("aria-hidden", "true");
       button.appendChild(lock);
     }
@@ -178,6 +197,7 @@
 
       renderSlimeColorPicker();
       renderSlimeCosmeticPicker();
+      renderSlimeBeardPicker();
       renderMenuMascot();
       renderWardrobeUnlockPanel();
     });
@@ -185,14 +205,28 @@
     return button;
   }
 
-  function renderSlimeColorPicker() {
-    if (!ui.slimeColorOptions) return;
+  function renderWardrobeProgress() {
     const requiredStars = getNextWardrobeUnlockRequirement();
+    const fixedTarget = getNextWardrobeUnlockTarget();
+    const fixedTargetName = fixedTarget?.category === "color"
+      ? SLIME_COLOR_NAMES[fixedTarget.id]
+      : fixedTarget?.category === "cosmetic"
+        ? getSlimeCosmeticDefinition(fixedTarget.id).name
+        : fixedTarget?.category === "beard"
+          ? getSlimeBeardDefinition(fixedTarget.id).name
+          : null;
     if (ui.slimeColorRequirement) {
       ui.slimeColorRequirement.textContent = requiredStars === null
         ? "Wardrobe komplett!"
-        : `Nächster Unlock: ${requiredStars} ⭐ in einem Run`;
+        : fixedTargetName
+          ? `Nächstes Ziel: ${fixedTargetName} · ${requiredStars} ⭐ in einem Run`
+          : `Nächster Unlock: ${requiredStars} ⭐ in einem Run`;
     }
+  }
+
+  function renderSlimeColorPicker() {
+    if (!ui.slimeColorOptions) return;
+    renderWardrobeProgress();
     ui.slimeColorOptions.replaceChildren(
       ...SLIME_COLOR_ORDER.map(color => createSlimeColorOption(color))
     );
@@ -204,7 +238,12 @@
     preview.width = 88;
     preview.height = 70;
     preview.setAttribute("aria-hidden", "true");
-    drawSlimeCosmeticPreview(preview, cosmetic);
+    drawSlimeCharacterPreview(
+      preview,
+      cosmetic,
+      getActiveSlimeBeard(),
+      getActiveSlimeColor()
+    );
     return preview;
   }
 
@@ -267,6 +306,7 @@
 
       renderSlimeColorPicker();
       renderSlimeCosmeticPicker();
+      renderSlimeBeardPicker();
       renderMenuMascot();
       renderWardrobeUnlockPanel();
     });
@@ -276,9 +316,111 @@
 
   function renderSlimeCosmeticPicker() {
     if (!ui.slimeCosmeticOptions) return;
+    renderWardrobeProgress();
     ui.slimeCosmeticOptions.replaceChildren(
       ...SLIME_COSMETIC_ORDER.map(cosmetic => createSlimeCosmeticOption(cosmetic))
     );
+  }
+
+  function createSlimeBeardPreview(beard) {
+    const preview = document.createElement("canvas");
+    preview.className = "slimeCosmeticPreview slimeBeardPreview";
+    preview.width = 88;
+    preview.height = 70;
+    preview.setAttribute("aria-hidden", "true");
+    drawSlimeCharacterPreview(
+      preview,
+      getActiveSlimeCosmetic(),
+      beard,
+      getActiveSlimeColor()
+    );
+    return preview;
+  }
+
+  function createSlimeBeardOption(beard, unlockMode = false) {
+    const unlocked = isSlimeBeardUnlocked(beard);
+    const devPreviewAvailable = DEV_MODE && !unlockMode && !unlocked;
+    const canUnlock =
+      unlockMode &&
+      pendingWardrobeUnlock &&
+      wardrobeUnlockCategory === "beard" &&
+      !unlocked;
+    const definition = getSlimeBeardDefinition(beard);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "slimeColorOption slimeBeardOption";
+    button.dataset.beard = beard;
+    button.classList.toggle("selected", beard === getActiveSlimeBeard());
+    button.classList.toggle("locked", !unlocked && !devPreviewAvailable);
+    button.classList.toggle("unlockable", canUnlock);
+    button.disabled = unlockMode ? !canUnlock : !unlocked && !devPreviewAvailable;
+    button.setAttribute(
+      "aria-label",
+      unlocked
+        ? `${definition.name} auswählen`
+        : devPreviewAvailable
+          ? `${definition.name} temporär im Dev Mode ansehen`
+          : unlockMode
+            ? `${definition.name} als Wardrobe-Item freischalten`
+            : `${definition.name} ist gesperrt`
+    );
+
+    button.appendChild(createSlimeBeardPreview(beard));
+
+    const label = document.createElement("span");
+    label.className = "slimeColorLabel";
+    label.textContent = definition.name;
+    button.appendChild(label);
+
+    if (!unlocked) {
+      const lock = document.createElement("span");
+      lock.className = "slimeColorLock";
+      lock.textContent = devPreviewAvailable ? "DEV" : "🔒";
+      lock.setAttribute("aria-hidden", "true");
+      button.appendChild(lock);
+    }
+
+    button.addEventListener("click", () => {
+      if (isSlimeBeardUnlocked(beard)) {
+        devPreviewSlimeBeard = null;
+        selectSlimeBeard(beard);
+      } else if (devPreviewAvailable) {
+        devPreviewSlimeBeard = normalizeSlimeBeard(beard);
+      } else {
+        if (!canUnlock) return;
+        if (!unlockSlimeBeard(beard)) return;
+        pendingWardrobeUnlock = false;
+        wardrobeUnlockCategory = null;
+        showGameToast(`🧔 ${definition.name} freigeschaltet!`);
+      }
+
+      renderSlimeColorPicker();
+      renderSlimeCosmeticPicker();
+      renderSlimeBeardPicker();
+      renderMenuMascot();
+      renderWardrobeUnlockPanel();
+    });
+
+    return button;
+  }
+
+  function renderSlimeBeardPicker() {
+    if (!ui.slimeBeardOptions) return;
+    renderWardrobeProgress();
+    ui.slimeBeardOptions.replaceChildren(
+      ...SLIME_BEARD_ORDER.map(beard => createSlimeBeardOption(beard))
+    );
+  }
+
+  function showWardrobeView(viewName = "home") {
+    ui.wardrobeHome.classList.toggle("hidden", viewName !== "home");
+    ui.wardrobeColorView.classList.toggle("hidden", viewName !== "color");
+    ui.wardrobeCosmeticsView.classList.toggle("hidden", viewName !== "cosmetics");
+    ui.wardrobeBeardsView.classList.toggle("hidden", viewName !== "beards");
+    renderWardrobeProgress();
+    if (viewName === "color") renderSlimeColorPicker();
+    if (viewName === "cosmetics") renderSlimeCosmeticPicker();
+    if (viewName === "beards") renderSlimeBeardPicker();
   }
 
   function hideWardrobeUnlockPanel() {
@@ -307,12 +449,36 @@
       return;
     }
 
-    const lockedColors = getLockedSlimeColors();
-    const lockedCosmetics = getLockedSlimeCosmetics();
+    const fixedTarget = getNextWardrobeUnlockTarget();
+    let lockedColors = getLockedSlimeColors();
+    let lockedCosmetics = getLockedSlimeCosmetics();
+    let lockedBeards = getLockedSlimeBeards();
+    if (fixedTarget) {
+      lockedColors = fixedTarget.category === "color"
+        ? lockedColors.filter(color => color === fixedTarget.id)
+        : [];
+      lockedCosmetics = fixedTarget.category === "cosmetic"
+        ? lockedCosmetics.filter(cosmetic => cosmetic === fixedTarget.id)
+        : [];
+      lockedBeards = fixedTarget.category === "beard"
+        ? lockedBeards.filter(beard => beard === fixedTarget.id)
+        : [];
+    } else {
+      lockedColors = lockedColors.filter(
+        color => getWardrobeUnlockRequirementForTarget("color", color) === null
+      );
+      lockedCosmetics = lockedCosmetics.filter(
+        cosmetic => getWardrobeUnlockRequirementForTarget("cosmetic", cosmetic) === null
+      );
+      lockedBeards = [];
+    }
     if (wardrobeUnlockCategory === "color" && lockedColors.length === 0) {
       wardrobeUnlockCategory = null;
     }
     if (wardrobeUnlockCategory === "cosmetic" && lockedCosmetics.length === 0) {
+      wardrobeUnlockCategory = null;
+    }
+    if (wardrobeUnlockCategory === "beard" && lockedBeards.length === 0) {
       wardrobeUnlockCategory = null;
     }
 
@@ -326,20 +492,26 @@
         `${runStarsCollected} Run-Sterne: Was möchtest du freischalten?`;
       ui.wardrobeUnlockCategories.replaceChildren(
         createWardrobeCategoryButton("color", "🎨 FARBE", lockedColors.length === 0),
-        createWardrobeCategoryButton("cosmetic", "🎩 COSMETIC", lockedCosmetics.length === 0)
+        createWardrobeCategoryButton("cosmetic", "🎩 COSMETIC", lockedCosmetics.length === 0),
+        createWardrobeCategoryButton("beard", "🧔 BART", lockedBeards.length === 0)
       );
       ui.wardrobeUnlockOptions.replaceChildren();
       return;
     }
 
     const unlocksColor = wardrobeUnlockCategory === "color";
+    const unlocksCosmetic = wardrobeUnlockCategory === "cosmetic";
     ui.wardrobeUnlockText.textContent = unlocksColor
       ? "Wähle eine noch gesperrte Farbe."
-      : "Wähle ein noch gesperrtes Cosmetic.";
+      : unlocksCosmetic
+        ? "Wähle ein noch gesperrtes Cosmetic."
+        : "Wähle einen noch gesperrten Bart.";
     ui.wardrobeUnlockOptions.replaceChildren(
       ...(unlocksColor
         ? lockedColors.map(color => createSlimeColorOption(color, true))
-        : lockedCosmetics.map(cosmetic => createSlimeCosmeticOption(cosmetic, true)))
+        : unlocksCosmetic
+          ? lockedCosmetics.map(cosmetic => createSlimeCosmeticOption(cosmetic, true))
+          : lockedBeards.map(beard => createSlimeBeardOption(beard, true)))
     );
   }
 
@@ -376,7 +548,8 @@
         slimeColor: normalizeSlimeColor(entry?.slimeColor ?? entry?.slime_color),
         slimeCosmetic: normalizeSlimeCosmetic(
           entry?.slimeCosmetic ?? entry?.slime_cosmetic
-        )
+        ),
+        slimeBeard: normalizeSlimeBeard(entry?.slimeBeard ?? entry?.slime_beard)
       }))
       .filter(entry => Number.isFinite(entry.score) && Number.isFinite(entry.level));
   }
@@ -406,7 +579,8 @@
       score: Math.max(0, Math.floor(finalScore)),
       level: Math.max(1, Math.floor(reachedLevel)),
       slimeColor: selectedSlimeColor,
-      slimeCosmetic: selectedSlimeCosmetic
+      slimeCosmetic: selectedSlimeCosmetic,
+      slimeBeard: selectedSlimeBeard
     });
 
     highScores.sort((a, b) => b.score - a.score || b.level - a.level);
@@ -425,7 +599,8 @@
       score: Math.max(0, Math.floor(finalScore)),
       level: Math.max(1, Math.floor(reachedLevel)),
       slimeColor: selectedSlimeColor,
-      slimeCosmetic: selectedSlimeCosmetic
+      slimeCosmetic: selectedSlimeCosmetic,
+      slimeBeard: selectedSlimeBeard
     }).catch(error => {
       console.warn("Online-Highscore konnte nicht gespeichert werden:", error);
     });
@@ -438,7 +613,8 @@
       score: Math.max(0, Math.floor(finalScore)),
       level: Math.max(1, Math.floor(reachedLevel)),
       slimeColor: selectedSlimeColor,
-      slimeCosmetic: selectedSlimeCosmetic
+      slimeCosmetic: selectedSlimeCosmetic,
+      slimeBeard: selectedSlimeBeard
     });
 
     try {
@@ -519,7 +695,8 @@
         name.append(
           createLeaderboardSlimePreview(
             entry.slimeColor,
-            entry.slimeCosmetic
+            entry.slimeCosmetic,
+            entry.slimeBeard
           ),
           document.createTextNode(normalizeNickname(entry.name, "---"))
         );
@@ -572,8 +749,7 @@
       renderMenuMascot();
     }
     if (screenName === "wardrobe") {
-      renderSlimeColorPicker();
-      renderSlimeCosmeticPicker();
+      showWardrobeView("home");
     }
     if (screenName === "howto") {
       const scrollArea = ui.howToScreen.querySelector(".howToScrollArea");

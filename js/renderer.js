@@ -759,12 +759,629 @@
       context.beginPath();
       context.ellipse(-12, -4, 4, 2, -0.4, 0, Math.PI * 2);
       context.fill();
+    } else if (cosmetic === "cowboy_hat") {
+      const cowboyGradient = context.createLinearGradient(0, -34, 0, 6);
+      cowboyGradient.addColorStop(0, palette.light);
+      cowboyGradient.addColorStop(0.42, palette.main);
+      cowboyGradient.addColorStop(1, palette.dark);
+      context.fillStyle = cowboyGradient;
+      context.strokeStyle = palette.dark;
+      context.beginPath();
+      context.moveTo(-18, -3);
+      context.lineTo(-15, -27);
+      context.quadraticCurveTo(0, -36, 15, -27);
+      context.lineTo(18, -3);
+      context.quadraticCurveTo(0, 2, -18, -3);
+      context.closePath();
+      context.fill();
+      context.stroke();
+
+      context.fillStyle = palette.band;
+      roundedCosmeticRectPath(context, -17, -11, 34, 8, 3);
+      context.fill();
+      context.stroke();
+
+      context.fillStyle = palette.main;
+      context.beginPath();
+      context.moveTo(-31, 0);
+      context.quadraticCurveTo(-21, -6, -11, -2);
+      context.quadraticCurveTo(0, 3, 11, -2);
+      context.quadraticCurveTo(21, -6, 31, 0);
+      context.quadraticCurveTo(22, 9, 0, 5);
+      context.quadraticCurveTo(-22, 9, -31, 0);
+      context.closePath();
+      context.fill();
+      context.stroke();
+
+      context.strokeStyle = "rgba(255,255,255,0.38)";
+      context.lineWidth = 2;
+      context.beginPath();
+      context.moveTo(-10, -27);
+      context.quadraticCurveTo(-2, -32, 7, -28);
+      context.stroke();
+    } else if (cosmetic === "devil_horns") {
+      const hornGradient = context.createLinearGradient(0, -34, 0, 7);
+      hornGradient.addColorStop(0, palette.light);
+      hornGradient.addColorStop(0.42, palette.main);
+      hornGradient.addColorStop(1, palette.dark);
+      context.fillStyle = hornGradient;
+      context.strokeStyle = palette.dark;
+      for (const side of [-1, 1]) {
+        context.beginPath();
+        context.moveTo(side * 7, 3);
+        context.bezierCurveTo(side * 12, -4, side * 15, -22, side * 27, -31);
+        context.bezierCurveTo(side * 25, -14, side * 21, 1, side * 10, 7);
+        context.closePath();
+        context.fill();
+        context.stroke();
+
+        context.strokeStyle = "rgba(255,255,255,0.42)";
+        context.lineWidth = 2;
+        context.beginPath();
+        context.moveTo(side * 13, -4);
+        context.quadraticCurveTo(side * 17, -14, side * 22, -22);
+        context.stroke();
+        context.strokeStyle = palette.dark;
+        context.lineWidth = 3;
+      }
+    } else if (cosmetic === "halo") {
+      context.save();
+      context.shadowColor = palette.light;
+      context.shadowBlur = 13;
+      context.beginPath();
+      context.ellipse(0, -17, 27, 7, 0, 0, Math.PI * 2);
+      context.strokeStyle = palette.dark;
+      context.lineWidth = 9;
+      context.stroke();
+      context.strokeStyle = palette.main;
+      context.lineWidth = 6;
+      context.stroke();
+      context.strokeStyle = palette.light;
+      context.lineWidth = 2;
+      context.stroke();
+      context.restore();
+    } else if (cosmetic === "ninja_headband") {
+      context.fillStyle = palette.main;
+      context.strokeStyle = palette.dark;
+      context.beginPath();
+      context.moveTo(20, -3);
+      context.quadraticCurveTo(30, -11, 37, -7);
+      context.lineTo(28, 2);
+      context.lineTo(38, 10);
+      context.quadraticCurveTo(29, 13, 20, 5);
+      context.closePath();
+      context.fill();
+      context.stroke();
+
+      const bandGradient = context.createLinearGradient(-25, -7, 25, 7);
+      bandGradient.addColorStop(0, palette.dark);
+      bandGradient.addColorStop(0.28, palette.main);
+      bandGradient.addColorStop(0.7, palette.main);
+      bandGradient.addColorStop(1, palette.light);
+      context.fillStyle = bandGradient;
+      roundedCosmeticRectPath(context, -25, -7, 49, 14, 5);
+      context.fill();
+      context.stroke();
+      context.fillStyle = palette.light;
+      context.beginPath();
+      context.arc(22, 0, 5, 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
+      context.strokeStyle = "rgba(255,255,255,0.46)";
+      context.lineWidth = 2;
+      context.beginPath();
+      context.moveTo(-17, -3);
+      context.lineTo(8, -3);
+      context.stroke();
+    } else if (cosmetic === "viking_helmet") {
+      context.fillStyle = palette.horn;
+      context.strokeStyle = palette.dark;
+      for (const side of [-1, 1]) {
+        context.beginPath();
+        context.moveTo(side * 17, -14);
+        context.bezierCurveTo(side * 27, -20, side * 31, -32, side * 38, -31);
+        context.bezierCurveTo(side * 35, -17, side * 29, -7, side * 19, -5);
+        context.closePath();
+        context.fill();
+        context.stroke();
+      }
+
+      const helmetGradient = context.createLinearGradient(-22, -30, 22, 4);
+      helmetGradient.addColorStop(0, palette.light);
+      helmetGradient.addColorStop(0.48, palette.main);
+      helmetGradient.addColorStop(1, palette.dark);
+      context.fillStyle = helmetGradient;
+      context.beginPath();
+      context.moveTo(-23, 2);
+      context.quadraticCurveTo(-22, -27, 0, -31);
+      context.quadraticCurveTo(22, -27, 23, 2);
+      context.closePath();
+      context.fill();
+      context.stroke();
+      context.fillStyle = palette.dark;
+      roundedCosmeticRectPath(context, -25, -4, 50, 9, 3);
+      context.fill();
+      context.stroke();
+      context.fillStyle = palette.light;
+      roundedCosmeticRectPath(context, -3, -29, 6, 27, 2);
+      context.fill();
+      context.stroke();
+      context.beginPath();
+      context.arc(-17, 0, 2, 0, Math.PI * 2);
+      context.arc(17, 0, 2, 0, Math.PI * 2);
+      context.fill();
+    } else if (cosmetic === "party_hat") {
+      context.fillStyle = palette.accent;
+      context.strokeStyle = palette.dark;
+      context.beginPath();
+      context.arc(0, -41, 6, 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
+
+      const partyGradient = context.createLinearGradient(-22, -39, 22, 3);
+      partyGradient.addColorStop(0, palette.light);
+      partyGradient.addColorStop(0.5, palette.main);
+      partyGradient.addColorStop(1, palette.dark);
+      context.fillStyle = partyGradient;
+      context.beginPath();
+      context.moveTo(-23, 1);
+      context.lineTo(0, -39);
+      context.lineTo(23, 1);
+      context.quadraticCurveTo(0, 7, -23, 1);
+      context.closePath();
+      context.fill();
+      context.stroke();
+      context.fillStyle = palette.accent;
+      for (const [x, y, radius] of [[-8, -12, 3], [8, -8, 2.5], [1, -25, 2.7]]) {
+        context.beginPath();
+        context.arc(x, y, radius, 0, Math.PI * 2);
+        context.fill();
+      }
+      context.fillStyle = palette.light;
+      roundedCosmeticRectPath(context, -24, -3, 48, 8, 4);
+      context.fill();
+      context.stroke();
+    } else if (cosmetic === "chef_hat") {
+      const chefGradient = context.createLinearGradient(-20, -42, 20, 5);
+      chefGradient.addColorStop(0, palette.light);
+      chefGradient.addColorStop(0.65, palette.main);
+      chefGradient.addColorStop(1, palette.dark);
+      context.fillStyle = chefGradient;
+      context.strokeStyle = palette.dark;
+      context.beginPath();
+      context.moveTo(-21, -4);
+      context.lineTo(-20, -20);
+      context.bezierCurveTo(-29, -27, -22, -39, -11, -37);
+      context.bezierCurveTo(-7, -47, 7, -47, 11, -37);
+      context.bezierCurveTo(22, -40, 29, -28, 20, -20);
+      context.lineTo(21, -4);
+      context.closePath();
+      context.fill();
+      context.stroke();
+      context.fillStyle = palette.main;
+      roundedCosmeticRectPath(context, -23, -7, 46, 12, 4);
+      context.fill();
+      context.stroke();
+      context.strokeStyle = "rgba(120,135,150,0.55)";
+      context.lineWidth = 2;
+      context.beginPath();
+      context.moveTo(-8, -31);
+      context.quadraticCurveTo(-11, -20, -8, -10);
+      context.moveTo(8, -31);
+      context.quadraticCurveTo(11, -20, 8, -10);
+      context.stroke();
+    } else if (cosmetic === "propeller_hat") {
+      context.strokeStyle = palette.dark;
+      context.lineWidth = 4;
+      context.beginPath();
+      context.moveTo(0, -19);
+      context.lineTo(0, -30);
+      context.stroke();
+      context.fillStyle = palette.accent;
+      context.beginPath();
+      context.ellipse(-10, -31, 12, 4, -0.18, 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
+      context.fillStyle = "#ffe45c";
+      context.beginPath();
+      context.ellipse(10, -31, 12, 4, 0.18, 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
+      context.fillStyle = palette.light;
+      context.beginPath();
+      context.arc(0, -31, 4, 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
+
+      const propellerGradient = context.createLinearGradient(-21, -22, 21, 4);
+      propellerGradient.addColorStop(0, palette.light);
+      propellerGradient.addColorStop(0.52, palette.main);
+      propellerGradient.addColorStop(1, palette.dark);
+      context.fillStyle = propellerGradient;
+      context.beginPath();
+      context.moveTo(-22, 1);
+      context.quadraticCurveTo(-19, -19, 0, -21);
+      context.quadraticCurveTo(19, -19, 22, 1);
+      context.quadraticCurveTo(0, 5, -22, 1);
+      context.closePath();
+      context.fill();
+      context.stroke();
+      context.fillStyle = palette.accent;
+      context.beginPath();
+      context.moveTo(0, -21);
+      context.quadraticCurveTo(10, -18, 11, 1);
+      context.quadraticCurveTo(5, 3, 0, 3);
+      context.closePath();
+      context.fill();
+      context.fillStyle = palette.main;
+      context.beginPath();
+      context.moveTo(8, -1);
+      context.quadraticCurveTo(25, -2, 29, 5);
+      context.quadraticCurveTo(19, 8, 5, 4);
+      context.closePath();
+      context.fill();
+      context.stroke();
+    } else if (cosmetic === "cat_ears") {
+      const earGradient = context.createLinearGradient(0, -35, 0, 5);
+      earGradient.addColorStop(0, palette.light);
+      earGradient.addColorStop(0.48, palette.main);
+      earGradient.addColorStop(1, palette.dark);
+      context.fillStyle = earGradient;
+      context.strokeStyle = palette.dark;
+      for (const side of [-1, 1]) {
+        context.beginPath();
+        context.moveTo(side * 5, 3);
+        context.lineTo(side * 16, -29);
+        context.quadraticCurveTo(side * 22, -36, side * 29, -27);
+        context.lineTo(side * 27, 3);
+        context.quadraticCurveTo(side * 16, -2, side * 5, 3);
+        context.closePath();
+        context.fill();
+        context.stroke();
+
+        context.fillStyle = palette.inner;
+        context.beginPath();
+        context.moveTo(side * 12, -2);
+        context.lineTo(side * 18, -25);
+        context.quadraticCurveTo(side * 22, -29, side * 25, -23);
+        context.lineTo(side * 23, -3);
+        context.closePath();
+        context.fill();
+        context.fillStyle = earGradient;
+      }
+
+      context.strokeStyle = palette.dark;
+      context.lineWidth = 7;
+      context.beginPath();
+      context.arc(0, 4, 25, Math.PI, Math.PI * 2);
+      context.stroke();
+      context.strokeStyle = palette.main;
+      context.lineWidth = 4;
+      context.stroke();
+    } else if (cosmetic === "bunny_ears") {
+      const bunnyGradient = context.createLinearGradient(0, -56, 0, 7);
+      bunnyGradient.addColorStop(0, palette.light);
+      bunnyGradient.addColorStop(0.48, palette.main);
+      bunnyGradient.addColorStop(1, palette.dark);
+      context.strokeStyle = palette.dark;
+      context.lineWidth = 3;
+      for (const side of [-1, 1]) {
+        context.fillStyle = bunnyGradient;
+        context.beginPath();
+        context.moveTo(side * 5, 5);
+        context.bezierCurveTo(
+          side * 8, -15,
+          side * 9, -47,
+          side * 19, -53
+        );
+        context.bezierCurveTo(
+          side * 31, -52,
+          side * 27, -18,
+          side * 25, 2
+        );
+        context.quadraticCurveTo(side * 15, -2, side * 5, 5);
+        context.closePath();
+        context.fill();
+        context.stroke();
+
+        context.fillStyle = palette.inner;
+        context.beginPath();
+        context.moveTo(side * 12, -2);
+        context.bezierCurveTo(
+          side * 13, -20,
+          side * 14, -42,
+          side * 19, -46
+        );
+        context.bezierCurveTo(
+          side * 24, -43,
+          side * 22, -19,
+          side * 21, -4
+        );
+        context.quadraticCurveTo(side * 17, -5, side * 12, -2);
+        context.closePath();
+        context.fill();
+      }
+
+      context.strokeStyle = palette.dark;
+      context.lineWidth = 7;
+      context.beginPath();
+      context.arc(0, 4, 25, Math.PI, Math.PI * 2);
+      context.stroke();
+      context.strokeStyle = palette.main;
+      context.lineWidth = 4;
+      context.stroke();
     }
 
     context.restore();
   }
 
-  function drawSlimeCosmeticPreview(canvasElement, cosmetic, color = "green", options = {}) {
+  function drawSlimeBeard(context, beard, radius = 30) {
+    const definition = getSlimeBeardDefinition(beard);
+    if (!definition || beard === "none") return;
+
+    const palette = definition.palette;
+    context.save();
+    context.translate(
+      definition.anchorX * radius,
+      definition.anchorY * radius
+    );
+    context.scale(
+      definition.scale * radius / 30,
+      definition.scale * radius / 30
+    );
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.lineWidth = 2.5;
+
+    if (beard === "stubble") {
+      context.strokeStyle = palette.main;
+      context.lineWidth = 2;
+      const stubbleMarks = [
+        [-17, 2, -1], [-10, 6, 1], [-3, 9, -1], [4, 9, 1],
+        [11, 6, -1], [18, 2, 1], [-14, 13, 1], [-6, 16, -1],
+        [2, 17, 1], [10, 15, -1], [16, 11, 1]
+      ];
+      for (const [x, y, lean] of stubbleMarks) {
+        context.beginPath();
+        context.moveTo(x, y);
+        context.lineTo(x + lean, y + 2.5);
+        context.stroke();
+      }
+      context.fillStyle = palette.light;
+      context.beginPath();
+      context.arc(-20, 8, 1.2, 0, Math.PI * 2);
+      context.arc(20, 8, 1.2, 0, Math.PI * 2);
+      context.fill();
+    } else if (beard === "mustache") {
+      const mustacheGradient = context.createRadialGradient(0, -2, 2, 0, 4, 26);
+      mustacheGradient.addColorStop(0, palette.light);
+      mustacheGradient.addColorStop(0.48, palette.main);
+      mustacheGradient.addColorStop(1, palette.dark);
+      context.fillStyle = mustacheGradient;
+      context.strokeStyle = palette.dark;
+      for (const side of [-1, 1]) {
+        context.beginPath();
+        context.moveTo(0, 1);
+        context.bezierCurveTo(side * 7, -6, side * 18, -7, side * 25, 0);
+        context.bezierCurveTo(side * 18, 10, side * 7, 8, 0, 3);
+        context.closePath();
+        context.fill();
+        context.stroke();
+      }
+    } else if (beard === "goatee") {
+      const goateeGradient = context.createLinearGradient(0, 0, 0, 27);
+      goateeGradient.addColorStop(0, palette.light);
+      goateeGradient.addColorStop(0.45, palette.main);
+      goateeGradient.addColorStop(1, palette.dark);
+      context.fillStyle = goateeGradient;
+      context.strokeStyle = palette.dark;
+      context.beginPath();
+      context.moveTo(-8, 5);
+      context.quadraticCurveTo(-7, 17, 0, 26);
+      context.quadraticCurveTo(7, 17, 8, 5);
+      context.quadraticCurveTo(0, 10, -8, 5);
+      context.closePath();
+      context.fill();
+      context.stroke();
+      context.fillStyle = palette.light;
+      context.beginPath();
+      context.ellipse(0, 5, 9, 3.5, 0, 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
+    } else if (beard === "full_beard") {
+      const beardGradient = context.createRadialGradient(-6, 4, 3, 0, 13, 29);
+      beardGradient.addColorStop(0, palette.light);
+      beardGradient.addColorStop(0.46, palette.main);
+      beardGradient.addColorStop(1, palette.dark);
+      context.fillStyle = beardGradient;
+      context.strokeStyle = palette.dark;
+      context.beginPath();
+      context.moveTo(-23, -1);
+      context.quadraticCurveTo(-25, 14, -14, 24);
+      context.quadraticCurveTo(0, 33, 14, 24);
+      context.quadraticCurveTo(25, 14, 23, -1);
+      context.quadraticCurveTo(12, 4, 0, 1);
+      context.quadraticCurveTo(-12, 4, -23, -1);
+      context.closePath();
+      context.fill();
+      context.stroke();
+      context.strokeStyle = "rgba(255,255,255,0.28)";
+      context.lineWidth = 2;
+      context.beginPath();
+      context.moveTo(-13, 8);
+      context.quadraticCurveTo(-9, 18, -3, 24);
+      context.moveTo(13, 8);
+      context.quadraticCurveTo(9, 18, 3, 24);
+      context.stroke();
+    } else if (beard === "cowboy_mustache") {
+      const cowboyGradient = context.createLinearGradient(0, -8, 0, 14);
+      cowboyGradient.addColorStop(0, palette.light);
+      cowboyGradient.addColorStop(0.5, palette.main);
+      cowboyGradient.addColorStop(1, palette.dark);
+      context.fillStyle = cowboyGradient;
+      context.strokeStyle = palette.dark;
+      for (const side of [-1, 1]) {
+        context.beginPath();
+        context.moveTo(0, 1);
+        context.bezierCurveTo(side * 10, -8, side * 23, -8, side * 31, -3);
+        context.bezierCurveTo(side * 27, 3, side * 30, 7, side * 35, 2);
+        context.bezierCurveTo(side * 31, 14, side * 14, 12, 0, 4);
+        context.closePath();
+        context.fill();
+        context.stroke();
+      }
+    } else if (beard === "viking_beard") {
+      const vikingGradient = context.createLinearGradient(0, -2, 0, 34);
+      vikingGradient.addColorStop(0, palette.light);
+      vikingGradient.addColorStop(0.42, palette.main);
+      vikingGradient.addColorStop(1, palette.dark);
+      context.fillStyle = vikingGradient;
+      context.strokeStyle = palette.dark;
+      context.beginPath();
+      context.moveTo(-23, -1);
+      context.quadraticCurveTo(-24, 14, -13, 26);
+      context.lineTo(-5, 20);
+      context.lineTo(0, 33);
+      context.lineTo(5, 20);
+      context.lineTo(13, 26);
+      context.quadraticCurveTo(24, 14, 23, -1);
+      context.quadraticCurveTo(11, 4, 0, 1);
+      context.quadraticCurveTo(-11, 4, -23, -1);
+      context.closePath();
+      context.fill();
+      context.stroke();
+      context.fillStyle = palette.band;
+      roundedCosmeticRectPath(context, -5, 21, 10, 7, 2);
+      context.fill();
+      context.stroke();
+    } else if (beard === "wizard_beard") {
+      const wizardGradient = context.createLinearGradient(-18, -3, 10, 34);
+      wizardGradient.addColorStop(0, palette.light);
+      wizardGradient.addColorStop(0.5, palette.main);
+      wizardGradient.addColorStop(1, palette.dark);
+      context.fillStyle = wizardGradient;
+      context.strokeStyle = palette.dark;
+      context.beginPath();
+      context.moveTo(-22, 0);
+      context.quadraticCurveTo(-22, 13, -10, 19);
+      context.quadraticCurveTo(-4, 26, 0, 32);
+      context.quadraticCurveTo(5, 25, 12, 19);
+      context.quadraticCurveTo(22, 12, 22, 0);
+      context.quadraticCurveTo(10, 5, 0, 1);
+      context.quadraticCurveTo(-10, 5, -22, 0);
+      context.closePath();
+      context.fill();
+      context.stroke();
+      context.fillStyle = palette.light;
+      for (const side of [-1, 1]) {
+        context.beginPath();
+        context.moveTo(0, 0);
+        context.bezierCurveTo(side * 7, -5, side * 16, -5, side * 23, 1);
+        context.bezierCurveTo(side * 14, 8, side * 6, 7, 0, 3);
+        context.closePath();
+        context.fill();
+        context.stroke();
+      }
+    } else if (beard === "braided_beard") {
+      const braidGradient = context.createLinearGradient(0, -2, 0, 31);
+      braidGradient.addColorStop(0, palette.light);
+      braidGradient.addColorStop(0.44, palette.main);
+      braidGradient.addColorStop(1, palette.dark);
+      context.fillStyle = braidGradient;
+      context.strokeStyle = palette.dark;
+      context.beginPath();
+      context.moveTo(-21, -1);
+      context.quadraticCurveTo(-21, 12, -9, 16);
+      context.quadraticCurveTo(0, 20, 9, 16);
+      context.quadraticCurveTo(21, 12, 21, -1);
+      context.quadraticCurveTo(10, 4, 0, 1);
+      context.quadraticCurveTo(-10, 4, -21, -1);
+      context.closePath();
+      context.fill();
+      context.stroke();
+      for (const [x, y, rotation] of [[-2, 14, -0.25], [2, 20, 0.25], [-1, 26, -0.2]]) {
+        context.fillStyle = y === 20 ? palette.light : palette.main;
+        context.beginPath();
+        context.ellipse(x, y, 7, 5, rotation, 0, Math.PI * 2);
+        context.fill();
+        context.stroke();
+      }
+      context.fillStyle = palette.band;
+      roundedCosmeticRectPath(context, -6, 28, 12, 6, 2);
+      context.fill();
+      context.stroke();
+    } else if (beard === "lumberjack_beard") {
+      const lumberjackGradient = context.createLinearGradient(0, -4, 0, 36);
+      lumberjackGradient.addColorStop(0, palette.light);
+      lumberjackGradient.addColorStop(0.42, palette.main);
+      lumberjackGradient.addColorStop(1, palette.dark);
+      context.fillStyle = lumberjackGradient;
+      context.strokeStyle = palette.dark;
+      context.lineWidth = 3;
+      context.beginPath();
+      context.moveTo(-28, -2);
+      context.quadraticCurveTo(-32, 10, -27, 20);
+      context.quadraticCurveTo(-24, 28, -15, 25);
+      context.quadraticCurveTo(-12, 34, -3, 30);
+      context.quadraticCurveTo(0, 39, 4, 30);
+      context.quadraticCurveTo(14, 34, 16, 25);
+      context.quadraticCurveTo(25, 29, 28, 20);
+      context.quadraticCurveTo(33, 9, 28, -2);
+      context.quadraticCurveTo(15, 4, 0, 1);
+      context.quadraticCurveTo(-15, 4, -28, -2);
+      context.closePath();
+      context.fill();
+      context.stroke();
+
+      context.fillStyle = palette.light;
+      for (const side of [-1, 1]) {
+        context.beginPath();
+        context.moveTo(0, 1);
+        context.bezierCurveTo(side * 8, -5, side * 19, -5, side * 25, 0);
+        context.bezierCurveTo(side * 18, 9, side * 7, 8, 0, 4);
+        context.closePath();
+        context.fill();
+        context.stroke();
+      }
+    } else if (beard === "imperial_beard") {
+      const imperialGradient = context.createLinearGradient(0, -10, 0, 23);
+      imperialGradient.addColorStop(0, palette.light);
+      imperialGradient.addColorStop(0.48, palette.main);
+      imperialGradient.addColorStop(1, palette.dark);
+      context.fillStyle = imperialGradient;
+      context.strokeStyle = palette.dark;
+      context.lineWidth = 3;
+      for (const side of [-1, 1]) {
+        context.beginPath();
+        context.moveTo(0, 1);
+        context.bezierCurveTo(side * 9, -7, side * 20, -8, side * 27, -3);
+        context.bezierCurveTo(side * 35, -11, side * 39, -3, side * 31, 3);
+        context.bezierCurveTo(side * 24, 10, side * 11, 9, 0, 4);
+        context.closePath();
+        context.fill();
+        context.stroke();
+      }
+
+      context.beginPath();
+      context.moveTo(-7, 6);
+      context.quadraticCurveTo(-6, 16, 0, 23);
+      context.quadraticCurveTo(7, 16, 7, 6);
+      context.quadraticCurveTo(0, 9, -7, 6);
+      context.closePath();
+      context.fill();
+      context.stroke();
+    }
+
+    context.restore();
+  }
+
+  function drawSlimeCharacterPreview(
+    canvasElement,
+    cosmetic = "none",
+    beard = "none",
+    color = "green",
+    options = {}
+  ) {
     const previewContext = canvasElement.getContext("2d");
     const palette = getSlimeColorPalette(color);
     const centerY = Number.isFinite(options.centerY) ? options.centerY : 48;
@@ -786,13 +1403,18 @@
     previewContext.fill();
     previewContext.stroke();
 
-    previewContext.fillStyle = "#0b2c1a";
+    previewContext.fillStyle = palette.face ?? "#0b2c1a";
     previewContext.beginPath();
     previewContext.arc(-10, -2, 4, 0, Math.PI * 2);
     previewContext.arc(10, -2, 4, 0, Math.PI * 2);
     previewContext.fill();
+    drawSlimeBeard(previewContext, normalizeSlimeBeard(beard), 30);
     drawSlimeCosmetic(previewContext, cosmetic, 30);
     previewContext.restore();
+  }
+
+  function drawSlimeCosmeticPreview(canvasElement, cosmetic, color = "green", options = {}) {
+    drawSlimeCharacterPreview(canvasElement, cosmetic, "none", color, options);
   }
 
   function drawPlayer() {
@@ -843,13 +1465,13 @@
     ctx.ellipse(-10, -12, 8, 5, -0.5, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = "#0b2c1a";
+    ctx.fillStyle = palette.face ?? "#0b2c1a";
     ctx.beginPath();
     ctx.arc(-10, -2, 4.5, 0, Math.PI * 2);
     ctx.arc(10, -2, 4.5, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.strokeStyle = "#0b2c1a";
+    ctx.strokeStyle = palette.face ?? "#0b2c1a";
     ctx.lineWidth = 3;
     ctx.lineCap = "round";
     ctx.beginPath();
@@ -859,6 +1481,7 @@
       ctx.arc(0, 5, 11, 0.15, Math.PI - 0.15);
     }
     ctx.stroke();
+    drawSlimeBeard(ctx, getActiveSlimeBeard(), player.r);
     drawSlimeCosmetic(ctx, getActiveSlimeCosmetic(), player.r);
     ctx.restore();
   }

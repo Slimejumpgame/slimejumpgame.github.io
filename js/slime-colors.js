@@ -11,7 +11,23 @@
     "yellow",
     "orange",
     "red",
-    "pink"
+    "pink",
+    "crimson",
+    "burgundy",
+    "apricot",
+    "gold",
+    "lime",
+    "forest",
+    "mint",
+    "teal",
+    "ice_blue",
+    "navy",
+    "indigo",
+    "magenta",
+    "hot_pink",
+    "vanilla",
+    "silver",
+    "charcoal"
   ]);
 
   const SLIME_COLOR_NAMES = Object.freeze({
@@ -22,7 +38,23 @@
     yellow: "Gelb",
     orange: "Orange",
     red: "Rot",
-    pink: "Pink"
+    pink: "Pink",
+    crimson: "Scharlachrot",
+    burgundy: "Burgunder",
+    apricot: "Aprikose",
+    gold: "Gold",
+    lime: "Limette",
+    forest: "Waldgrün",
+    mint: "Mint",
+    teal: "Petrol",
+    ice_blue: "Eisblau",
+    navy: "Marineblau",
+    indigo: "Indigo",
+    magenta: "Magenta",
+    hot_pink: "Neonpink",
+    vanilla: "Vanille",
+    silver: "Silber",
+    charcoal: "Anthrazit"
   });
 
   const SLIME_COLOR_PALETTES = Object.freeze({
@@ -89,6 +121,135 @@
       outline: "#6c1d50",
       glow: "#ff72c4",
       trail: "255,130,200"
+    }),
+    crimson: Object.freeze({
+      light: "#ffd0d7",
+      main: "#e62946",
+      dark: "#9f1634",
+      outline: "#500c20",
+      glow: "#ff3153",
+      trail: "230,41,70"
+    }),
+    burgundy: Object.freeze({
+      light: "#f0bfd1",
+      main: "#8f294d",
+      dark: "#5d1536",
+      outline: "#2d0b1f",
+      glow: "#d64879",
+      trail: "143,41,77"
+    }),
+    apricot: Object.freeze({
+      light: "#fff0d8",
+      main: "#ffc078",
+      dark: "#d77a3d",
+      outline: "#70401f",
+      glow: "#ffc06a",
+      trail: "255,192,120"
+    }),
+    gold: Object.freeze({
+      light: "#fff3b3",
+      main: "#d9aa19",
+      dark: "#9b6e08",
+      outline: "#513805",
+      glow: "#ffd42d",
+      trail: "217,170,25"
+    }),
+    lime: Object.freeze({
+      light: "#edffc2",
+      main: "#a8e635",
+      dark: "#63a51c",
+      outline: "#31550d",
+      glow: "#b9ff3d",
+      trail: "168,230,53"
+    }),
+    forest: Object.freeze({
+      light: "#a8e8bf",
+      main: "#228c55",
+      dark: "#12613b",
+      outline: "#08351f",
+      glow: "#38c878",
+      trail: "34,140,85"
+    }),
+    mint: Object.freeze({
+      light: "#d8fff2",
+      main: "#67ddb4",
+      dark: "#249b7d",
+      outline: "#125445",
+      glow: "#70f9c8",
+      trail: "103,221,180"
+    }),
+    teal: Object.freeze({
+      light: "#c7fff5",
+      main: "#1cafaa",
+      dark: "#0b7779",
+      outline: "#064147",
+      glow: "#2de2d8",
+      trail: "28,175,170"
+    }),
+    ice_blue: Object.freeze({
+      light: "#f1fbff",
+      main: "#a7ddf7",
+      dark: "#5798c2",
+      outline: "#294f70",
+      glow: "#b8ecff",
+      trail: "167,221,247"
+    }),
+    navy: Object.freeze({
+      light: "#bbc9ff",
+      main: "#334a9a",
+      dark: "#1d2c69",
+      outline: "#0d173b",
+      glow: "#536dcb",
+      trail: "51,74,154"
+    }),
+    indigo: Object.freeze({
+      light: "#d6cbff",
+      main: "#5a3fb8",
+      dark: "#36257f",
+      outline: "#1c1248",
+      glow: "#795ced",
+      trail: "90,63,184"
+    }),
+    magenta: Object.freeze({
+      light: "#ffd2f4",
+      main: "#d83db5",
+      dark: "#8f227d",
+      outline: "#4d1043",
+      glow: "#f34bd0",
+      trail: "216,61,181"
+    }),
+    hot_pink: Object.freeze({
+      light: "#ffd0e6",
+      main: "#ff3b96",
+      dark: "#b91867",
+      outline: "#620b39",
+      glow: "#ff4ba9",
+      trail: "255,59,150"
+    }),
+    vanilla: Object.freeze({
+      light: "#fffdf2",
+      main: "#f1dfb2",
+      dark: "#b99a63",
+      outline: "#655039",
+      glow: "#fff0bd",
+      trail: "241,223,178"
+    }),
+    silver: Object.freeze({
+      light: "#f4f7fa",
+      main: "#aeb9c6",
+      dark: "#697887",
+      outline: "#35404b",
+      glow: "#d3e2f0",
+      trail: "174,185,198"
+    }),
+    charcoal: Object.freeze({
+      light: "#aeb5c1",
+      main: "#3f4652",
+      dark: "#202630",
+      outline: "#0b0f16",
+      glow: "#657080",
+      trail: "63,70,82",
+      face: "#f4fbff"
     })
   });
 

@@ -108,7 +108,17 @@
             <span class="wardrobeProgressLabel">Unlock Progress</span>
             <div id="slimeColorRequirement" class="slimeColorRequirement"></div>
           </div>
-          <div class="wardrobeCollections">
+
+          <nav id="wardrobeHome" class="wardrobeCategoryMenu" aria-label="Wardrobe-Kategorien">
+            <button id="wardrobeColorMenuBtn" class="wardrobeMenuButton uiButton uiButton--secondary" type="button">Slime-Farbe</button>
+            <button id="wardrobeCosmeticsMenuBtn" class="wardrobeMenuButton uiButton uiButton--secondary" type="button">Cosmetics</button>
+            <button id="wardrobeBeardsMenuBtn" class="wardrobeMenuButton uiButton uiButton--secondary" type="button">Bärte</button>
+          </nav>
+
+          <section id="wardrobeColorView" class="wardrobeSubmenu hidden" aria-label="Slime-Farbe">
+            <div class="wardrobeSubmenuToolbar">
+              <button id="wardrobeColorBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn" type="button">← Wardrobe</button>
+            </div>
             <aside id="slimeColorPicker" class="uiPanel wardrobePanel slimeColorPicker" aria-label="Slime-Farbe auswählen">
               <div class="panelHeading">
                 <span class="panelHeadingIcon panelHeadingIcon--drop" aria-hidden="true"></span>
@@ -119,7 +129,12 @@
               </div>
               <div id="slimeColorOptions" class="slimeColorOptions"></div>
             </aside>
+          </section>
 
+          <section id="wardrobeCosmeticsView" class="wardrobeSubmenu hidden" aria-label="Cosmetics">
+            <div class="wardrobeSubmenuToolbar">
+              <button id="wardrobeCosmeticsBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn" type="button">← Wardrobe</button>
+            </div>
             <aside id="slimeCosmeticPicker" class="uiPanel wardrobePanel slimeCosmeticPicker" aria-label="Slime-Cosmetic auswählen">
               <div class="panelHeading">
                 <span class="panelHeadingIcon panelHeadingIcon--crown" aria-hidden="true">♛</span>
@@ -130,7 +145,23 @@
               </div>
               <div id="slimeCosmeticOptions" class="slimeCosmeticOptions"></div>
             </aside>
-          </div>
+          </section>
+
+          <section id="wardrobeBeardsView" class="wardrobeSubmenu hidden" aria-label="Bärte">
+            <div class="wardrobeSubmenuToolbar">
+              <button id="wardrobeBeardsBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn" type="button">← Wardrobe</button>
+            </div>
+            <aside id="slimeBeardPicker" class="uiPanel wardrobePanel slimeBeardPicker" aria-label="Slime-Bart auswählen">
+              <div class="panelHeading">
+                <span class="panelHeadingIcon panelHeadingIcon--beard" aria-hidden="true">〰</span>
+                <div>
+                  <span class="panelKicker">Wardrobe</span>
+                  <h3 class="slimeColorPickerTitle">Bärte</h3>
+                </div>
+              </div>
+              <div id="slimeBeardOptions" class="slimeBeardOptions"></div>
+            </aside>
+          </section>
         </div>
       </section>
 
@@ -243,6 +274,7 @@
 
   <script src="./js/slime-colors.js"></script>
   <script src="./js/slime-cosmetics.js"></script>
+  <script src="./js/slime-beards.js"></script>
   <script src="./js/slime-wardrobe.js"></script>
   <script src="./js/slime-jump-highscores.js"></script>
   <script src="./js/core.js"></script>

@@ -600,7 +600,7 @@ p {
 
 .wardrobeUnlockCategories {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--ui-gap-sm);
 }
 
@@ -1019,6 +1019,49 @@ body:has(#devPanel:not([hidden])) .screenHeader {
   overflow: hidden;
 }
 
+.wardrobeCategoryMenu {
+  width: min(100%, 900px);
+  min-height: 0;
+  margin: auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: var(--ui-gap-lg);
+}
+
+.wardrobeMenuButton {
+  min-height: clamp(76px, 18vh, 132px);
+  padding: clamp(10px, 1.6vw, 20px);
+  font-size: clamp(16px, 2vw, 27px);
+  line-height: 1.05;
+}
+
+.wardrobeSubmenu {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto;
+  align-content: start;
+  gap: var(--ui-gap-sm);
+  padding-right: 2px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.wardrobeSubmenuToolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.wardrobeSubmenuBackBtn {
+  width: clamp(126px, 18vw, 190px);
+  min-height: clamp(40px, 6.5vh, 52px);
+  padding: 0 clamp(10px, 1.25vw, 18px);
+  font-size: clamp(11px, 1.2vw, 16px);
+}
+
 .wardrobeProgressPanel {
   min-height: clamp(38px, 6vh, 52px);
   display: flex;
@@ -1068,6 +1111,11 @@ body:has(#devPanel:not([hidden])) .screenHeader {
 }
 
 #wardrobeScreen .slimeCosmeticOptions {
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  align-items: center;
+}
+
+#wardrobeScreen .slimeBeardOptions {
   grid-template-columns: repeat(9, minmax(0, 1fr));
   align-items: center;
 }
@@ -1138,7 +1186,8 @@ body:has(#devPanel:not([hidden])) .screenHeader {
   gap: var(--ui-gap-xs);
 }
 
-.slimeCosmeticOptions {
+.slimeCosmeticOptions,
+.slimeBeardOptions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--ui-gap-xs);
@@ -1150,6 +1199,7 @@ body:has(#devPanel:not([hidden])) .screenHeader {
   --slime-dark: #28a854;
   --slime-outline: #154d2d;
   --slime-glow: #51ff7a;
+  --slime-face: #0b2c1a;
   position: relative;
   min-width: 0;
   min-height: clamp(52px, 8.2vh, 66px);
@@ -1247,8 +1297,8 @@ body:has(#devPanel:not([hidden])) .screenHeader {
   width: 11%;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: #0b2c1a;
-  box-shadow: clamp(7px, 0.72vw, 10px) 0 0 #0b2c1a;
+  background: var(--slime-face);
+  box-shadow: clamp(7px, 0.72vw, 10px) 0 0 var(--slime-face);
 }
 
 .slimeCosmeticPreview {
@@ -1678,11 +1728,20 @@ body:has(#devPanel:not([hidden])) .screenHeader {
     touch-action: pan-y;
   }
 
+  .wardrobeCategoryMenu {
+    width: min(100%, 420px);
+    grid-template-columns: 1fr;
+  }
+
   #wardrobeScreen .slimeColorOptions {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   #wardrobeScreen .slimeCosmeticOptions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  #wardrobeScreen .slimeBeardOptions {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
@@ -1763,8 +1822,20 @@ body:has(#devPanel:not([hidden])) .screenHeader {
   }
 
   .wardrobeScreenBody,
-  .wardrobeCollections {
+  .wardrobeCollections,
+  .wardrobeSubmenu {
     gap: var(--ui-gap-sm);
+  }
+
+  .wardrobeMenuButton {
+    min-height: clamp(50px, 17vh, 72px);
+    padding: 5px 8px;
+    font-size: clamp(11px, 3.3vh, 16px);
+  }
+
+  .wardrobeSubmenuBackBtn {
+    min-height: 34px;
+    font-size: clamp(9px, 2.5vh, 12px);
   }
 
   .wardrobeProgressPanel {

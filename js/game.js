@@ -337,7 +337,10 @@
 
   for (const button of [
     ui.startBtn, ui.wardrobeBtn, ui.howToBtn, ui.highScoresBtn,
-    ui.wardrobeBackBtn, ui.howToBackBtn, ui.highScoresBackBtn
+    ui.wardrobeBackBtn, ui.wardrobeColorMenuBtn, ui.wardrobeCosmeticsMenuBtn,
+    ui.wardrobeBeardsMenuBtn, ui.wardrobeColorBackBtn,
+    ui.wardrobeCosmeticsBackBtn, ui.wardrobeBeardsBackBtn,
+    ui.howToBackBtn, ui.highScoresBackBtn
   ]) {
     button.addEventListener("pointerdown", () => button.classList.add("menuPressed"));
     button.addEventListener("pointerup", () => button.classList.remove("menuPressed"));
@@ -350,6 +353,12 @@
   ui.howToBtn.addEventListener("click", () => runMenuButtonAction(ui.howToBtn, () => showMenuScreen("howto")));
   ui.highScoresBtn.addEventListener("click", () => runMenuButtonAction(ui.highScoresBtn, () => showMenuScreen("highscores")));
   ui.wardrobeBackBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeBackBtn, () => showMenuScreen("main")));
+  ui.wardrobeColorMenuBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeColorMenuBtn, () => showWardrobeView("color")));
+  ui.wardrobeCosmeticsMenuBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeCosmeticsMenuBtn, () => showWardrobeView("cosmetics")));
+  ui.wardrobeBeardsMenuBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeBeardsMenuBtn, () => showWardrobeView("beards")));
+  ui.wardrobeColorBackBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeColorBackBtn, () => showWardrobeView("home")));
+  ui.wardrobeCosmeticsBackBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeCosmeticsBackBtn, () => showWardrobeView("home")));
+  ui.wardrobeBeardsBackBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeBeardsBackBtn, () => showWardrobeView("home")));
   ui.howToBackBtn.addEventListener("click", () => runMenuButtonAction(ui.howToBackBtn, () => showMenuScreen("main")));
   ui.highScoresBackBtn.addEventListener("click", () => runMenuButtonAction(ui.highScoresBackBtn, () => showMenuScreen("main")));
   ui.nicknameInput.addEventListener("input", () => {

@@ -1,5 +1,5 @@
-/*
-  Slime Jump – gemeinsames Online-Highscore-Modul
+﻿/*
+  Slime Jump â€“ gemeinsames Online-Highscore-Modul
   GitHub Pages + Supabase
 */
 
@@ -11,11 +11,13 @@
     "sb_publishable_DDpbowG2-g6ZVios1OTrfA_DkUyh2TC";
 
   const TABLE = "slime_jump_highscores";
-  const GAME_VERSION = "2.39";
+  const GAME_VERSION = "2.40";
   // Nach der unten dokumentierten Supabase-Migration auf true setzen.
   const SLIME_COLOR_COLUMN_ENABLED = true;
   // Erst nach dem Anlegen der Spalte slime_cosmetic in Supabase aktivieren.
   const SLIME_COSMETIC_COLUMN_ENABLED = true;
+  // Erst nach der kontrollierten slime_beard-Migration in Supabase aktivieren.
+  const SLIME_BEARD_COLUMN_ENABLED = true;
 
   function isConfigured() {
     return (
@@ -79,6 +81,7 @@
     const selectedColumns = ["name", "score", "level", "game_version", "created_at"];
     if (SLIME_COLOR_COLUMN_ENABLED) selectedColumns.push("slime_color");
     if (SLIME_COSMETIC_COLUMN_ENABLED) selectedColumns.push("slime_cosmetic");
+    if (SLIME_BEARD_COLUMN_ENABLED) selectedColumns.push("slime_beard");
 
     const query = new URLSearchParams({
       select: selectedColumns.join(","),
@@ -116,6 +119,9 @@
           slimeCosmetic: SLIME_COSMETIC_COLUMN_ENABLED
             ? normalizeSlimeCosmetic(row.slime_cosmetic)
             : "none",
+          slimeBeard: SLIME_BEARD_COLUMN_ENABLED
+            ? normalizeSlimeBeard(row.slime_beard)
+            : "none",
           gameVersion: String(row.game_version || ""),
           createdAt: row.created_at || null
         }))
@@ -127,7 +133,8 @@
     score,
     level,
     slimeColor = "green",
-    slimeCosmetic = "none"
+    slimeCosmetic = "none",
+    slimeBeard = "none"
   }) {
     if (!isConfigured()) {
       throw new Error("Online-Highscores sind noch nicht konfiguriert.");
@@ -145,6 +152,9 @@
     }
     if (SLIME_COSMETIC_COLUMN_ENABLED) {
       payload.slime_cosmetic = normalizeSlimeCosmetic(slimeCosmetic);
+    }
+    if (SLIME_BEARD_COLUMN_ENABLED) {
+      payload.slime_beard = normalizeSlimeBeard(slimeBeard);
     }
 
     const response = await fetch(
@@ -172,9 +182,12 @@
     isConfigured,
     slimeColorColumnEnabled: SLIME_COLOR_COLUMN_ENABLED,
     slimeCosmeticColumnEnabled: SLIME_COSMETIC_COLUMN_ENABLED,
+    slimeBeardColumnEnabled: SLIME_BEARD_COLUMN_ENABLED,
     getTopScores,
     submitScore
   });
 })();
+
+
 
 
