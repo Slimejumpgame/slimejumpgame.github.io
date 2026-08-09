@@ -65,6 +65,7 @@
     score = 0;
     shots = 0;
     runStarsCollected = 0;
+    resetWardrobeUnlockAwardForRun();
     wardrobeUnlockCategory = null;
     hideWardrobeUnlockPanel();
     generatedLevel = generateProceduralLevel(levelNumber);

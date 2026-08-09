@@ -2,7 +2,7 @@
 
   const recentScoresStorageKey = "slimejumperRecentScores";
   const highScoresStorageKey = "slimejumperHighscoresV14";
-  let lastOnlineScoreSubmit = Promise.resolve();
+  let lastOnlineScoreSubmit = Promise.resolve(null);
   let gameToastTimer = null;
   let devPreviewSlimeColor = null;
   let devPreviewSlimeCosmetic = null;
@@ -782,7 +782,7 @@
     const online = window.SlimeJumpHighscores;
     if (!online?.isConfigured?.()) return;
 
-    lastOnlineScoreSubmit = online.submitScore({
+    const submittedScore = {
       name: normalizeNickname(name),
       score: Math.max(0, Math.floor(finalScore)),
       level: Math.max(1, Math.floor(reachedLevel)),
@@ -790,9 +790,14 @@
       slimeCosmetic: selectedSlimeCosmetic,
       slimeBeard: selectedSlimeBeard,
       slimeAchievements: normalizeHighScoreAchievementIds(slimeAchievements)
-    }).catch(error => {
-      console.warn("Online-Highscore konnte nicht gespeichert werden:", error);
-    });
+    };
+
+    lastOnlineScoreSubmit = online.submitScore(submittedScore)
+      .then(() => submittedScore)
+      .catch(error => {
+        console.warn("Online-Highscore konnte nicht gespeichert werden:", error);
+        return null;
+      });
   }
 
   function saveRecentScore(name, finalScore, reachedLevel) {
@@ -941,9 +946,12 @@
     renderHighScoreRows([], "Online-Highscores werden geladen …");
 
     try {
-      await lastOnlineScoreSubmit;
+      const submittedScore = await lastOnlineScoreSubmit;
       const highScores = await online.getTopScores(10);
-      renderHighScoreRows(highScores);
+      const visibleHighScores = highScores.length === 0 && submittedScore
+        ? sanitizeScoreEntries([submittedScore])
+        : highScores;
+      renderHighScoreRows(visibleHighScores);
     } catch (error) {
       console.warn("Online-Highscores konnten nicht geladen werden:", error);
       renderHighScoreRows(

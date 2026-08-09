@@ -80,6 +80,7 @@
   }
 
   let pendingWardrobeUnlockChoices = loadPendingWardrobeUnlockChoices();
+  let wardrobeUnlockAwardedThisRun = false;
 
   function savePendingWardrobeUnlockChoices() {
     try {
@@ -102,20 +103,21 @@
     return WARDROBE_UNLOCK_REQUIREMENTS[progressIndex] ?? null;
   }
 
+  function resetWardrobeUnlockAwardForRun() {
+    wardrobeUnlockAwardedThisRun = false;
+  }
+
   function awardWardrobeUnlockChoicesForRun(runStars) {
     if (typeof DEV_MODE !== "undefined" && DEV_MODE) return 0;
+    if (wardrobeUnlockAwardedThisRun) return 0;
     const collectedRunStars = Math.max(0, Math.floor(Number(runStars) || 0));
-    let earnedChoices = 0;
+    const requirement = getNextWardrobeUnlockRequirement();
+    if (requirement === null || collectedRunStars < requirement) return 0;
 
-    while (true) {
-      const requirement = getNextWardrobeUnlockRequirement();
-      if (requirement === null || collectedRunStars < requirement) break;
-      pendingWardrobeUnlockChoices++;
-      earnedChoices++;
-    }
-
-    if (earnedChoices > 0) savePendingWardrobeUnlockChoices();
-    return earnedChoices;
+    pendingWardrobeUnlockChoices++;
+    wardrobeUnlockAwardedThisRun = true;
+    savePendingWardrobeUnlockChoices();
+    return 1;
   }
 
   function redeemPendingWardrobeUnlockChoice(category, id) {

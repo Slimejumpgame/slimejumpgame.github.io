@@ -2,7 +2,7 @@
   "use strict";
 
   const RESET_MARKER_STORAGE_KEY = "slimejumperGlobalProgressResetVersion";
-  const RESET_VERSION = "progress-reset-2.42";
+  const RESET_VERSION = "progress-reset-2.43";
 
   const PROGRESS_STORAGE_KEYS = Object.freeze([
     "slimejumperUnlockedSlimeColors",
