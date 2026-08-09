@@ -336,8 +336,8 @@
   }
 
   for (const button of [
-    ui.startBtn, ui.howToBtn, ui.highScoresBtn,
-    ui.howToBackBtn, ui.highScoresBackBtn
+    ui.startBtn, ui.wardrobeBtn, ui.howToBtn, ui.highScoresBtn,
+    ui.wardrobeBackBtn, ui.howToBackBtn, ui.highScoresBackBtn
   ]) {
     button.addEventListener("pointerdown", () => button.classList.add("menuPressed"));
     button.addEventListener("pointerup", () => button.classList.remove("menuPressed"));
@@ -346,8 +346,10 @@
   }
 
   ui.startBtn.addEventListener("click", () => runMenuButtonAction(ui.startBtn, startGame));
+  ui.wardrobeBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeBtn, () => showMenuScreen("wardrobe")));
   ui.howToBtn.addEventListener("click", () => runMenuButtonAction(ui.howToBtn, () => showMenuScreen("howto")));
   ui.highScoresBtn.addEventListener("click", () => runMenuButtonAction(ui.highScoresBtn, () => showMenuScreen("highscores")));
+  ui.wardrobeBackBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeBackBtn, () => showMenuScreen("main")));
   ui.howToBackBtn.addEventListener("click", () => runMenuButtonAction(ui.howToBackBtn, () => showMenuScreen("main")));
   ui.highScoresBackBtn.addEventListener("click", () => runMenuButtonAction(ui.highScoresBackBtn, () => showMenuScreen("main")));
   ui.nicknameInput.addEventListener("input", () => {

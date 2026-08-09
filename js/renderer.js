@@ -764,13 +764,15 @@
     context.restore();
   }
 
-  function drawSlimeCosmeticPreview(canvasElement, cosmetic, color = "green") {
+  function drawSlimeCosmeticPreview(canvasElement, cosmetic, color = "green", options = {}) {
     const previewContext = canvasElement.getContext("2d");
     const palette = getSlimeColorPalette(color);
+    const centerY = Number.isFinite(options.centerY) ? options.centerY : 48;
+    const scale = Number.isFinite(options.scale) ? options.scale : 0.66;
     previewContext.clearRect(0, 0, canvasElement.width, canvasElement.height);
     previewContext.save();
-    previewContext.translate(canvasElement.width / 2, 48);
-    previewContext.scale(0.66, 0.66);
+    previewContext.translate(canvasElement.width / 2, centerY);
+    previewContext.scale(scale, scale);
 
     const bodyGradient = previewContext.createRadialGradient(-9, -10, 2, 0, 0, 30);
     bodyGradient.addColorStop(0, palette.light);

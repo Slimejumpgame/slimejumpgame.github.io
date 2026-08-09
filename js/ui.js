@@ -101,6 +101,24 @@
     return preview;
   }
 
+  function renderMenuMascot() {
+    if (!ui.menuMascot) return;
+    const cosmetic = getActiveSlimeCosmetic();
+    const definition = getSlimeCosmeticDefinition(cosmetic);
+    const isHat = definition?.type === "hat";
+    const isBow = cosmetic === "bow";
+    drawSlimeCosmeticPreview(
+      ui.menuMascot,
+      cosmetic,
+      getActiveSlimeColor(),
+      isHat
+        ? {centerY: 128, scale: 1.35}
+        : isBow
+          ? {centerY: 96, scale: 1.7}
+          : {centerY: 95, scale: 2}
+    );
+  }
+
   function createSlimeColorOption(color, unlockMode = false) {
     const unlocked = isSlimeColorUnlocked(color);
     const devPreviewAvailable = DEV_MODE && !unlockMode;
@@ -160,6 +178,7 @@
 
       renderSlimeColorPicker();
       renderSlimeCosmeticPicker();
+      renderMenuMascot();
       renderWardrobeUnlockPanel();
     });
 
@@ -248,6 +267,7 @@
 
       renderSlimeColorPicker();
       renderSlimeCosmeticPicker();
+      renderMenuMascot();
       renderWardrobeUnlockPanel();
     });
 
@@ -545,9 +565,13 @@
 
   function showMenuScreen(screenName = "main") {
     ui.mainMenuScreen.classList.toggle("hidden", screenName !== "main");
+    ui.wardrobeScreen.classList.toggle("hidden", screenName !== "wardrobe");
     ui.howToScreen.classList.toggle("hidden", screenName !== "howto");
     ui.highscoreScreen.classList.toggle("hidden", screenName !== "highscores");
     if (screenName === "main") {
+      renderMenuMascot();
+    }
+    if (screenName === "wardrobe") {
       renderSlimeColorPicker();
       renderSlimeCosmeticPicker();
     }
