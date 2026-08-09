@@ -11,7 +11,7 @@
     "sb_publishable_DDpbowG2-g6ZVios1OTrfA_DkUyh2TC";
 
   const TABLE = "slime_jump_highscores";
-  const GAME_VERSION = "2.44";
+  const GAME_VERSION = "2.45";
   // Nach der unten dokumentierten Supabase-Migration auf true setzen.
   const SLIME_COLOR_COLUMN_ENABLED = true;
   // Erst nach dem Anlegen der Spalte slime_cosmetic in Supabase aktivieren.
@@ -187,7 +187,7 @@
       payload.slime_achievements = normalizeSlimeAchievementIds(slimeAchievements);
     }
 
-    console.info("[Highscore] Submit payload:", payload);
+    console.info("[Highscore] INSERT START");
 
     const response = await fetch(
       `${SUPABASE_URL}/rest/v1/${TABLE}`,
@@ -212,7 +212,7 @@
       );
     }
 
-    console.info("[Highscore] Supabase insert success");
+    console.info("[Highscore] INSERT SUCCESS");
     return true;
   }
 

@@ -790,7 +790,11 @@
 
   function submitOnlineHighScore(name, finalScore, reachedLevel, slimeAchievements) {
     const online = window.SlimeJumpHighscores;
-    if (!online?.isConfigured?.()) return;
+    if (!online?.isConfigured?.()) {
+      console.info("[Highscore] COMMIT SKIPPED reason=online-not-configured");
+      lastOnlineScoreSubmit = Promise.resolve(null);
+      return lastOnlineScoreSubmit;
+    }
 
     const submittedScore = {
       name: normalizeNickname(name),
@@ -809,11 +813,14 @@
         .length;
       const qualifies = qualifiesForOnlineTopTen(submittedScore.score, onlineScores);
 
-      console.info("[Highscore] Online entries:", validEntryCount);
-      console.info("[Highscore] Qualifies for online top 10:", qualifies);
-      if (!qualifies) return null;
+      console.info(`[Highscore] ONLINE ENTRIES=${validEntryCount}`);
+      console.info(`[Highscore] QUALIFIES=${qualifies}`);
+      if (!qualifies) {
+        console.info("[Highscore] COMMIT SKIPPED reason=not-qualified");
+        return null;
+      }
 
-      console.info("[Highscore] Submitted name:", submittedScore.name);
+      console.info(`[Highscore] NAME CONFIRMED=${submittedScore.name}`);
       await online.submitScore(submittedScore);
       return submittedScore;
     })()
@@ -821,10 +828,15 @@
         console.error("[Highscore] Online submit failed:", error);
         throw error;
       });
+    return lastOnlineScoreSubmit;
   }
 
-  function saveRecentScore(name, finalScore, reachedLevel) {
-    const slimeAchievements = getHighScoreAchievementSnapshot();
+  function saveRecentScore(
+    name,
+    finalScore,
+    reachedLevel,
+    slimeAchievements = getHighScoreAchievementSnapshot()
+  ) {
     const recentScores = sanitizeScoreEntries(loadRecentScores());
     recentScores.unshift({
       name: normalizeNickname(name),
@@ -844,7 +856,6 @@
     } catch (_) {}
 
     saveHighScore(name, finalScore, reachedLevel, slimeAchievements);
-    submitOnlineHighScore(name, finalScore, reachedLevel, slimeAchievements);
   }
 
   function showNicknameEntry() {
@@ -862,11 +873,22 @@
     ui.nicknameInput.value = "";
   }
 
-  function commitPendingHighScore() {
-    if (!pendingGameOverScore) return true;
+  async function commitPendingHighScore() {
+    const pendingScore = pendingGameOverScore;
+    if (!pendingScore) {
+      console.info("[Highscore] COMMIT SKIPPED reason=no-pending-run");
+      return true;
+    }
+    if (pendingScore.commitPromise) {
+      console.info("[Highscore] COMMIT SKIPPED reason=commit-in-progress");
+      return false;
+    }
+
+    console.info("[Highscore] COMMIT START");
 
     const nickname = normalizeNickname(ui.nicknameInput.value, "");
     if (nickname.length !== 3) {
+      console.info("[Highscore] COMMIT SKIPPED reason=invalid-name");
       ui.nicknameEntry.classList.remove("invalid");
       void ui.nicknameEntry.offsetWidth;
       ui.nicknameEntry.classList.add("invalid");
@@ -875,17 +897,44 @@
       return false;
     }
 
-    saveRecentScore(
-      nickname,
-      pendingGameOverScore.score,
-      pendingGameOverScore.reachedLevel
-    );
-    try { localStorage.setItem("slimejumperLastNickname", nickname); } catch (_) {}
+    const slimeAchievements = getHighScoreAchievementSnapshot();
 
-    pendingGameOverScore = null;
-    hideNicknameEntry();
-    void updateHighScores();
-    return true;
+    pendingScore.commitPromise = (async () => {
+      try {
+        await submitOnlineHighScore(
+          nickname,
+          pendingScore.score,
+          pendingScore.reachedLevel,
+          slimeAchievements
+        );
+      } catch (error) {
+        pendingScore.commitPromise = null;
+        console.info("[Highscore] COMMIT SKIPPED reason=online-error");
+        ui.nicknameEntry.classList.remove("invalid");
+        ui.nicknameHint.textContent = "Online-Speichern fehlgeschlagen. Bitte erneut bestätigen.";
+        ui.nicknameInput.focus();
+        return false;
+      }
+
+      try {
+        saveRecentScore(
+          nickname,
+          pendingScore.score,
+          pendingScore.reachedLevel,
+          slimeAchievements
+        );
+        try { localStorage.setItem("slimejumperLastNickname", nickname); } catch (_) {}
+      } catch (error) {
+        console.error("[Highscore] Local score save failed:", error);
+      }
+
+      if (pendingGameOverScore === pendingScore) pendingGameOverScore = null;
+      hideNicknameEntry();
+      void updateHighScores();
+      return true;
+    })();
+
+    return pendingScore.commitPromise;
   }
 
   function renderHighScoreRows(highScores, emptyText = "Noch keine Highscores – spiel deine erste Runde!") {

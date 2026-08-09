@@ -50,8 +50,8 @@
     if (DEV_MODE) ui.devLevelInput.value = String(levelIndex + 1);
   }
 
-  function startGame(levelNumber = 1) {
-    pendingGameOverScore = null;
+  async function startGame(levelNumber = 1) {
+    if (pendingGameOverScore && !(await commitPendingHighScore())) return false;
     hideNicknameEntry();
     hideGameToast();
     getAudio();
@@ -74,13 +74,14 @@
     ui.message.classList.add("hidden");
     resetLevel(true);
     window.SlimeAchievements?.onRunStart?.(getAchievementLevelContext());
+    return true;
   }
 
-  function startDevLevel(levelNumber) {
+  async function startDevLevel(levelNumber) {
     if (!DEV_MODE) return;
     const parsedLevel = Math.floor(Number(levelNumber));
     const targetLevel = Number.isFinite(parsedLevel) ? Math.max(1, parsedLevel) : levelIndex + 1;
-    startGame(targetLevel);
+    return startGame(targetLevel);
   }
 
   function initializeDevMode() {
@@ -97,7 +98,8 @@
     });
     ui.devModeToggleBtn.textContent = `DEV MODE: ${DEV_MODE ? "ON" : "OFF"}`;
     ui.devModeToggleBtn.setAttribute("aria-pressed", String(DEV_MODE));
-    ui.devModeToggleBtn.addEventListener("click", () => {
+    ui.devModeToggleBtn.addEventListener("click", async () => {
+      if (pendingGameOverScore && !(await commitPendingHighScore())) return;
       setLocalDevModeEnabled(!DEV_MODE);
     });
 
@@ -116,15 +118,15 @@
     });
   }
 
-  function restartCurrent() {
+  async function restartCurrent() {
     if (state === "gameover") {
-      if (!commitPendingHighScore()) return;
+      if (!(await commitPendingHighScore())) return;
       if (!requirePendingWardrobeUnlockSelection()) return;
-      startGame();
+      await startGame();
       return;
     }
     if (state === "menu") {
-      startGame();
+      await startGame();
       return;
     }
     state = "playing";
@@ -133,7 +135,8 @@
     window.SlimeAchievements?.onLevelStart?.(getAchievementLevelContext());
   }
 
-  function returnToMenu() {
+  async function returnToMenu() {
+    if (pendingGameOverScore && !(await commitPendingHighScore())) return false;
     state = "menu";
     setMusicMode("menu");
     if (!musicMuted) startBackgroundMusic("menu");
@@ -151,6 +154,7 @@
     showMenuScreen("main");
     updateHighScores();
     ui.menu.classList.remove("hidden");
+    return true;
   }
 
   function updateHUD() {
@@ -264,7 +268,7 @@
 
     if (lives <= 0) {
       const reachedLevel = levelIndex + 1;
-      console.info("[Highscore] Final run score:", score);
+      console.info(`[Highscore] RUN FINISHED score=${score}`);
       const previousBest = Number(localStorage.getItem("slimejumperBest") || 0);
       const previousBestLevel = Number(localStorage.getItem("slimejumperBestLevel") || 0);
       const best = Math.max(previousBest, score);
@@ -297,8 +301,8 @@
     }
   }
 
-  function doContinue() {
-    if (nextAction === "gameover" && !commitPendingHighScore()) return;
+  async function doContinue() {
+    if (nextAction === "gameover" && !(await commitPendingHighScore())) return;
     if (nextAction === "gameover" && !requirePendingWardrobeUnlockSelection()) return;
     ui.message.classList.add("hidden");
     if (nextAction === "next") {
@@ -310,7 +314,7 @@
       resetLevel(true);
       window.SlimeAchievements?.onLevelStart?.(getAchievementLevelContext());
     } else {
-      startGame();
+      await startGame();
     }
   }
 
@@ -427,10 +431,10 @@
     }
   });
 
-  function returnToMenuWithPendingScore() {
-    if (nextAction === "gameover" && pendingGameOverScore && !commitPendingHighScore()) return;
+  async function returnToMenuWithPendingScore() {
+    if (pendingGameOverScore && !(await commitPendingHighScore())) return;
     if (nextAction === "gameover" && !requirePendingWardrobeUnlockSelection()) return;
-    returnToMenu();
+    await returnToMenu();
   }
 
   ui.continueBtn.addEventListener("click", doContinue);
