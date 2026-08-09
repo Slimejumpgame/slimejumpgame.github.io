@@ -11,13 +11,15 @@
     "sb_publishable_DDpbowG2-g6ZVios1OTrfA_DkUyh2TC";
 
   const TABLE = "slime_jump_highscores";
-  const GAME_VERSION = "2.40";
+  const GAME_VERSION = "2.41";
   // Nach der unten dokumentierten Supabase-Migration auf true setzen.
   const SLIME_COLOR_COLUMN_ENABLED = true;
   // Erst nach dem Anlegen der Spalte slime_cosmetic in Supabase aktivieren.
   const SLIME_COSMETIC_COLUMN_ENABLED = true;
   // Erst nach der kontrollierten slime_beard-Migration in Supabase aktivieren.
   const SLIME_BEARD_COLUMN_ENABLED = true;
+  // Erst nach der kontrollierten slime_achievements-Migration aktivieren.
+  const SLIME_ACHIEVEMENTS_COLUMN_ENABLED = true;
 
   function isConfigured() {
     return (
@@ -62,6 +64,26 @@
     return Math.min(number, 1000000);
   }
 
+  function normalizeSlimeAchievementIds(value) {
+    if (!Array.isArray(value)) return [];
+
+    const registry = window.SlimeAchievements?.registry;
+    const knownIds = Array.isArray(registry)
+      ? new Set(registry.map(achievement => achievement?.id).filter(Boolean))
+      : null;
+    const normalized = [];
+
+    value.forEach(id => {
+      if (normalized.length >= 3 || typeof id !== "string") return;
+      const cleanId = id.trim();
+      if (!cleanId || normalized.includes(cleanId)) return;
+      if (knownIds && !knownIds.has(cleanId)) return;
+      normalized.push(cleanId);
+    });
+
+    return normalized;
+  }
+
   function headers(extra = {}) {
     return {
       apikey: SUPABASE_PUBLISHABLE_KEY,
@@ -82,6 +104,7 @@
     if (SLIME_COLOR_COLUMN_ENABLED) selectedColumns.push("slime_color");
     if (SLIME_COSMETIC_COLUMN_ENABLED) selectedColumns.push("slime_cosmetic");
     if (SLIME_BEARD_COLUMN_ENABLED) selectedColumns.push("slime_beard");
+    if (SLIME_ACHIEVEMENTS_COLUMN_ENABLED) selectedColumns.push("slime_achievements");
 
     const query = new URLSearchParams({
       select: selectedColumns.join(","),
@@ -122,6 +145,9 @@
           slimeBeard: SLIME_BEARD_COLUMN_ENABLED
             ? normalizeSlimeBeard(row.slime_beard)
             : "none",
+          slimeAchievements: SLIME_ACHIEVEMENTS_COLUMN_ENABLED
+            ? normalizeSlimeAchievementIds(row.slime_achievements)
+            : [],
           gameVersion: String(row.game_version || ""),
           createdAt: row.created_at || null
         }))
@@ -134,7 +160,8 @@
     level,
     slimeColor = "green",
     slimeCosmetic = "none",
-    slimeBeard = "none"
+    slimeBeard = "none",
+    slimeAchievements = []
   }) {
     if (!isConfigured()) {
       throw new Error("Online-Highscores sind noch nicht konfiguriert.");
@@ -155,6 +182,9 @@
     }
     if (SLIME_BEARD_COLUMN_ENABLED) {
       payload.slime_beard = normalizeSlimeBeard(slimeBeard);
+    }
+    if (SLIME_ACHIEVEMENTS_COLUMN_ENABLED) {
+      payload.slime_achievements = normalizeSlimeAchievementIds(slimeAchievements);
     }
 
     const response = await fetch(
@@ -183,6 +213,7 @@
     slimeColorColumnEnabled: SLIME_COLOR_COLUMN_ENABLED,
     slimeCosmeticColumnEnabled: SLIME_COSMETIC_COLUMN_ENABLED,
     slimeBeardColumnEnabled: SLIME_BEARD_COLUMN_ENABLED,
+    slimeAchievementsColumnEnabled: SLIME_ACHIEVEMENTS_COLUMN_ENABLED,
     getTopScores,
     submitScore
   });

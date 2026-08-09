@@ -3,6 +3,16 @@
   const MAX_LIVES = 5;
   const PERFECT_LEVEL_STREAK_TARGET = 3;
 
+  function getAchievementLevelContext() {
+    const levelNumber = levelIndex + 1;
+    const level = currentLevel();
+    return {
+      levelNumber,
+      biomeId: getBiomeForLevel(levelNumber).id,
+      hasGhost: Array.isArray(level?.enemies) && level.enemies.length > 0
+    };
+  }
+
   function resetFallingPlatforms(level = currentLevel()) {
     if (!level?.fallingPlatforms) return;
     for (const platform of level.fallingPlatforms) {
@@ -55,8 +65,6 @@
     score = 0;
     shots = 0;
     runStarsCollected = 0;
-    wardrobeUnlockEarnedThisRun = false;
-    pendingWardrobeUnlock = false;
     wardrobeUnlockCategory = null;
     hideWardrobeUnlockPanel();
     generatedLevel = generateProceduralLevel(levelNumber);
@@ -64,6 +72,7 @@
     showMenuScreen("main");
     ui.message.classList.add("hidden");
     resetLevel(true);
+    window.SlimeAchievements?.onRunStart?.(getAchievementLevelContext());
   }
 
   function startDevLevel(levelNumber) {
@@ -103,6 +112,7 @@
     state = "playing";
     ui.message.classList.add("hidden");
     resetLevel(true);
+    window.SlimeAchievements?.onLevelStart?.(getAchievementLevelContext());
   }
 
   function returnToMenu() {
@@ -135,15 +145,17 @@
 
   function registerRunStarCollected() {
     runStarsCollected++;
+    window.SlimeAchievements?.onStarCollected?.({runStars: runStarsCollected});
 
-    if (DEV_MODE || wardrobeUnlockEarnedThisRun) return;
+    if (DEV_MODE) return;
 
-    const requiredStars = getNextWardrobeUnlockRequirement();
-    if (requiredStars === null || runStarsCollected < requiredStars) return;
+    const earnedChoices = awardWardrobeUnlockChoicesForRun(runStarsCollected);
+    if (earnedChoices <= 0) return;
 
-    wardrobeUnlockEarnedThisRun = true;
-    pendingWardrobeUnlock = true;
-    showGameToast("🎁 Neuer Wardrobe-Unlock verdient!");
+    wardrobeUnlockCategory = null;
+    showGameToast(earnedChoices === 1
+      ? "🎁 Freie Wardrobe-Auswahl verdient!"
+      : `🎁 ${earnedChoices} freie Wardrobe-Auswahlen verdient!`);
   }
 
   function showMessage(title, text, buttonText, action) {
@@ -191,6 +203,17 @@
       Math.max(0, 650 + completedLevel * 45 - shots * 55) +
       stars * 250;
 
+    const achievementContext = getAchievementLevelContext();
+    window.SlimeAchievements?.onLevelCompleted?.({
+      ...achievementContext,
+      isPerfect: stars === 3 && !levelHadDeath,
+      hadDeath: levelHadDeath,
+      levelShots: shots,
+      remainingLives: lives,
+      collectedStars: stars,
+      totalStars: currentLevel().stars.length
+    });
+
     score += bonus;
     const streakMessage = updatePerfectLevelStreak(stars);
 
@@ -208,6 +231,7 @@
 
   function loseLife() {
     if (state !== "playing") return;
+    window.SlimeAchievements?.onDeath?.();
     stuckAimFallbackActive = false;
     resetStuckAimTimer();
     levelHadDeath = true;
@@ -265,6 +289,7 @@
       generatedLevel = generateProceduralLevel(levelIndex + 1);
       state = "playing";
       resetLevel(true);
+      window.SlimeAchievements?.onLevelStart?.(getAchievementLevelContext());
     } else {
       startGame();
     }
@@ -336,7 +361,8 @@
   }
 
   for (const button of [
-    ui.startBtn, ui.wardrobeBtn, ui.howToBtn, ui.highScoresBtn,
+    ui.startBtn, ui.achievementsBtn, ui.wardrobeBtn, ui.howToBtn, ui.highScoresBtn,
+    ui.achievementsBackBtn,
     ui.wardrobeBackBtn, ui.wardrobeColorMenuBtn, ui.wardrobeCosmeticsMenuBtn,
     ui.wardrobeBeardsMenuBtn, ui.wardrobeColorBackBtn,
     ui.wardrobeCosmeticsBackBtn, ui.wardrobeBeardsBackBtn,
@@ -349,9 +375,11 @@
   }
 
   ui.startBtn.addEventListener("click", () => runMenuButtonAction(ui.startBtn, startGame));
+  ui.achievementsBtn.addEventListener("click", () => runMenuButtonAction(ui.achievementsBtn, () => showMenuScreen("achievements")));
   ui.wardrobeBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeBtn, () => showMenuScreen("wardrobe")));
   ui.howToBtn.addEventListener("click", () => runMenuButtonAction(ui.howToBtn, () => showMenuScreen("howto")));
   ui.highScoresBtn.addEventListener("click", () => runMenuButtonAction(ui.highScoresBtn, () => showMenuScreen("highscores")));
+  ui.achievementsBackBtn.addEventListener("click", () => runMenuButtonAction(ui.achievementsBackBtn, () => showMenuScreen("main")));
   ui.wardrobeBackBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeBackBtn, () => showMenuScreen("main")));
   ui.wardrobeColorMenuBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeColorMenuBtn, () => showWardrobeView("color")));
   ui.wardrobeCosmeticsMenuBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeCosmeticsMenuBtn, () => showWardrobeView("cosmetics")));

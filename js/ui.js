@@ -8,6 +8,40 @@
   let devPreviewSlimeCosmetic = null;
   let devPreviewSlimeBeard = null;
 
+  function isDevShopTestActive() {
+    return DEV_MODE && Boolean(window.SlimeDevShopTest?.isActive?.());
+  }
+
+  function getWardrobePurchaseEconomy() {
+    return isDevShopTestActive()
+      ? window.SlimeDevShopTest
+      : window.SlimeStarEconomy;
+  }
+
+  function renderDevShopTestControl() {
+    if (!ui.devShopTestBtn || !DEV_MODE) return;
+    const shopTest = window.SlimeDevShopTest;
+    const active = Boolean(shopTest?.isActive?.());
+    const balance = Math.max(0, Number(shopTest?.getBalance?.()) || 0);
+    ui.devShopTestBtn.setAttribute("aria-pressed", String(active));
+    ui.devShopTestBtn.textContent = active
+      ? `SHOP TEST · ${balance.toLocaleString("de-DE")} ⭐`
+      : "SHOP TEST";
+  }
+
+  function toggleDevShopTest() {
+    if (!DEV_MODE || !window.SlimeDevShopTest) return;
+    window.SlimeDevShopTest.setActive(!isDevShopTestActive());
+    devPreviewSlimeColor = null;
+    devPreviewSlimeCosmetic = null;
+    devPreviewSlimeBeard = null;
+    renderDevShopTestControl();
+    renderSlimeColorPicker();
+    renderSlimeCosmeticPicker();
+    renderSlimeBeardPicker();
+    renderMenuMascot();
+  }
+
   function initializeMenuBiomeBackground() {
     const menuBackdrop = document.querySelector(".menuBackdrop");
     if (
@@ -129,13 +163,120 @@
     );
   }
 
+  function getPersonalBestScore() {
+    try {
+      return Math.max(
+        0,
+        Math.floor(Number(localStorage.getItem("slimejumperBest")) || 0)
+      );
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  function renderMainMenuStats() {
+    if (ui.personalBestValue) {
+      ui.personalBestValue.textContent = getPersonalBestScore().toLocaleString("de-DE");
+    }
+    if (ui.starBalanceValue) {
+      const balance = window.SlimeStarEconomy?.getBalance?.() ?? 0;
+      ui.starBalanceValue.textContent = Math.max(0, balance).toLocaleString("de-DE");
+    }
+  }
+
+  function getWardrobePurchaseRequirementText() {
+    const pendingChoices = DEV_MODE ? 0 : getPendingWardrobeUnlockChoiceCount();
+    return pendingChoices > 0
+      ? `🎁 ${pendingChoices} freie Auswahl${pendingChoices === 1 ? "" : "en"} verfügbar`
+      : "🔒 Freie Auswahl über Run-Meilenstein";
+  }
+
+  function createWardrobePurchaseSlot(category, itemId, itemName, optionButton) {
+    const economy = getWardrobePurchaseEconomy();
+    const price = economy?.itemPrice ?? 100;
+    const slot = document.createElement("div");
+    slot.className = "wardrobePurchaseSlot";
+
+    const normalRequirement = document.createElement("span");
+    normalRequirement.className = "wardrobePurchaseRequirement";
+    normalRequirement.textContent = getWardrobePurchaseRequirementText();
+
+    const freeUnlockButton = document.createElement("button");
+    freeUnlockButton.type = "button";
+    freeUnlockButton.className = "wardrobeFreeUnlockButton";
+    freeUnlockButton.textContent = "GRATIS FREISCHALTEN";
+    freeUnlockButton.setAttribute(
+      "aria-label",
+      `${itemName} mit einer freien Wardrobe-Auswahl freischalten`
+    );
+    freeUnlockButton.addEventListener("click", event => {
+      event.stopPropagation();
+      if (!redeemPendingWardrobeUnlockChoice(category, itemId)) return;
+
+      wardrobeUnlockCategory = null;
+      showGameToast(`🎁 ${itemName} gratis freigeschaltet!`);
+      window.SlimeAchievements?.checkWardrobe?.();
+      renderSlimeColorPicker();
+      renderSlimeCosmeticPicker();
+      renderSlimeBeardPicker();
+      renderMenuMascot();
+      renderWardrobeUnlockPanel();
+    });
+
+    const buyButton = document.createElement("button");
+    buyButton.type = "button";
+    buyButton.className = "wardrobeBuyButton";
+    buyButton.textContent = `KAUFEN · ${price} ⭐`;
+    buyButton.disabled = !economy?.canPurchaseWardrobeItem?.(category, itemId);
+    buyButton.setAttribute(
+      "aria-label",
+      `${itemName} für ${price} Sterne kaufen`
+    );
+    buyButton.addEventListener("click", event => {
+      event.stopPropagation();
+      const result = economy?.purchaseWardrobeItem?.(category, itemId);
+      if (!result?.ok) return;
+
+      showGameToast(result.test
+        ? `🧪 ${itemName} testweise für ${price} Sterne gekauft!`
+        : `⭐ ${itemName} für ${price} Sterne gekauft!`);
+      renderSlimeColorPicker();
+      renderSlimeCosmeticPicker();
+      renderSlimeBeardPicker();
+      renderMenuMascot();
+      if (result.test) renderDevShopTestControl();
+      else renderMainMenuStats();
+      renderWardrobeUnlockPanel();
+    });
+
+    slot.append(optionButton, normalRequirement);
+    if (!DEV_MODE && getPendingWardrobeUnlockChoiceCount() > 0) {
+      slot.appendChild(freeUnlockButton);
+    }
+    slot.appendChild(buyButton);
+    return slot;
+  }
+
+  function getWardrobeOptionDevState(category, itemId, unlocked, unlockMode) {
+    const shopTestActive = isDevShopTestActive() && !unlockMode;
+    const testUnlocked = shopTestActive &&
+      !unlocked &&
+      Boolean(window.SlimeDevShopTest?.isItemUnlocked?.(category, itemId));
+    return {
+      shopTestActive,
+      available: unlocked || testUnlocked,
+      devPreviewAvailable: DEV_MODE && !shopTestActive && !unlockMode && !unlocked
+    };
+  }
+
   function createSlimeColorOption(color, unlockMode = false) {
     const unlocked = isSlimeColorUnlocked(color);
-    const unlockRequirement = getWardrobeUnlockRequirementForTarget("color", color);
-    const devPreviewAvailable = DEV_MODE && !unlockMode;
+    const {shopTestActive, available, devPreviewAvailable} =
+      getWardrobeOptionDevState("color", color, unlocked, unlockMode);
     const canUnlock =
+      !DEV_MODE &&
       unlockMode &&
-      pendingWardrobeUnlock &&
+      getPendingWardrobeUnlockChoiceCount() > 0 &&
       wardrobeUnlockCategory === "color" &&
       !unlocked;
     const button = document.createElement("button");
@@ -144,20 +285,20 @@
     button.dataset.color = color;
     applySlimePaletteCss(button, color);
     button.classList.toggle("selected", color === getActiveSlimeColor());
-    button.classList.toggle("locked", !unlocked && !devPreviewAvailable);
+    button.classList.toggle("locked", !available && !devPreviewAvailable);
     button.classList.toggle("unlockable", canUnlock);
-    button.disabled = unlockMode ? !canUnlock : !unlocked && !devPreviewAvailable;
+    button.disabled = unlockMode ? !canUnlock : !available && !devPreviewAvailable;
     button.setAttribute(
       "aria-label",
-      unlocked
+      shopTestActive && available
+        ? `${SLIME_COLOR_NAMES[color]} temporär im Shop Test ansehen`
+        : unlocked
         ? `${SLIME_COLOR_NAMES[color]} auswählen`
         : devPreviewAvailable
           ? `${SLIME_COLOR_NAMES[color]} temporär im Dev Mode ansehen`
           : unlockMode
             ? `${SLIME_COLOR_NAMES[color]} als Wardrobe-Item freischalten`
-            : unlockRequirement === null
-              ? `${SLIME_COLOR_NAMES[color]} ist gesperrt`
-              : `${SLIME_COLOR_NAMES[color]} ist gesperrt und benötigt ${unlockRequirement} Sterne in einem Run`
+            : `${SLIME_COLOR_NAMES[color]} ist gesperrt`
     );
 
     button.appendChild(createSlimeColorPreview(color));
@@ -167,34 +308,34 @@
     label.textContent = SLIME_COLOR_NAMES[color];
     button.appendChild(label);
 
-    if (!unlocked) {
+    if (!available) {
       const lock = document.createElement("span");
       lock.className = "slimeColorLock";
       lock.textContent = devPreviewAvailable
         ? "DEV"
         : unlockMode
           ? "+"
-          : unlockRequirement === null
-            ? "🔒"
-            : `${unlockRequirement}★`;
+          : "🔒";
       lock.setAttribute("aria-hidden", "true");
       button.appendChild(lock);
     }
 
     button.addEventListener("click", () => {
-      if (isSlimeColorUnlocked(color)) {
+      if (shopTestActive && available) {
+        devPreviewSlimeColor = normalizeSlimeColor(color);
+      } else if (isSlimeColorUnlocked(color)) {
         devPreviewSlimeColor = null;
         selectSlimeColor(color);
       } else if (devPreviewAvailable) {
         devPreviewSlimeColor = normalizeSlimeColor(color);
       } else {
         if (!canUnlock) return;
-        if (!unlockSlimeColor(color)) return;
-        pendingWardrobeUnlock = false;
+        if (!redeemPendingWardrobeUnlockChoice("color", color)) return;
         wardrobeUnlockCategory = null;
         showGameToast(`🎨 ${SLIME_COLOR_NAMES[color]} freigeschaltet!`);
       }
 
+      if (!shopTestActive) window.SlimeAchievements?.checkWardrobe?.();
       renderSlimeColorPicker();
       renderSlimeCosmeticPicker();
       renderSlimeBeardPicker();
@@ -202,25 +343,28 @@
       renderWardrobeUnlockPanel();
     });
 
-    return button;
+    return !available && !devPreviewAvailable && !unlockMode
+      ? createWardrobePurchaseSlot(
+          "color",
+          color,
+          SLIME_COLOR_NAMES[color],
+          button
+        )
+      : button;
   }
 
   function renderWardrobeProgress() {
     const requiredStars = getNextWardrobeUnlockRequirement();
-    const fixedTarget = getNextWardrobeUnlockTarget();
-    const fixedTargetName = fixedTarget?.category === "color"
-      ? SLIME_COLOR_NAMES[fixedTarget.id]
-      : fixedTarget?.category === "cosmetic"
-        ? getSlimeCosmeticDefinition(fixedTarget.id).name
-        : fixedTarget?.category === "beard"
-          ? getSlimeBeardDefinition(fixedTarget.id).name
-          : null;
+    const pendingChoices = getPendingWardrobeUnlockChoiceCount();
     if (ui.slimeColorRequirement) {
+      const pendingText = pendingChoices > 0
+        ? `${pendingChoices} freie Wardrobe-Auswahl${pendingChoices === 1 ? "" : "en"} verfügbar`
+        : "";
       ui.slimeColorRequirement.textContent = requiredStars === null
-        ? "Wardrobe komplett!"
-        : fixedTargetName
-          ? `Nächstes Ziel: ${fixedTargetName} · ${requiredStars} ⭐ in einem Run`
-          : `Nächster Unlock: ${requiredStars} ⭐ in einem Run`;
+        ? pendingText || "Wardrobe komplett!"
+        : pendingText
+          ? `${pendingText} · Nächster Unlock bei ${requiredStars} ⭐ in einem Run`
+          : `Nächster Unlock bei ${requiredStars} ⭐ in einem Run`;
     }
   }
 
@@ -249,10 +393,12 @@
 
   function createSlimeCosmeticOption(cosmetic, unlockMode = false) {
     const unlocked = isSlimeCosmeticUnlocked(cosmetic);
-    const devPreviewAvailable = DEV_MODE && !unlockMode && !unlocked;
+    const {shopTestActive, available, devPreviewAvailable} =
+      getWardrobeOptionDevState("cosmetic", cosmetic, unlocked, unlockMode);
     const canUnlock =
+      !DEV_MODE &&
       unlockMode &&
-      pendingWardrobeUnlock &&
+      getPendingWardrobeUnlockChoiceCount() > 0 &&
       wardrobeUnlockCategory === "cosmetic" &&
       !unlocked;
     const definition = getSlimeCosmeticDefinition(cosmetic);
@@ -261,12 +407,14 @@
     button.className = "slimeColorOption slimeCosmeticOption";
     button.dataset.cosmetic = cosmetic;
     button.classList.toggle("selected", cosmetic === getActiveSlimeCosmetic());
-    button.classList.toggle("locked", !unlocked && !devPreviewAvailable);
+    button.classList.toggle("locked", !available && !devPreviewAvailable);
     button.classList.toggle("unlockable", canUnlock);
-    button.disabled = unlockMode ? !canUnlock : !unlocked && !devPreviewAvailable;
+    button.disabled = unlockMode ? !canUnlock : !available && !devPreviewAvailable;
     button.setAttribute(
       "aria-label",
-      unlocked
+      shopTestActive && available
+        ? `${definition.name} temporär im Shop Test ansehen`
+        : unlocked
         ? `${definition.name} auswählen`
         : devPreviewAvailable
           ? `${definition.name} temporär im Dev Mode ansehen`
@@ -282,7 +430,7 @@
     label.textContent = definition.name;
     button.appendChild(label);
 
-    if (!unlocked) {
+    if (!available) {
       const lock = document.createElement("span");
       lock.className = "slimeColorLock";
       lock.textContent = devPreviewAvailable ? "DEV" : "🔒";
@@ -291,19 +439,21 @@
     }
 
     button.addEventListener("click", () => {
-      if (isSlimeCosmeticUnlocked(cosmetic)) {
+      if (shopTestActive && available) {
+        devPreviewSlimeCosmetic = normalizeSlimeCosmetic(cosmetic);
+      } else if (isSlimeCosmeticUnlocked(cosmetic)) {
         devPreviewSlimeCosmetic = null;
         selectSlimeCosmetic(cosmetic);
       } else if (devPreviewAvailable) {
         devPreviewSlimeCosmetic = normalizeSlimeCosmetic(cosmetic);
       } else {
         if (!canUnlock) return;
-        if (!unlockSlimeCosmetic(cosmetic)) return;
-        pendingWardrobeUnlock = false;
+        if (!redeemPendingWardrobeUnlockChoice("cosmetic", cosmetic)) return;
         wardrobeUnlockCategory = null;
         showGameToast(`🎩 ${definition.name} freigeschaltet!`);
       }
 
+      if (!shopTestActive) window.SlimeAchievements?.checkWardrobe?.();
       renderSlimeColorPicker();
       renderSlimeCosmeticPicker();
       renderSlimeBeardPicker();
@@ -311,7 +461,9 @@
       renderWardrobeUnlockPanel();
     });
 
-    return button;
+    return !available && !devPreviewAvailable && !unlockMode
+      ? createWardrobePurchaseSlot("cosmetic", cosmetic, definition.name, button)
+      : button;
   }
 
   function renderSlimeCosmeticPicker() {
@@ -339,10 +491,12 @@
 
   function createSlimeBeardOption(beard, unlockMode = false) {
     const unlocked = isSlimeBeardUnlocked(beard);
-    const devPreviewAvailable = DEV_MODE && !unlockMode && !unlocked;
+    const {shopTestActive, available, devPreviewAvailable} =
+      getWardrobeOptionDevState("beard", beard, unlocked, unlockMode);
     const canUnlock =
+      !DEV_MODE &&
       unlockMode &&
-      pendingWardrobeUnlock &&
+      getPendingWardrobeUnlockChoiceCount() > 0 &&
       wardrobeUnlockCategory === "beard" &&
       !unlocked;
     const definition = getSlimeBeardDefinition(beard);
@@ -351,12 +505,14 @@
     button.className = "slimeColorOption slimeBeardOption";
     button.dataset.beard = beard;
     button.classList.toggle("selected", beard === getActiveSlimeBeard());
-    button.classList.toggle("locked", !unlocked && !devPreviewAvailable);
+    button.classList.toggle("locked", !available && !devPreviewAvailable);
     button.classList.toggle("unlockable", canUnlock);
-    button.disabled = unlockMode ? !canUnlock : !unlocked && !devPreviewAvailable;
+    button.disabled = unlockMode ? !canUnlock : !available && !devPreviewAvailable;
     button.setAttribute(
       "aria-label",
-      unlocked
+      shopTestActive && available
+        ? `${definition.name} temporär im Shop Test ansehen`
+        : unlocked
         ? `${definition.name} auswählen`
         : devPreviewAvailable
           ? `${definition.name} temporär im Dev Mode ansehen`
@@ -372,7 +528,7 @@
     label.textContent = definition.name;
     button.appendChild(label);
 
-    if (!unlocked) {
+    if (!available) {
       const lock = document.createElement("span");
       lock.className = "slimeColorLock";
       lock.textContent = devPreviewAvailable ? "DEV" : "🔒";
@@ -381,19 +537,21 @@
     }
 
     button.addEventListener("click", () => {
-      if (isSlimeBeardUnlocked(beard)) {
+      if (shopTestActive && available) {
+        devPreviewSlimeBeard = normalizeSlimeBeard(beard);
+      } else if (isSlimeBeardUnlocked(beard)) {
         devPreviewSlimeBeard = null;
         selectSlimeBeard(beard);
       } else if (devPreviewAvailable) {
         devPreviewSlimeBeard = normalizeSlimeBeard(beard);
       } else {
         if (!canUnlock) return;
-        if (!unlockSlimeBeard(beard)) return;
-        pendingWardrobeUnlock = false;
+        if (!redeemPendingWardrobeUnlockChoice("beard", beard)) return;
         wardrobeUnlockCategory = null;
         showGameToast(`🧔 ${definition.name} freigeschaltet!`);
       }
 
+      if (!shopTestActive) window.SlimeAchievements?.checkWardrobe?.();
       renderSlimeColorPicker();
       renderSlimeCosmeticPicker();
       renderSlimeBeardPicker();
@@ -401,7 +559,9 @@
       renderWardrobeUnlockPanel();
     });
 
-    return button;
+    return !available && !devPreviewAvailable && !unlockMode
+      ? createWardrobePurchaseSlot("beard", beard, definition.name, button)
+      : button;
   }
 
   function renderSlimeBeardPicker() {
@@ -435,7 +595,13 @@
     button.textContent = label;
     button.disabled = disabled;
     button.addEventListener("click", () => {
-      if (button.disabled || !pendingWardrobeUnlock) return;
+      if (
+        button.disabled ||
+        DEV_MODE ||
+        getPendingWardrobeUnlockChoiceCount() <= 0
+      ) {
+        return;
+      }
       wardrobeUnlockCategory = category;
       renderWardrobeUnlockPanel();
     });
@@ -444,33 +610,17 @@
 
   function renderWardrobeUnlockPanel() {
     if (!ui.wardrobeUnlockPanel || !ui.wardrobeUnlockOptions) return;
-    if (!pendingWardrobeUnlock || getNextWardrobeUnlockRequirement() === null) {
+    if (DEV_MODE || getPendingWardrobeUnlockChoiceCount() <= 0) {
       hideWardrobeUnlockPanel();
       return;
     }
 
-    const fixedTarget = getNextWardrobeUnlockTarget();
-    let lockedColors = getLockedSlimeColors();
-    let lockedCosmetics = getLockedSlimeCosmetics();
-    let lockedBeards = getLockedSlimeBeards();
-    if (fixedTarget) {
-      lockedColors = fixedTarget.category === "color"
-        ? lockedColors.filter(color => color === fixedTarget.id)
-        : [];
-      lockedCosmetics = fixedTarget.category === "cosmetic"
-        ? lockedCosmetics.filter(cosmetic => cosmetic === fixedTarget.id)
-        : [];
-      lockedBeards = fixedTarget.category === "beard"
-        ? lockedBeards.filter(beard => beard === fixedTarget.id)
-        : [];
-    } else {
-      lockedColors = lockedColors.filter(
-        color => getWardrobeUnlockRequirementForTarget("color", color) === null
-      );
-      lockedCosmetics = lockedCosmetics.filter(
-        cosmetic => getWardrobeUnlockRequirementForTarget("cosmetic", cosmetic) === null
-      );
-      lockedBeards = [];
+    const lockedColors = getLockedSlimeColors();
+    const lockedCosmetics = getLockedSlimeCosmetics();
+    const lockedBeards = getLockedSlimeBeards();
+    if (lockedColors.length + lockedCosmetics.length + lockedBeards.length === 0) {
+      hideWardrobeUnlockPanel();
+      return;
     }
     if (wardrobeUnlockCategory === "color" && lockedColors.length === 0) {
       wardrobeUnlockCategory = null;
@@ -488,8 +638,10 @@
     ui.wardrobeUnlockBackBtn.classList.toggle("hidden", wardrobeUnlockCategory === null);
 
     if (wardrobeUnlockCategory === null) {
+      const pendingChoices = getPendingWardrobeUnlockChoiceCount();
       ui.wardrobeUnlockText.textContent =
-        `${runStarsCollected} Run-Sterne: Was möchtest du freischalten?`;
+        `${pendingChoices} freie Auswahl${pendingChoices === 1 ? "" : "en"}: ` +
+        "Was möchtest du freischalten?";
       ui.wardrobeUnlockCategories.replaceChildren(
         createWardrobeCategoryButton("color", "🎨 FARBE", lockedColors.length === 0),
         createWardrobeCategoryButton("cosmetic", "🎩 COSMETIC", lockedCosmetics.length === 0),
@@ -516,9 +668,9 @@
   }
 
   function requirePendingWardrobeUnlockSelection() {
-    if (!pendingWardrobeUnlock) return true;
+    if (DEV_MODE || getPendingWardrobeUnlockChoiceCount() <= 0) return true;
     renderWardrobeUnlockPanel();
-    showGameToast("🎁 Wähle zuerst dein neues Wardrobe-Item.");
+    showGameToast("🎁 Wähle zuerst deine freien Wardrobe-Items.");
     return false;
   }
 
@@ -539,6 +691,38 @@
     return cleaned.length === 3 ? cleaned : fallback;
   }
 
+  function normalizeHighScoreAchievementIds(value) {
+    if (!Array.isArray(value)) return [];
+
+    const registry = window.SlimeAchievements?.registry;
+    if (!Array.isArray(registry)) return [];
+    const knownIds = new Set(registry.map(achievement => achievement?.id).filter(Boolean));
+    const normalized = [];
+
+    value.forEach(id => {
+      if (normalized.length >= 3 || typeof id !== "string") return;
+      const cleanId = id.trim();
+      if (!cleanId || !knownIds.has(cleanId) || normalized.includes(cleanId)) return;
+      normalized.push(cleanId);
+    });
+
+    return normalized;
+  }
+
+  function getHighScoreAchievementSnapshot() {
+    const selectedCallingCardIds = window.SlimeAchievements?.getSelectedBadgeIds?.();
+    if (Array.isArray(selectedCallingCardIds) && selectedCallingCardIds.length > 0) {
+      return normalizeHighScoreAchievementIds(selectedCallingCardIds.slice(0, 3));
+    }
+
+    const recentRealUnlocks = window.SlimeAchievements?.getRecent?.(3);
+    return normalizeHighScoreAchievementIds(
+      Array.isArray(recentRealUnlocks)
+        ? recentRealUnlocks.map(achievement => achievement?.id)
+        : []
+    );
+  }
+
   function sanitizeScoreEntries(entries) {
     return (Array.isArray(entries) ? entries : [])
       .map(entry => ({
@@ -549,7 +733,10 @@
         slimeCosmetic: normalizeSlimeCosmetic(
           entry?.slimeCosmetic ?? entry?.slime_cosmetic
         ),
-        slimeBeard: normalizeSlimeBeard(entry?.slimeBeard ?? entry?.slime_beard)
+        slimeBeard: normalizeSlimeBeard(entry?.slimeBeard ?? entry?.slime_beard),
+        slimeAchievements: normalizeHighScoreAchievementIds(
+          entry?.slimeAchievements ?? entry?.slime_achievements
+        )
       }))
       .filter(entry => Number.isFinite(entry.score) && Number.isFinite(entry.level));
   }
@@ -572,7 +759,7 @@
     }
   }
 
-  function saveHighScore(name, finalScore, reachedLevel) {
+  function saveHighScore(name, finalScore, reachedLevel, slimeAchievements) {
     const highScores = loadHighScores();
     highScores.push({
       name: normalizeNickname(name),
@@ -580,7 +767,8 @@
       level: Math.max(1, Math.floor(reachedLevel)),
       slimeColor: selectedSlimeColor,
       slimeCosmetic: selectedSlimeCosmetic,
-      slimeBeard: selectedSlimeBeard
+      slimeBeard: selectedSlimeBeard,
+      slimeAchievements: normalizeHighScoreAchievementIds(slimeAchievements)
     });
 
     highScores.sort((a, b) => b.score - a.score || b.level - a.level);
@@ -590,7 +778,7 @@
     } catch (_) {}
   }
 
-  function submitOnlineHighScore(name, finalScore, reachedLevel) {
+  function submitOnlineHighScore(name, finalScore, reachedLevel, slimeAchievements) {
     const online = window.SlimeJumpHighscores;
     if (!online?.isConfigured?.()) return;
 
@@ -600,13 +788,15 @@
       level: Math.max(1, Math.floor(reachedLevel)),
       slimeColor: selectedSlimeColor,
       slimeCosmetic: selectedSlimeCosmetic,
-      slimeBeard: selectedSlimeBeard
+      slimeBeard: selectedSlimeBeard,
+      slimeAchievements: normalizeHighScoreAchievementIds(slimeAchievements)
     }).catch(error => {
       console.warn("Online-Highscore konnte nicht gespeichert werden:", error);
     });
   }
 
   function saveRecentScore(name, finalScore, reachedLevel) {
+    const slimeAchievements = getHighScoreAchievementSnapshot();
     const recentScores = sanitizeScoreEntries(loadRecentScores());
     recentScores.unshift({
       name: normalizeNickname(name),
@@ -614,7 +804,8 @@
       level: Math.max(1, Math.floor(reachedLevel)),
       slimeColor: selectedSlimeColor,
       slimeCosmetic: selectedSlimeCosmetic,
-      slimeBeard: selectedSlimeBeard
+      slimeBeard: selectedSlimeBeard,
+      slimeAchievements: slimeAchievements.slice()
     });
 
     try {
@@ -624,8 +815,8 @@
       );
     } catch (_) {}
 
-    saveHighScore(name, finalScore, reachedLevel);
-    submitOnlineHighScore(name, finalScore, reachedLevel);
+    saveHighScore(name, finalScore, reachedLevel, slimeAchievements);
+    submitOnlineHighScore(name, finalScore, reachedLevel, slimeAchievements);
   }
 
   function showNicknameEntry() {
@@ -689,6 +880,28 @@
       rank.className = "rankBadge";
       rank.textContent = String(index + 1);
 
+      const badges = document.createElement("span");
+      badges.className = "highscoreBadges";
+      badges.setAttribute("aria-hidden", "true");
+      if (entry) {
+        const registry = window.SlimeAchievements?.registry;
+        const achievementById = new Map(
+          (Array.isArray(registry) ? registry : []).map(achievement => [
+            achievement.id,
+            achievement
+          ])
+        );
+
+        normalizeHighScoreAchievementIds(entry.slimeAchievements).forEach(id => {
+          const achievement = achievementById.get(id);
+          if (!achievement?.icon) return;
+          const icon = document.createElement("span");
+          icon.className = "highscoreBadgeIcon";
+          icon.textContent = achievement.icon;
+          badges.appendChild(icon);
+        });
+      }
+
       const name = document.createElement("span");
       name.className = "scoreName";
       if (entry) {
@@ -712,7 +925,7 @@
       level.className = "scoreLevel";
       level.textContent = entry ? `Level ${entry.level}` : "—";
 
-      row.append(rank, name, points, level);
+      row.append(rank, badges, name, points, level);
       ui.highscoreRows.appendChild(row);
     }
   }
@@ -743,13 +956,19 @@
   function showMenuScreen(screenName = "main") {
     ui.mainMenuScreen.classList.toggle("hidden", screenName !== "main");
     ui.wardrobeScreen.classList.toggle("hidden", screenName !== "wardrobe");
+    ui.achievementScreen.classList.toggle("hidden", screenName !== "achievements");
     ui.howToScreen.classList.toggle("hidden", screenName !== "howto");
     ui.highscoreScreen.classList.toggle("hidden", screenName !== "highscores");
     if (screenName === "main") {
       renderMenuMascot();
+      renderMainMenuStats();
+      window.SlimeAchievements?.renderRecent?.();
     }
     if (screenName === "wardrobe") {
       showWardrobeView("home");
+    }
+    if (screenName === "achievements") {
+      window.SlimeAchievements?.renderMenu?.();
     }
     if (screenName === "howto") {
       const scrollArea = ui.howToScreen.querySelector(".howToScrollArea");
@@ -793,5 +1012,10 @@
     ui.howToScreen.querySelector(".howToLongArtwork")
       ?.addEventListener("load", updateHowToScrollbar);
     window.addEventListener("resize", updateHowToScrollbar);
+  }
+
+  if (DEV_MODE && ui.devShopTestBtn) {
+    ui.devShopTestBtn.addEventListener("click", toggleDevShopTest);
+    renderDevShopTestControl();
   }
 

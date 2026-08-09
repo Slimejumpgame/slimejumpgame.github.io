@@ -281,6 +281,7 @@
     if (!aiming) return;
 
     const launch = getSlingshotLaunch();
+    const usedStuckRescue = stuckAimFallbackActive;
     const canLaunch = hasValidAimSupport() || stuckAimFallbackActive;
     stopAiming();
 
@@ -288,6 +289,10 @@
       player.vx = launch.vx;
       player.vy = launch.vy;
       shots++;
+      window.SlimeAchievements?.onShot?.({
+        levelShots: shots,
+        usedRescue: usedStuckRescue
+      });
       player.squish = 1;
       score = Math.max(0, score - 5);
       playLaunch();

@@ -28,7 +28,10 @@
     gameToast: document.getElementById("gameToast"),
     menu: document.getElementById("menuOverlay"),
     mainMenuScreen: document.getElementById("mainMenuScreen"),
+    personalBestValue: document.getElementById("personalBestValue"),
+    starBalanceValue: document.getElementById("starBalanceValue"),
     wardrobeScreen: document.getElementById("wardrobeScreen"),
+    achievementScreen: document.getElementById("achievementScreen"),
     howToScreen: document.getElementById("howToScreen"),
     highscoreScreen: document.getElementById("highscoreScreen"),
     highscoreRows: document.getElementById("highscoreRows"),
@@ -40,9 +43,11 @@
     nicknameHint: document.getElementById("nicknameHint"),
     continueBtn: document.getElementById("continueBtn"),
     startBtn: document.getElementById("startBtn"),
+    achievementsBtn: document.getElementById("achievementsBtn"),
     wardrobeBtn: document.getElementById("wardrobeBtn"),
     howToBtn: document.getElementById("howToBtn"),
     highScoresBtn: document.getElementById("highScoresBtn"),
+    achievementsBackBtn: document.getElementById("achievementsBackBtn"),
     wardrobeBackBtn: document.getElementById("wardrobeBackBtn"),
     wardrobeHome: document.getElementById("wardrobeHome"),
     wardrobeColorView: document.getElementById("wardrobeColorView"),
@@ -77,7 +82,8 @@
     devPreviousLevelBtn: document.getElementById("devPreviousLevelBtn"),
     devLevelInput: document.getElementById("devLevelInput"),
     devStartLevelBtn: document.getElementById("devStartLevelBtn"),
-    devNextLevelBtn: document.getElementById("devNextLevelBtn")
+    devNextLevelBtn: document.getElementById("devNextLevelBtn"),
+    devShopTestBtn: document.getElementById("devShopTestBtn")
   };
 
   let generatedLevel = null;
@@ -125,8 +131,6 @@
   let shots = 0;
   let collected = [];
   let runStarsCollected = 0;
-  let wardrobeUnlockEarnedThisRun = false;
-  let pendingWardrobeUnlock = false;
   let wardrobeUnlockCategory = null;
   let aiming = false;
   let pointer = {x: 0, y: 0};

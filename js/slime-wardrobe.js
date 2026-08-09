@@ -54,39 +54,10 @@
     510
   ]);
 
-  const WARDROBE_FIXED_UNLOCK_TARGETS = Object.freeze({
-    240: Object.freeze({category: "cosmetic", id: "cat_ears"}),
-    250: Object.freeze({category: "beard", id: "stubble"}),
-    260: Object.freeze({category: "beard", id: "mustache"}),
-    270: Object.freeze({category: "beard", id: "goatee"}),
-    280: Object.freeze({category: "beard", id: "full_beard"}),
-    290: Object.freeze({category: "beard", id: "cowboy_mustache"}),
-    300: Object.freeze({category: "beard", id: "viking_beard"}),
-    310: Object.freeze({category: "beard", id: "wizard_beard"}),
-    320: Object.freeze({category: "beard", id: "braided_beard"}),
-    330: Object.freeze({category: "color", id: "crimson"}),
-    340: Object.freeze({category: "color", id: "burgundy"}),
-    350: Object.freeze({category: "color", id: "apricot"}),
-    360: Object.freeze({category: "color", id: "gold"}),
-    370: Object.freeze({category: "color", id: "lime"}),
-    380: Object.freeze({category: "color", id: "forest"}),
-    390: Object.freeze({category: "color", id: "mint"}),
-    400: Object.freeze({category: "color", id: "teal"}),
-    410: Object.freeze({category: "color", id: "ice_blue"}),
-    420: Object.freeze({category: "color", id: "navy"}),
-    430: Object.freeze({category: "color", id: "indigo"}),
-    440: Object.freeze({category: "color", id: "magenta"}),
-    450: Object.freeze({category: "color", id: "hot_pink"}),
-    460: Object.freeze({category: "color", id: "vanilla"}),
-    470: Object.freeze({category: "color", id: "silver"}),
-    480: Object.freeze({category: "color", id: "charcoal"}),
-    490: Object.freeze({category: "cosmetic", id: "bunny_ears"}),
-    500: Object.freeze({category: "beard", id: "lumberjack_beard"}),
-    510: Object.freeze({category: "beard", id: "imperial_beard"})
-  });
-
   const WARDROBE_PROGRESS_VERSION_STORAGE_KEY = "slimejumperWardrobeProgressVersion";
   const WARDROBE_PROGRESS_VERSION = "unified-wardrobe-v1";
+  const PENDING_WARDROBE_UNLOCK_CHOICES_STORAGE_KEY =
+    "slimejumperPendingWardrobeUnlockChoices";
 
   function getUnlockedWardrobeItemCount() {
     const unlockedAdditionalColors = unlockedSlimeColors.filter(
@@ -95,20 +66,79 @@
     return unlockedAdditionalColors + unlockedSlimeCosmetics.length + unlockedSlimeBeards.length;
   }
 
-  function getNextWardrobeUnlockRequirement() {
-    return WARDROBE_UNLOCK_REQUIREMENTS[getUnlockedWardrobeItemCount()] ?? null;
-  }
-
-  function getNextWardrobeUnlockTarget() {
-    const requirement = getNextWardrobeUnlockRequirement();
-    return requirement === null ? null : WARDROBE_FIXED_UNLOCK_TARGETS[requirement] ?? null;
-  }
-
-  function getWardrobeUnlockRequirementForTarget(category, id) {
-    for (const [requirement, target] of Object.entries(WARDROBE_FIXED_UNLOCK_TARGETS)) {
-      if (target.category === category && target.id === id) return Number(requirement);
+  function loadPendingWardrobeUnlockChoices() {
+    try {
+      const storedValue = Math.floor(Number(
+        localStorage.getItem(PENDING_WARDROBE_UNLOCK_CHOICES_STORAGE_KEY)
+      ));
+      return Number.isFinite(storedValue)
+        ? Math.max(0, Math.min(WARDROBE_UNLOCK_REQUIREMENTS.length, storedValue))
+        : 0;
+    } catch (_) {
+      return 0;
     }
-    return null;
+  }
+
+  let pendingWardrobeUnlockChoices = loadPendingWardrobeUnlockChoices();
+
+  function savePendingWardrobeUnlockChoices() {
+    try {
+      localStorage.setItem(
+        PENDING_WARDROBE_UNLOCK_CHOICES_STORAGE_KEY,
+        String(pendingWardrobeUnlockChoices)
+      );
+    } catch (_) {}
+  }
+
+  function getPendingWardrobeUnlockChoiceCount() {
+    return pendingWardrobeUnlockChoices;
+  }
+
+  function getNextWardrobeUnlockRequirement() {
+    const progressIndex = Math.min(
+      WARDROBE_UNLOCK_REQUIREMENTS.length,
+      getUnlockedWardrobeItemCount() + pendingWardrobeUnlockChoices
+    );
+    return WARDROBE_UNLOCK_REQUIREMENTS[progressIndex] ?? null;
+  }
+
+  function awardWardrobeUnlockChoicesForRun(runStars) {
+    if (typeof DEV_MODE !== "undefined" && DEV_MODE) return 0;
+    const collectedRunStars = Math.max(0, Math.floor(Number(runStars) || 0));
+    let earnedChoices = 0;
+
+    while (true) {
+      const requirement = getNextWardrobeUnlockRequirement();
+      if (requirement === null || collectedRunStars < requirement) break;
+      pendingWardrobeUnlockChoices++;
+      earnedChoices++;
+    }
+
+    if (earnedChoices > 0) savePendingWardrobeUnlockChoices();
+    return earnedChoices;
+  }
+
+  function redeemPendingWardrobeUnlockChoice(category, id) {
+    if (
+      (typeof DEV_MODE !== "undefined" && DEV_MODE) ||
+      pendingWardrobeUnlockChoices <= 0
+    ) {
+      return false;
+    }
+
+    const normalizedCategory = String(category ?? "").toLowerCase();
+    const unlocked = normalizedCategory === "color"
+      ? unlockSlimeColor(id)
+      : normalizedCategory === "cosmetic"
+        ? unlockSlimeCosmetic(id)
+        : normalizedCategory === "beard"
+          ? unlockSlimeBeard(id)
+          : false;
+    if (!unlocked) return false;
+
+    pendingWardrobeUnlockChoices--;
+    savePendingWardrobeUnlockChoices();
+    return true;
   }
 
   function migrateUnifiedWardrobeProgress() {

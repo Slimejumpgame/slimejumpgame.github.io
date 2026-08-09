@@ -109,6 +109,7 @@
 
   function update(dt) {
     if (state !== "playing") return;
+    const wasOnGround = player.onGround;
     worldTime += dt;
     rememberPlayerHorizontalDirection();
     carryAimingPlayerWithMovingPlatform(dt);
@@ -170,7 +171,13 @@
         player.squish = 1;
         tone(230, 0.13, "square", 0.045, 520);
         spawnBurst(player.x, player.y + player.r, 12, "#68ddff");
+        window.SlimeAchievements?.onBounce?.();
       }
+    }
+
+    window.SlimeAchievements?.onFrame?.(dt, {grounded: player.onGround});
+    if (!wasOnGround && player.onGround) {
+      window.SlimeAchievements?.onLanding?.();
     }
 
     for (const spike of level.spikes) {
@@ -202,6 +209,7 @@
         Math.hypot(player.x - enemy.x, player.y - enemy.y) <
         player.r * 0.74 + enemy.r * 0.82
       ) {
+        window.SlimeAchievements?.onGhostHit?.();
         spawnBurst(
           enemy.x,
           enemy.y,
