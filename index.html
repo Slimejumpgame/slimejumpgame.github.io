@@ -12,16 +12,17 @@
 </head>
 <body>
   <aside id="devPanel" hidden aria-label="Lokale Entwicklersteuerung">
-    <div class="devPanelTitle">DEV MODE</div>
+    <div class="devPanelTitle">LOCAL TEST</div>
     <div class="devPanelControls">
-      <button id="devPreviousLevelBtn" type="button">Vorheriges Level</button>
-      <label class="devLevelField" for="devLevelInput">
+      <button id="devPreviousLevelBtn" data-dev-mode-only type="button">Vorheriges Level</button>
+      <label class="devLevelField" data-dev-mode-only for="devLevelInput">
         Level:
         <input id="devLevelInput" type="number" min="1" step="1" value="1">
       </label>
-      <button id="devStartLevelBtn" type="button">Level starten</button>
-      <button id="devNextLevelBtn" type="button">Nächstes Level</button>
-      <button id="devShopTestBtn" type="button" aria-pressed="false">SHOP TEST</button>
+      <button id="devStartLevelBtn" data-dev-mode-only type="button">Level starten</button>
+      <button id="devNextLevelBtn" data-dev-mode-only type="button">Nächstes Level</button>
+      <button id="devModeToggleBtn" type="button" aria-pressed="true">DEV MODE: ON</button>
+      <button id="devShopTestBtn" data-dev-mode-only type="button" aria-pressed="false">SHOP TEST</button>
     </div>
   </aside>
 

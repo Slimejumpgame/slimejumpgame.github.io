@@ -738,9 +738,20 @@ p {
   font-size: 12px;
 }
 
+#devPanel [data-dev-mode-only][hidden] {
+  display: none !important;
+}
+
+#devModeToggleBtn[aria-pressed="true"],
 #devShopTestBtn[aria-pressed="true"] {
   border-color: rgba(255, 233, 119, 0.86);
   background: linear-gradient(180deg, #8cce32, #417d1c);
+  color: #ffffff;
+}
+
+#devModeToggleBtn[aria-pressed="false"] {
+  border-color: rgba(255, 133, 133, 0.78);
+  background: linear-gradient(180deg, #71324e, #401d35);
   color: #ffffff;
 }
 

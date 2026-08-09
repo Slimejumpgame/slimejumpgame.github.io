@@ -84,9 +84,26 @@
   }
 
   function initializeDevMode() {
-    if (!DEV_MODE) return;
+    if (
+      !IS_LOCALHOST_TEST_ENVIRONMENT ||
+      !ui.devPanel ||
+      !ui.devModeToggleBtn
+    ) {
+      return;
+    }
+
+    ui.devPanel.querySelectorAll("[data-dev-mode-only]").forEach(control => {
+      control.hidden = !DEV_MODE;
+    });
+    ui.devModeToggleBtn.textContent = `DEV MODE: ${DEV_MODE ? "ON" : "OFF"}`;
+    ui.devModeToggleBtn.setAttribute("aria-pressed", String(DEV_MODE));
+    ui.devModeToggleBtn.addEventListener("click", () => {
+      setLocalDevModeEnabled(!DEV_MODE);
+    });
 
     ui.devPanel.hidden = false;
+    if (!DEV_MODE) return;
+
     ui.devPreviousLevelBtn.addEventListener("click", () => startDevLevel(levelIndex));
     ui.devStartLevelBtn.addEventListener("click", () => startDevLevel(ui.devLevelInput.value));
     ui.devNextLevelBtn.addEventListener("click", () => startDevLevel(levelIndex + 2));
@@ -101,8 +118,8 @@
 
   function restartCurrent() {
     if (state === "gameover") {
-      if (!requirePendingWardrobeUnlockSelection()) return;
       if (!commitPendingHighScore()) return;
+      if (!requirePendingWardrobeUnlockSelection()) return;
       startGame();
       return;
     }
@@ -247,6 +264,7 @@
 
     if (lives <= 0) {
       const reachedLevel = levelIndex + 1;
+      console.info("[Highscore] Final run score:", score);
       const previousBest = Number(localStorage.getItem("slimejumperBest") || 0);
       const previousBestLevel = Number(localStorage.getItem("slimejumperBestLevel") || 0);
       const best = Math.max(previousBest, score);
@@ -280,8 +298,8 @@
   }
 
   function doContinue() {
-    if (nextAction === "gameover" && !requirePendingWardrobeUnlockSelection()) return;
     if (nextAction === "gameover" && !commitPendingHighScore()) return;
+    if (nextAction === "gameover" && !requirePendingWardrobeUnlockSelection()) return;
     ui.message.classList.add("hidden");
     if (nextAction === "next") {
       levelIndex++;
@@ -410,8 +428,8 @@
   });
 
   function returnToMenuWithPendingScore() {
-    if (nextAction === "gameover" && !requirePendingWardrobeUnlockSelection()) return;
     if (nextAction === "gameover" && pendingGameOverScore && !commitPendingHighScore()) return;
+    if (nextAction === "gameover" && !requirePendingWardrobeUnlockSelection()) return;
     returnToMenu();
   }
 

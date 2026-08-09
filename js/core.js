@@ -6,18 +6,61 @@
   const ctx = canvas.getContext("2d");
   const W = canvas.width;
   const H = canvas.height;
-  const DEV_MODE =
-  location.hostname !== "slimejumpgame.github.io" &&
-  (
-    location.protocol === "file:" ||
-    (
-      location.protocol === "http:" &&
-      (
-        location.hostname === "localhost" ||
-        location.hostname === "127.0.0.1"
-      )
-    )
-  );
+  const LOCAL_DEV_MODE_SESSION_KEY = "slimejumperLocalDevMode";
+
+  function isNativeCapacitorRuntime() {
+    const capacitor = window.Capacitor;
+    if (!capacitor) return false;
+
+    try {
+      if (
+        typeof capacitor.isNativePlatform === "function" &&
+        capacitor.isNativePlatform()
+      ) {
+        return true;
+      }
+      if (typeof capacitor.getPlatform === "function") {
+        return ["android", "ios"].includes(capacitor.getPlatform());
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  const IS_ANDROID_BROWSER_RUNTIME =
+    typeof navigator !== "undefined" &&
+    /Android/i.test(String(navigator.userAgent || ""));
+
+  const IS_LOCALHOST_TEST_ENVIRONMENT =
+    !isNativeCapacitorRuntime() &&
+    !IS_ANDROID_BROWSER_RUNTIME &&
+    (location.protocol === "http:" || location.protocol === "https:") &&
+    (location.hostname === "localhost" || location.hostname === "127.0.0.1");
+
+  function loadLocalDevModeEnabled() {
+    if (!IS_LOCALHOST_TEST_ENVIRONMENT) return false;
+    try {
+      return sessionStorage.getItem(LOCAL_DEV_MODE_SESSION_KEY) !== "off";
+    } catch (_) {
+      return true;
+    }
+  }
+
+  function setLocalDevModeEnabled(enabled) {
+    if (!IS_LOCALHOST_TEST_ENVIRONMENT) return false;
+    try {
+      sessionStorage.setItem(
+        LOCAL_DEV_MODE_SESSION_KEY,
+        enabled ? "on" : "off"
+      );
+    } catch (error) {
+      console.warn("Lokaler DEV-Modus konnte nicht umgeschaltet werden:", error);
+      return false;
+    }
+    location.reload();
+    return true;
+  }
+
+  const DEV_MODE = loadLocalDevModeEnabled();
 
   const ui = {
     level: document.getElementById("levelLabel"),
@@ -83,6 +126,7 @@
     devLevelInput: document.getElementById("devLevelInput"),
     devStartLevelBtn: document.getElementById("devStartLevelBtn"),
     devNextLevelBtn: document.getElementById("devNextLevelBtn"),
+    devModeToggleBtn: document.getElementById("devModeToggleBtn"),
     devShopTestBtn: document.getElementById("devShopTestBtn")
   };
 

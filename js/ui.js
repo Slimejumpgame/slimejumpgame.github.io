@@ -778,6 +778,16 @@
     } catch (_) {}
   }
 
+  function qualifiesForOnlineTopTen(finalScore, onlineScores) {
+    const validOnlineScores = (Array.isArray(onlineScores) ? onlineScores : [])
+      .map(entry => Number(entry?.score))
+      .filter(scoreValue => Number.isFinite(scoreValue) && scoreValue >= 0);
+
+    if (validOnlineScores.length < 10) return true;
+    const lowestTopTenScore = Math.min(...validOnlineScores.slice(0, 10));
+    return Math.max(0, Math.floor(Number(finalScore) || 0)) > lowestTopTenScore;
+  }
+
   function submitOnlineHighScore(name, finalScore, reachedLevel, slimeAchievements) {
     const online = window.SlimeJumpHighscores;
     if (!online?.isConfigured?.()) return;
@@ -792,11 +802,24 @@
       slimeAchievements: normalizeHighScoreAchievementIds(slimeAchievements)
     };
 
-    lastOnlineScoreSubmit = online.submitScore(submittedScore)
-      .then(() => submittedScore)
+    lastOnlineScoreSubmit = (async () => {
+      const onlineScores = await online.getTopScores(10);
+      const validEntryCount = (Array.isArray(onlineScores) ? onlineScores : [])
+        .filter(entry => Number.isFinite(Number(entry?.score)) && Number(entry.score) >= 0)
+        .length;
+      const qualifies = qualifiesForOnlineTopTen(submittedScore.score, onlineScores);
+
+      console.info("[Highscore] Online entries:", validEntryCount);
+      console.info("[Highscore] Qualifies for online top 10:", qualifies);
+      if (!qualifies) return null;
+
+      console.info("[Highscore] Submitted name:", submittedScore.name);
+      await online.submitScore(submittedScore);
+      return submittedScore;
+    })()
       .catch(error => {
-        console.warn("Online-Highscore konnte nicht gespeichert werden:", error);
-        return null;
+        console.error("[Highscore] Online submit failed:", error);
+        throw error;
       });
   }
 
@@ -953,7 +976,7 @@
         : highScores;
       renderHighScoreRows(visibleHighScores);
     } catch (error) {
-      console.warn("Online-Highscores konnten nicht geladen werden:", error);
+      console.error("[Highscore] Leaderboard refresh failed:", error);
       renderHighScoreRows(
         loadHighScores(),
         "Online-Highscores sind gerade nicht erreichbar."
