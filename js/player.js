@@ -106,6 +106,8 @@
   let stuckAimReferenceY = player.y;
   let stuckAimReferenceMover = null;
   let stuckAimReferenceMoverY = 0;
+  let stuckAimReferenceConveyor = null;
+  let stuckAimReferenceConveyorTime = 0;
   let stuckAimFallbackActive = false;
 
   function hasValidAimSupport() {
@@ -150,26 +152,94 @@
     return null;
   }
 
+  function getTrappingConveyor() {
+    const level = currentLevel();
+    if (!level?.conveyors) return null;
+
+    const contactRadius = player.r + STUCK_AIM_POSITION_EPSILON;
+    const contactRadiusSquared = contactRadius * contactRadius;
+
+    for (const conveyor of level.conveyors) {
+      const conveyorClosestX = Math.max(
+        conveyor.x,
+        Math.min(player.x, conveyor.x + conveyor.w)
+      );
+      const conveyorClosestY = Math.max(
+        conveyor.y,
+        Math.min(player.y, conveyor.y + conveyor.h)
+      );
+      const conveyorDx = player.x - conveyorClosestX;
+      const conveyorDy = player.y - conveyorClosestY;
+      const touchesConveyor =
+        conveyorDx * conveyorDx + conveyorDy * conveyorDy <= contactRadiusSquared;
+
+      if (!touchesConveyor) continue;
+
+      const pushDirection = Math.sign(conveyor.direction);
+      const touchesDownstreamFixedGeometry = getPlatforms().some(platform => {
+        if (
+          platform.conveyor ||
+          platform.moving ||
+          platform.fallingPlatform ||
+          (platform.fade && !platform.fadeData.solid)
+        ) {
+          return false;
+        }
+
+        const closestX = Math.max(
+          platform.x,
+          Math.min(player.x, platform.x + platform.w)
+        );
+        const closestY = Math.max(
+          platform.y,
+          Math.min(player.y, platform.y + platform.h)
+        );
+        const dx = player.x - closestX;
+        const dy = player.y - closestY;
+        const isDownstream = (closestX - player.x) * pushDirection > 0;
+
+        return isDownstream && dx * dx + dy * dy <= contactRadiusSquared;
+      });
+
+      if (touchesDownstreamFixedGeometry) return conveyor;
+    }
+
+    return null;
+  }
+
   function getStuckAimDistanceFromReference(
-    touchingVerticalMover = getTouchingVerticalMover()
+    touchingVerticalMover = getTouchingVerticalMover(),
+    trappingConveyor = getTrappingConveyor()
   ) {
     const worldDistance = Math.hypot(
       player.x - stuckAimReferenceX,
       player.y - stuckAimReferenceY
     );
+    let minimumDistance = worldDistance;
 
-    if (!stuckAimReferenceMover || touchingVerticalMover !== stuckAimReferenceMover) {
-      return worldDistance;
+    if (stuckAimReferenceMover && touchingVerticalMover === stuckAimReferenceMover) {
+      const currentMoverY = getVerticalMoverY(stuckAimReferenceMover);
+      const relativeDistance = Math.hypot(
+        player.x - stuckAimReferenceX,
+        (player.y - currentMoverY) -
+          (stuckAimReferenceY - stuckAimReferenceMoverY)
+      );
+      minimumDistance = Math.min(minimumDistance, relativeDistance);
     }
 
-    const currentMoverY = getVerticalMoverY(stuckAimReferenceMover);
-    const relativeDistance = Math.hypot(
-      player.x - stuckAimReferenceX,
-      (player.y - currentMoverY) -
-        (stuckAimReferenceY - stuckAimReferenceMoverY)
-    );
+    if (stuckAimReferenceConveyor && trappingConveyor === stuckAimReferenceConveyor) {
+      const beltTravel =
+        stuckAimReferenceConveyor.direction *
+        stuckAimReferenceConveyor.beltSpeed *
+        (worldTime - stuckAimReferenceConveyorTime);
+      const relativeDistance = Math.hypot(
+        player.x - stuckAimReferenceX - beltTravel,
+        player.y - stuckAimReferenceY
+      );
+      minimumDistance = Math.min(minimumDistance, relativeDistance);
+    }
 
-    return Math.min(worldDistance, relativeDistance);
+    return minimumDistance;
   }
 
   function hasPlausibleStuckAimContact() {
@@ -196,14 +266,20 @@
 
   function canUseStuckAimFallback() {
     const touchingVerticalMover = getTouchingVerticalMover();
+    const trappingConveyor = getTrappingConveyor();
     return stuckAimStillTime >= STUCK_AIM_DELAY &&
       (!touchingVerticalMover || touchingVerticalMover === stuckAimReferenceMover) &&
-      getStuckAimDistanceFromReference(touchingVerticalMover) <= STUCK_AIM_POSITION_EPSILON &&
+      trappingConveyor === stuckAimReferenceConveyor &&
+      getStuckAimDistanceFromReference(
+        touchingVerticalMover,
+        trappingConveyor
+      ) <= STUCK_AIM_POSITION_EPSILON &&
       hasPlausibleStuckAimContact();
   }
 
   function resetStuckAimTimer(
-    touchingVerticalMover = getTouchingVerticalMover()
+    touchingVerticalMover = getTouchingVerticalMover(),
+    trappingConveyor = getTrappingConveyor()
   ) {
     stuckAimStillTime = 0;
     stuckAimReferenceX = player.x;
@@ -212,12 +288,15 @@
     stuckAimReferenceMoverY = touchingVerticalMover
       ? getVerticalMoverY(touchingVerticalMover)
       : 0;
+    stuckAimReferenceConveyor = trappingConveyor;
+    stuckAimReferenceConveyorTime = worldTime;
   }
 
   function updateStuckAimTimer(dt) {
     const hasNormalSupport = player.onGround && hasValidAimSupport();
     const hasCollisionContact = hasPlausibleStuckAimContact();
     const touchingVerticalMover = getTouchingVerticalMover();
+    const trappingConveyor = getTrappingConveyor();
 
     if (
       state !== "playing" ||
@@ -225,7 +304,7 @@
       hasNormalSupport ||
       !hasCollisionContact
     ) {
-      resetStuckAimTimer(touchingVerticalMover);
+      resetStuckAimTimer(touchingVerticalMover, trappingConveyor);
       return;
     }
 
@@ -233,12 +312,22 @@
       stuckAimReferenceMover = null;
       stuckAimReferenceMoverY = 0;
     } else if (touchingVerticalMover && touchingVerticalMover !== stuckAimReferenceMover) {
-      resetStuckAimTimer(touchingVerticalMover);
+      resetStuckAimTimer(touchingVerticalMover, trappingConveyor);
       return;
     }
 
-    if (getStuckAimDistanceFromReference(touchingVerticalMover) > STUCK_AIM_POSITION_EPSILON) {
-      resetStuckAimTimer(touchingVerticalMover);
+    if (trappingConveyor !== stuckAimReferenceConveyor) {
+      resetStuckAimTimer(touchingVerticalMover, trappingConveyor);
+      return;
+    }
+
+    if (
+      getStuckAimDistanceFromReference(
+        touchingVerticalMover,
+        trappingConveyor
+      ) > STUCK_AIM_POSITION_EPSILON
+    ) {
+      resetStuckAimTimer(touchingVerticalMover, trappingConveyor);
       return;
     }
 
