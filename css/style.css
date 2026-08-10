@@ -2713,40 +2713,37 @@ p {
   }
 
   #controls {
-    display: none;
+    display: block;
     position: absolute;
-    inset: auto 0 0;
+    inset: 0 auto auto 0;
     z-index: 5;
-    min-height: 12dvh;
-    height: auto;
-    padding:
-      0.7dvh
-      max(1vw, env(safe-area-inset-right))
-      max(0.7dvh, env(safe-area-inset-bottom))
-      max(1vw, env(safe-area-inset-left));
-    gap: 1vw;
-    background: linear-gradient(0deg, rgba(5, 15, 27, 0.88), rgba(5, 15, 27, 0.3));
+    width: 0;
+    min-height: 0;
+    height: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    backdrop-filter: none;
     pointer-events: none;
   }
 
-  #controls .uiButton {
-    min-height: 0;
-    height: 9.2dvh;
-    padding: 0 1.15vw;
-    border-radius: clamp(10px, 2.2dvh, 16px);
+  #controls > :not(#fullscreenBtn) {
+    display: none;
+  }
+
+  #controls #fullscreenBtn {
+    position: absolute;
+    top: 19dvh;
+    left: max(4.2vw, env(safe-area-inset-left));
+    transform: translate(-50%, -50%);
+    min-width: clamp(36px, 7dvh, 46px);
+    min-height: clamp(36px, 7dvh, 46px);
+    width: clamp(36px, 7dvh, 46px);
+    height: clamp(36px, 7dvh, 46px);
+    padding: 0;
+    border-radius: clamp(9px, 1.8dvh, 13px);
+    font-size: clamp(16px, 3.5dvh, 22px);
     pointer-events: auto;
-  }
-
-  #controls .iconBtn {
-    min-width: clamp(42px, 8vw, 84px);
-    font-size: clamp(17px, 4dvh, 25px);
-  }
-
-  #dragHint {
-    min-height: 0;
-    height: 9.2dvh;
-    padding: 0 1.4vw;
-    font-size: clamp(11px, 2.8dvh, 17px);
   }
 
 }
