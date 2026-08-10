@@ -2713,6 +2713,7 @@ p {
   }
 
   #controls {
+    display: none;
     position: absolute;
     inset: auto 0 0;
     z-index: 5;
