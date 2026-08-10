@@ -280,15 +280,7 @@
     const useStuckFallback = !canUseNormalAim() && canUseStuckAimFallback();
     if (!canAim()) return false;
 
-    const p = screenToWorld(clientX, clientY);
-    const touchRadius = player.r + 105;
-    const touchingSlime =
-      Math.hypot(p.x - player.x, p.y - player.y) <= touchRadius;
     const touchingSidePad = isInSideTouchPad(clientX, clientY);
-
-    if (!touchingSlime && !touchingSidePad) {
-      return false;
-    }
 
     aiming = true;
     stuckAimFallbackActive = useStuckFallback;
