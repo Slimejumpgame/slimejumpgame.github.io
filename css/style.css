@@ -417,6 +417,10 @@ canvas.aiming {
   min-height: 48px;
 }
 
+#pauseBtn {
+  display: none;
+}
+
 .iconBtn {
   min-width: 58px;
   padding: 0 13px;
@@ -2736,6 +2740,23 @@ p {
     top: 19dvh;
     left: max(4.2vw, env(safe-area-inset-left));
     transform: translate(-50%, -50%);
+    min-width: clamp(36px, 7dvh, 46px);
+    min-height: clamp(36px, 7dvh, 46px);
+    width: clamp(36px, 7dvh, 46px);
+    height: clamp(36px, 7dvh, 46px);
+    padding: 0;
+    border-radius: clamp(9px, 1.8dvh, 13px);
+    font-size: clamp(16px, 3.5dvh, 22px);
+    pointer-events: auto;
+  }
+
+  #pauseBtn {
+    position: absolute;
+    top: 19dvh;
+    right: max(4.2vw, env(safe-area-inset-right));
+    z-index: 5;
+    display: block;
+    transform: translate(50%, -50%);
     min-width: clamp(36px, 7dvh, 46px);
     min-height: clamp(36px, 7dvh, 46px);
     width: clamp(36px, 7dvh, 46px);
