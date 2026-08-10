@@ -470,13 +470,15 @@
     else if (state === "gamePaused") resumeGame();
   });
   ui.resumeBtn.addEventListener("click", resumeGame);
+  ui.pauseMusicBtn.addEventListener("click", () => ui.musicBtn.click());
+  ui.pauseSfxBtn.addEventListener("click", () => ui.sfxBtn.click());
   ui.musicBtn.addEventListener("click", () => {
     musicMuted = !musicMuted;
     updateAudioButtons();
     updateMusicMute();
 
     if (!musicMuted) {
-      if (state === "playing") setMusicForLevel(levelIndex + 1);
+      if (state === "playing" || state === "gamePaused") setMusicForLevel(levelIndex + 1);
       else setMusicMode("menu");
       startBackgroundMusic();
     }
@@ -494,8 +496,15 @@
   // Browser erlauben Audio normalerweise erst nach einer Nutzeraktion.
   // Der erste Tap/Klick startet deshalb die Menümusik automatisch.
   function unlockBackgroundMusic(event) {
-    if (musicStarted || musicMuted || event.target === ui.musicBtn || event.target === ui.sfxBtn) return;
-    if (state === "playing") setMusicForLevel(levelIndex + 1);
+    if (
+      musicStarted ||
+      musicMuted ||
+      event.target === ui.musicBtn ||
+      event.target === ui.sfxBtn ||
+      event.target === ui.pauseMusicBtn ||
+      event.target === ui.pauseSfxBtn
+    ) return;
+    if (state === "playing" || state === "gamePaused") setMusicForLevel(levelIndex + 1);
     else setMusicMode("menu");
     startBackgroundMusic();
     document.removeEventListener("pointerdown", unlockBackgroundMusic, true);

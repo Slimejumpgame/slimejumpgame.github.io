@@ -421,6 +421,20 @@ canvas.aiming {
   display: none;
 }
 
+@media (hover: hover) and (pointer: fine) {
+  #app {
+    position: relative;
+  }
+
+  #pauseBtn {
+    position: absolute;
+    top: calc(54px + 12px);
+    right: 12px;
+    z-index: 6;
+    display: inline-flex;
+  }
+}
+
 .iconBtn {
   min-width: 58px;
   padding: 0 13px;
@@ -509,12 +523,15 @@ canvas.aiming {
 
 .pausePanel {
   width: min(88%, 360px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.6dvh, 12px);
   padding: clamp(18px, 4dvh, 32px) clamp(20px, 3vw, 34px);
   text-align: center;
 }
 
 .pausePanel h2 {
-  margin: 0 0 clamp(14px, 3dvh, 24px);
+  margin: 0 0 clamp(6px, 1.4dvh, 10px);
   color: var(--ui-green-light);
   font-family: var(--ui-title-font);
   font-size: clamp(32px, 9dvh, 56px);
@@ -526,7 +543,9 @@ canvas.aiming {
     0 0 18px rgba(134, 245, 31, 0.34);
 }
 
-#resumeBtn {
+#resumeBtn,
+#pauseMusicBtn,
+#pauseSfxBtn {
   width: 100%;
   min-height: clamp(50px, 12dvh, 68px);
   font-size: clamp(17px, 4dvh, 25px);

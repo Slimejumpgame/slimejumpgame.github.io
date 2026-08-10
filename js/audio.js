@@ -232,12 +232,22 @@
     ui.musicBtn.textContent = musicMuted ? "♫×" : "♫";
     ui.musicBtn.setAttribute("aria-label", musicMuted ? "Musik einschalten" : "Musik ausschalten");
     ui.musicBtn.title = musicMuted ? "Musik aus" : "Musik an";
+    ui.pauseMusicBtn.classList.toggle("muted", musicMuted);
+    ui.pauseMusicBtn.classList.toggle("active", !musicMuted);
+    ui.pauseMusicBtn.textContent = musicMuted ? "♫×" : "♫";
+    ui.pauseMusicBtn.setAttribute("aria-label", musicMuted ? "Musik einschalten" : "Musik ausschalten");
+    ui.pauseMusicBtn.setAttribute("aria-pressed", String(!musicMuted));
 
     ui.sfxBtn.classList.toggle("muted", sfxMuted);
     ui.sfxBtn.classList.toggle("active", !sfxMuted);
     ui.sfxBtn.textContent = sfxMuted ? "FX×" : "FX";
     ui.sfxBtn.setAttribute("aria-label", sfxMuted ? "Soundeffekte einschalten" : "Soundeffekte ausschalten");
     ui.sfxBtn.title = sfxMuted ? "Soundeffekte aus" : "Soundeffekte an";
+    ui.pauseSfxBtn.classList.toggle("muted", sfxMuted);
+    ui.pauseSfxBtn.classList.toggle("active", !sfxMuted);
+    ui.pauseSfxBtn.textContent = sfxMuted ? "FX×" : "FX";
+    ui.pauseSfxBtn.setAttribute("aria-label", sfxMuted ? "Soundeffekte einschalten" : "Soundeffekte ausschalten");
+    ui.pauseSfxBtn.setAttribute("aria-pressed", String(!sfxMuted));
   }
 
   function playLaunch() { tone(240, 0.12, "triangle", 0.084, 520); }
