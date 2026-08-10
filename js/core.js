@@ -121,6 +121,7 @@
     musicBtn: document.getElementById("musicBtn"),
     sfxBtn: document.getElementById("sfxBtn"),
     fullscreenBtn: document.getElementById("fullscreenBtn"),
+    pauseBtn: document.getElementById("pauseBtn"),
     devPanel: document.getElementById("devPanel"),
     devPreviousLevelBtn: document.getElementById("devPreviousLevelBtn"),
     devLevelInput: document.getElementById("devLevelInput"),

@@ -318,6 +318,24 @@
     }
   }
 
+  function pauseGame() {
+    if (state !== "playing") return;
+    stopAiming();
+    activeTouchId = null;
+    shake = 0;
+    state = "gamePaused";
+    ui.pauseBtn.textContent = "▶";
+    ui.pauseBtn.setAttribute("aria-label", "Fortsetzen");
+  }
+
+  function resumeGame() {
+    if (state !== "gamePaused") return;
+    lastTime = performance.now();
+    state = "playing";
+    ui.pauseBtn.textContent = "⏸";
+    ui.pauseBtn.setAttribute("aria-label", "Pause");
+  }
+
   function frame(now) {
     const dt = Math.min(0.026, Math.max(0, (now - lastTime) / 1000));
     lastTime = now;
@@ -445,6 +463,10 @@
   ui.restartBtn.addEventListener("click", returnToMenuWithPendingScore);
   ui.messageRestartBtn.addEventListener("click", returnToMenuWithPendingScore);
   ui.fullscreenBtn.addEventListener("click", toggleFullscreen);
+  ui.pauseBtn.addEventListener("click", () => {
+    if (state === "playing") pauseGame();
+    else if (state === "gamePaused") resumeGame();
+  });
   ui.musicBtn.addEventListener("click", () => {
     musicMuted = !musicMuted;
     updateAudioButtons();
