@@ -1590,6 +1590,25 @@ p {
   min-height: clamp(52px, 8.6vh, 68px);
 }
 
+.mainMenuAudio {
+  position: absolute;
+  left: max(clamp(8px, 1.5vw, 18px), env(safe-area-inset-left));
+  bottom: max(clamp(7px, 1.2vh, 14px), env(safe-area-inset-bottom));
+  z-index: 7;
+  display: flex;
+  gap: clamp(5px, 0.7vw, 9px);
+}
+
+.mainMenuAudio .iconBtn {
+  width: clamp(46px, 4.4vw, 58px);
+  min-width: 46px;
+  min-height: clamp(38px, 6vh, 48px);
+  padding: 0 8px;
+  border-radius: clamp(10px, 1vw, 14px);
+  font-size: clamp(15px, 1.6vw, 20px);
+  touch-action: manipulation;
+}
+
 .recentAchievements {
   width: 100%;
   min-height: 0;
@@ -2203,26 +2222,9 @@ p {
     font-size: 12px;
   }
 
-  #controls {
-    min-height: 70px;
-    padding-left: 7px;
-    padding-right: 7px;
-    gap: 7px;
-  }
-
-  #controls .uiButton {
-    min-height: 46px;
-    padding: 0 12px;
-  }
-
   .iconBtn {
     min-width: 50px;
     font-size: 18px;
-  }
-
-  #dragHint {
-    padding: 6px 8px;
-    font-size: 12px;
   }
 
   .mainMenuGrid {
@@ -2326,27 +2328,9 @@ p {
     font-size: 11px;
   }
 
-  #controls {
-    min-height: 44px;
-    padding: 2px 7px;
-    gap: 7px;
-  }
-
-  #controls .uiButton {
-    min-height: 36px;
-    padding-right: 12px;
-    padding-left: 12px;
-  }
-
   .iconBtn {
     min-width: 46px;
     font-size: 18px;
-  }
-
-  #dragHint {
-    min-height: 36px;
-    padding: 4px 10px;
-    font-size: 12px;
   }
 
   .card {
@@ -2692,13 +2676,29 @@ p {
   }
 
   #app {
-    grid-template-rows: 9dvh minmax(0, 1fr) 12dvh;
+    position: relative;
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  #gameArea {
+    grid-row: 1;
+    width: 100%;
+    height: 100%;
   }
 
   #hud {
-    min-height: 0;
-    height: 9dvh;
-    padding: 0.7dvh 1.2vw;
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: 5;
+    min-height: 9dvh;
+    height: auto;
+    padding:
+      max(0.7dvh, env(safe-area-inset-top))
+      max(1.2vw, env(safe-area-inset-right))
+      0.7dvh
+      max(1.2vw, env(safe-area-inset-left));
+    background: linear-gradient(180deg, rgba(5, 15, 27, 0.82), rgba(5, 15, 27, 0.28));
+    pointer-events: none;
   }
 
   .hudGroup {
@@ -2713,10 +2713,19 @@ p {
   }
 
   #controls {
-    min-height: 0;
-    height: 12dvh;
-    padding: 0.7dvh 1vw;
+    position: absolute;
+    inset: auto 0 0;
+    z-index: 5;
+    min-height: 12dvh;
+    height: auto;
+    padding:
+      0.7dvh
+      max(1vw, env(safe-area-inset-right))
+      max(0.7dvh, env(safe-area-inset-bottom))
+      max(1vw, env(safe-area-inset-left));
     gap: 1vw;
+    background: linear-gradient(0deg, rgba(5, 15, 27, 0.88), rgba(5, 15, 27, 0.3));
+    pointer-events: none;
   }
 
   #controls .uiButton {
@@ -2724,6 +2733,7 @@ p {
     height: 9.2dvh;
     padding: 0 1.15vw;
     border-radius: clamp(10px, 2.2dvh, 16px);
+    pointer-events: auto;
   }
 
   #controls .iconBtn {
@@ -2738,10 +2748,6 @@ p {
     font-size: clamp(11px, 2.8dvh, 17px);
   }
 
-  #game {
-    transform: scaleX(1.06);
-    transform-origin: center center;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
