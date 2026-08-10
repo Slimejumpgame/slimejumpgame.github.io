@@ -97,13 +97,15 @@
   const AIM_MAX_ROLL_SPEED = 240;
   const AIM_SUPPORT_TOLERANCE = 4;
   const STUCK_AIM_POSITION_EPSILON = 4;
-  const STUCK_AIM_DELAY = 1.0;
+  const STUCK_AIM_DELAY = 0.5;
   const MAX_DRAG_DISTANCE = 330;
   const MAX_LAUNCH_SPEED = 205 * 5.7;
   const MIN_LAUNCH_DRAG = 10;
   let stuckAimStillTime = 0;
   let stuckAimReferenceX = player.x;
   let stuckAimReferenceY = player.y;
+  let stuckAimReferenceMover = null;
+  let stuckAimReferenceMoverY = 0;
   let stuckAimFallbackActive = false;
 
   function hasValidAimSupport() {
@@ -121,11 +123,53 @@
       Math.abs(player.vx) <= AIM_MAX_ROLL_SPEED;
   }
 
-  function getStuckAimDistanceFromReference() {
-    return Math.hypot(
+  function getVerticalMoverY(mover) {
+    const offset = Math.sin(worldTime * mover.speed + mover.phase) * mover.range;
+    return mover.y + offset;
+  }
+
+  function getTouchingVerticalMover() {
+    const level = currentLevel();
+    if (!level?.movers) return null;
+
+    const contactRadius = player.r + STUCK_AIM_POSITION_EPSILON;
+    const contactRadiusSquared = contactRadius * contactRadius;
+
+    for (const mover of level.movers) {
+      if (mover.axis !== "y") continue;
+
+      const moverY = getVerticalMoverY(mover);
+      const closestX = Math.max(mover.x, Math.min(player.x, mover.x + mover.w));
+      const closestY = Math.max(moverY, Math.min(player.y, moverY + mover.h));
+      const dx = player.x - closestX;
+      const dy = player.y - closestY;
+
+      if (dx * dx + dy * dy <= contactRadiusSquared) return mover;
+    }
+
+    return null;
+  }
+
+  function getStuckAimDistanceFromReference(
+    touchingVerticalMover = getTouchingVerticalMover()
+  ) {
+    const worldDistance = Math.hypot(
       player.x - stuckAimReferenceX,
       player.y - stuckAimReferenceY
     );
+
+    if (!stuckAimReferenceMover || touchingVerticalMover !== stuckAimReferenceMover) {
+      return worldDistance;
+    }
+
+    const currentMoverY = getVerticalMoverY(stuckAimReferenceMover);
+    const relativeDistance = Math.hypot(
+      player.x - stuckAimReferenceX,
+      (player.y - currentMoverY) -
+        (stuckAimReferenceY - stuckAimReferenceMoverY)
+    );
+
+    return Math.min(worldDistance, relativeDistance);
   }
 
   function hasPlausibleStuckAimContact() {
@@ -151,20 +195,29 @@
   }
 
   function canUseStuckAimFallback() {
+    const touchingVerticalMover = getTouchingVerticalMover();
     return stuckAimStillTime >= STUCK_AIM_DELAY &&
-      getStuckAimDistanceFromReference() <= STUCK_AIM_POSITION_EPSILON &&
+      (!touchingVerticalMover || touchingVerticalMover === stuckAimReferenceMover) &&
+      getStuckAimDistanceFromReference(touchingVerticalMover) <= STUCK_AIM_POSITION_EPSILON &&
       hasPlausibleStuckAimContact();
   }
 
-  function resetStuckAimTimer() {
+  function resetStuckAimTimer(
+    touchingVerticalMover = getTouchingVerticalMover()
+  ) {
     stuckAimStillTime = 0;
     stuckAimReferenceX = player.x;
     stuckAimReferenceY = player.y;
+    stuckAimReferenceMover = touchingVerticalMover;
+    stuckAimReferenceMoverY = touchingVerticalMover
+      ? getVerticalMoverY(touchingVerticalMover)
+      : 0;
   }
 
   function updateStuckAimTimer(dt) {
     const hasNormalSupport = player.onGround && hasValidAimSupport();
     const hasCollisionContact = hasPlausibleStuckAimContact();
+    const touchingVerticalMover = getTouchingVerticalMover();
 
     if (
       state !== "playing" ||
@@ -172,12 +225,20 @@
       hasNormalSupport ||
       !hasCollisionContact
     ) {
-      resetStuckAimTimer();
+      resetStuckAimTimer(touchingVerticalMover);
       return;
     }
 
-    if (getStuckAimDistanceFromReference() > STUCK_AIM_POSITION_EPSILON) {
-      resetStuckAimTimer();
+    if (!touchingVerticalMover && stuckAimReferenceMover) {
+      stuckAimReferenceMover = null;
+      stuckAimReferenceMoverY = 0;
+    } else if (touchingVerticalMover && touchingVerticalMover !== stuckAimReferenceMover) {
+      resetStuckAimTimer(touchingVerticalMover);
+      return;
+    }
+
+    if (getStuckAimDistanceFromReference(touchingVerticalMover) > STUCK_AIM_POSITION_EPSILON) {
+      resetStuckAimTimer(touchingVerticalMover);
       return;
     }
 
