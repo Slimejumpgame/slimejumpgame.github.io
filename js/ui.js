@@ -908,12 +908,9 @@
           slimeAchievements
         );
       } catch (error) {
-        pendingScore.commitPromise = null;
         console.info("[Highscore] COMMIT SKIPPED reason=online-error");
         ui.nicknameEntry.classList.remove("invalid");
-        ui.nicknameHint.textContent = "Online-Speichern fehlgeschlagen. Bitte erneut bestätigen.";
-        ui.nicknameInput.focus();
-        return false;
+        ui.nicknameHint.textContent = "Speichern nicht möglich.";
       }
 
       try {

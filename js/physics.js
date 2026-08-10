@@ -142,6 +142,12 @@
       for (const p of platforms) resolvePlatform(p);
     }
 
+    if (carryGroundedPlayerWithHorizontalMovingPlatform(dt)) {
+      for (let pass = 0; pass < 2; pass++) {
+        for (const p of platforms) resolvePlatform(p);
+      }
+    }
+
     // Förderbänder tragen den Slime sichtbar nach links oder rechts. Beim Zielen
     // wandert der virtuelle Zeigepunkt mit, damit die eingestellte Schussrichtung
     // nicht ohne Fingerbewegung verfälscht wird.

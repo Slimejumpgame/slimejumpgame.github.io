@@ -205,6 +205,35 @@
     }
   }
 
+  function carryGroundedPlayerWithHorizontalMovingPlatform(dt) {
+    if (aiming || dt <= 0 || !player.onGround) return false;
+
+    const level = currentLevel();
+    const previousTime = worldTime - dt;
+
+    for (const mover of level.movers) {
+      if (mover.axis !== "x") continue;
+
+      const previousOffset = Math.sin(previousTime * mover.speed + mover.phase) * mover.range;
+      const currentOffset = Math.sin(worldTime * mover.speed + mover.phase) * mover.range;
+      const previousX = mover.x + previousOffset;
+      const currentX = mover.x + currentOffset;
+
+      const standingOnMover =
+        player.x + player.r > currentX + 2 &&
+        player.x - player.r < currentX + mover.w - 2 &&
+        Math.abs(player.y + player.r - mover.y) <= 4;
+
+      if (!standingOnMover) continue;
+
+      const shiftX = currentX - previousX;
+      player.x += shiftX;
+      return shiftX !== 0;
+    }
+
+    return false;
+  }
+
   function carryAimingPlayerWithConveyor(dt) {
     if (!aiming || dt <= 0) return false;
 
