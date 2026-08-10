@@ -493,6 +493,45 @@ canvas.aiming {
   display: none;
 }
 
+.pauseOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ui-gap-md);
+  background: rgba(2, 5, 18, 0.78);
+  backdrop-filter: blur(5px);
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.pausePanel {
+  width: min(88%, 360px);
+  padding: clamp(18px, 4dvh, 32px) clamp(20px, 3vw, 34px);
+  text-align: center;
+}
+
+.pausePanel h2 {
+  margin: 0 0 clamp(14px, 3dvh, 24px);
+  color: var(--ui-green-light);
+  font-family: var(--ui-title-font);
+  font-size: clamp(32px, 9dvh, 56px);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-shadow:
+    0 3px 0 #2b1250,
+    0 0 18px rgba(134, 245, 31, 0.34);
+}
+
+#resumeBtn {
+  width: 100%;
+  min-height: clamp(50px, 12dvh, 68px);
+  font-size: clamp(17px, 4dvh, 25px);
+}
+
 .card {
   position: relative;
   width: min(620px, 95%);

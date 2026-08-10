@@ -326,6 +326,7 @@
     state = "gamePaused";
     ui.pauseBtn.textContent = "▶";
     ui.pauseBtn.setAttribute("aria-label", "Fortsetzen");
+    ui.pauseOverlay.classList.remove("hidden");
   }
 
   function resumeGame() {
@@ -334,6 +335,7 @@
     state = "playing";
     ui.pauseBtn.textContent = "⏸";
     ui.pauseBtn.setAttribute("aria-label", "Pause");
+    ui.pauseOverlay.classList.add("hidden");
   }
 
   function frame(now) {
@@ -467,6 +469,7 @@
     if (state === "playing") pauseGame();
     else if (state === "gamePaused") resumeGame();
   });
+  ui.resumeBtn.addEventListener("click", resumeGame);
   ui.musicBtn.addEventListener("click", () => {
     musicMuted = !musicMuted;
     updateAudioButtons();
