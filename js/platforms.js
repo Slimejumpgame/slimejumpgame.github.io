@@ -85,11 +85,12 @@
             player.x - player.r < platform.x + platform.w &&
             Math.abs(player.y + player.r - platform.currentY) < 24;
 
-          if (aiming && standingOnPlatform) {
-            aiming = false;
-            drag.x = 0;
-            drag.y = 0;
-            canvas.classList.remove("aiming");
+          const usingFallingPlatformRescue =
+            stuckAimFallbackActive &&
+            stuckAimFallbackFallingPlatform === platform;
+
+          if (aiming && (standingOnPlatform || usingFallingPlatformRescue)) {
+            stopAiming();
           }
         }
       } else {

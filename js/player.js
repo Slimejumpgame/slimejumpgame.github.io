@@ -108,7 +108,9 @@
   let stuckAimReferenceMoverY = 0;
   let stuckAimReferenceConveyor = null;
   let stuckAimReferenceConveyorTime = 0;
+  let stuckAimReferenceFallingPlatform = null;
   let stuckAimFallbackActive = false;
+  let stuckAimFallbackFallingPlatform = null;
 
   function hasValidAimSupport() {
     return getPlatforms().some(platform =>
@@ -207,6 +209,67 @@
     return null;
   }
 
+  function getTrappingWarningFallingPlatform() {
+    const level = currentLevel();
+    if (!level?.fallingPlatforms || canUseNormalAim()) return null;
+
+    const contactRadius = player.r + STUCK_AIM_POSITION_EPSILON;
+    const contactRadiusSquared = contactRadius * contactRadius;
+
+    for (const fallingPlatform of level.fallingPlatforms) {
+      if (
+        !fallingPlatform.triggered ||
+        fallingPlatform.falling ||
+        fallingPlatform.removed
+      ) {
+        continue;
+      }
+
+      const fallingClosestX = Math.max(
+        fallingPlatform.x,
+        Math.min(player.x, fallingPlatform.x + fallingPlatform.w)
+      );
+      const fallingClosestY = Math.max(
+        fallingPlatform.currentY,
+        Math.min(player.y, fallingPlatform.currentY + fallingPlatform.h)
+      );
+      const fallingDx = player.x - fallingClosestX;
+      const fallingDy = player.y - fallingClosestY;
+      const touchesWarningFallingPlatform =
+        fallingDx * fallingDx + fallingDy * fallingDy <= contactRadiusSquared;
+
+      if (!touchesWarningFallingPlatform) continue;
+
+      const touchesAdditionalFixedGeometry = getPlatforms().some(platform => {
+        if (
+          platform.moving ||
+          platform.conveyor ||
+          platform.fallingPlatform ||
+          (platform.fade && !platform.fadeData.solid)
+        ) {
+          return false;
+        }
+
+        const closestX = Math.max(
+          platform.x,
+          Math.min(player.x, platform.x + platform.w)
+        );
+        const closestY = Math.max(
+          platform.y,
+          Math.min(player.y, platform.y + platform.h)
+        );
+        const dx = player.x - closestX;
+        const dy = player.y - closestY;
+
+        return dx * dx + dy * dy <= contactRadiusSquared;
+      });
+
+      if (touchesAdditionalFixedGeometry) return fallingPlatform;
+    }
+
+    return null;
+  }
+
   function getStuckAimDistanceFromReference(
     touchingVerticalMover = getTouchingVerticalMover(),
     trappingConveyor = getTrappingConveyor()
@@ -267,9 +330,11 @@
   function canUseStuckAimFallback() {
     const touchingVerticalMover = getTouchingVerticalMover();
     const trappingConveyor = getTrappingConveyor();
+    const trappingWarningFallingPlatform = getTrappingWarningFallingPlatform();
     return stuckAimStillTime >= STUCK_AIM_DELAY &&
       (!touchingVerticalMover || touchingVerticalMover === stuckAimReferenceMover) &&
       trappingConveyor === stuckAimReferenceConveyor &&
+      trappingWarningFallingPlatform === stuckAimReferenceFallingPlatform &&
       getStuckAimDistanceFromReference(
         touchingVerticalMover,
         trappingConveyor
@@ -279,7 +344,8 @@
 
   function resetStuckAimTimer(
     touchingVerticalMover = getTouchingVerticalMover(),
-    trappingConveyor = getTrappingConveyor()
+    trappingConveyor = getTrappingConveyor(),
+    trappingWarningFallingPlatform = getTrappingWarningFallingPlatform()
   ) {
     stuckAimStillTime = 0;
     stuckAimReferenceX = player.x;
@@ -290,6 +356,7 @@
       : 0;
     stuckAimReferenceConveyor = trappingConveyor;
     stuckAimReferenceConveyorTime = worldTime;
+    stuckAimReferenceFallingPlatform = trappingWarningFallingPlatform;
   }
 
   function updateStuckAimTimer(dt) {
@@ -297,14 +364,19 @@
     const hasCollisionContact = hasPlausibleStuckAimContact();
     const touchingVerticalMover = getTouchingVerticalMover();
     const trappingConveyor = getTrappingConveyor();
+    const trappingWarningFallingPlatform = getTrappingWarningFallingPlatform();
 
     if (
       state !== "playing" ||
       aiming ||
-      hasNormalSupport ||
+      (hasNormalSupport && !trappingWarningFallingPlatform) ||
       !hasCollisionContact
     ) {
-      resetStuckAimTimer(touchingVerticalMover, trappingConveyor);
+      resetStuckAimTimer(
+        touchingVerticalMover,
+        trappingConveyor,
+        trappingWarningFallingPlatform
+      );
       return;
     }
 
@@ -312,12 +384,29 @@
       stuckAimReferenceMover = null;
       stuckAimReferenceMoverY = 0;
     } else if (touchingVerticalMover && touchingVerticalMover !== stuckAimReferenceMover) {
-      resetStuckAimTimer(touchingVerticalMover, trappingConveyor);
+      resetStuckAimTimer(
+        touchingVerticalMover,
+        trappingConveyor,
+        trappingWarningFallingPlatform
+      );
       return;
     }
 
     if (trappingConveyor !== stuckAimReferenceConveyor) {
-      resetStuckAimTimer(touchingVerticalMover, trappingConveyor);
+      resetStuckAimTimer(
+        touchingVerticalMover,
+        trappingConveyor,
+        trappingWarningFallingPlatform
+      );
+      return;
+    }
+
+    if (trappingWarningFallingPlatform !== stuckAimReferenceFallingPlatform) {
+      resetStuckAimTimer(
+        touchingVerticalMover,
+        trappingConveyor,
+        trappingWarningFallingPlatform
+      );
       return;
     }
 
@@ -327,7 +416,11 @@
         trappingConveyor
       ) > STUCK_AIM_POSITION_EPSILON
     ) {
-      resetStuckAimTimer(touchingVerticalMover, trappingConveyor);
+      resetStuckAimTimer(
+        touchingVerticalMover,
+        trappingConveyor,
+        trappingWarningFallingPlatform
+      );
       return;
     }
 
@@ -345,6 +438,7 @@
     drag.y = 0;
     aimInputMode = "direct";
     stuckAimFallbackActive = false;
+    stuckAimFallbackFallingPlatform = null;
     resetStuckAimTimer();
     canvas.classList.remove("aiming");
   }
@@ -373,6 +467,9 @@
 
     aiming = true;
     stuckAimFallbackActive = useStuckFallback;
+    stuckAimFallbackFallingPlatform = useStuckFallback
+      ? stuckAimReferenceFallingPlatform
+      : null;
     resetStuckAimTimer();
     aimInputMode = touchingSidePad ? "sidepad" : "direct";
     aimStartClientX = clientX;
