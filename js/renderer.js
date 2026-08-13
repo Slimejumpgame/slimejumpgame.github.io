@@ -460,6 +460,156 @@
     ctx.restore();
   }
 
+  function drawCartoonDragHand(tipX, tipY, scale, alpha) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(tipX, tipY);
+    ctx.rotate(-0.12);
+    ctx.scale(scale, scale);
+    ctx.lineJoin = "round";
+
+    ctx.shadowColor = "rgba(22, 8, 45, 0.58)";
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = "#82dc3f";
+    ctx.strokeStyle = "#214c25";
+    ctx.lineWidth = 4;
+    roundedRect(-25, 68, 52, 29, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#ffd19f";
+    ctx.strokeStyle = "#713f3a";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(1, 60, 29, 28, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    roundedRect(-11, 0, 22, 66, 11);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(20, 51);
+    ctx.rotate(-0.68);
+    roundedRect(-8, -5, 18, 42, 9);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "rgba(255, 245, 220, 0.76)";
+    ctx.beginPath();
+    ctx.ellipse(-3, 12, 4, 8, -0.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawTutorialDragTrail(startX, startY, endX, endY, alpha) {
+    if (alpha <= 0) return;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.shadowColor = "rgba(121, 255, 141, 0.72)";
+    ctx.shadowBlur = 14;
+
+    ctx.strokeStyle = "rgba(18, 44, 32, 0.88)";
+    ctx.lineWidth = 12;
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(endX, endY);
+    ctx.stroke();
+
+    ctx.strokeStyle = "#8dff79";
+    ctx.lineWidth = 6;
+    ctx.setLineDash([15, 10]);
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(endX, endY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  function drawTutorialDragHand() {
+    if (!shouldShowTutorialDragHand()) return;
+
+    const cycleDuration = 4.6;
+    const elapsed = getTutorialDragHandElapsed() % cycleDuration;
+    const startX = W * 0.58;
+    const startY = H * 0.20;
+    const endX = startX - 125;
+    const endY = startY + 92;
+    const touchY = startY + 10;
+    const smooth = value => {
+      const t = clamp(value, 0, 1);
+      return t * t * (3 - 2 * t);
+    };
+
+    let handX = startX;
+    let handY = startY - 10;
+    let handScale = 1;
+    let handAlpha = 0;
+    let trailAlpha = 0;
+    let touchAlpha = 0;
+
+    if (elapsed < 0.45) {
+      const progress = smooth(elapsed / 0.45);
+      handY = startY - 10 * (1 - progress);
+      handAlpha = progress;
+    } else if (elapsed < 0.9) {
+      const progress = smooth((elapsed - 0.45) / 0.45);
+      handY = startY + 10 * progress;
+      handScale = 1 - progress * 0.08;
+      handAlpha = 1;
+      touchAlpha = progress;
+    } else if (elapsed < 2.15) {
+      const progress = smooth((elapsed - 0.9) / 1.25);
+      handX = startX + (endX - startX) * progress;
+      handY = touchY + (endY - touchY) * progress;
+      handScale = 0.92 + progress * 0.08;
+      handAlpha = 1;
+      trailAlpha = progress;
+      touchAlpha = 1;
+    } else if (elapsed < 2.6) {
+      handX = endX;
+      handY = endY;
+      handAlpha = 1;
+      trailAlpha = 1;
+      touchAlpha = 1;
+    } else if (elapsed < 3.15) {
+      const progress = smooth((elapsed - 2.6) / 0.55);
+      handX = endX;
+      handY = endY - 15 * progress;
+      handScale = 1 + progress * 0.06;
+      handAlpha = 1 - progress;
+      trailAlpha = 1 - progress;
+      touchAlpha = 1 - progress;
+    } else {
+      return;
+    }
+
+    const contactX = startX;
+    const contactY = touchY;
+    if (touchAlpha > 0) {
+      ctx.save();
+      ctx.globalAlpha = touchAlpha;
+      ctx.strokeStyle = "#f4e8ff";
+      ctx.lineWidth = 4;
+      ctx.shadowColor = "#b76cff";
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(contactX, contactY, 17 + Math.sin(worldTime * 8) * 2, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    drawTutorialDragTrail(contactX, contactY, handX, handY, trailAlpha);
+    drawCartoonDragHand(handX, handY, handScale, handAlpha);
+  }
+
   function drawStars() {
     currentLevel().stars.forEach((s, i) => {
       if (collected[i]) return;
@@ -1547,6 +1697,7 @@
     drawTrajectory();
     drawPlayer();
     drawParticles();
+    drawTutorialDragHand();
 
     ctx.fillStyle = "rgba(255,255,255,0.78)";
     ctx.font = "700 18px system-ui";

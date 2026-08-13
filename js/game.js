@@ -31,6 +31,9 @@
       generatedLevel = generateProceduralLevel(levelIndex + 1);
     }
     const level = currentLevel();
+    if (isTutorialStage() && level.showDragHand === true) {
+      resetTutorialDragHand();
+    }
     resetFallingPlatforms(level);
     player.x = level.spawn.x;
     player.y = level.spawn.y;

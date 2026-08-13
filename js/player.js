@@ -466,6 +466,7 @@
     const touchingSidePad = isInSideTouchPad(clientX, clientY);
 
     aiming = true;
+    dismissTutorialDragHand();
     stuckAimFallbackActive = useStuckFallback;
     stuckAimFallbackFallingPlatform = useStuckFallback
       ? stuckAimReferenceFallingPlatform

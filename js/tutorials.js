@@ -1,5 +1,29 @@
 "use strict";
 
+  let tutorialDragHandDismissed = false;
+  let tutorialDragHandAnimationStartTime = 0;
+
+  function resetTutorialDragHand() {
+    tutorialDragHandDismissed = false;
+    tutorialDragHandAnimationStartTime = worldTime;
+  }
+
+  function dismissTutorialDragHand() {
+    if (!isTutorialStage() || currentLevel()?.showDragHand !== true) return;
+    tutorialDragHandDismissed = true;
+  }
+
+  function shouldShowTutorialDragHand() {
+    return state === "playing" &&
+      isTutorialStage() &&
+      currentLevel()?.showDragHand === true &&
+      !tutorialDragHandDismissed;
+  }
+
+  function getTutorialDragHandElapsed() {
+    return Math.max(0, worldTime - tutorialDragHandAnimationStartTime);
+  }
+
   function createTutorialLevel(stageIndex) {
     if (stageIndex !== 0) {
       throw new RangeError(`Unbekannte Tutorial-Stage: ${stageIndex}`);
@@ -11,6 +35,7 @@
       spawn: {x: 110, y: 590},
       goal: {x: 1100, y: 505, w: 62, h: 92},
       goalLabel: "FINISH",
+      showDragHand: true,
       platforms: [
         {x: 0, y: 620, w: 430, h: 100},
         {x: 390, y: 600, w: 390, h: 120},
