@@ -528,12 +528,14 @@
       player.vx = launch.vx;
       player.vy = launch.vy;
       shots++;
-      window.SlimeAchievements?.onShot?.({
-        levelShots: shots,
-        usedRescue: usedStuckRescue
-      });
+      if (!isTutorialStage()) {
+        window.SlimeAchievements?.onShot?.({
+          levelShots: shots,
+          usedRescue: usedStuckRescue
+        });
+        score = Math.max(0, score - 5);
+      }
       player.squish = 1;
-      score = Math.max(0, score - 5);
       playLaunch();
       spawnBurst(player.x, player.y, 10, "#7cff90");
       updateHUD();

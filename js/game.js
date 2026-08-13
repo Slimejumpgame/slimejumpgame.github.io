@@ -53,6 +53,7 @@
 
   async function startGame(levelNumber = 1) {
     if (pendingGameOverScore && !(await commitPendingHighScore())) return false;
+    enterRunStage();
     window.SlimeAchievements?.captureRunProgressSnapshot?.();
     captureWardrobeRunProgressSnapshot();
     hideNicknameEntry();
@@ -77,6 +78,26 @@
     ui.message.classList.add("hidden");
     resetLevel(true);
     window.SlimeAchievements?.onRunStart?.(getAchievementLevelContext());
+    return true;
+  }
+
+  async function startTutorialSequence() {
+    if (pendingGameOverScore && !(await commitPendingHighScore())) return false;
+    hideNicknameEntry();
+    hideGameToast();
+    getAudio();
+    enterTutorialStage(0);
+    state = "playing";
+    setMusicForLevel(1);
+    if (!musicMuted) startBackgroundMusic();
+    lives = 3;
+    score = 0;
+    shots = 0;
+    generatedLevel = createTutorialLevel(tutorialStageIndex);
+    ui.menu.classList.add("hidden");
+    showMenuScreen("main");
+    ui.message.classList.add("hidden");
+    resetLevel(true);
     return true;
   }
 
@@ -122,6 +143,12 @@
   }
 
   async function restartCurrent() {
+    if (isTutorialStage()) {
+      state = "playing";
+      ui.message.classList.add("hidden");
+      resetLevel(true);
+      return;
+    }
     if (state === "gameover") {
       if (!(await commitPendingHighScore())) return;
       if (!requirePendingWardrobeUnlockSelection()) return;
@@ -140,6 +167,7 @@
 
   async function returnToMenu() {
     if (pendingGameOverScore && !(await commitPendingHighScore())) return false;
+    enterRunStage();
     state = "menu";
     setMusicMode("menu");
     if (!musicMuted) startBackgroundMusic("menu");
@@ -161,7 +189,9 @@
   }
 
   function updateHUD() {
-    ui.level.textContent = `Level ${levelIndex + 1}`;
+    ui.level.textContent = isTutorialStage()
+      ? `Tutorial ${tutorialStageIndex + 1}`
+      : `Level ${levelIndex + 1}`;
     ui.lives.textContent = `❤️ ${lives}`;
     ui.stars.textContent = `⭐ ${collected.filter(Boolean).length}/${currentLevel().stars.length}`;
     ui.shots.textContent = `Schüsse: ${shots}`;
@@ -221,6 +251,14 @@
 
   function finishLevel() {
     if (state !== "playing") return;
+    if (isTutorialStage()) {
+      state = "paused";
+      playWin();
+      window.setTimeout(() => {
+        void startGame(1);
+      }, 0);
+      return;
+    }
 
     const completedLevel = levelIndex + 1;
     const stars = collected.filter(Boolean).length;
@@ -256,6 +294,12 @@
 
   function loseLife() {
     if (state !== "playing") return;
+    if (isTutorialStage()) {
+      shake = 18;
+      playHurt();
+      resetLevel(true);
+      return;
+    }
     window.SlimeAchievements?.onDeath?.();
     stuckAimFallbackActive = false;
     resetStuckAimTimer();
@@ -345,10 +389,12 @@
 
   async function endCurrentRun() {
     if (state !== "gamePaused") return false;
-    window.SlimeAchievements?.restoreRunProgressSnapshot?.();
-    restoreWardrobeRunProgressSnapshot();
-    window.SlimeAchievements?.discardRunProgressSnapshot?.();
-    discardWardrobeRunProgressSnapshot();
+    if (!isTutorialStage()) {
+      window.SlimeAchievements?.restoreRunProgressSnapshot?.();
+      restoreWardrobeRunProgressSnapshot();
+      window.SlimeAchievements?.discardRunProgressSnapshot?.();
+      discardWardrobeRunProgressSnapshot();
+    }
     ui.pauseOverlay.classList.add("hidden");
     ui.pauseBtn.textContent = "⏸";
     ui.pauseBtn.setAttribute("aria-label", "Pause");
@@ -475,7 +521,7 @@
     button.addEventListener("pointerleave", () => button.classList.remove("menuPressed"));
   }
 
-  ui.startBtn.addEventListener("click", () => runMenuButtonAction(ui.startBtn, startGame));
+  ui.startBtn.addEventListener("click", () => runMenuButtonAction(ui.startBtn, startTutorialSequence));
   ui.achievementsBtn.addEventListener("click", () => runMenuButtonAction(ui.achievementsBtn, () => showMenuScreen("achievements")));
   ui.wardrobeBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeBtn, () => showMenuScreen("wardrobe")));
   ui.howToBtn.addEventListener("click", () => runMenuButtonAction(ui.howToBtn, () => showMenuScreen("howto")));

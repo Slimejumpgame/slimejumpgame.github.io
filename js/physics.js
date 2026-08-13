@@ -162,6 +162,7 @@
     }
 
     const level = currentLevel();
+    const tracksRunProgress = !isTutorialStage();
 
     for (const pad of level.pads) {
       if (intersectsRect(player.x, player.y, player.r, pad) && bouncePadImpactSpeed > 0) {
@@ -177,12 +178,14 @@
         player.squish = 1;
         tone(230, 0.13, "square", 0.045, 520);
         spawnBurst(player.x, player.y + player.r, 12, "#68ddff");
-        window.SlimeAchievements?.onBounce?.();
+        if (tracksRunProgress) window.SlimeAchievements?.onBounce?.();
       }
     }
 
-    window.SlimeAchievements?.onFrame?.(dt, {grounded: player.onGround});
-    if (!wasOnGround && player.onGround) {
+    if (tracksRunProgress) {
+      window.SlimeAchievements?.onFrame?.(dt, {grounded: player.onGround});
+    }
+    if (tracksRunProgress && !wasOnGround && player.onGround) {
       window.SlimeAchievements?.onLanding?.();
     }
 
@@ -215,7 +218,7 @@
         Math.hypot(player.x - enemy.x, player.y - enemy.y) <
         player.r * 0.74 + enemy.r * 0.82
       ) {
-        window.SlimeAchievements?.onGhostHit?.();
+        if (tracksRunProgress) window.SlimeAchievements?.onGhostHit?.();
         spawnBurst(
           enemy.x,
           enemy.y,
@@ -230,8 +233,10 @@
     level.stars.forEach((s, i) => {
       if (!collected[i] && Math.hypot(player.x - s.x, player.y - s.y) < player.r + 25) {
         collected[i] = true;
-        registerRunStarCollected();
-        score += 250;
+        if (tracksRunProgress) {
+          registerRunStarCollected();
+          score += 250;
+        }
         playStar();
         spawnBurst(s.x, s.y, 18, "#ffe877");
         updateHUD();

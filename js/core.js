@@ -142,6 +142,24 @@
 
   let generatedLevel = null;
   let pendingGameOverScore = null;
+  const STAGE_KIND_RUN = "run";
+  const STAGE_KIND_TUTORIAL = "tutorial";
+  let activeStageKind = STAGE_KIND_RUN;
+  let tutorialStageIndex = null;
+
+  function isTutorialStage() {
+    return activeStageKind === STAGE_KIND_TUTORIAL;
+  }
+
+  function enterTutorialStage(stageIndex) {
+    activeStageKind = STAGE_KIND_TUTORIAL;
+    tutorialStageIndex = Math.max(0, Math.floor(Number(stageIndex) || 0));
+  }
+
+  function enterRunStage() {
+    activeStageKind = STAGE_KIND_RUN;
+    tutorialStageIndex = null;
+  }
 
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));

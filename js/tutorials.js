@@ -1,7 +1,37 @@
 "use strict";
 
+  function createTutorialLevel(stageIndex) {
+    if (stageIndex !== 0) {
+      throw new RangeError(`Unbekannte Tutorial-Stage: ${stageIndex}`);
+    }
+
+    return {
+      seed: 0,
+      name: "Tutorial 1",
+      spawn: {x: 110, y: 590},
+      goal: {x: 1100, y: 505, w: 62, h: 92},
+      platforms: [
+        {x: 0, y: 620, w: 430, h: 100},
+        {x: 390, y: 600, w: 390, h: 120},
+        {x: 850, y: 600, w: 430, h: 120}
+      ],
+      spikes: [
+        {x: 780, y: 690, w: 70, h: 30}
+      ],
+      pads: [],
+      stars: [],
+      movers: [],
+      fallingPlatforms: [],
+      conveyors: [],
+      fadePlatforms: [],
+      icePlatforms: [],
+      spikePlatforms: [],
+      enemies: []
+    };
+  }
+
   function drawTutorialSketch() {
-    if (state !== "playing" || shots > 0) return;
+    if (state !== "playing" || shots > 0 || isTutorialStage()) return;
 
     const levelNumber = levelIndex + 1;
 
