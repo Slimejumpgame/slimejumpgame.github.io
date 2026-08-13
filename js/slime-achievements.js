@@ -181,6 +181,8 @@
   let devShopTestActive = false;
   let devShopTestBalance = DEV_SHOP_TEST_INITIAL_BALANCE;
   let popupActive = false;
+  let popupGeneration = 0;
+  let runProgressSnapshot = null;
 
   const runState = {
     perfectStreak: 0,
@@ -220,16 +222,18 @@
     } catch (_) {}
   }
 
-  function saveAchievementProgress() {
+  function saveAchievementProgress({writeVersion = true} = {}) {
     try {
       localStorage.setItem(
         ACHIEVEMENT_PROGRESS_STORAGE_KEY,
         JSON.stringify(achievementProgress)
       );
-      localStorage.setItem(
-        ACHIEVEMENT_PROGRESS_VERSION_STORAGE_KEY,
-        ACHIEVEMENT_PROGRESS_VERSION
-      );
+      if (writeVersion) {
+        localStorage.setItem(
+          ACHIEVEMENT_PROGRESS_VERSION_STORAGE_KEY,
+          ACHIEVEMENT_PROGRESS_VERSION
+        );
+      }
     } catch (_) {}
   }
 
@@ -268,6 +272,100 @@
     } catch (_) {
       return false;
     }
+  }
+
+  function cloneAchievementProgress() {
+    return {
+      discoveredBiomeIds: achievementProgress.discoveredBiomeIds.slice(),
+      perfectBiomeIds: achievementProgress.perfectBiomeIds.slice(),
+      deathFreeBiomeIds: achievementProgress.deathFreeBiomeIds.slice(),
+      completedLookIds: achievementProgress.completedLookIds.slice(),
+      lifetimeStars: achievementProgress.lifetimeStars,
+      lifetimeAirTime: achievementProgress.lifetimeAirTime,
+      lifetimeCompletedLevels: achievementProgress.lifetimeCompletedLevels,
+      lifetimeDeaths: achievementProgress.lifetimeDeaths,
+      lifetimePerfects: achievementProgress.lifetimePerfects
+    };
+  }
+
+  function cloneRunState() {
+    return {
+      ...runState,
+      runBiomeIds: [...runState.runBiomeIds]
+    };
+  }
+
+  function captureRunProgressSnapshot() {
+    runProgressSnapshot = {
+      unlockedAchievements: unlockedAchievements.map(unlock => ({...unlock})),
+      achievementProgress: cloneAchievementProgress(),
+      starBalance,
+      lastUnlockTimestamp,
+      runState: cloneRunState(),
+      recentDeathTimestamps: recentDeathTimestamps.slice(),
+      popupQueueIds: popupQueue.map(achievement => achievement.id)
+    };
+    return true;
+  }
+
+  function restoreRunProgressSnapshot() {
+    if (!runProgressSnapshot) return false;
+
+    unlockedAchievements = runProgressSnapshot.unlockedAchievements.map(
+      unlock => ({...unlock})
+    );
+    unlockedById.clear();
+    unlockedAchievements.forEach(unlock => unlockedById.set(unlock.id, unlock));
+    lastUnlockTimestamp = runProgressSnapshot.lastUnlockTimestamp;
+
+    Object.assign(
+      achievementProgress,
+      runProgressSnapshot.achievementProgress,
+      {
+        discoveredBiomeIds:
+          runProgressSnapshot.achievementProgress.discoveredBiomeIds.slice(),
+        perfectBiomeIds:
+          runProgressSnapshot.achievementProgress.perfectBiomeIds.slice(),
+        deathFreeBiomeIds:
+          runProgressSnapshot.achievementProgress.deathFreeBiomeIds.slice(),
+        completedLookIds:
+          runProgressSnapshot.achievementProgress.completedLookIds.slice()
+      }
+    );
+    starBalance = runProgressSnapshot.starBalance;
+
+    Object.assign(runState, runProgressSnapshot.runState, {
+      runBiomeIds: new Set(runProgressSnapshot.runState.runBiomeIds)
+    });
+    recentDeathTimestamps.splice(
+      0,
+      recentDeathTimestamps.length,
+      ...runProgressSnapshot.recentDeathTimestamps
+    );
+
+    popupGeneration++;
+    popupActive = false;
+    popupQueue.splice(
+      0,
+      popupQueue.length,
+      ...runProgressSnapshot.popupQueueIds
+        .map(id => ACHIEVEMENT_BY_ID.get(id))
+        .filter(Boolean)
+    );
+    if (typeof document !== "undefined") {
+      document.getElementById("achievementPopup")?.classList.remove("visible");
+    }
+
+    saveAchievementUnlocks();
+    saveAchievementProgress({writeVersion: false});
+    saveStarBalance();
+    renderAchievementViews();
+    showNextAchievementPopup();
+    return true;
+  }
+
+  function discardRunProgressSnapshot() {
+    runProgressSnapshot = null;
   }
 
   function formatUnlockDate(unlockedAt) {
@@ -553,6 +651,7 @@
     if (!popup || !icon || !name) return;
 
     const achievement = popupQueue.shift();
+    const generation = popupGeneration;
     popupActive = true;
     icon.textContent = achievement.icon;
     name.textContent = achievement.name;
@@ -561,8 +660,10 @@
     popup.classList.add("visible");
 
     window.setTimeout(() => {
+      if (generation !== popupGeneration) return;
       popup.classList.remove("visible");
       window.setTimeout(() => {
+        if (generation !== popupGeneration) return;
         popupActive = false;
         showNextAchievementPopup();
       }, 260);
@@ -1265,6 +1366,9 @@
     renderMenu: renderAchievementMenu,
     renderRecent: renderRecentAchievements,
     checkWardrobe: checkWardrobeAchievements,
+    captureRunProgressSnapshot,
+    restoreRunProgressSnapshot,
+    discardRunProgressSnapshot,
     onRunStart,
     onLevelStart,
     onLevelCompleted,

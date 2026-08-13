@@ -81,6 +81,7 @@
 
   let pendingWardrobeUnlockChoices = loadPendingWardrobeUnlockChoices();
   let wardrobeUnlockAwardedThisRun = false;
+  let wardrobeRunProgressSnapshot = null;
 
   function savePendingWardrobeUnlockChoices() {
     try {
@@ -89,6 +90,28 @@
         String(pendingWardrobeUnlockChoices)
       );
     } catch (_) {}
+  }
+
+  function captureWardrobeRunProgressSnapshot() {
+    wardrobeRunProgressSnapshot = {
+      pendingWardrobeUnlockChoices,
+      wardrobeUnlockAwardedThisRun
+    };
+    return true;
+  }
+
+  function restoreWardrobeRunProgressSnapshot() {
+    if (!wardrobeRunProgressSnapshot) return false;
+    pendingWardrobeUnlockChoices =
+      wardrobeRunProgressSnapshot.pendingWardrobeUnlockChoices;
+    wardrobeUnlockAwardedThisRun =
+      wardrobeRunProgressSnapshot.wardrobeUnlockAwardedThisRun;
+    savePendingWardrobeUnlockChoices();
+    return true;
+  }
+
+  function discardWardrobeRunProgressSnapshot() {
+    wardrobeRunProgressSnapshot = null;
   }
 
   function getPendingWardrobeUnlockChoiceCount() {

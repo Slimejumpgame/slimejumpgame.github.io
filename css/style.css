@@ -545,7 +545,8 @@ canvas.aiming {
 
 #resumeBtn,
 #pauseMusicBtn,
-#pauseSfxBtn {
+#pauseSfxBtn,
+#endRunBtn {
   width: 100%;
   min-height: clamp(50px, 12dvh, 68px);
   font-size: clamp(17px, 4dvh, 25px);

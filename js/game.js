@@ -52,6 +52,8 @@
 
   async function startGame(levelNumber = 1) {
     if (pendingGameOverScore && !(await commitPendingHighScore())) return false;
+    window.SlimeAchievements?.captureRunProgressSnapshot?.();
+    captureWardrobeRunProgressSnapshot();
     hideNicknameEntry();
     hideGameToast();
     getAudio();
@@ -267,6 +269,8 @@
     updateHUD();
 
     if (lives <= 0) {
+      window.SlimeAchievements?.discardRunProgressSnapshot?.();
+      discardWardrobeRunProgressSnapshot();
       const reachedLevel = levelIndex + 1;
       console.info(`[Highscore] RUN FINISHED score=${score}`);
       const previousBest = Number(localStorage.getItem("slimejumperBest") || 0);
@@ -336,6 +340,18 @@
     ui.pauseBtn.textContent = "⏸";
     ui.pauseBtn.setAttribute("aria-label", "Pause");
     ui.pauseOverlay.classList.add("hidden");
+  }
+
+  async function endCurrentRun() {
+    if (state !== "gamePaused") return false;
+    window.SlimeAchievements?.restoreRunProgressSnapshot?.();
+    restoreWardrobeRunProgressSnapshot();
+    window.SlimeAchievements?.discardRunProgressSnapshot?.();
+    discardWardrobeRunProgressSnapshot();
+    ui.pauseOverlay.classList.add("hidden");
+    ui.pauseBtn.textContent = "⏸";
+    ui.pauseBtn.setAttribute("aria-label", "Pause");
+    return returnToMenu();
   }
 
   function frame(now) {
@@ -472,6 +488,7 @@
   ui.resumeBtn.addEventListener("click", resumeGame);
   ui.pauseMusicBtn.addEventListener("click", () => ui.musicBtn.click());
   ui.pauseSfxBtn.addEventListener("click", () => ui.sfxBtn.click());
+  ui.endRunBtn.addEventListener("click", endCurrentRun);
   ui.musicBtn.addEventListener("click", () => {
     musicMuted = !musicMuted;
     updateAudioButtons();

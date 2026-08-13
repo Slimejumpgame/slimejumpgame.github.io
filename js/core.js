@@ -126,6 +126,7 @@
     resumeBtn: document.getElementById("resumeBtn"),
     pauseMusicBtn: document.getElementById("pauseMusicBtn"),
     pauseSfxBtn: document.getElementById("pauseSfxBtn"),
+    endRunBtn: document.getElementById("endRunBtn"),
     devPanel: document.getElementById("devPanel"),
     devPreviousLevelBtn: document.getElementById("devPreviousLevelBtn"),
     devLevelInput: document.getElementById("devLevelInput"),
