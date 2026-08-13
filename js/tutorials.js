@@ -89,7 +89,7 @@
   }
 
   function drawTutorialSketch() {
-    if (state !== "playing" || shots > 0 || isTutorialStage()) return;
+    if (state !== "playing" || shots > 0 || isTutorialStage() || levelIndex === 0) return;
 
     const levelNumber = levelIndex + 1;
 
