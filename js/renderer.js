@@ -404,7 +404,8 @@
   }
 
   function drawGoal() {
-    const g = currentLevel().goal;
+    const level = currentLevel();
+    const g = level.goal;
     const pulse = 1 + Math.sin(worldTime * 4) * 0.06;
     ctx.save();
     ctx.translate(g.x + g.w / 2, g.y + g.h / 2);
@@ -422,6 +423,40 @@
     ctx.beginPath();
     ctx.ellipse(0, 0, g.w * 0.29, g.h * 0.35, 0, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
+
+    const goalLabel = typeof level.goalLabel === "string"
+      ? level.goalLabel.trim()
+      : "";
+    if (!goalLabel) return;
+
+    const labelX = g.x + g.w / 2;
+    const labelY = g.y - 27;
+    ctx.save();
+    ctx.font = '900 24px "Fredoka", system-ui';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const labelWidth = Math.ceil(ctx.measureText(goalLabel).width) + 28;
+    const labelHeight = 34;
+
+    ctx.shadowColor = "rgba(38, 10, 65, 0.72)";
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = "rgba(24, 8, 48, 0.92)";
+    ctx.strokeStyle = "#d7a7ff";
+    ctx.lineWidth = 3;
+    roundedRect(
+      labelX - labelWidth / 2,
+      labelY - labelHeight / 2,
+      labelWidth,
+      labelHeight,
+      12
+    );
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.shadowBlur = 5;
+    ctx.fillStyle = "#fff4c7";
+    ctx.fillText(goalLabel, labelX, labelY + 1);
     ctx.restore();
   }
 

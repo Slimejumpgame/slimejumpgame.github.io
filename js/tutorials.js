@@ -10,6 +10,7 @@
       name: "Tutorial 1",
       spawn: {x: 110, y: 590},
       goal: {x: 1100, y: 505, w: 62, h: 92},
+      goalLabel: "FINISH",
       platforms: [
         {x: 0, y: 620, w: 430, h: 100},
         {x: 390, y: 600, w: 390, h: 120},
