@@ -2210,9 +2210,9 @@ p {
   align-items: center;
   justify-content: center;
   gap: clamp(2px, 0.4vw, 6px);
-  overflow: hidden;
-  white-space: nowrap;
-  flex-wrap: nowrap;
+  overflow: visible;
+  white-space: normal;
+  flex-wrap: wrap;
 }
 
 .highscoreBadgeIcon {

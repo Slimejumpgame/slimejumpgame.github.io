@@ -25,10 +25,9 @@ alter table public.slime_jump_highscores
 -- Keine feste Achievement-ID-Liste: Neue Registry-Eintraege bleiben moeglich.
 -- Die App validiert IDs gegen ihre zentrale Achievement-Registry.
 alter table public.slime_jump_highscores
-  add constraint slime_jump_highscores_slime_achievements_shape_check
+  add constraint slime_jump_highscores_slime_achievements_check
   check (
-    cardinality(slime_achievements) <= 3
-    and array_position(slime_achievements, null) is null
+    array_position(slime_achievements, null) is null
   );
 
 commit;

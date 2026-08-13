@@ -703,7 +703,7 @@
     const normalized = [];
 
     value.forEach(id => {
-      if (normalized.length >= 3 || typeof id !== "string") return;
+      if (typeof id !== "string") return;
       const cleanId = id.trim();
       if (!cleanId || !knownIds.has(cleanId) || normalized.includes(cleanId)) return;
       normalized.push(cleanId);
@@ -714,15 +714,8 @@
 
   function getHighScoreAchievementSnapshot() {
     const selectedCallingCardIds = window.SlimeAchievements?.getSelectedBadgeIds?.();
-    if (Array.isArray(selectedCallingCardIds) && selectedCallingCardIds.length > 0) {
-      return normalizeHighScoreAchievementIds(selectedCallingCardIds.slice(0, 3));
-    }
-
-    const recentRealUnlocks = window.SlimeAchievements?.getRecent?.(3);
     return normalizeHighScoreAchievementIds(
-      Array.isArray(recentRealUnlocks)
-        ? recentRealUnlocks.map(achievement => achievement?.id)
-        : []
+      Array.isArray(selectedCallingCardIds) ? selectedCallingCardIds : []
     );
   }
 

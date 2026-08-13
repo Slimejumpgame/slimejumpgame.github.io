@@ -11,7 +11,7 @@
     "sb_publishable_DDpbowG2-g6ZVios1OTrfA_DkUyh2TC";
 
   const TABLE = "slime_jump_highscores";
-  const GAME_VERSION = "2.50";
+  const GAME_VERSION = "2.51";
   // Nach der unten dokumentierten Supabase-Migration auf true setzen.
   const SLIME_COLOR_COLUMN_ENABLED = true;
   // Erst nach 
@@ -75,7 +75,7 @@
     const normalized = [];
 
     value.forEach(id => {
-      if (normalized.length >= 3 || typeof id !== "string") return;
+      if (typeof id !== "string") return;
       const cleanId = id.trim();
       if (!cleanId || normalized.includes(cleanId)) return;
       if (knownIds && !knownIds.has(cleanId)) return;
