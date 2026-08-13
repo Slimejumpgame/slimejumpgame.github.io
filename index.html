@@ -330,6 +330,22 @@
           <button id="endRunBtn" class="uiButton uiButton--danger" type="button">Run beenden</button>
         </div>
       </section>
+
+      <section id="endRunConfirmOverlay" class="endRunConfirmOverlay hidden" role="alertdialog" aria-modal="true" aria-labelledby="endRunConfirmTitle" aria-describedby="endRunConfirmText">
+        <div class="endRunConfirmPanel uiPanel">
+          <div class="dialogAccent endRunConfirmAccent" aria-hidden="true"></div>
+          <h2 id="endRunConfirmTitle">RUN BEENDEN?</h2>
+          <p id="endRunConfirmText">Der gesamte Fortschritt des aktuellen Runs geht verloren.</p>
+          <div class="endRunConfirmActions">
+            <button id="endRunConfirmCancelBtn" class="uiButton uiButton--secondary" type="button">Abbrechen</button>
+            <button id="endRunConfirmBtn" class="uiButton uiButton--danger" type="button">Run beenden</button>
+          </div>
+          <label class="endRunWarningPreference" for="skipEndRunWarningCheckbox">
+            <input id="skipEndRunWarningCheckbox" type="checkbox">
+            <span>Warnung nicht mehr anzeigen</span>
+          </label>
+        </div>
+      </section>
     </main>
 
     <button id="pauseBtn" class="iconBtn uiButton uiButton--secondary" type="button" aria-label="Pause">⏸</button>

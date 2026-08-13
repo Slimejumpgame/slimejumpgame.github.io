@@ -552,6 +552,92 @@ canvas.aiming {
   font-size: clamp(17px, 4dvh, 25px);
 }
 
+.endRunConfirmOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ui-gap-md);
+  background: rgba(2, 5, 18, 0.86);
+  backdrop-filter: blur(7px);
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.endRunConfirmPanel {
+  width: min(90%, 520px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.8dvh, 14px);
+  padding: clamp(16px, 3.5dvh, 28px) clamp(18px, 3vw, 32px);
+  text-align: center;
+}
+
+.endRunConfirmAccent {
+  background: linear-gradient(90deg, transparent, #ff7588, transparent);
+  box-shadow: 0 0 14px rgba(255, 117, 136, 0.5);
+}
+
+.endRunConfirmPanel h2 {
+  margin: 0;
+  color: #ffb2bd;
+  font-family: var(--ui-title-font);
+  font-size: clamp(28px, 7dvh, 48px);
+  font-weight: 900;
+  letter-spacing: 0.055em;
+  line-height: 1;
+  text-shadow:
+    0 3px 0 #4f1324,
+    0 0 18px rgba(255, 117, 136, 0.3);
+}
+
+.endRunConfirmPanel p {
+  margin: 0 auto;
+  max-width: 390px;
+  font-size: clamp(15px, 3.4dvh, 21px);
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.endRunConfirmActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(8px, 1.4vw, 12px);
+}
+
+.endRunConfirmActions .uiButton {
+  width: 100%;
+  min-height: clamp(44px, 10dvh, 60px);
+  padding-inline: clamp(10px, 2vw, 18px);
+  font-size: clamp(14px, 3.2dvh, 20px);
+}
+
+.endRunWarningPreference {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+  color: rgba(245, 238, 255, 0.88);
+  font-size: clamp(12px, 2.7dvh, 16px);
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: right;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+#skipEndRunWarningCheckbox {
+  flex: 0 0 auto;
+  width: clamp(17px, 3.5dvh, 22px);
+  height: clamp(17px, 3.5dvh, 22px);
+  margin: 0;
+  accent-color: #c93352;
+  cursor: pointer;
+}
+
 .card {
   position: relative;
   width: min(620px, 95%);

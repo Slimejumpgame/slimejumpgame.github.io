@@ -2,6 +2,7 @@
 
   const MAX_LIVES = 5;
   const PERFECT_LEVEL_STREAK_TARGET = 3;
+  const SKIP_END_RUN_WARNING_STORAGE_KEY = "slimejumperSkipEndRunWarning";
 
   function getAchievementLevelContext() {
     const levelNumber = levelIndex + 1;
@@ -354,6 +355,47 @@
     return returnToMenu();
   }
 
+  function shouldSkipEndRunWarning() {
+    try {
+      return localStorage.getItem(SKIP_END_RUN_WARNING_STORAGE_KEY) === "true";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function showEndRunConfirmation() {
+    if (state !== "gamePaused") return false;
+    ui.skipEndRunWarningCheckbox.checked = false;
+    ui.endRunConfirmOverlay.classList.remove("hidden");
+    return true;
+  }
+
+  function hideEndRunConfirmation() {
+    ui.endRunConfirmOverlay.classList.add("hidden");
+    ui.skipEndRunWarningCheckbox.checked = false;
+  }
+
+  function requestEndCurrentRun() {
+    if (state !== "gamePaused") return false;
+    if (shouldSkipEndRunWarning()) return endCurrentRun();
+    return showEndRunConfirmation();
+  }
+
+  function cancelEndCurrentRun() {
+    hideEndRunConfirmation();
+  }
+
+  function confirmEndCurrentRun() {
+    if (state !== "gamePaused") return false;
+    if (ui.skipEndRunWarningCheckbox.checked) {
+      try {
+        localStorage.setItem(SKIP_END_RUN_WARNING_STORAGE_KEY, "true");
+      } catch (_) {}
+    }
+    hideEndRunConfirmation();
+    return endCurrentRun();
+  }
+
   function frame(now) {
     const dt = Math.min(0.026, Math.max(0, (now - lastTime) / 1000));
     lastTime = now;
@@ -488,7 +530,9 @@
   ui.resumeBtn.addEventListener("click", resumeGame);
   ui.pauseMusicBtn.addEventListener("click", () => ui.musicBtn.click());
   ui.pauseSfxBtn.addEventListener("click", () => ui.sfxBtn.click());
-  ui.endRunBtn.addEventListener("click", endCurrentRun);
+  ui.endRunBtn.addEventListener("click", requestEndCurrentRun);
+  ui.endRunConfirmCancelBtn.addEventListener("click", cancelEndCurrentRun);
+  ui.endRunConfirmBtn.addEventListener("click", confirmEndCurrentRun);
   ui.musicBtn.addEventListener("click", () => {
     musicMuted = !musicMuted;
     updateAudioButtons();
