@@ -577,6 +577,9 @@
     ui.wardrobeColorView.classList.toggle("hidden", viewName !== "color");
     ui.wardrobeCosmeticsView.classList.toggle("hidden", viewName !== "cosmetics");
     ui.wardrobeBeardsView.classList.toggle("hidden", viewName !== "beards");
+    ui.wardrobeColorBackBtn.classList.toggle("hidden", viewName !== "color");
+    ui.wardrobeCosmeticsBackBtn.classList.toggle("hidden", viewName !== "cosmetics");
+    ui.wardrobeBeardsBackBtn.classList.toggle("hidden", viewName !== "beards");
     renderWardrobeProgress();
     if (viewName === "color") renderSlimeColorPicker();
     if (viewName === "cosmetics") renderSlimeCosmeticPicker();

@@ -1316,9 +1316,8 @@ p {
 .wardrobeSubmenu {
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto;
+  grid-template-rows: auto;
   align-content: start;
-  gap: var(--ui-gap-sm);
   padding-right: 2px;
   overflow-x: hidden;
   overflow-y: auto;
@@ -1327,16 +1326,16 @@ p {
   -webkit-overflow-scrolling: touch;
 }
 
-.wardrobeSubmenuToolbar {
+.wardrobeHeaderActions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: var(--ui-gap-sm);
+  flex: 0 0 auto;
 }
 
 .wardrobeSubmenuBackBtn {
-  width: clamp(126px, 18vw, 190px);
-  min-height: clamp(40px, 6.5vh, 52px);
   padding: 0 clamp(10px, 1.25vw, 18px);
-  font-size: clamp(11px, 1.2vw, 16px);
 }
 
 .wardrobeProgressPanel {
@@ -2532,11 +2531,6 @@ p {
     min-height: clamp(50px, 17vh, 72px);
     padding: 5px 8px;
     font-size: clamp(11px, 3.3vh, 16px);
-  }
-
-  .wardrobeSubmenuBackBtn {
-    min-height: 34px;
-    font-size: clamp(9px, 2.5vh, 12px);
   }
 
   .wardrobeProgressPanel {

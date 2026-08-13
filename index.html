@@ -123,15 +123,20 @@
             <span class="screenKicker">Dein Slime, dein Style</span>
             <h2>Wardrobe</h2>
           </div>
-          <button id="wardrobeBackBtn" class="menuHotspot uiButton uiButton--secondary backButton" type="button" aria-label="Zurück zum Hauptmenü">
-            <span class="buttonIcon" aria-hidden="true">
-              <svg class="menuButtonIconSvg" viewBox="0 0 24 24" focusable="false">
-                <path d="m10 6-6 6 6 6"></path>
-                <path d="M4 12h9.5a6.5 6.5 0 0 1 6.5 6.5"></path>
-              </svg>
-            </span>
-            <span>Back</span>
-          </button>
+          <div class="wardrobeHeaderActions">
+            <button id="wardrobeColorBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn backButton hidden" type="button">← Wardrobe</button>
+            <button id="wardrobeCosmeticsBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn backButton hidden" type="button">← Wardrobe</button>
+            <button id="wardrobeBeardsBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn backButton hidden" type="button">← Wardrobe</button>
+            <button id="wardrobeBackBtn" class="menuHotspot uiButton uiButton--secondary backButton" type="button" aria-label="Zurück zum Hauptmenü">
+              <span class="buttonIcon" aria-hidden="true">
+                <svg class="menuButtonIconSvg" viewBox="0 0 24 24" focusable="false">
+                  <path d="m10 6-6 6 6 6"></path>
+                  <path d="M4 12h9.5a6.5 6.5 0 0 1 6.5 6.5"></path>
+                </svg>
+              </span>
+              <span>Back</span>
+            </button>
+          </div>
         </header>
         <div class="wardrobeScreenBody">
           <div class="wardrobeProgressPanel uiPanel" aria-label="Wardrobe-Fortschritt">
@@ -146,49 +151,19 @@
           </nav>
 
           <section id="wardrobeColorView" class="wardrobeSubmenu hidden" aria-label="Slime-Farbe">
-            <div class="wardrobeSubmenuToolbar">
-              <button id="wardrobeColorBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn" type="button">← Wardrobe</button>
-            </div>
             <aside id="slimeColorPicker" class="uiPanel wardrobePanel slimeColorPicker" aria-label="Slime-Farbe auswählen">
-              <div class="panelHeading">
-                <span class="panelHeadingIcon panelHeadingIcon--drop" aria-hidden="true"></span>
-                <div>
-                  <span class="panelKicker">Wardrobe</span>
-                  <h3 class="slimeColorPickerTitle">Slime Color</h3>
-                </div>
-              </div>
               <div id="slimeColorOptions" class="slimeColorOptions"></div>
             </aside>
           </section>
 
           <section id="wardrobeCosmeticsView" class="wardrobeSubmenu hidden" aria-label="Cosmetics">
-            <div class="wardrobeSubmenuToolbar">
-              <button id="wardrobeCosmeticsBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn" type="button">← Wardrobe</button>
-            </div>
             <aside id="slimeCosmeticPicker" class="uiPanel wardrobePanel slimeCosmeticPicker" aria-label="Slime-Cosmetic auswählen">
-              <div class="panelHeading">
-                <span class="panelHeadingIcon panelHeadingIcon--crown" aria-hidden="true">♛</span>
-                <div>
-                  <span class="panelKicker">Wardrobe</span>
-                  <h3 class="slimeColorPickerTitle">Cosmetics</h3>
-                </div>
-              </div>
               <div id="slimeCosmeticOptions" class="slimeCosmeticOptions"></div>
             </aside>
           </section>
 
           <section id="wardrobeBeardsView" class="wardrobeSubmenu hidden" aria-label="Bärte">
-            <div class="wardrobeSubmenuToolbar">
-              <button id="wardrobeBeardsBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn" type="button">← Wardrobe</button>
-            </div>
             <aside id="slimeBeardPicker" class="uiPanel wardrobePanel slimeBeardPicker" aria-label="Slime-Bart auswählen">
-              <div class="panelHeading">
-                <span class="panelHeadingIcon panelHeadingIcon--beard" aria-hidden="true">〰</span>
-                <div>
-                  <span class="panelKicker">Wardrobe</span>
-                  <h3 class="slimeColorPickerTitle">Bärte</h3>
-                </div>
-              </div>
               <div id="slimeBeardOptions" class="slimeBeardOptions"></div>
             </aside>
           </section>
