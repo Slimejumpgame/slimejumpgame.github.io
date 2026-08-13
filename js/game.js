@@ -3,6 +3,7 @@
   const MAX_LIVES = 5;
   const PERFECT_LEVEL_STREAK_TARGET = 3;
   const SKIP_END_RUN_WARNING_STORAGE_KEY = "slimejumperSkipEndRunWarning";
+  const SKIP_TUTORIAL_STORAGE_KEY = "slimejumperSkipTutorial";
 
   function getAchievementLevelContext() {
     const levelNumber = levelIndex + 1;
@@ -104,6 +105,20 @@
     return true;
   }
 
+  function shouldSkipTutorialFromPlay() {
+    try {
+      return localStorage.getItem(SKIP_TUTORIAL_STORAGE_KEY) === "true";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function startFromPlay() {
+    return shouldSkipTutorialFromPlay()
+      ? startGame(1)
+      : startTutorialSequence();
+  }
+
   async function startDevLevel(levelNumber) {
     if (!DEV_MODE) return;
     const parsedLevel = Math.floor(Number(levelNumber));
@@ -184,6 +199,7 @@
     resetStuckAimTimer();
     canvas.classList.remove("aiming");
     ui.message.classList.add("hidden");
+    ui.tutorialCompleteOverlay.classList.add("hidden");
     hideNicknameEntry();
     showMenuScreen("main");
     updateHighScores();
@@ -252,22 +268,45 @@
     return "";
   }
 
+  function showTutorialCompletePrompt() {
+    stopAiming();
+    activeTouchId = null;
+    shake = 0;
+    state = "tutorialCompletePrompt";
+    ui.tutorialCompleteOverlay.classList.remove("hidden");
+  }
+
+  function hideTutorialCompletePrompt() {
+    ui.tutorialCompleteOverlay.classList.add("hidden");
+  }
+
+  function resolveTutorialCompletePrompt(skipNextTime) {
+    if (state !== "tutorialCompletePrompt") return false;
+    if (skipNextTime) {
+      try {
+        localStorage.setItem(SKIP_TUTORIAL_STORAGE_KEY, "true");
+      } catch (_) {}
+    }
+    hideTutorialCompletePrompt();
+    return startGame(1);
+  }
+
   function finishLevel() {
     if (state !== "playing") return;
     if (isTutorialStage()) {
-      state = "paused";
       playWin();
-      window.setTimeout(() => {
-        if (tutorialStageIndex === 0) {
+      if (tutorialStageIndex === 0) {
+        state = "tutorialTransition";
+        window.setTimeout(() => {
           enterTutorialStage(1);
           generatedLevel = createTutorialLevel(tutorialStageIndex);
           state = "playing";
           resetLevel(true);
-          return;
-        }
+        }, 0);
+      } else if (tutorialStageIndex === 1) {
+        showTutorialCompletePrompt();
+      }
 
-        void startGame(1);
-      }, 0);
       return;
     }
 
@@ -532,7 +571,7 @@
     button.addEventListener("pointerleave", () => button.classList.remove("menuPressed"));
   }
 
-  ui.startBtn.addEventListener("click", () => runMenuButtonAction(ui.startBtn, startTutorialSequence));
+  ui.startBtn.addEventListener("click", () => runMenuButtonAction(ui.startBtn, startFromPlay));
   ui.achievementsBtn.addEventListener("click", () => runMenuButtonAction(ui.achievementsBtn, () => showMenuScreen("achievements")));
   ui.wardrobeBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeBtn, () => showMenuScreen("wardrobe")));
   ui.howToBtn.addEventListener("click", () => runMenuButtonAction(ui.howToBtn, () => showMenuScreen("howto")));
@@ -573,6 +612,8 @@
   }
 
   ui.continueBtn.addEventListener("click", doContinue);
+  ui.tutorialSkipConfirmBtn.addEventListener("click", () => resolveTutorialCompletePrompt(true));
+  ui.tutorialSkipDeclineBtn.addEventListener("click", () => resolveTutorialCompletePrompt(false));
   ui.wardrobeUnlockBackBtn.addEventListener("click", () => {
     wardrobeUnlockCategory = null;
     renderWardrobeUnlockPanel();
