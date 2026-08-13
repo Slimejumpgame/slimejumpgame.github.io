@@ -25,6 +25,37 @@
   }
 
   function createTutorialLevel(stageIndex) {
+    if (stageIndex === 1) {
+      return {
+        seed: 1,
+        name: "Tutorial 2",
+        spawn: {x: 110, y: 590},
+        goal: {x: 1100, y: 505, w: 62, h: 92},
+        tutorialHeadline: "COLLECT STARS",
+        platforms: [
+          {x: 0, y: 620, w: 360, h: 100},
+          {x: 470, y: 540, w: 280, h: 55},
+          {x: 850, y: 600, w: 430, h: 120}
+        ],
+        spikes: [
+          {x: 360, y: 690, w: 490, h: 30}
+        ],
+        pads: [],
+        stars: [
+          {x: 285, y: 460},
+          {x: 465, y: 420},
+          {x: 610, y: 455}
+        ],
+        movers: [],
+        fallingPlatforms: [],
+        conveyors: [],
+        fadePlatforms: [],
+        icePlatforms: [],
+        spikePlatforms: [],
+        enemies: []
+      };
+    }
+
     if (stageIndex !== 0) {
       throw new RangeError(`Unbekannte Tutorial-Stage: ${stageIndex}`);
     }

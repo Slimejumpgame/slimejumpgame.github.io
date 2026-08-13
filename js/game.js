@@ -258,6 +258,14 @@
       state = "paused";
       playWin();
       window.setTimeout(() => {
+        if (tutorialStageIndex === 0) {
+          enterTutorialStage(1);
+          generatedLevel = createTutorialLevel(tutorialStageIndex);
+          state = "playing";
+          resetLevel(true);
+          return;
+        }
+
         void startGame(1);
       }, 0);
       return;

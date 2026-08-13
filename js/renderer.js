@@ -467,6 +467,30 @@
     ctx.restore();
   }
 
+  function drawTutorialHeadline() {
+    const headline = typeof currentLevel().tutorialHeadline === "string"
+      ? currentLevel().tutorialHeadline.trim()
+      : "";
+    if (!headline) return;
+
+    const headlineX = W / 2;
+    const headlineY = 58;
+    ctx.save();
+    ctx.font = '900 42px "Fredoka", ui-rounded, "Arial Rounded MT Bold", system-ui';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineJoin = "round";
+    ctx.shadowColor = "rgba(109, 255, 32, 0.58)";
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetY = 5;
+    ctx.strokeStyle = "#1f6312";
+    ctx.lineWidth = 8;
+    ctx.strokeText(headline, headlineX, headlineY);
+    ctx.fillStyle = "#84f51f";
+    ctx.fillText(headline, headlineX, headlineY);
+    ctx.restore();
+  }
+
   function drawTutorialDragHandImage(tipX, tipY, scale, alpha) {
     if (
       alpha <= 0 ||
@@ -1692,6 +1716,7 @@
     drawPlayer();
     drawParticles();
     drawTutorialDragHand();
+    drawTutorialHeadline();
 
     ctx.fillStyle = "rgba(255,255,255,0.78)";
     ctx.font = "700 18px system-ui";
