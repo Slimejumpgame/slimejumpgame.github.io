@@ -1,5 +1,12 @@
 "use strict";
 
+  const tutorialDragHandImage = new Image();
+  tutorialDragHandImage.src = "assets/tutorial/tutorial-drag-hand.png";
+
+  const TUTORIAL_DRAG_HAND_RENDER_SIZE = 108;
+  const TUTORIAL_DRAG_HAND_FINGERTIP_X_RATIO = 496 / 1254;
+  const TUTORIAL_DRAG_HAND_FINGERTIP_Y_RATIO = 24 / 1254;
+
   function spawnBurst(x, y, count, color) {
     for (let i = 0; i < count; i++) {
       const a = Math.random() * Math.PI * 2;
@@ -460,48 +467,35 @@
     ctx.restore();
   }
 
-  function drawCartoonDragHand(tipX, tipY, scale, alpha) {
+  function drawTutorialDragHandImage(tipX, tipY, scale, alpha) {
+    if (
+      alpha <= 0 ||
+      !tutorialDragHandImage.complete ||
+      tutorialDragHandImage.naturalWidth <= 0 ||
+      tutorialDragHandImage.naturalHeight <= 0
+    ) {
+      return;
+    }
+
+    const drawWidth = TUTORIAL_DRAG_HAND_RENDER_SIZE;
+    const drawHeight = drawWidth * (
+      tutorialDragHandImage.naturalHeight / tutorialDragHandImage.naturalWidth
+    );
+    const fingertipOffsetX = drawWidth * TUTORIAL_DRAG_HAND_FINGERTIP_X_RATIO;
+    const fingertipOffsetY = drawHeight * TUTORIAL_DRAG_HAND_FINGERTIP_Y_RATIO;
+
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.translate(tipX, tipY);
     ctx.rotate(-0.12);
     ctx.scale(scale, scale);
-    ctx.lineJoin = "round";
-
-    ctx.shadowColor = "rgba(22, 8, 45, 0.58)";
-    ctx.shadowBlur = 12;
-    ctx.fillStyle = "#82dc3f";
-    ctx.strokeStyle = "#214c25";
-    ctx.lineWidth = 4;
-    roundedRect(-25, 68, 52, 29, 10);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = "#ffd19f";
-    ctx.strokeStyle = "#713f3a";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.ellipse(1, 60, 29, 28, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    roundedRect(-11, 0, 22, 66, 11);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.save();
-    ctx.translate(20, 51);
-    ctx.rotate(-0.68);
-    roundedRect(-8, -5, 18, 42, 9);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = "rgba(255, 245, 220, 0.76)";
-    ctx.beginPath();
-    ctx.ellipse(-3, 12, 4, 8, -0.1, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.drawImage(
+      tutorialDragHandImage,
+      -fingertipOffsetX,
+      -fingertipOffsetY,
+      drawWidth,
+      drawHeight
+    );
     ctx.restore();
   }
 
@@ -607,7 +601,7 @@
     }
 
     drawTutorialDragTrail(contactX, contactY, handX, handY, trailAlpha);
-    drawCartoonDragHand(handX, handY, handScale, handAlpha);
+    drawTutorialDragHandImage(handX, handY, handScale, handAlpha);
   }
 
   function drawStars() {
