@@ -119,6 +119,29 @@
       : startTutorialSequence();
   }
 
+  function updateDevTutorialToggle() {
+    if (!ui.devTutorialToggleBtn) return;
+    const tutorialEnabled = !shouldSkipTutorialFromPlay();
+    ui.devTutorialToggleBtn.textContent = `Einführung: ${tutorialEnabled ? "AN" : "AUS"}`;
+    ui.devTutorialToggleBtn.setAttribute("aria-pressed", String(tutorialEnabled));
+  }
+
+  function toggleDevTutorial() {
+    if (!DEV_MODE || !ui.devTutorialToggleBtn) return false;
+    try {
+      if (shouldSkipTutorialFromPlay()) {
+        localStorage.removeItem(SKIP_TUTORIAL_STORAGE_KEY);
+      } else {
+        localStorage.setItem(SKIP_TUTORIAL_STORAGE_KEY, "true");
+      }
+    } catch (error) {
+      console.warn("DEV-Einführung konnte nicht umgeschaltet werden:", error);
+      return false;
+    }
+    updateDevTutorialToggle();
+    return true;
+  }
+
   async function startDevLevel(levelNumber) {
     if (!DEV_MODE) return;
     const parsedLevel = Math.floor(Number(levelNumber));
@@ -151,6 +174,8 @@
     ui.devPreviousLevelBtn.addEventListener("click", () => startDevLevel(levelIndex));
     ui.devStartLevelBtn.addEventListener("click", () => startDevLevel(ui.devLevelInput.value));
     ui.devNextLevelBtn.addEventListener("click", () => startDevLevel(levelIndex + 2));
+    updateDevTutorialToggle();
+    ui.devTutorialToggleBtn.addEventListener("click", toggleDevTutorial);
 
     document.addEventListener("keydown", event => {
       if (event.key !== "PageUp" && event.key !== "PageDown") return;

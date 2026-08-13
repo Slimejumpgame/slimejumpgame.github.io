@@ -140,6 +140,7 @@
     devStartLevelBtn: document.getElementById("devStartLevelBtn"),
     devNextLevelBtn: document.getElementById("devNextLevelBtn"),
     devModeToggleBtn: document.getElementById("devModeToggleBtn"),
+    devTutorialToggleBtn: document.getElementById("devTutorialToggleBtn"),
     devShopTestBtn: document.getElementById("devShopTestBtn")
   };
 

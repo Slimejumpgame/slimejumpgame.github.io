@@ -473,8 +473,12 @@
       : "";
     if (!headline) return;
 
-    const headlineX = W / 2;
-    const headlineY = 58;
+    const headlineX = Number.isFinite(currentLevel().tutorialHeadlineX)
+      ? currentLevel().tutorialHeadlineX
+      : W / 2;
+    const headlineY = Number.isFinite(currentLevel().tutorialHeadlineY)
+      ? currentLevel().tutorialHeadlineY
+      : 58;
     ctx.save();
     ctx.font = '900 42px "Fredoka", ui-rounded, "Arial Rounded MT Bold", system-ui';
     ctx.textAlign = "center";

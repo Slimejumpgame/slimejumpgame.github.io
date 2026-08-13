@@ -32,6 +32,8 @@
         spawn: {x: 110, y: 590},
         goal: {x: 1100, y: 505, w: 62, h: 92},
         tutorialHeadline: "COLLECT STARS",
+        tutorialHeadlineX: 448,
+        tutorialHeadlineY: 345,
         platforms: [
           {x: 0, y: 620, w: 360, h: 100},
           {x: 470, y: 540, w: 280, h: 55},
