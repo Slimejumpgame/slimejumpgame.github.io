@@ -11,7 +11,7 @@
     "sb_publishable_DDpbowG2-g6ZVios1OTrfA_DkUyh2TC";
 
   const TABLE = "slime_jump_highscores";
-  const GAME_VERSION = "2.49";
+  const GAME_VERSION = "2.50";
   // Nach der unten dokumentierten Supabase-Migration auf true setzen.
   const SLIME_COLOR_COLUMN_ENABLED = true;
   // Erst nach 
