@@ -428,10 +428,32 @@ canvas.aiming {
 
   #pauseBtn {
     position: absolute;
-    top: calc(54px + 12px);
-    right: 12px;
+    top: 19dvh;
+    right: max(4.2vw, env(safe-area-inset-right));
     z-index: 6;
     display: inline-flex;
+    transform: translate(50%, -50%);
+    min-width: clamp(36px, 7dvh, 46px);
+    min-height: clamp(36px, 7dvh, 46px);
+    width: clamp(36px, 7dvh, 46px);
+    height: clamp(36px, 7dvh, 46px);
+    padding: 0;
+    border-radius: clamp(9px, 1.8dvh, 13px);
+    font-size: clamp(16px, 3.5dvh, 22px);
+  }
+
+  :fullscreen #controls #fullscreenBtn,
+  :fullscreen #pauseBtn {
+    top: 66px;
+    transform: none;
+  }
+
+  :fullscreen #controls #fullscreenBtn {
+    left: 0px;
+  }
+
+  :fullscreen #pauseBtn {
+    right: 0px;
   }
 }
 
@@ -2854,7 +2876,10 @@ p {
     font-size: clamp(10px, 2.35dvh, 15px);
     line-height: 1;
   }
+}
 
+@media (hover: hover) and (pointer: fine),
+  (orientation: landscape) and (hover: none) and (pointer: coarse) {
   #controls {
     display: block;
     position: absolute;
@@ -2888,7 +2913,9 @@ p {
     font-size: clamp(16px, 3.5dvh, 22px);
     pointer-events: auto;
   }
+}
 
+@media (orientation: landscape) and (hover: none) and (pointer: coarse) {
   #pauseBtn {
     position: absolute;
     top: 19dvh;
