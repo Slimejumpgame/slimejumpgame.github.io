@@ -86,7 +86,13 @@
     checkpointIntroCheckbox: document.getElementById("checkpointIntroCheckbox"),
     checkpointIntroConfirmBtn: document.getElementById("checkpointIntroConfirmBtn"),
     checkpointLevelOneBtn: document.getElementById("checkpointLevelOneBtn"),
+    checkpointLevelOneValue: document.getElementById("checkpointLevelOneValue"),
+    checkpointLevelOneMultiplier: document.getElementById("checkpointLevelOneMultiplier"),
     checkpointLevelBtn: document.getElementById("checkpointLevelBtn"),
+    checkpointLevelValue: document.getElementById("checkpointLevelValue"),
+    checkpointLevelMultiplier: document.getElementById("checkpointLevelMultiplier"),
+    checkpointBonusHud: document.getElementById("checkpointBonusHud"),
+    checkpointBonusMultiplier: document.getElementById("checkpointBonusMultiplier"),
     tutorialCompleteOverlay: document.getElementById("tutorialCompleteOverlay"),
     tutorialSkipConfirmBtn: document.getElementById("tutorialSkipConfirmBtn"),
     tutorialSkipDeclineBtn: document.getElementById("tutorialSkipDeclineBtn"),
@@ -212,6 +218,9 @@
   let perfectLevelStreak = 0;
   let levelHadDeath = false;
   let score = 0;
+  let runStartLevel = 1;
+  let runStartedFromCheckpoint = false;
+  let runScoreMultiplier = 1;
   let shots = 0;
   let collected = [];
   let runStarsCollected = 0;

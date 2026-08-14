@@ -266,8 +266,14 @@
       </label>
       <div class="menuButtons checkpointDialogActions">
         <button id="checkpointIntroConfirmBtn" class="uiButton uiButton--primary hidden" type="button">Verstanden</button>
-        <button id="checkpointLevelOneBtn" class="uiButton uiButton--primary hidden" type="button">Level 1</button>
-        <button id="checkpointLevelBtn" class="uiButton uiButton--secondary hidden" type="button">Level 10</button>
+        <button id="checkpointLevelOneBtn" class="checkpointStartChoice uiButton uiButton--primary hidden" type="button">
+          <span id="checkpointLevelOneValue" class="checkpointStartChoiceLevel">Level 1</span>
+          <span id="checkpointLevelOneMultiplier" class="checkpointStartChoiceMultiplier">Score x1.00</span>
+        </button>
+        <button id="checkpointLevelBtn" class="checkpointStartChoice uiButton uiButton--secondary hidden" type="button">
+          <span id="checkpointLevelValue" class="checkpointStartChoiceLevel">Level 10</span>
+          <span id="checkpointLevelMultiplier" class="checkpointStartChoiceMultiplier">Score x1.05</span>
+        </button>
       </div>
     </div>
   </section>
@@ -277,6 +283,10 @@
       <div class="hudGroup">
         <div class="pill" id="levelLabel">Level 1</div>
         <div class="pill" id="livesLabel">❤️ 3</div>
+        <div id="checkpointBonusHud" class="checkpointBonusHud hidden" aria-label="Checkpoint-Scorebonus">
+          <span class="checkpointBonusLabel">Checkpoint Bonus</span>
+          <strong id="checkpointBonusMultiplier">x1.05</strong>
+        </div>
       </div>
       <div class="hudGroup">
         <div class="pill" id="starsLabel">⭐ 0/3</div>

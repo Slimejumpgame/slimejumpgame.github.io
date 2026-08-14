@@ -6,6 +6,8 @@
   const SKIP_TUTORIAL_STORAGE_KEY = "slimejumperSkipTutorial";
   const HIGHEST_CHECKPOINT_STORAGE_KEY = "slimejumperHighestCheckpointLevel";
   const SKIP_CHECKPOINT_INTRO_STORAGE_KEY = "slimejumperSkipCheckpointIntro";
+  const CHECKPOINT_SCORE_MULTIPLIER_STEP = 0.05;
+  const MAX_CHECKPOINT_SCORE_MULTIPLIER = 2;
 
   function normalizeCheckpointLevel(value) {
     const numericValue = Number(value);
@@ -47,6 +49,7 @@
   }
 
   let highestCheckpointLevel = loadHighestCheckpointLevel();
+  let checkpointLevelAtRunStart = highestCheckpointLevel;
   let checkpointIntroShownThisSession = false;
 
   function getHighestCheckpointLevel() {
@@ -99,6 +102,78 @@
     return highestCheckpointLevel;
   }
 
+  function captureCheckpointLevelAtRunStart() {
+    checkpointLevelAtRunStart = getHighestCheckpointLevel();
+    return checkpointLevelAtRunStart;
+  }
+
+  function restoreCheckpointLevelAtRunStart() {
+    const checkpoint = normalizeCheckpointLevel(checkpointLevelAtRunStart);
+    try {
+      localStorage.setItem(HIGHEST_CHECKPOINT_STORAGE_KEY, String(checkpoint));
+    } catch (_) {
+      return false;
+    }
+    highestCheckpointLevel = checkpoint;
+    return true;
+  }
+
+  function getCheckpointScoreMultiplier(levelNumber) {
+    const checkpoint = normalizeCheckpointLevel(levelNumber);
+    if (checkpoint === 0) return 1;
+    const multiplier = 1 + checkpoint / 10 * CHECKPOINT_SCORE_MULTIPLIER_STEP;
+    return Math.min(
+      MAX_CHECKPOINT_SCORE_MULTIPLIER,
+      Number(multiplier.toFixed(2))
+    );
+  }
+
+  function formatScoreMultiplier(multiplier) {
+    return `x${multiplier.toFixed(2)}`;
+  }
+
+  function updateCheckpointBonusHUD() {
+    const multiplierText = formatScoreMultiplier(runScoreMultiplier);
+    ui.checkpointBonusMultiplier.textContent = multiplierText;
+    ui.checkpointBonusHud.setAttribute(
+      "aria-label",
+      `Checkpoint-Bonus ab Level ${runStartLevel}: ${multiplierText}`
+    );
+    const runIsVisible = ["playing", "paused", "gamePaused"].includes(state);
+    ui.checkpointBonusHud.classList.toggle(
+      "hidden",
+      !runIsVisible || !runStartedFromCheckpoint || runScoreMultiplier <= 1
+    );
+  }
+
+  function initializeRunScoreState(startLevel, {fromCheckpoint = false} = {}) {
+    const numericStartLevel = Math.floor(Number(startLevel));
+    runStartLevel = Number.isSafeInteger(numericStartLevel) && numericStartLevel > 0
+      ? numericStartLevel
+      : 1;
+    runStartedFromCheckpoint =
+      fromCheckpoint && normalizeCheckpointLevel(runStartLevel) === runStartLevel;
+    runScoreMultiplier = runStartedFromCheckpoint
+      ? getCheckpointScoreMultiplier(runStartLevel)
+      : 1;
+    updateCheckpointBonusHUD();
+  }
+
+  function awardRunScore(points, {deduction = 0} = {}) {
+    const positivePoints = Number(points);
+    if (!Number.isFinite(positivePoints) || positivePoints <= 0) return 0;
+    const numericDeduction = Number(deduction);
+    const safeDeduction = Number.isFinite(numericDeduction)
+      ? Math.round(Math.max(0, numericDeduction))
+      : 0;
+    const awardedPoints = Math.max(
+      0,
+      Math.round(positivePoints * runScoreMultiplier) - safeDeduction
+    );
+    score += awardedPoints;
+    return awardedPoints;
+  }
+
   function getAchievementLevelContext() {
     const levelNumber = levelIndex + 1;
     const level = currentLevel();
@@ -149,7 +224,7 @@
     if (DEV_MODE) ui.devLevelInput.value = String(levelIndex + 1);
   }
 
-  async function startGame(levelNumber = 1) {
+  async function startGame(levelNumber = 1, {fromCheckpoint = false} = {}) {
     if (pendingGameOverScore && !(await commitPendingHighScore())) return false;
     const achievementRunSnapshot =
       window.SlimeAchievements?.captureRunProgressSnapshot?.();
@@ -166,6 +241,8 @@
       return false;
     }
 
+    captureCheckpointLevelAtRunStart();
+    initializeRunScoreState(levelNumber, {fromCheckpoint});
     enterRunStage();
     hideNicknameEntry();
     hideGameToast();
@@ -196,6 +273,7 @@
     if (pendingGameOverScore && !(await commitPendingHighScore())) return false;
     hideNicknameEntry();
     hideGameToast();
+    initializeRunScoreState(1);
     getAudio();
     enterTutorialStage(0);
     state = "playing";
@@ -232,7 +310,7 @@
     checkpointIntroShownThisSession = true;
     ui.checkpointDialogTitle.textContent = "Checkpoint freigeschaltet!";
     ui.checkpointDialogText.textContent =
-      "Neue Runs können bei Level 1 oder beim höchsten erreichten 10er-Checkpoint starten. Höhere Checkpoints ersetzen automatisch ältere.";
+      "Starte neue Runs bei Level 1 oder deinem höchsten Checkpoint. Je höher dein gewählter Checkpoint, desto höher dein Score-Multiplikator.";
     ui.checkpointIntroPreference.classList.remove("hidden");
     ui.checkpointIntroCheckbox.checked = false;
     ui.checkpointIntroConfirmBtn.classList.remove("hidden");
@@ -250,8 +328,13 @@
     ui.checkpointDialogText.textContent = "Wähle dein Startlevel.";
     ui.checkpointIntroPreference.classList.add("hidden");
     ui.checkpointIntroConfirmBtn.classList.add("hidden");
+    ui.checkpointLevelOneValue.textContent = "Level 1";
+    ui.checkpointLevelOneMultiplier.textContent =
+      `Score ${formatScoreMultiplier(1)}`;
     ui.checkpointLevelOneBtn.classList.remove("hidden");
-    ui.checkpointLevelBtn.textContent = `Level ${checkpoint}`;
+    ui.checkpointLevelValue.textContent = `Level ${checkpoint}`;
+    ui.checkpointLevelMultiplier.textContent =
+      `Score ${formatScoreMultiplier(getCheckpointScoreMultiplier(checkpoint))}`;
     ui.checkpointLevelBtn.classList.remove("hidden");
     ui.checkpointLevelOneBtn.disabled = false;
     ui.checkpointLevelBtn.disabled = false;
@@ -290,7 +373,9 @@
 
     ui.checkpointLevelOneBtn.disabled = true;
     ui.checkpointLevelBtn.disabled = true;
-    const started = await startGame(selectedLevel);
+    const started = await startGame(selectedLevel, {
+      fromCheckpoint: selectedLevel > 1
+    });
     if (started) ui.checkpointOverlay.classList.add("hidden");
     else {
       ui.checkpointLevelOneBtn.disabled = false;
@@ -397,6 +482,7 @@
     if (pendingGameOverScore && !(await commitPendingHighScore())) return false;
     enterRunStage();
     state = "menu";
+    initializeRunScoreState(1);
     setMusicMode("menu");
     if (!musicMuted) startBackgroundMusic("menu");
     aiming = false;
@@ -425,6 +511,7 @@
     ui.stars.textContent = `⭐ ${collected.filter(Boolean).length}/${currentLevel().stars.length}`;
     ui.shots.textContent = `Schüsse: ${shots}`;
     ui.score.textContent = `Punkte: ${score}`;
+    updateCheckpointBonusHUD();
   }
 
   function registerRunStarCollected() {
@@ -450,6 +537,7 @@
     ui.messageText.textContent = text;
     ui.continueBtn.textContent = buttonText;
     ui.message.classList.remove("hidden");
+    updateCheckpointBonusHUD();
   }
 
   function updatePerfectLevelStreak(stars) {
@@ -523,9 +611,9 @@
     const completedLevel = levelIndex + 1;
     recordReachedCheckpoint(completedLevel);
     const stars = collected.filter(Boolean).length;
-    const bonus =
-      Math.max(0, 650 + completedLevel * 45 - shots * 55) +
-      stars * 250;
+    const levelScoreBase = 650 + completedLevel * 45;
+    const shotPenalty = shots * 55;
+    const starScoreBonus = stars * 250;
 
     const achievementContext = getAchievementLevelContext();
     window.SlimeAchievements?.onLevelCompleted?.({
@@ -538,7 +626,9 @@
       totalStars: currentLevel().stars.length
     });
 
-    score += bonus;
+    const awardedBonus =
+      awardRunScore(levelScoreBase, {deduction: shotPenalty}) +
+      awardRunScore(starScoreBonus);
     const streakMessage = updatePerfectLevelStreak(stars);
 
     updateHUD();
@@ -547,7 +637,7 @@
 
     showMessage(
       `Level ${completedLevel} geschafft!`,
-      `${stars}/3 Sterne gesammelt. Levelbonus: ${bonus} Punkte.`,
+      `${stars}/3 Sterne gesammelt. Levelbonus: ${awardedBonus} Punkte.`,
       "Nächstes Zufallslevel",
       "next"
     );
@@ -668,6 +758,11 @@
       if (!achievementRestored || !wardrobeRestored) {
         console.error("[RunRecovery] Manueller Run-Rollback konnte nicht vollstaendig gespeichert werden.");
         showGameToast("Run-Fortschritt konnte nicht sicher zurueckgesetzt werden.");
+        return false;
+      }
+      if (!restoreCheckpointLevelAtRunStart()) {
+        console.error("[RunRecovery] Checkpoint vor dem Run konnte nicht wiederhergestellt werden.");
+        showGameToast("Checkpoint konnte nicht sicher zurueckgesetzt werden.");
         return false;
       }
       if (window.SlimeRunRecovery?.clearAfterRollback?.() !== true) {

@@ -245,7 +245,7 @@
         collected[i] = true;
         if (tracksRunProgress) {
           registerRunStarCollected();
-          score += 250;
+          awardRunScore(250);
         }
         playStar();
         spawnBurst(s.x, s.y, 18, "#ffe877");
