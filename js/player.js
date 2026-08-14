@@ -97,6 +97,7 @@
   const AIM_MAX_ROLL_SPEED = 240;
   const AIM_SUPPORT_TOLERANCE = 4;
   const STUCK_AIM_POSITION_EPSILON = 4;
+  const STUCK_AIM_CONTACT_NORMAL_DOT_LIMIT = 0.95;
   const STUCK_AIM_DELAY = 0.5;
   const MAX_DRAG_DISTANCE = 330;
   const MAX_LAUNCH_SPEED = 205 * 5.7;
@@ -111,6 +112,8 @@
   let stuckAimReferenceFallingPlatform = null;
   let stuckAimFallbackActive = false;
   let stuckAimFallbackFallingPlatform = null;
+  let stuckAimLockedX = player.x;
+  let stuckAimLockedY = player.y;
 
   function hasValidAimSupport() {
     return getPlatforms().some(platform =>
@@ -211,7 +214,7 @@
 
   function getTrappingWarningFallingPlatform() {
     const level = currentLevel();
-    if (!level?.fallingPlatforms || canUseNormalAim()) return null;
+    if (!level?.fallingPlatforms) return null;
 
     const contactRadius = player.r + STUCK_AIM_POSITION_EPSILON;
     const contactRadiusSquared = contactRadius * contactRadius;
@@ -305,26 +308,60 @@
     return minimumDistance;
   }
 
-  function hasPlausibleStuckAimContact() {
+  function getStuckAimContactNormal(platform) {
+    if (
+      (platform.fade && !platform.fadeData.solid) ||
+      platform.fallingPlatform?.falling
+    ) {
+      return null;
+    }
+
     const contactRadius = player.r + STUCK_AIM_POSITION_EPSILON;
     const contactRadiusSquared = contactRadius * contactRadius;
+    const closestX = Math.max(
+      platform.x,
+      Math.min(player.x, platform.x + platform.w)
+    );
+    const closestY = Math.max(
+      platform.y,
+      Math.min(player.y, platform.y + platform.h)
+    );
+    let dx = player.x - closestX;
+    let dy = player.y - closestY;
+    const distanceSquared = dx * dx + dy * dy;
 
-    return getPlatforms().some(platform => {
-      if (platform.fade && !platform.fadeData.solid) return false;
+    if (distanceSquared > contactRadiusSquared) return null;
+    if (distanceSquared > 0) {
+      const distance = Math.sqrt(distanceSquared);
+      return {x: dx / distance, y: dy / distance};
+    }
 
-      const closestX = Math.max(
-        platform.x,
-        Math.min(player.x, platform.x + platform.w)
-      );
-      const closestY = Math.max(
-        platform.y,
-        Math.min(player.y, platform.y + platform.h)
-      );
-      const dx = player.x - closestX;
-      const dy = player.y - closestY;
+    const nearestFace = [
+      {distance: Math.abs(player.x - platform.x), x: -1, y: 0},
+      {distance: Math.abs(platform.x + platform.w - player.x), x: 1, y: 0},
+      {distance: Math.abs(player.y - platform.y), x: 0, y: -1},
+      {distance: Math.abs(platform.y + platform.h - player.y), x: 0, y: 1}
+    ].reduce((nearest, face) =>
+      face.distance < nearest.distance ? face : nearest
+    );
+    return {x: nearestFace.x, y: nearestFace.y};
+  }
 
-      return dx * dx + dy * dy <= contactRadiusSquared;
-    });
+  function hasPlausibleStuckAimContact() {
+    const contactNormals = getPlatforms()
+      .map(getStuckAimContactNormal)
+      .filter(Boolean);
+
+    for (let i = 0; i < contactNormals.length; i++) {
+      for (let j = i + 1; j < contactNormals.length; j++) {
+        const normalDot =
+          contactNormals[i].x * contactNormals[j].x +
+          contactNormals[i].y * contactNormals[j].y;
+        if (normalDot <= STUCK_AIM_CONTACT_NORMAL_DOT_LIMIT) return true;
+      }
+    }
+
+    return false;
   }
 
   function canUseStuckAimFallback() {
@@ -360,8 +397,7 @@
   }
 
   function updateStuckAimTimer(dt) {
-    const hasNormalSupport = player.onGround && hasValidAimSupport();
-    const hasCollisionContact = hasPlausibleStuckAimContact();
+    const hasStuckContact = hasPlausibleStuckAimContact();
     const touchingVerticalMover = getTouchingVerticalMover();
     const trappingConveyor = getTrappingConveyor();
     const trappingWarningFallingPlatform = getTrappingWarningFallingPlatform();
@@ -369,8 +405,7 @@
     if (
       state !== "playing" ||
       aiming ||
-      (hasNormalSupport && !trappingWarningFallingPlatform) ||
-      !hasCollisionContact
+      !hasStuckContact
     ) {
       resetStuckAimTimer(
         touchingVerticalMover,
@@ -432,6 +467,19 @@
       (canUseNormalAim() || canUseStuckAimFallback());
   }
 
+  function hasActiveStuckAimPositionLock() {
+    return aiming && stuckAimFallbackActive;
+  }
+
+  function restoreStuckAimPosition() {
+    if (!hasActiveStuckAimPositionLock()) return;
+
+    player.x = stuckAimLockedX;
+    player.y = stuckAimLockedY;
+    player.vx = 0;
+    player.vy = 0;
+  }
+
   function stopAiming() {
     aiming = false;
     drag.x = 0;
@@ -460,7 +508,7 @@
 
   function beginAimAt(clientX, clientY) {
     getAudio();
-    const useStuckFallback = !canUseNormalAim() && canUseStuckAimFallback();
+    const useStuckFallback = canUseStuckAimFallback();
     if (!canAim()) return false;
 
     const touchingSidePad = isInSideTouchPad(clientX, clientY);
@@ -471,6 +519,8 @@
     stuckAimFallbackFallingPlatform = useStuckFallback
       ? stuckAimReferenceFallingPlatform
       : null;
+    stuckAimLockedX = player.x;
+    stuckAimLockedY = player.y;
     resetStuckAimTimer();
     aimInputMode = touchingSidePad ? "sidepad" : "direct";
     aimStartClientX = clientX;

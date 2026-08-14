@@ -112,8 +112,11 @@
     const wasOnGround = player.onGround;
     worldTime += dt;
     rememberPlayerHorizontalDirection();
-    carryAimingPlayerWithMovingPlatform(dt);
-    const aimingCarriedByConveyor = carryAimingPlayerWithConveyor(dt);
+    let aimingCarriedByConveyor = false;
+    if (!hasActiveStuckAimPositionLock()) {
+      carryAimingPlayerWithMovingPlatform(dt);
+      aimingCarriedByConveyor = carryAimingPlayerWithConveyor(dt);
+    }
     updateFallingPlatforms(dt);
     updateFadePlatforms();
     updateSpikePlatforms();
@@ -151,7 +154,12 @@
     // Förderbänder tragen den Slime sichtbar nach links oder rechts. Beim Zielen
     // wandert der virtuelle Zeigepunkt mit, damit die eingestellte Schussrichtung
     // nicht ohne Fingerbewegung verfälscht wird.
-    if (player.onGround && player.conveyorSpeed !== 0 && !aimingCarriedByConveyor) {
+    if (
+      player.onGround &&
+      player.conveyorSpeed !== 0 &&
+      !aimingCarriedByConveyor &&
+      !hasActiveStuckAimPositionLock()
+    ) {
       const beltShift = player.conveyorSpeed * dt;
       player.x += beltShift;
       if (aiming) pointer.x += beltShift;
@@ -160,6 +168,8 @@
         for (const p of platforms) resolvePlatform(p);
       }
     }
+
+    restoreStuckAimPosition();
 
     const level = currentLevel();
     const tracksRunProgress = !isTutorialStage();
