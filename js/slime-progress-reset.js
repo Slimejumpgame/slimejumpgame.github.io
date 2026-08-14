@@ -72,3 +72,29 @@
     localStorage.setItem(RESET_MARKER_STORAGE_KEY, RESET_VERSION);
   } catch (_) {}
 })();
+
+(() => {
+  "use strict";
+
+  const PREFERENCE_RESET_MARKER_STORAGE_KEY =
+    "slimejumperPreferenceResetVersion";
+  const PREFERENCE_RESET_VERSION = "preferences-reset-2.53";
+  const PREFERENCE_STORAGE_KEYS = Object.freeze([
+    "slimejumperSkipTutorial",
+    "slimejumperSkipEndRunWarning",
+    "slimejumperSkipCheckpointIntro"
+  ]);
+
+  try {
+    if (
+      localStorage.getItem(PREFERENCE_RESET_MARKER_STORAGE_KEY) ===
+      PREFERENCE_RESET_VERSION
+    ) return;
+
+    PREFERENCE_STORAGE_KEYS.forEach(key => localStorage.removeItem(key));
+    localStorage.setItem(
+      PREFERENCE_RESET_MARKER_STORAGE_KEY,
+      PREFERENCE_RESET_VERSION
+    );
+  } catch (_) {}
+})();
