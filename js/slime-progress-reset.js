@@ -78,7 +78,7 @@
 
   const PREFERENCE_RESET_MARKER_STORAGE_KEY =
     "slimejumperPreferenceResetVersion";
-  const PREFERENCE_RESET_VERSION = "preferences-reset-2.53";
+  const PREFERENCE_RESET_VERSION = "preferences-reset-2.54";
   const PREFERENCE_STORAGE_KEYS = Object.freeze([
     "slimejumperSkipTutorial",
     "slimejumperSkipEndRunWarning",
