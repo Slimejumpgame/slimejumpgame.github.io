@@ -11,7 +11,7 @@
   const STAR_BALANCE_STORAGE_KEY = "slimejumperStarBalance";
   const STAR_ECONOMY_VERSION_STORAGE_KEY = "slimejumperStarEconomyVersion";
   const STAR_ECONOMY_VERSION = "star-economy-v1";
-  const WARDROBE_ITEM_STAR_PRICE = 100;
+  const WARDROBE_ITEM_STAR_PRICE = 250;
   const DEV_SHOP_TEST_INITIAL_BALANCE = 1000;
 
   const ACHIEVEMENT_REGISTRY = Object.freeze([

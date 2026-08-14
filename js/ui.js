@@ -193,7 +193,7 @@
 
   function createWardrobePurchaseSlot(category, itemId, itemName, optionButton) {
     const economy = getWardrobePurchaseEconomy();
-    const price = economy?.itemPrice ?? 100;
+    const price = economy?.itemPrice ?? 250;
     const slot = document.createElement("div");
     slot.className = "wardrobePurchaseSlot";
 

@@ -42,7 +42,7 @@
     crimson: "Scharlachrot",
     burgundy: "Burgunder",
     apricot: "Aprikose",
-    gold: "Gold",
+    gold: "Amber",
     lime: "Limette",
     forest: "Waldgrün",
     mint: "Mint",
@@ -147,12 +147,12 @@
       trail: "255,192,120"
     }),
     gold: Object.freeze({
-      light: "#fff3b3",
-      main: "#d9aa19",
-      dark: "#9b6e08",
-      outline: "#513805",
-      glow: "#ffd42d",
-      trail: "217,170,25"
+      light: "#ffe8ad",
+      main: "#f0a13a",
+      dark: "#b85c22",
+      outline: "#5d2b14",
+      glow: "#ffbd55",
+      trail: "240,161,58"
     }),
     lime: Object.freeze({
       light: "#edffc2",
