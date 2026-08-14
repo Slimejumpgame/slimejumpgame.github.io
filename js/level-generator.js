@@ -392,7 +392,7 @@
         currentY: platform.y,
         w: platform.w,
         h: platform.h,
-        delay: Math.max(0.68, 1.15 - intensityFactor * 0.47),
+        delay: Math.max(0.68, 1.15 - intensityFactor * 0.47) * 1.25,
         timer: 0,
         vy: 0,
         triggered: false,
