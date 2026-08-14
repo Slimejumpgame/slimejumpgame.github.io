@@ -12,6 +12,7 @@
     "slimejumperUnlockedSlimeBeards",
     "slimejumperSelectedSlimeBeard",
     "slimejumperPendingWardrobeUnlockChoices",
+    "slimejumperActiveRunRecovery",
     "slimejumperWardrobeProgressVersion",
     "slimejumperAchievements",
     "slimejumperAchievementProgress",

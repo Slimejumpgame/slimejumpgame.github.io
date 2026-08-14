@@ -219,7 +219,10 @@
         ACHIEVEMENTS_STORAGE_KEY,
         JSON.stringify(unlockedAchievements)
       );
-    } catch (_) {}
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   function saveAchievementProgress({writeVersion = true} = {}) {
@@ -234,7 +237,10 @@
           ACHIEVEMENT_PROGRESS_VERSION
         );
       }
-    } catch (_) {}
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   function loadStarBalance() {
@@ -295,6 +301,219 @@
     };
   }
 
+  function isNonNegativeIntegerSnapshotValue(value) {
+    return Number.isInteger(value) && value >= 0;
+  }
+
+  function isNonNegativeNumberSnapshotValue(value) {
+    return Number.isFinite(value) && value >= 0;
+  }
+
+  function normalizeUniqueStringSnapshotValues(values, isValidValue) {
+    if (!Array.isArray(values)) return null;
+    const normalized = [];
+    for (const value of values) {
+      if (typeof value !== "string" || !isValidValue(value) || normalized.includes(value)) {
+        return null;
+      }
+      normalized.push(value);
+    }
+    return normalized;
+  }
+
+  function normalizeAchievementProgressSnapshot(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const existingBiomeIds = new Set(getExistingBiomeIds());
+    const isExistingBiomeId = id => existingBiomeIds.has(id);
+    const discoveredBiomeIds = normalizeUniqueStringSnapshotValues(
+      value.discoveredBiomeIds,
+      isExistingBiomeId
+    );
+    const perfectBiomeIds = normalizeUniqueStringSnapshotValues(
+      value.perfectBiomeIds,
+      isExistingBiomeId
+    );
+    const deathFreeBiomeIds = normalizeUniqueStringSnapshotValues(
+      value.deathFreeBiomeIds,
+      isExistingBiomeId
+    );
+    const completedLookIds = normalizeUniqueStringSnapshotValues(
+      value.completedLookIds,
+      isRegisteredLookKey
+    );
+    if (
+      !discoveredBiomeIds ||
+      !perfectBiomeIds ||
+      !deathFreeBiomeIds ||
+      !completedLookIds ||
+      !isNonNegativeIntegerSnapshotValue(value.lifetimeStars) ||
+      !isNonNegativeNumberSnapshotValue(value.lifetimeAirTime) ||
+      !isNonNegativeIntegerSnapshotValue(value.lifetimeCompletedLevels) ||
+      !isNonNegativeIntegerSnapshotValue(value.lifetimeDeaths) ||
+      !isNonNegativeIntegerSnapshotValue(value.lifetimePerfects)
+    ) {
+      return null;
+    }
+    return {
+      discoveredBiomeIds,
+      perfectBiomeIds,
+      deathFreeBiomeIds,
+      completedLookIds,
+      lifetimeStars: value.lifetimeStars,
+      lifetimeAirTime: value.lifetimeAirTime,
+      lifetimeCompletedLevels: value.lifetimeCompletedLevels,
+      lifetimeDeaths: value.lifetimeDeaths,
+      lifetimePerfects: value.lifetimePerfects
+    };
+  }
+
+  function normalizeAchievementRunStateSnapshot(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const existingBiomeIds = new Set(getExistingBiomeIds());
+    const runBiomeIds = normalizeUniqueStringSnapshotValues(
+      value.runBiomeIds,
+      id => existingBiomeIds.has(id)
+    );
+    const integerFields = [
+      "perfectStreak",
+      "cleanLevelStreak",
+      "completedLevels",
+      "ghostCleanLevels",
+      "speedLevels",
+      "perfectClearLevels",
+      "runStars",
+      "previousLevelNumber",
+      "bounceStreak",
+      "levelShots",
+      "starsSinceShot",
+      "groundhogDeaths"
+    ];
+    const numberFields = [
+      "levelElapsed",
+      "airTime",
+      "lifetimeAirTimePending"
+    ];
+    const booleanFields = [
+      "rotationComplete",
+      "levelHadDeath",
+      "levelHasGhost",
+      "ghostHit",
+      "shotActive",
+      "rescueUsed"
+    ];
+    const biomeFieldsAreValid = [value.previousBiomeId, value.biomeId].every(
+      id => id === null || (typeof id === "string" && existingBiomeIds.has(id))
+    );
+    if (
+      !runBiomeIds ||
+      integerFields.some(field => !isNonNegativeIntegerSnapshotValue(value[field])) ||
+      numberFields.some(field => !isNonNegativeNumberSnapshotValue(value[field])) ||
+      booleanFields.some(field => typeof value[field] !== "boolean") ||
+      !Number.isInteger(value.levelNumber) ||
+      value.levelNumber < 1 ||
+      !biomeFieldsAreValid ||
+      (
+        value.groundhogLevelNumber !== null &&
+        (!Number.isInteger(value.groundhogLevelNumber) || value.groundhogLevelNumber < 1)
+      )
+    ) {
+      return null;
+    }
+    return {
+      perfectStreak: value.perfectStreak,
+      cleanLevelStreak: value.cleanLevelStreak,
+      completedLevels: value.completedLevels,
+      ghostCleanLevels: value.ghostCleanLevels,
+      speedLevels: value.speedLevels,
+      perfectClearLevels: value.perfectClearLevels,
+      runStars: value.runStars,
+      runBiomeIds,
+      rotationComplete: value.rotationComplete,
+      previousBiomeId: value.previousBiomeId,
+      previousLevelNumber: value.previousLevelNumber,
+      levelNumber: value.levelNumber,
+      biomeId: value.biomeId,
+      levelElapsed: value.levelElapsed,
+      levelHadDeath: value.levelHadDeath,
+      levelHasGhost: value.levelHasGhost,
+      ghostHit: value.ghostHit,
+      bounceStreak: value.bounceStreak,
+      levelShots: value.levelShots,
+      shotActive: value.shotActive,
+      starsSinceShot: value.starsSinceShot,
+      airTime: value.airTime,
+      lifetimeAirTimePending: value.lifetimeAirTimePending,
+      rescueUsed: value.rescueUsed,
+      groundhogLevelNumber: value.groundhogLevelNumber,
+      groundhogDeaths: value.groundhogDeaths
+    };
+  }
+
+  function normalizeRunProgressSnapshot(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    if (!Array.isArray(value.unlockedAchievements)) return null;
+
+    const normalizedUnlocks = [];
+    const unlockIds = new Set();
+    for (const unlock of value.unlockedAchievements) {
+      if (
+        !unlock ||
+        typeof unlock !== "object" ||
+        Array.isArray(unlock) ||
+        typeof unlock.id !== "string" ||
+        !ACHIEVEMENT_BY_ID.has(unlock.id) ||
+        unlockIds.has(unlock.id) ||
+        !Number.isInteger(unlock.unlockedAt) ||
+        unlock.unlockedAt <= 0
+      ) {
+        return null;
+      }
+      unlockIds.add(unlock.id);
+      normalizedUnlocks.push({id: unlock.id, unlockedAt: unlock.unlockedAt});
+    }
+
+    const normalizedProgress = normalizeAchievementProgressSnapshot(
+      value.achievementProgress
+    );
+    const normalizedRunState = normalizeAchievementRunStateSnapshot(value.runState);
+    const recentDeathTimestamps = Array.isArray(value.recentDeathTimestamps) &&
+      value.recentDeathTimestamps.every(isNonNegativeNumberSnapshotValue)
+      ? value.recentDeathTimestamps.slice()
+      : null;
+    const popupQueueIds = normalizeUniqueStringSnapshotValues(
+      value.popupQueueIds,
+      id => ACHIEVEMENT_BY_ID.has(id)
+    );
+    const latestUnlockTimestamp = normalizedUnlocks.reduce(
+      (latest, unlock) => Math.max(latest, unlock.unlockedAt),
+      0
+    );
+    if (
+      !normalizedProgress ||
+      !normalizedRunState ||
+      !recentDeathTimestamps ||
+      !popupQueueIds ||
+      !isNonNegativeIntegerSnapshotValue(value.starBalance) ||
+      !isNonNegativeIntegerSnapshotValue(value.lastUnlockTimestamp) ||
+      value.lastUnlockTimestamp < latestUnlockTimestamp
+    ) {
+      return null;
+    }
+    return {
+      unlockedAchievements: normalizedUnlocks,
+      achievementProgress: normalizedProgress,
+      starBalance: value.starBalance,
+      lastUnlockTimestamp: value.lastUnlockTimestamp,
+      runState: normalizedRunState,
+      recentDeathTimestamps,
+      popupQueueIds
+    };
+  }
+
+  function isRunProgressSnapshotValid(value) {
+    return normalizeRunProgressSnapshot(value) !== null;
+  }
+
   function captureRunProgressSnapshot() {
     runProgressSnapshot = {
       unlockedAchievements: unlockedAchievements.map(unlock => ({...unlock})),
@@ -305,42 +524,43 @@
       recentDeathTimestamps: recentDeathTimestamps.slice(),
       popupQueueIds: popupQueue.map(achievement => achievement.id)
     };
-    return true;
+    return normalizeRunProgressSnapshot(runProgressSnapshot);
   }
 
-  function restoreRunProgressSnapshot() {
-    if (!runProgressSnapshot) return false;
+  function restoreRunProgressSnapshot(snapshot = runProgressSnapshot) {
+    const normalizedSnapshot = normalizeRunProgressSnapshot(snapshot);
+    if (!normalizedSnapshot) return false;
 
-    unlockedAchievements = runProgressSnapshot.unlockedAchievements.map(
+    unlockedAchievements = normalizedSnapshot.unlockedAchievements.map(
       unlock => ({...unlock})
     );
     unlockedById.clear();
     unlockedAchievements.forEach(unlock => unlockedById.set(unlock.id, unlock));
-    lastUnlockTimestamp = runProgressSnapshot.lastUnlockTimestamp;
+    lastUnlockTimestamp = normalizedSnapshot.lastUnlockTimestamp;
 
     Object.assign(
       achievementProgress,
-      runProgressSnapshot.achievementProgress,
+      normalizedSnapshot.achievementProgress,
       {
         discoveredBiomeIds:
-          runProgressSnapshot.achievementProgress.discoveredBiomeIds.slice(),
+          normalizedSnapshot.achievementProgress.discoveredBiomeIds.slice(),
         perfectBiomeIds:
-          runProgressSnapshot.achievementProgress.perfectBiomeIds.slice(),
+          normalizedSnapshot.achievementProgress.perfectBiomeIds.slice(),
         deathFreeBiomeIds:
-          runProgressSnapshot.achievementProgress.deathFreeBiomeIds.slice(),
+          normalizedSnapshot.achievementProgress.deathFreeBiomeIds.slice(),
         completedLookIds:
-          runProgressSnapshot.achievementProgress.completedLookIds.slice()
+          normalizedSnapshot.achievementProgress.completedLookIds.slice()
       }
     );
-    starBalance = runProgressSnapshot.starBalance;
+    starBalance = normalizedSnapshot.starBalance;
 
-    Object.assign(runState, runProgressSnapshot.runState, {
-      runBiomeIds: new Set(runProgressSnapshot.runState.runBiomeIds)
+    Object.assign(runState, normalizedSnapshot.runState, {
+      runBiomeIds: new Set(normalizedSnapshot.runState.runBiomeIds)
     });
     recentDeathTimestamps.splice(
       0,
       recentDeathTimestamps.length,
-      ...runProgressSnapshot.recentDeathTimestamps
+      ...normalizedSnapshot.recentDeathTimestamps
     );
 
     popupGeneration++;
@@ -348,7 +568,7 @@
     popupQueue.splice(
       0,
       popupQueue.length,
-      ...runProgressSnapshot.popupQueueIds
+      ...normalizedSnapshot.popupQueueIds
         .map(id => ACHIEVEMENT_BY_ID.get(id))
         .filter(Boolean)
     );
@@ -356,12 +576,12 @@
       document.getElementById("achievementPopup")?.classList.remove("visible");
     }
 
-    saveAchievementUnlocks();
-    saveAchievementProgress({writeVersion: false});
-    saveStarBalance();
+    const unlocksSaved = saveAchievementUnlocks();
+    const progressSaved = saveAchievementProgress({writeVersion: false});
+    const balanceSaved = saveStarBalance();
     renderAchievementViews();
     showNextAchievementPopup();
-    return true;
+    return unlocksSaved && progressSaved && balanceSaved;
   }
 
   function discardRunProgressSnapshot() {
@@ -1178,9 +1398,6 @@
   }
 
   function getDeathTimestamp() {
-    if (typeof performance !== "undefined" && typeof performance.now === "function") {
-      return performance.now();
-    }
     return Date.now();
   }
 
@@ -1366,6 +1583,7 @@
     renderMenu: renderAchievementMenu,
     renderRecent: renderRecentAchievements,
     checkWardrobe: checkWardrobeAchievements,
+    isRunProgressSnapshotValid,
     captureRunProgressSnapshot,
     restoreRunProgressSnapshot,
     discardRunProgressSnapshot,
@@ -1400,6 +1618,13 @@
     isItemUnlocked: isDevShopTestItemUnlocked,
     canPurchaseWardrobeItem: canPurchaseDevShopTestItem,
     purchaseWardrobeItem: purchaseDevShopTestItem
+  });
+
+  window.SlimeRunRecovery?.recoverInterruptedRun?.({
+    isAchievementSnapshotValid: isRunProgressSnapshotValid,
+    isWardrobeSnapshotValid: isWardrobeRunProgressSnapshotValid,
+    restoreAchievementSnapshot: restoreRunProgressSnapshot,
+    restoreWardrobeSnapshot: restoreWardrobeRunProgressSnapshot
   });
 
   checkWardrobeAchievements();

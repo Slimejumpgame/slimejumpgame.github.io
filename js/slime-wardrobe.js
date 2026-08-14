@@ -89,7 +89,30 @@
         PENDING_WARDROBE_UNLOCK_CHOICES_STORAGE_KEY,
         String(pendingWardrobeUnlockChoices)
       );
-    } catch (_) {}
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function normalizeWardrobeRunProgressSnapshot(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    if (
+      !Number.isInteger(value.pendingWardrobeUnlockChoices) ||
+      value.pendingWardrobeUnlockChoices < 0 ||
+      value.pendingWardrobeUnlockChoices > WARDROBE_UNLOCK_REQUIREMENTS.length ||
+      typeof value.wardrobeUnlockAwardedThisRun !== "boolean"
+    ) {
+      return null;
+    }
+    return {
+      pendingWardrobeUnlockChoices: value.pendingWardrobeUnlockChoices,
+      wardrobeUnlockAwardedThisRun: value.wardrobeUnlockAwardedThisRun
+    };
+  }
+
+  function isWardrobeRunProgressSnapshotValid(value) {
+    return normalizeWardrobeRunProgressSnapshot(value) !== null;
   }
 
   function captureWardrobeRunProgressSnapshot() {
@@ -97,17 +120,17 @@
       pendingWardrobeUnlockChoices,
       wardrobeUnlockAwardedThisRun
     };
-    return true;
+    return {...wardrobeRunProgressSnapshot};
   }
 
-  function restoreWardrobeRunProgressSnapshot() {
-    if (!wardrobeRunProgressSnapshot) return false;
+  function restoreWardrobeRunProgressSnapshot(snapshot = wardrobeRunProgressSnapshot) {
+    const normalizedSnapshot = normalizeWardrobeRunProgressSnapshot(snapshot);
+    if (!normalizedSnapshot) return false;
     pendingWardrobeUnlockChoices =
-      wardrobeRunProgressSnapshot.pendingWardrobeUnlockChoices;
+      normalizedSnapshot.pendingWardrobeUnlockChoices;
     wardrobeUnlockAwardedThisRun =
-      wardrobeRunProgressSnapshot.wardrobeUnlockAwardedThisRun;
-    savePendingWardrobeUnlockChoices();
-    return true;
+      normalizedSnapshot.wardrobeUnlockAwardedThisRun;
+    return savePendingWardrobeUnlockChoices();
   }
 
   function discardWardrobeRunProgressSnapshot() {

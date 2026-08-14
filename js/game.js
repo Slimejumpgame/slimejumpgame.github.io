@@ -57,9 +57,22 @@
 
   async function startGame(levelNumber = 1) {
     if (pendingGameOverScore && !(await commitPendingHighScore())) return false;
+    const achievementRunSnapshot =
+      window.SlimeAchievements?.captureRunProgressSnapshot?.();
+    const wardrobeRunSnapshot = captureWardrobeRunProgressSnapshot();
+    const recoveryStarted = window.SlimeRunRecovery?.beginActiveRun?.({
+      achievementSnapshot: achievementRunSnapshot,
+      wardrobeSnapshot: wardrobeRunSnapshot
+    }) === true;
+    if (!recoveryStarted) {
+      window.SlimeAchievements?.discardRunProgressSnapshot?.();
+      discardWardrobeRunProgressSnapshot();
+      console.error("[RunRecovery] Runstart ohne persistenten Pre-Run-Snapshot verhindert.");
+      showGameToast("Run konnte nicht sicher gestartet werden.");
+      return false;
+    }
+
     enterRunStage();
-    window.SlimeAchievements?.captureRunProgressSnapshot?.();
-    captureWardrobeRunProgressSnapshot();
     hideNicknameEntry();
     hideGameToast();
     getAudio();
@@ -389,6 +402,9 @@
     updateHUD();
 
     if (lives <= 0) {
+      if (window.SlimeRunRecovery?.markRunCompleted?.() !== true) {
+        console.error("[RunRecovery] Active-Run-Datensatz konnte bei Game Over nicht sicher abgeschlossen werden.");
+      }
       window.SlimeAchievements?.discardRunProgressSnapshot?.();
       discardWardrobeRunProgressSnapshot();
       const reachedLevel = levelIndex + 1;
@@ -465,8 +481,19 @@
   async function endCurrentRun() {
     if (state !== "gamePaused") return false;
     if (!isTutorialStage()) {
-      window.SlimeAchievements?.restoreRunProgressSnapshot?.();
-      restoreWardrobeRunProgressSnapshot();
+      const achievementRestored =
+        window.SlimeAchievements?.restoreRunProgressSnapshot?.() === true;
+      const wardrobeRestored = restoreWardrobeRunProgressSnapshot() === true;
+      if (!achievementRestored || !wardrobeRestored) {
+        console.error("[RunRecovery] Manueller Run-Rollback konnte nicht vollstaendig gespeichert werden.");
+        showGameToast("Run-Fortschritt konnte nicht sicher zurueckgesetzt werden.");
+        return false;
+      }
+      if (window.SlimeRunRecovery?.clearAfterRollback?.() !== true) {
+        console.error("[RunRecovery] Recovery-Datensatz blieb nach manuellem Rollback aktiv.");
+        showGameToast("Run-Abbruch konnte nicht sicher abgeschlossen werden.");
+        return false;
+      }
       window.SlimeAchievements?.discardRunProgressSnapshot?.();
       discardWardrobeRunProgressSnapshot();
     }
