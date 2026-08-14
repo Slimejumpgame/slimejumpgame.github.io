@@ -4,6 +4,100 @@
   const PERFECT_LEVEL_STREAK_TARGET = 3;
   const SKIP_END_RUN_WARNING_STORAGE_KEY = "slimejumperSkipEndRunWarning";
   const SKIP_TUTORIAL_STORAGE_KEY = "slimejumperSkipTutorial";
+  const HIGHEST_CHECKPOINT_STORAGE_KEY = "slimejumperHighestCheckpointLevel";
+  const SKIP_CHECKPOINT_INTRO_STORAGE_KEY = "slimejumperSkipCheckpointIntro";
+
+  function normalizeCheckpointLevel(value) {
+    const numericValue = Number(value);
+    if (!Number.isSafeInteger(numericValue)) return 0;
+    if (numericValue === 0) return 0;
+    return numericValue >= 10 && numericValue % 10 === 0
+      ? numericValue
+      : 0;
+  }
+
+  function getCheckpointFromReachedLevel(value) {
+    const numericValue = Math.floor(Number(value));
+    if (!Number.isSafeInteger(numericValue) || numericValue < 10) return 0;
+    return Math.floor(numericValue / 10) * 10;
+  }
+
+  function loadHighestCheckpointLevel() {
+    try {
+      const storedValue = localStorage.getItem(HIGHEST_CHECKPOINT_STORAGE_KEY);
+      if (storedValue !== null) {
+        const checkpoint = normalizeCheckpointLevel(storedValue);
+        if (storedValue !== String(checkpoint)) {
+          localStorage.setItem(HIGHEST_CHECKPOINT_STORAGE_KEY, String(checkpoint));
+        }
+        return checkpoint;
+      }
+
+      const migratedCheckpoint = getCheckpointFromReachedLevel(
+        localStorage.getItem("slimejumperBestLevel")
+      );
+      localStorage.setItem(
+        HIGHEST_CHECKPOINT_STORAGE_KEY,
+        String(migratedCheckpoint)
+      );
+      return migratedCheckpoint;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  let highestCheckpointLevel = loadHighestCheckpointLevel();
+  let checkpointIntroShownThisSession = false;
+
+  function getHighestCheckpointLevel() {
+    try {
+      const storedValue = localStorage.getItem(HIGHEST_CHECKPOINT_STORAGE_KEY);
+      const storedCheckpoint = normalizeCheckpointLevel(
+        storedValue
+      );
+      highestCheckpointLevel = Math.max(
+        highestCheckpointLevel,
+        storedCheckpoint
+      );
+      if (storedValue !== String(highestCheckpointLevel)) {
+        localStorage.setItem(
+          HIGHEST_CHECKPOINT_STORAGE_KEY,
+          String(highestCheckpointLevel)
+        );
+      }
+    } catch (_) {}
+    return highestCheckpointLevel;
+  }
+
+  function recordReachedCheckpoint(levelNumber) {
+    const reachedCheckpoint = normalizeCheckpointLevel(levelNumber);
+    if (reachedCheckpoint === 0) return getHighestCheckpointLevel();
+
+    let storedCheckpoint = 0;
+    try {
+      storedCheckpoint = normalizeCheckpointLevel(
+        localStorage.getItem(HIGHEST_CHECKPOINT_STORAGE_KEY)
+      );
+    } catch (_) {}
+
+    const nextCheckpoint = Math.max(
+      highestCheckpointLevel,
+      storedCheckpoint,
+      reachedCheckpoint
+    );
+    highestCheckpointLevel = nextCheckpoint;
+
+    if (nextCheckpoint > storedCheckpoint) {
+      try {
+        localStorage.setItem(
+          HIGHEST_CHECKPOINT_STORAGE_KEY,
+          String(nextCheckpoint)
+        );
+      } catch (_) {}
+    }
+
+    return highestCheckpointLevel;
+  }
 
   function getAchievementLevelContext() {
     const levelNumber = levelIndex + 1;
@@ -126,10 +220,88 @@
     }
   }
 
+  function shouldSkipCheckpointIntro() {
+    try {
+      return localStorage.getItem(SKIP_CHECKPOINT_INTRO_STORAGE_KEY) === "true";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function showCheckpointIntro() {
+    checkpointIntroShownThisSession = true;
+    ui.checkpointDialogTitle.textContent = "Checkpoint freigeschaltet!";
+    ui.checkpointDialogText.textContent =
+      "Neue Runs können bei Level 1 oder beim höchsten erreichten 10er-Checkpoint starten. Höhere Checkpoints ersetzen automatisch ältere.";
+    ui.checkpointIntroPreference.classList.remove("hidden");
+    ui.checkpointIntroCheckbox.checked = false;
+    ui.checkpointIntroConfirmBtn.classList.remove("hidden");
+    ui.checkpointLevelOneBtn.classList.add("hidden");
+    ui.checkpointLevelBtn.classList.add("hidden");
+    ui.checkpointOverlay.classList.remove("hidden");
+    return true;
+  }
+
+  function showCheckpointStartSelection() {
+    const checkpoint = getHighestCheckpointLevel();
+    if (checkpoint === 0) return startGame(1);
+
+    ui.checkpointDialogTitle.textContent = "Run starten";
+    ui.checkpointDialogText.textContent = "Wähle dein Startlevel.";
+    ui.checkpointIntroPreference.classList.add("hidden");
+    ui.checkpointIntroConfirmBtn.classList.add("hidden");
+    ui.checkpointLevelOneBtn.classList.remove("hidden");
+    ui.checkpointLevelBtn.textContent = `Level ${checkpoint}`;
+    ui.checkpointLevelBtn.classList.remove("hidden");
+    ui.checkpointLevelOneBtn.disabled = false;
+    ui.checkpointLevelBtn.disabled = false;
+    ui.checkpointOverlay.classList.remove("hidden");
+    return true;
+  }
+
+  function openCheckpointStartFlow({showIntro = false} = {}) {
+    if (getHighestCheckpointLevel() === 0) return startGame(1);
+    if (
+      showIntro &&
+      !checkpointIntroShownThisSession &&
+      !shouldSkipCheckpointIntro()
+    ) {
+      return showCheckpointIntro();
+    }
+    return showCheckpointStartSelection();
+  }
+
+  function confirmCheckpointIntro() {
+    if (ui.checkpointIntroCheckbox.checked) {
+      try {
+        localStorage.setItem(SKIP_CHECKPOINT_INTRO_STORAGE_KEY, "true");
+      } catch (_) {}
+    }
+    return showCheckpointStartSelection();
+  }
+
+  async function startFromCheckpointSelection(levelNumber) {
+    const checkpoint = getHighestCheckpointLevel();
+    const selectedLevel = levelNumber === 1
+      ? 1
+      : normalizeCheckpointLevel(levelNumber) === checkpoint
+        ? checkpoint
+        : 1;
+
+    ui.checkpointLevelOneBtn.disabled = true;
+    ui.checkpointLevelBtn.disabled = true;
+    const started = await startGame(selectedLevel);
+    if (started) ui.checkpointOverlay.classList.add("hidden");
+    else {
+      ui.checkpointLevelOneBtn.disabled = false;
+      ui.checkpointLevelBtn.disabled = false;
+    }
+    return started;
+  }
+
   function startFromPlay() {
-    return shouldSkipTutorialFromPlay()
-      ? startGame(1)
-      : startTutorialSequence();
+    if (!shouldSkipTutorialFromPlay()) return startTutorialSequence();
+    return openCheckpointStartFlow({showIntro: true});
   }
 
   function updateDevTutorialToggle() {
@@ -206,9 +378,9 @@
       return;
     }
     if (state === "gameover") {
-      if (!(await commitPendingHighScore())) return;
-      if (!requirePendingWardrobeUnlockSelection()) return;
-      await startGame();
+      if (!(await completePendingGameOverFlow())) return;
+      ui.message.classList.add("hidden");
+      await openCheckpointStartFlow();
       return;
     }
     if (state === "menu") {
@@ -349,6 +521,7 @@
     }
 
     const completedLevel = levelIndex + 1;
+    recordReachedCheckpoint(completedLevel);
     const stars = collected.filter(Boolean).length;
     const bonus =
       Math.max(0, 650 + completedLevel * 45 - shots * 55) +
@@ -441,9 +614,17 @@
     }
   }
 
+  async function completePendingGameOverFlow() {
+    if (!(await commitPendingHighScore())) return false;
+    if (!requirePendingWardrobeUnlockSelection()) return false;
+    return true;
+  }
+
   async function doContinue() {
-    if (nextAction === "gameover" && !(await commitPendingHighScore())) return;
-    if (nextAction === "gameover" && !requirePendingWardrobeUnlockSelection()) return;
+    if (
+      nextAction === "gameover" &&
+      !(await completePendingGameOverFlow())
+    ) return;
     ui.message.classList.add("hidden");
     if (nextAction === "next") {
       levelIndex++;
@@ -454,7 +635,7 @@
       resetLevel(true);
       window.SlimeAchievements?.onLevelStart?.(getAchievementLevelContext());
     } else {
-      await startGame();
+      await openCheckpointStartFlow();
     }
   }
 
@@ -664,6 +845,13 @@
   }
 
   ui.continueBtn.addEventListener("click", doContinue);
+  ui.checkpointIntroConfirmBtn.addEventListener("click", confirmCheckpointIntro);
+  ui.checkpointLevelOneBtn.addEventListener("click", () => {
+    startFromCheckpointSelection(1);
+  });
+  ui.checkpointLevelBtn.addEventListener("click", () => {
+    startFromCheckpointSelection(getHighestCheckpointLevel());
+  });
   ui.tutorialSkipConfirmBtn.addEventListener("click", () => resolveTutorialCompletePrompt(true));
   ui.tutorialSkipDeclineBtn.addEventListener("click", () => resolveTutorialCompletePrompt(false));
   ui.wardrobeUnlockBackBtn.addEventListener("click", () => {

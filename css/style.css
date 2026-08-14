@@ -529,6 +529,26 @@ canvas.aiming {
   display: none;
 }
 
+.checkpointOverlay {
+  position: fixed;
+  z-index: 2200;
+}
+
+.checkpointDialog {
+  width: min(560px, 95%);
+  text-align: center;
+}
+
+.checkpointIntroPreference {
+  justify-content: center;
+  margin-top: var(--ui-gap-md);
+  text-align: center;
+}
+
+.checkpointDialogActions .uiButton {
+  min-width: min(100%, 190px);
+}
+
 .pauseOverlay {
   position: absolute;
   inset: 0;

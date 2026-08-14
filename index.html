@@ -255,6 +255,23 @@
     </div>
   </section>
 
+  <section id="checkpointOverlay" class="overlay checkpointOverlay hidden" role="dialog" aria-modal="true" aria-labelledby="checkpointDialogTitle" aria-describedby="checkpointDialogText">
+    <div class="card checkpointDialog uiPanel">
+      <div class="dialogAccent" aria-hidden="true"></div>
+      <h2 id="checkpointDialogTitle">Run starten</h2>
+      <p id="checkpointDialogText">Wähle dein Startlevel.</p>
+      <label id="checkpointIntroPreference" class="endRunWarningPreference checkpointIntroPreference hidden" for="checkpointIntroCheckbox">
+        <input id="checkpointIntroCheckbox" type="checkbox">
+        <span>Nicht mehr anzeigen</span>
+      </label>
+      <div class="menuButtons checkpointDialogActions">
+        <button id="checkpointIntroConfirmBtn" class="uiButton uiButton--primary hidden" type="button">Verstanden</button>
+        <button id="checkpointLevelOneBtn" class="uiButton uiButton--primary hidden" type="button">Level 1</button>
+        <button id="checkpointLevelBtn" class="uiButton uiButton--secondary hidden" type="button">Level 10</button>
+      </div>
+    </div>
+  </section>
+
   <div id="app">
     <header id="hud">
       <div class="hudGroup">

@@ -13,6 +13,7 @@
     "slimejumperSelectedSlimeBeard",
     "slimejumperPendingWardrobeUnlockChoices",
     "slimejumperActiveRunRecovery",
+    "slimejumperHighestCheckpointLevel",
     "slimejumperWardrobeProgressVersion",
     "slimejumperAchievements",
     "slimejumperAchievementProgress",
@@ -34,6 +35,7 @@
     slimejumperUnlockedSlimeBeards: JSON.stringify([]),
     slimejumperSelectedSlimeBeard: "none",
     slimejumperPendingWardrobeUnlockChoices: "0",
+    slimejumperHighestCheckpointLevel: "0",
     slimejumperWardrobeProgressVersion: "unified-wardrobe-v1",
     slimejumperAchievements: JSON.stringify([]),
     slimejumperAchievementProgress: JSON.stringify({
