@@ -1237,10 +1237,19 @@ p {
   left: max(clamp(12px, 2vw, 26px), env(safe-area-inset-left));
   z-index: 4;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   pointer-events: none;
+}
+
+.menuBestProgressGroup {
+  width: min(31vw, 190px);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: clamp(3px, 0.5vh, 5px);
 }
 
 .menuStatusBadge {
@@ -1433,6 +1442,144 @@ p {
   justify-content: flex-end;
   gap: var(--ui-gap-sm);
   flex: 0 0 auto;
+}
+
+.menuBestProgressGroup .menuStatusBadge--best {
+  max-width: 100%;
+}
+
+.menuXPProgress {
+  width: 100%;
+  padding: clamp(3px, 0.55vh, 5px) clamp(6px, 0.65vw, 9px);
+  border: 1px solid rgba(159, 248, 93, 0.55);
+  border-radius: clamp(7px, 0.8vw, 11px);
+  background: rgba(16, 28, 45, 0.82);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 2px 7px rgba(0, 0, 0, 0.3),
+    0 0 9px rgba(134, 245, 31, 0.1);
+  color: #ffffff;
+  font-family: var(--ui-title-font);
+}
+
+.menuXPProgressValues {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  margin-bottom: 3px;
+  font-size: clamp(8px, 0.82vw, 11px);
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.menuXPProgressValues strong {
+  color: var(--ui-green-light);
+  font-weight: 1000;
+  letter-spacing: 0.06em;
+}
+
+.menuXPProgressBar {
+  width: 100%;
+  height: clamp(5px, 0.75vh, 8px);
+  overflow: hidden;
+  border: 1px solid rgba(213, 255, 178, 0.68);
+  border-radius: 999px;
+  background: rgba(3, 9, 24, 0.86);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.62);
+}
+
+.menuXPProgressBarFill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #42ad27, #91ee39 70%, #dcff72);
+  box-shadow: 0 0 7px rgba(134, 245, 31, 0.62);
+  transition: width 240ms ease-out;
+}
+
+.gameOverXPPanel {
+  width: min(430px, 94%);
+  margin: clamp(9px, 1.5vh, 14px) auto 0;
+  padding: clamp(9px, 1.4vh, 13px) clamp(12px, 1.6vw, 18px);
+  border: 2px solid rgba(134, 245, 31, 0.6);
+  border-radius: var(--ui-radius-control);
+  background: rgba(104, 214, 47, 0.09);
+  box-shadow: inset 0 0 18px rgba(134, 245, 31, 0.08);
+}
+
+.gameOverXPPanel.hidden,
+.gameOverLevelUp.hidden {
+  display: none;
+}
+
+.gameOverXPSummary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 1.3vw, 14px);
+  margin-bottom: 4px;
+}
+
+#gameOverXPEarned,
+.gameOverPlayerLevel,
+.gameOverLevelUp {
+  font-family: var(--ui-title-font);
+  font-weight: 900;
+  line-height: 1;
+}
+
+#gameOverXPEarned {
+  color: var(--ui-green-light);
+  font-size: clamp(21px, 3vw, 30px);
+}
+
+.gameOverLevelUp {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #ffe46f;
+  color: #472a05;
+  font-size: clamp(10px, 1.2vw, 13px);
+  letter-spacing: 0.04em;
+}
+
+.gameOverPlayerLevel {
+  display: block;
+  margin-bottom: 6px;
+  color: #ffffff;
+  font-size: clamp(14px, 1.55vw, 18px);
+  letter-spacing: 0.06em;
+}
+
+.xpProgressBar {
+  width: 100%;
+  height: clamp(11px, 1.7vh, 15px);
+  overflow: hidden;
+  border: 2px solid rgba(213, 255, 178, 0.72);
+  border-radius: 999px;
+  background: rgba(4, 12, 28, 0.76);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+.xpProgressBarFill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #45b72a, #9df43e 72%, #e7ff83);
+  box-shadow: 0 0 10px rgba(134, 245, 31, 0.64);
+  transition: width 240ms ease-out;
+}
+
+.gameOverXPProgress {
+  display: block;
+  margin-top: 5px;
+  color: var(--ui-muted);
+  font-family: system-ui, sans-serif;
+  font-size: clamp(11px, 1.2vw, 14px);
+  font-weight: 900;
 }
 
 .wardrobeSubmenuBackBtn {
@@ -1812,6 +1959,13 @@ p {
   gap: clamp(4px, 0.7vh, 8px);
 }
 
+.menuMascotRow {
+  display: grid;
+  grid-template-columns: minmax(64px, 1fr) auto minmax(64px, 1fr);
+  align-items: center;
+  width: 100%;
+}
+
 .menuMascot {
   width: clamp(82px, 10.5vw, 132px);
   height: auto;
@@ -1825,6 +1979,29 @@ p {
     drop-shadow(0 5px 0 rgba(14, 47, 16, 0.76))
     drop-shadow(0 0 12px rgba(134, 245, 31, 0.44));
   transform: rotate(-2deg);
+}
+
+.menuMascotPrestigeSpace {
+  min-width: 0;
+  min-height: 1px;
+}
+
+.menuPlayerLevel {
+  justify-self: start;
+  margin-left: clamp(5px, 0.9vw, 11px);
+  color: #9bfa20;
+  font-family: var(--ui-title-font);
+  font-size: clamp(30px, 3.8vw, 46px);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  white-space: nowrap;
+  -webkit-text-stroke: min(0.12vw, 0.21vh) #1f6312;
+  paint-order: stroke fill;
+  text-shadow:
+    0 min(0.25vw, 0.44vh) 0 #2d8f16,
+    0 min(0.4vw, 0.7vh) 0 #163f16,
+    0 0 min(1vw, 1.8vh) rgba(109, 255, 32, 0.52);
 }
 
 .mainMenuActions .menuHotspot {
@@ -2627,6 +2804,25 @@ p {
     font-size: clamp(8px, 2.4vh, 11px);
   }
 
+  .menuBestProgressGroup {
+    width: min(28vw, 190px);
+    gap: 2px;
+  }
+
+  .menuXPProgress {
+    padding: 2px 5px;
+    border-radius: 7px;
+  }
+
+  .menuXPProgressValues {
+    margin-bottom: 2px;
+    font-size: clamp(7px, 2vh, 9px);
+  }
+
+  .menuXPProgressBar {
+    height: 5px;
+  }
+
   .menuEyebrow {
     margin-bottom: clamp(1px, 0.25vh, 2px);
     font-size: clamp(7px, 2vh, 9px);
@@ -2741,6 +2937,15 @@ p {
     width: clamp(58px, 17vh, 80px);
     height: auto;
     margin-bottom: 1px;
+  }
+
+  .menuMascotRow {
+    grid-template-columns: minmax(48px, 1fr) auto minmax(48px, 1fr);
+  }
+
+  .menuPlayerLevel {
+    margin-left: 4px;
+    font-size: clamp(22px, 7vh, 34px);
   }
 
   .mainMenuActions {
@@ -2975,6 +3180,7 @@ p {
     font-size: clamp(10px, 2.35dvh, 15px);
     line-height: 1;
   }
+
 }
 
 @media (hover: hover) and (pointer: fine),

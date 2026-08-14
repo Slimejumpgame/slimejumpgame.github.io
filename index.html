@@ -39,10 +39,21 @@
 
       <section id="mainMenuScreen" class="menuScreen menuScreen--main" aria-label="Hauptmenü">
         <div class="menuStatusBar" aria-label="Persönliche Spielwerte">
-          <span class="menuStatusBadge menuStatusBadge--best" aria-label="Persönlicher Highscore">
-            <span aria-hidden="true">🏆</span>
-            <strong id="personalBestValue">0</strong>
-          </span>
+          <div class="menuBestProgressGroup">
+            <span class="menuStatusBadge menuStatusBadge--best" aria-label="Persönlicher Highscore">
+              <span aria-hidden="true">🏆</span>
+              <strong id="personalBestValue">0</strong>
+            </span>
+            <div id="menuXPProgress" class="menuXPProgress" aria-label="XP-Fortschritt">
+              <span class="menuXPProgressValues">
+                <strong>XP</strong>
+                <span id="menuXPProgressText">0 / 200</span>
+              </span>
+              <div id="menuXPProgressBar" class="menuXPProgressBar" role="progressbar" aria-label="XP bis zum nächsten Level" aria-valuemin="0" aria-valuemax="200" aria-valuenow="0">
+                <span id="menuXPProgressBarFill" class="menuXPProgressBarFill"></span>
+              </div>
+            </div>
+          </div>
           <span class="menuStatusBadge menuStatusBadge--stars" aria-label="Verfügbares Stern-Guthaben">
             <span aria-hidden="true">⭐</span>
             <strong id="starBalanceValue">0</strong>
@@ -57,7 +68,11 @@
 
         <div class="mainMenuGrid">
           <nav class="mainMenuActions" aria-label="Spielmenü">
-            <canvas id="menuMascot" class="menuMascot" width="180" height="170" aria-hidden="true"></canvas>
+            <div class="menuMascotRow">
+              <span class="menuMascotPrestigeSpace" aria-hidden="true"></span>
+              <canvas id="menuMascot" class="menuMascot" width="180" height="170" aria-hidden="true"></canvas>
+              <strong id="menuPlayerLevel" class="menuPlayerLevel" aria-label="Spielerlevel 1">#1</strong>
+            </div>
             <section id="recentAchievements" class="recentAchievements uiPanel" aria-label="Letzte Erfolge">
               <span id="recentAchievementsTitle" class="recentAchievementsTitle">Letzte Erfolge</span>
               <div id="recentAchievementList" class="recentAchievementList"></div>
@@ -305,6 +320,17 @@
           <div class="dialogAccent" aria-hidden="true"></div>
           <h2 id="messageTitle">Level geschafft!</h2>
           <p id="messageText"></p>
+          <section id="gameOverXPPanel" class="gameOverXPPanel hidden" aria-label="XP-Fortschritt dieses Runs">
+            <div class="gameOverXPSummary">
+              <strong id="gameOverXPEarned">+0 XP</strong>
+              <span id="gameOverLevelUp" class="gameOverLevelUp hidden">LEVEL UP!</span>
+            </div>
+            <strong id="gameOverPlayerLevel" class="gameOverPlayerLevel">LEVEL 1</strong>
+            <div id="gameOverXPBar" class="xpProgressBar" role="progressbar" aria-label="Level-Fortschritt" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <span id="gameOverXPBarFill" class="xpProgressBarFill"></span>
+            </div>
+            <span id="gameOverXPProgress" class="gameOverXPProgress">0 / 100 XP</span>
+          </section>
           <section id="wardrobeUnlockPanel" class="slimeColorUnlockPanel hidden" aria-label="Neues Wardrobe-Item freischalten">
             <h3>🎁 Neuer Wardrobe-Unlock</h3>
             <p id="wardrobeUnlockText"></p>
@@ -382,6 +408,7 @@
 
   <script src="./js/slime-progress-reset.js"></script>
   <script src="./js/slime-run-recovery.js"></script>
+  <script src="./js/slime-player-progress.js"></script>
   <script src="./js/slime-colors.js"></script>
   <script src="./js/slime-cosmetics.js"></script>
   <script src="./js/slime-beards.js"></script>

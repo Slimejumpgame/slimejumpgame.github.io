@@ -72,12 +72,17 @@
     menu: document.getElementById("menuOverlay"),
     mainMenuScreen: document.getElementById("mainMenuScreen"),
     personalBestValue: document.getElementById("personalBestValue"),
+    menuXPProgress: document.getElementById("menuXPProgress"),
+    menuXPProgressText: document.getElementById("menuXPProgressText"),
+    menuXPProgressBar: document.getElementById("menuXPProgressBar"),
+    menuXPProgressBarFill: document.getElementById("menuXPProgressBarFill"),
     starBalanceValue: document.getElementById("starBalanceValue"),
     wardrobeScreen: document.getElementById("wardrobeScreen"),
     achievementScreen: document.getElementById("achievementScreen"),
     howToScreen: document.getElementById("howToScreen"),
     highscoreScreen: document.getElementById("highscoreScreen"),
     highscoreRows: document.getElementById("highscoreRows"),
+    menuPlayerLevel: document.getElementById("menuPlayerLevel"),
     message: document.getElementById("messageOverlay"),
     checkpointOverlay: document.getElementById("checkpointOverlay"),
     checkpointDialogTitle: document.getElementById("checkpointDialogTitle"),
@@ -99,6 +104,13 @@
     pauseOverlay: document.getElementById("pauseOverlay"),
     messageTitle: document.getElementById("messageTitle"),
     messageText: document.getElementById("messageText"),
+    gameOverXPPanel: document.getElementById("gameOverXPPanel"),
+    gameOverXPEarned: document.getElementById("gameOverXPEarned"),
+    gameOverLevelUp: document.getElementById("gameOverLevelUp"),
+    gameOverPlayerLevel: document.getElementById("gameOverPlayerLevel"),
+    gameOverXPBar: document.getElementById("gameOverXPBar"),
+    gameOverXPBarFill: document.getElementById("gameOverXPBarFill"),
+    gameOverXPProgress: document.getElementById("gameOverXPProgress"),
     nicknameEntry: document.getElementById("nicknameEntry"),
     nicknameInput: document.getElementById("nicknameInput"),
     nicknameHint: document.getElementById("nicknameHint"),
@@ -160,6 +172,7 @@
 
   let generatedLevel = null;
   let pendingGameOverScore = null;
+  let activeRunXPAwarded = true;
   const STAGE_KIND_RUN = "run";
   const STAGE_KIND_TUTORIAL = "tutorial";
   let activeStageKind = STAGE_KIND_RUN;

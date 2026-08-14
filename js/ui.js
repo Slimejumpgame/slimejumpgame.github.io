@@ -174,6 +174,45 @@
     }
   }
 
+  function renderMainMenuPlayerProgress() {
+    const progress = window.SlimePlayerProgress?.getPlayerProgress?.();
+    if (!progress) return;
+
+    if (ui.menuPlayerLevel) {
+      ui.menuPlayerLevel.textContent = `#${progress.level}`;
+      ui.menuPlayerLevel.setAttribute("aria-label", `Spielerlevel ${progress.level}`);
+    }
+
+    if (
+      !ui.menuXPProgress ||
+      !ui.menuXPProgressText ||
+      !ui.menuXPProgressBar ||
+      !ui.menuXPProgressBarFill
+    ) return;
+
+    const levelXP = Math.max(0, Math.floor(Number(progress.levelXP) || 0));
+    const requiredXP = Math.max(0, Math.floor(Number(progress.requiredXP) || 0));
+    const isMaxLevel = progress.isMaxLevel === true;
+    const progressPercent = isMaxLevel || requiredXP === 0
+      ? 100
+      : Math.min(100, levelXP / requiredXP * 100);
+
+    ui.menuXPProgressText.textContent = isMaxLevel
+      ? "MAX LEVEL"
+      : `${levelXP.toLocaleString("de-DE")} / ${requiredXP.toLocaleString("de-DE")}`;
+    ui.menuXPProgressBarFill.style.width = `${progressPercent}%`;
+    ui.menuXPProgressBar.setAttribute("aria-valuemax", String(isMaxLevel ? 1 : requiredXP));
+    ui.menuXPProgressBar.setAttribute("aria-valuenow", String(isMaxLevel ? 1 : levelXP));
+    ui.menuXPProgressBar.setAttribute(
+      "aria-valuetext",
+      isMaxLevel ? "Max-Level erreicht" : `${levelXP} von ${requiredXP} XP`
+    );
+    ui.menuXPProgress.setAttribute(
+      "aria-label",
+      isMaxLevel ? "XP · Max-Level" : `XP ${levelXP} von ${requiredXP}`
+    );
+  }
+
   function renderMainMenuStats() {
     if (ui.personalBestValue) {
       ui.personalBestValue.textContent = getPersonalBestScore().toLocaleString("de-DE");
@@ -182,6 +221,50 @@
       const balance = window.SlimeStarEconomy?.getBalance?.() ?? 0;
       ui.starBalanceValue.textContent = Math.max(0, balance).toLocaleString("de-DE");
     }
+    renderMainMenuPlayerProgress();
+  }
+
+  function hideGameOverXPProgress() {
+    ui.gameOverXPPanel?.classList.add("hidden");
+  }
+
+  function renderGameOverXPProgress(runXPResult) {
+    if (!ui.gameOverXPPanel || !runXPResult) {
+      hideGameOverXPProgress();
+      return;
+    }
+
+    const earnedXP = Math.max(0, Math.floor(Number(runXPResult.earnedXP) || 0));
+    const level = Math.max(1, Math.floor(Number(runXPResult.level) || 1));
+    const levelXP = Math.max(0, Math.floor(Number(runXPResult.levelXP) || 0));
+    const requiredXP = Math.max(0, Math.floor(Number(runXPResult.requiredXP) || 0));
+    const isMaxLevel = runXPResult.isMaxLevel === true;
+    const levelsGained = Math.max(
+      0,
+      Math.floor(Number(runXPResult.levelsGained) || 0)
+    );
+    const progressPercent = isMaxLevel || requiredXP === 0
+      ? 100
+      : Math.min(100, levelXP / requiredXP * 100);
+
+    ui.gameOverXPEarned.textContent = `+${earnedXP.toLocaleString("de-DE")} XP`;
+    ui.gameOverLevelUp.textContent = levelsGained > 1
+      ? `${levelsGained} LEVEL UPS!`
+      : "LEVEL UP!";
+    ui.gameOverLevelUp.classList.toggle("hidden", levelsGained === 0);
+    ui.gameOverPlayerLevel.textContent = isMaxLevel ? `LEVEL ${level} · MAX` : `LEVEL ${level}`;
+    ui.gameOverXPBarFill.style.width = `${progressPercent}%`;
+    ui.gameOverXPBar.setAttribute("aria-valuemax", String(isMaxLevel ? 1 : requiredXP));
+    ui.gameOverXPBar.setAttribute("aria-valuenow", String(isMaxLevel ? 1 : levelXP));
+    ui.gameOverXPBar.setAttribute(
+      "aria-valuetext",
+      isMaxLevel ? "Max-Level erreicht" : `${levelXP} von ${requiredXP} XP`
+    );
+    ui.gameOverXPProgress.textContent = isMaxLevel
+      ? "MAX LEVEL"
+      : `${levelXP.toLocaleString("de-DE")} / ${requiredXP.toLocaleString("de-DE")} XP`;
+    ui.gameOverXPPanel.classList.remove("hidden");
+    renderMainMenuPlayerProgress();
   }
 
   function getWardrobePurchaseRequirementText() {

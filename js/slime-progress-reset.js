@@ -24,7 +24,9 @@
     "slimejumperBest",
     "slimejumperBestLevel",
     "slimejumperRecentScores",
-    "slimejumperHighscoresV14"
+    "slimejumperHighscoresV14",
+    "slimejumperPlayerLevel",
+    "slimejumperPlayerLevelXP"
   ]);
 
   const START_DEFAULTS = Object.freeze({
@@ -56,7 +58,9 @@
     slimejumperBest: "0",
     slimejumperBestLevel: "0",
     slimejumperRecentScores: JSON.stringify([]),
-    slimejumperHighscoresV14: JSON.stringify([])
+    slimejumperHighscoresV14: JSON.stringify([]),
+    slimejumperPlayerLevel: "1",
+    slimejumperPlayerLevelXP: "0"
   });
 
   try {
@@ -78,7 +82,7 @@
 
   const PREFERENCE_RESET_MARKER_STORAGE_KEY =
     "slimejumperPreferenceResetVersion";
-  const PREFERENCE_RESET_VERSION = "preferences-reset-2.54";
+  const PREFERENCE_RESET_VERSION = "preferences-reset-2.56";
   const PREFERENCE_STORAGE_KEYS = Object.freeze([
     "slimejumperSkipTutorial",
     "slimejumperSkipEndRunWarning",

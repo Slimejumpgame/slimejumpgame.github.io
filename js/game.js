@@ -240,6 +240,7 @@
       showGameToast("Run konnte nicht sicher gestartet werden.");
       return false;
     }
+    activeRunXPAwarded = false;
 
     captureCheckpointLevelAtRunStart();
     initializeRunScoreState(levelNumber, {fromCheckpoint});
@@ -531,6 +532,7 @@
 
   function showMessage(title, text, buttonText, action) {
     if (action !== "gameover") hideNicknameEntry();
+    if (action !== "gameover") hideGameOverXPProgress();
     state = action === "gameover" ? "gameover" : "paused";
     nextAction = action;
     ui.messageTitle.textContent = title;
@@ -665,7 +667,9 @@
     updateHUD();
 
     if (lives <= 0) {
-      if (window.SlimeRunRecovery?.markRunCompleted?.() !== true) {
+      const recoveryCompleted =
+        window.SlimeRunRecovery?.markRunCompleted?.() === true;
+      if (!recoveryCompleted) {
         console.error("[RunRecovery] Active-Run-Datensatz konnte bei Game Over nicht sicher abgeschlossen werden.");
       }
       window.SlimeAchievements?.discardRunProgressSnapshot?.();
@@ -680,6 +684,11 @@
       localStorage.setItem("slimejumperBest", String(best));
       localStorage.setItem("slimejumperBestLevel", String(bestLevel));
       pendingGameOverScore = { score, reachedLevel };
+      let runXPResult = null;
+      if (recoveryCompleted && !activeRunXPAwarded) {
+        activeRunXPAwarded = true;
+        runXPResult = window.SlimePlayerProgress?.awardRunXP?.(score) ?? null;
+      }
 
       showMessage(
         "Game Over",
@@ -687,6 +696,7 @@
         "Highscore speichern & neue Runde",
         "gameover"
       );
+      renderGameOverXPProgress(runXPResult);
       showNicknameEntry();
       renderWardrobeUnlockPanel();
     } else {
