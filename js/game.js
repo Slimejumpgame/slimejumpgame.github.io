@@ -591,6 +591,7 @@
     if (!DEV_MODE || !ui.devPerkInspector) return;
     const perks = window.SlimePerks;
     if (!perks) return;
+    updateDevForceLuckyStarButton();
     const storedUnlocked = perks.getStoredUnlockedPerkIds();
     const storedSelected = perks.getStoredSelectedPerkIds();
     const selected = perks.getSelectedPerkIds();
@@ -598,8 +599,18 @@
     const extraLifeActive = active.includes("extra_life");
     const powerShotActive = active.includes("power_shot");
     const starMagnetActive = active.includes("star_magnet");
+    const bounceMasterActive = active.includes("bounce_master");
+    const slowFallActive = active.includes("slow_fall");
+    const luckyCharmActive = active.includes("lucky_charm");
     const runIsActive = !isTutorialStage() &&
       ["playing", "paused", "gamePaused"].includes(state);
+    const luckyBonusStarThisLevel = runIsActive &&
+      currentLevel().stars.some(star => star?.isLuckyCharmBonus === true);
+    const currentAimBounceHit =
+      typeof hasCurrentAimBouncePreviewHit === "function" &&
+      hasCurrentAimBouncePreviewHit();
+    const forceNextLuckyStar = perks.isDevForceNextLuckyStarPending?.() === true;
+    const luckyRollThisLevel = perks.getLastLuckyCharmRollResult?.() ?? "NOT ROLLED";
     const expectedExtraLifeBonus = (runIsActive
       ? extraLifeActive
       : selected.includes("extra_life"))
@@ -622,8 +633,51 @@
       `multiplier: x${(powerShotActive ? perks.balance.POWER_SHOT_MULTIPLIER : 1).toFixed(2)}`,
       `Star Magnet: ${starMagnetActive ? "active" : "inactive"}`,
       `pull radius: ${starMagnetActive ? perks.balance.STAR_MAGNET_PULL_RADIUS : 0}`,
-      `pull speed: ${starMagnetActive ? perks.balance.STAR_MAGNET_PULL_SPEED : 0}`
+      `pull speed: ${starMagnetActive ? perks.balance.STAR_MAGNET_PULL_SPEED : 0}`,
+      `Bounce Master: ${bounceMasterActive ? "ACTIVE" : "inactive"}`,
+      "Bounce Preview: AVAILABLE",
+      `Current Aim Bounce Hit: ${currentAimBounceHit ? "YES" : "NO"}`,
+      `Slow Fall: ${slowFallActive ? "ACTIVE" : "inactive"}`,
+      `Trigger Speed: ${perks.balance.SLOW_FALL_TRIGGER_SPEED}`,
+      `Terminal Speed: ${perks.balance.SLOW_FALL_TERMINAL_SPEED}`,
+      `Drag: ${perks.balance.SLOW_FALL_DRAG.toFixed(2)} / s`,
+      `Current Vertical Speed: ${runIsActive ? formatSignedVerticalSpeed(player.vy) : "-"}`,
+      `Lucky Charm: ${luckyCharmActive ? "ACTIVE" : "inactive"}`,
+      `Chance: ${Math.round(perks.balance.LUCKY_CHARM_EXTRA_STAR_CHANCE * 100)} %`,
+      `Force Next Lucky Star: ${forceNextLuckyStar ? "YES" : "NO"}`,
+      `Lucky Bonus Star Current Level: ${runIsActive ? (luckyBonusStarThisLevel ? "YES" : "NO") : "-"}`,
+      `Lucky Roll This Level: ${luckyRollThisLevel}`
     ].join("\n");
+  }
+
+  function formatSignedVerticalSpeed(verticalSpeed) {
+    const roundedSpeed = Math.round(verticalSpeed);
+    return `${roundedSpeed > 0 ? "+" : ""}${roundedSpeed} px/s`;
+  }
+
+  let lastDevPerkTelemetryUpdate = 0;
+
+  function updateLiveDevPerkTelemetry(now) {
+    if (
+      !DEV_MODE ||
+      !ui.devPerkInspector ||
+      ui.devPerkInspector.hidden ||
+      state !== "playing" ||
+      now - lastDevPerkTelemetryUpdate < 50
+    ) return;
+
+    lastDevPerkTelemetryUpdate = now;
+    renderDevPerkInspector();
+  }
+
+  function updateDevForceLuckyStarButton() {
+    if (!DEV_MODE || !ui.devForceLuckyStarBtn) return;
+    const pending =
+      window.SlimePerks?.isDevForceNextLuckyStarPending?.() === true;
+    ui.devForceLuckyStarBtn.setAttribute("aria-pressed", String(pending));
+    ui.devForceLuckyStarBtn.textContent = pending
+      ? "DEV FORCE LUCKY STAR: READY"
+      : "DEV FORCE LUCKY STAR";
   }
 
   function initializeDevMode() {
@@ -642,6 +696,7 @@
       ui.devPrestigeRewardInspector.hidden = true;
     }
     if (ui.devPerkInspector) ui.devPerkInspector.hidden = true;
+    updateDevForceLuckyStarButton();
     ui.devModeToggleBtn.textContent = `DEV MODE: ${DEV_MODE ? "ON" : "OFF"}`;
     ui.devModeToggleBtn.setAttribute("aria-pressed", String(DEV_MODE));
     ui.devModeToggleBtn.addEventListener("click", async () => {
@@ -707,6 +762,11 @@
         ? "DEV PERKS UNLOCKED"
         : "DEV UNLOCK PERKS";
       renderPerksScreen();
+      renderDevPerkInspector();
+    });
+    ui.devForceLuckyStarBtn.addEventListener("click", () => {
+      window.SlimePerks?.requestDevForceNextLuckyStar?.();
+      updateDevForceLuckyStarButton();
       renderDevPerkInspector();
     });
     ui.devPerkInspectorBtn.addEventListener("click", () => {
@@ -780,11 +840,33 @@
       : `Level ${levelIndex + 1}`;
     ui.lives.textContent = "❤️".repeat(Math.max(0, Math.floor(lives)));
     ui.lives.setAttribute("aria-label", `${lives} Leben`);
-    ui.stars.textContent = `⭐ ${collected.filter(Boolean).length}/${currentLevel().stars.length}`;
+    const starProgress = getStarProgress();
+    ui.stars.textContent = starProgress.bonusTotal > 0
+      ? `⭐ ${starProgress.requiredCollected}/${starProgress.requiredTotal} · 🍀 ${starProgress.bonusCollected}/${starProgress.bonusTotal}`
+      : `⭐ ${starProgress.requiredCollected}/${starProgress.requiredTotal}`;
     ui.shots.textContent = `Schüsse: ${shots}`;
     ui.score.textContent = `Punkte: ${score}`;
     updateCheckpointBonusHUD();
     renderDevPerkInspector();
+  }
+
+  function getStarProgress(level = currentLevel()) {
+    let requiredTotal = 0;
+    let requiredCollected = 0;
+    let bonusTotal = 0;
+    let bonusCollected = 0;
+
+    level.stars.forEach((star, index) => {
+      if (star?.isLuckyCharmBonus === true) {
+        bonusTotal++;
+        if (collected[index]) bonusCollected++;
+      } else {
+        requiredTotal++;
+        if (collected[index]) requiredCollected++;
+      }
+    });
+
+    return {requiredTotal, requiredCollected, bonusTotal, bonusCollected};
   }
 
   function registerRunStarCollected() {
@@ -815,8 +897,8 @@
     updateCheckpointBonusHUD();
   }
 
-  function updatePerfectLevelStreak(stars) {
-    if (stars === 3 && !levelHadDeath) {
+  function updatePerfectLevelStreak(requiredStars, requiredStarTotal) {
+    if (requiredStars === requiredStarTotal && !levelHadDeath) {
       perfectLevelStreak++;
 
       if (perfectLevelStreak >= PERFECT_LEVEL_STREAK_TARGET) {
@@ -886,6 +968,7 @@
     const completedLevel = levelIndex + 1;
     recordReachedCheckpoint(completedLevel);
     const stars = collected.filter(Boolean).length;
+    const starProgress = getStarProgress();
     const levelScoreBase = 650 + completedLevel * 45;
     const shotPenalty = shots * 55;
     const starScoreBonus = stars * 250;
@@ -893,26 +976,35 @@
     const achievementContext = getAchievementLevelContext();
     window.SlimeAchievements?.onLevelCompleted?.({
       ...achievementContext,
-      isPerfect: stars === 3 && !levelHadDeath,
+      isPerfect:
+        starProgress.requiredCollected === starProgress.requiredTotal &&
+        !levelHadDeath,
       hadDeath: levelHadDeath,
       levelShots: shots,
       remainingLives: lives,
-      collectedStars: stars,
-      totalStars: currentLevel().stars.length
+      collectedStars: starProgress.requiredCollected,
+      totalStars: starProgress.requiredTotal
     });
 
     const awardedBonus =
       awardRunScore(levelScoreBase, {deduction: shotPenalty}) +
       awardRunScore(starScoreBonus);
-    const streakMessage = updatePerfectLevelStreak(stars);
+    const streakMessage = updatePerfectLevelStreak(
+      starProgress.requiredCollected,
+      starProgress.requiredTotal
+    );
 
     updateHUD();
     if (streakMessage) showGameToast(streakMessage);
     playWin();
 
+    const collectedStarSummary = starProgress.bonusTotal > 0
+      ? `${starProgress.requiredCollected}/${starProgress.requiredTotal} Pflichtsterne · Bonusstern ${starProgress.bonusCollected}/${starProgress.bonusTotal}`
+      : `${starProgress.requiredCollected}/${starProgress.requiredTotal} Sterne gesammelt`;
+
     showMessage(
       `Level ${completedLevel} geschafft!`,
-      `${stars}/3 Sterne gesammelt. Levelbonus: ${awardedBonus} Punkte.`,
+      `${collectedStarSummary}. Levelbonus: ${awardedBonus} Punkte.`,
       "Nächstes Zufallslevel",
       "next"
     );
@@ -1111,6 +1203,7 @@
     const dt = Math.min(0.026, Math.max(0, (now - lastTime) / 1000));
     lastTime = now;
     update(dt);
+    updateLiveDevPerkTelemetry(now);
     draw();
     requestAnimationFrame(frame);
   }

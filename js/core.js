@@ -216,6 +216,7 @@
     devPrestigeRewardInspectorBtn: document.getElementById("devPrestigeRewardInspectorBtn"),
     devPrestigeRewardInspector: document.getElementById("devPrestigeRewardInspector"),
     devUnlockPerksBtn: document.getElementById("devUnlockPerksBtn"),
+    devForceLuckyStarBtn: document.getElementById("devForceLuckyStarBtn"),
     devPerkInspectorBtn: document.getElementById("devPerkInspectorBtn"),
     devPerkInspector: document.getElementById("devPerkInspector")
   };

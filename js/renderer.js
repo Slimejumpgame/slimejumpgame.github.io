@@ -807,10 +807,59 @@
     });
   }
 
+  let currentAimBouncePreviewHit = false;
+
+  function setCurrentAimBouncePreviewHit(hit) {
+    const nextHit = hit === true;
+    if (nextHit === currentAimBouncePreviewHit) return;
+    currentAimBouncePreviewHit = nextHit;
+    if (typeof renderDevPerkInspector === "function") {
+      renderDevPerkInspector();
+    }
+  }
+
+  function hasCurrentAimBouncePreviewHit() {
+    return aiming && currentAimBouncePreviewHit;
+  }
+
+  function drawPostBounceTrajectory(hit) {
+    const stepDuration = 0.055;
+    const pointCount = 14;
+    let x = hit.x;
+    let y = hit.y;
+    const vx = getBouncePadHorizontalSpeed(
+      hit.vx,
+      player.lastHorizontalDirection
+    );
+    let vy = -getBouncePadVerticalSpeed(hit.impactSpeed);
+
+    ctx.fillStyle = "#9deeff";
+    ctx.globalAlpha = 0.88;
+    ctx.beginPath();
+    ctx.arc(x, y, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    for (let i = 0; i < pointCount; i++) {
+      vy += 1570 * stepDuration;
+      x += vx * stepDuration;
+      y += vy * stepDuration;
+      ctx.globalAlpha = 0.72 * (1 - i / pointCount);
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(2.2, 5.2 - i * 0.18), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   function drawTrajectory() {
-    if (!aiming) return;
+    if (!aiming) {
+      setCurrentAimBouncePreviewHit(false);
+      return;
+    }
     const launch = getSlingshotLaunch();
-    if (launch.dragDistance <= MIN_LAUNCH_DRAG) return;
+    if (launch.dragDistance <= MIN_LAUNCH_DRAG) {
+      setCurrentAimBouncePreviewHit(false);
+      return;
+    }
 
     ctx.save();
     ctx.lineCap = "round";
@@ -835,17 +884,54 @@
 
     let x = player.x, y = player.y;
     let vx = launch.vx, vy = launch.vy;
+    let bounceHit = null;
+    const bouncePreviewActive =
+      window.SlimePerks?.isActiveForRun?.("bounce_master") === true;
     for (let i = 0; i < 18; i++) {
       const t = 0.055;
+      const startX = x;
+      const startY = y;
       vy += 1570 * t;
       x += vx * t;
       y += vy * t;
+
+      if (bouncePreviewActive && !bounceHit && vy > 0) {
+        for (const pad of currentLevel().pads) {
+          const contact = findFirstSweptCircleRectContact(
+            startX,
+            startY,
+            x,
+            y,
+            player.r,
+            pad
+          );
+          if (
+            contact &&
+            (!bounceHit || contact.fraction < bounceHit.fraction)
+          ) {
+            bounceHit = {
+              ...contact,
+              vx,
+              impactSpeed: vy
+            };
+          }
+        }
+      }
+
+      if (bounceHit) {
+        x = bounceHit.x;
+        y = bounceHit.y;
+      }
       ctx.globalAlpha = 1 - i / 19;
       ctx.fillStyle = "#e9ffef";
       ctx.beginPath();
       ctx.arc(x, y, Math.max(2.5, 6 - i * 0.18), 0, Math.PI * 2);
       ctx.fill();
+      if (bounceHit) break;
     }
+
+    setCurrentAimBouncePreviewHit(Boolean(bounceHit));
+    if (bounceHit) drawPostBounceTrajectory(bounceHit);
     ctx.restore();
   }
 

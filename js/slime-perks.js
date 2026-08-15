@@ -10,7 +10,11 @@
     EXTRA_LIFE_BONUS: 1,
     POWER_SHOT_MULTIPLIER: 1.10,
     STAR_MAGNET_PULL_RADIUS: 200,
-    STAR_MAGNET_PULL_SPEED: 500
+    STAR_MAGNET_PULL_SPEED: 500,
+    SLOW_FALL_TRIGGER_SPEED: 150,
+    SLOW_FALL_TERMINAL_SPEED: 675,
+    SLOW_FALL_DRAG: 2.85,
+    LUCKY_CHARM_EXTRA_STAR_CHANCE: 0.15
   });
 
   function createIcon(paths) {
@@ -80,9 +84,9 @@
     Object.freeze({
       id: "bounce_master",
       name: "BOUNCE MASTER",
-      description: "Verstärkt den kontrollierten Boost von Bounce-Pads.",
+      description: "Zeigt beim Zielen die erwartete Flugbahn nach einem Bounce-Pad-Treffer.",
       icon: createIcon([{d: "M4 18h16v3H4Z"}, {d: "m7 14 5-8 5 8-5-3Z", accent: true}]),
-      implemented: false,
+      implemented: true,
       category: "power"
     }),
     Object.freeze({
@@ -98,7 +102,7 @@
       name: "SLOW FALL",
       description: "Begrenzt starke Abwärtsgeschwindigkeit leicht.",
       icon: createIcon([{d: "M12 3v14"}, {d: "m7 12 5 5 5-5M5 21h14", accent: true}]),
-      implemented: false,
+      implemented: true,
       category: "mobility"
     }),
     Object.freeze({
@@ -114,7 +118,7 @@
       name: "LUCKY CHARM",
       description: "Kann in normalen Levels einen zusätzlichen Stern erzeugen.",
       icon: createIcon([{d: "M12 4a4 4 0 1 0-4 4 4 4 0 1 0 4 4 4 4 0 1 0 4-4 4 4 0 0 0-4-4Z"}, {d: "M12 12v8", accent: true}]),
-      implemented: false,
+      implemented: true,
       category: "utility"
     })
   ]);
@@ -123,6 +127,8 @@
   let devUnlockOverride = false;
   let devSelectedPerkIds = null;
   let activeRunPerkIds = Object.freeze([]);
+  let devForceNextLuckyStar = false;
+  let lastLuckyCharmRollResult = "NOT ROLLED";
 
   function parseStoredArray(key) {
     try {
@@ -277,6 +283,7 @@
 
   function clearRunPerkSnapshot() {
     activeRunPerkIds = Object.freeze([]);
+    lastLuckyCharmRollResult = "NOT ROLLED";
   }
 
   function getActiveRunPerkIds() {
@@ -285,6 +292,32 @@
 
   function isActiveForRun(id) {
     return activeRunPerkIds.includes(id);
+  }
+
+  function requestDevForceNextLuckyStar() {
+    devForceNextLuckyStar = true;
+    return devForceNextLuckyStar;
+  }
+
+  function shouldGenerateLuckyCharmBonusStar(random) {
+    const forceThisLevel = devForceNextLuckyStar;
+    devForceNextLuckyStar = false;
+
+    if (!isActiveForRun("lucky_charm")) {
+      lastLuckyCharmRollResult = "NOT ROLLED";
+      return false;
+    }
+
+    // Auch beim DEV-Force wird genau ein Wert konsumiert, damit die restliche
+    // Seed-Sequenz und damit das generierte Level unverändert reproduzierbar bleibt.
+    const roll = typeof random === "function" ? Number(random()) : 1;
+    const succeeded = forceThisLevel || (
+      Number.isFinite(roll) &&
+      roll >= 0 &&
+      roll < PERK_BALANCE.LUCKY_CHARM_EXTRA_STAR_CHANCE
+    );
+    lastLuckyCharmRollResult = succeeded ? "SUCCESS" : "FAIL";
+    return succeeded;
   }
 
   window.SlimePerks = Object.freeze({
@@ -306,6 +339,10 @@
     captureRunPerkSnapshot,
     clearRunPerkSnapshot,
     getActiveRunPerkIds,
-    isActiveForRun
+    isActiveForRun,
+    requestDevForceNextLuckyStar,
+    isDevForceNextLuckyStarPending: () => devForceNextLuckyStar,
+    shouldGenerateLuckyCharmBonusStar,
+    getLastLuckyCharmRollResult: () => lastLuckyCharmRollResult
   });
 })();

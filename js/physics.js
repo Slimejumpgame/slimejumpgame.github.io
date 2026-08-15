@@ -1,6 +1,9 @@
 "use strict";
 
   const BOUNCE_MIN_HORIZONTAL_SPEED = 90;
+  const BOUNCE_MIN_VERTICAL_SPEED = 300;
+  const BOUNCE_MAX_VERTICAL_SPEED = 1050;
+  const BOUNCE_FULL_IMPACT_SPEED = 900;
 
   function rememberPlayerHorizontalDirection() {
     // Kleine Physik-Restwerte sollen keine zuvor klare Richtung überschreiben.
@@ -12,13 +15,33 @@
   function applyBouncePadMinimumHorizontalSpeed() {
     if (Math.abs(player.vx) >= BOUNCE_MIN_HORIZONTAL_SPEED) return;
 
-    const direction =
-      player.vx > 0 ? 1 :
-      player.vx < 0 ? -1 :
-      player.lastHorizontalDirection || 1;
+    player.vx = getBouncePadHorizontalSpeed(player.vx, player.lastHorizontalDirection);
+    player.lastHorizontalDirection = Math.sign(player.vx);
+  }
 
-    player.vx = direction * BOUNCE_MIN_HORIZONTAL_SPEED;
-    player.lastHorizontalDirection = direction;
+  function getBouncePadHorizontalSpeed(horizontalSpeed, lastDirection = 1) {
+    if (Math.abs(horizontalSpeed) >= BOUNCE_MIN_HORIZONTAL_SPEED) {
+      return horizontalSpeed;
+    }
+
+    const direction =
+      horizontalSpeed > 0 ? 1 :
+      horizontalSpeed < 0 ? -1 :
+      lastDirection || 1;
+    return direction * BOUNCE_MIN_HORIZONTAL_SPEED;
+  }
+
+  function getBouncePadVerticalSpeed(impactSpeed) {
+    const impactRatio = clamp(
+      Math.max(0, impactSpeed) / BOUNCE_FULL_IMPACT_SPEED,
+      0,
+      1
+    );
+    const smoothedImpact = impactRatio * impactRatio * (3 - 2 * impactRatio);
+    const bounceStrength =
+      BOUNCE_MIN_VERTICAL_SPEED +
+      (BOUNCE_MAX_VERTICAL_SPEED - BOUNCE_MIN_VERTICAL_SPEED) * smoothedImpact;
+    return Math.min(BOUNCE_MAX_VERTICAL_SPEED, bounceStrength);
   }
 
   function circleRectCollision(circle, rect) {
@@ -107,6 +130,98 @@
     return (x - cx) ** 2 + (y - cy) ** 2 < r * r;
   }
 
+  function getSegmentRectEntryFraction(startX, startY, endX, endY, rect) {
+    const dx = endX - startX;
+    const dy = endY - startY;
+    let entry = 0;
+    let exit = 1;
+
+    for (const [start, delta, min, max] of [
+      [startX, dx, rect.x, rect.x + rect.w],
+      [startY, dy, rect.y, rect.y + rect.h]
+    ]) {
+      if (Math.abs(delta) < 1e-9) {
+        if (start < min || start > max) return null;
+        continue;
+      }
+      const first = (min - start) / delta;
+      const second = (max - start) / delta;
+      entry = Math.max(entry, Math.min(first, second));
+      exit = Math.min(exit, Math.max(first, second));
+      if (entry > exit) return null;
+    }
+
+    return entry >= 0 && entry <= 1 ? entry : null;
+  }
+
+  function getSegmentCircleEntryFraction(startX, startY, endX, endY, circle) {
+    const dx = endX - startX;
+    const dy = endY - startY;
+    const offsetX = startX - circle.x;
+    const offsetY = startY - circle.y;
+    const a = dx * dx + dy * dy;
+    const c = offsetX * offsetX + offsetY * offsetY - circle.r * circle.r;
+    if (c <= 0) return 0;
+    if (a <= 1e-12) return null;
+
+    const b = 2 * (offsetX * dx + offsetY * dy);
+    const discriminant = b * b - 4 * a * c;
+    if (discriminant < 0) return null;
+    const entry = (-b - Math.sqrt(discriminant)) / (2 * a);
+    return entry >= 0 && entry <= 1 ? entry : null;
+  }
+
+  // Exakter Sweep eines Kreises entlang eines Trajectory-Segments gegen die
+  // Rechteckfläche. Die beiden Kantenbereiche plus vier Eckkreise bilden die
+  // abgerundete Minkowski-Summe von Pad und Slime-Radius.
+  function findFirstSweptCircleRectContact(
+    startX,
+    startY,
+    endX,
+    endY,
+    radius,
+    rect
+  ) {
+    if (intersectsRect(startX, startY, radius, rect)) {
+      return {fraction: 0, x: startX, y: startY};
+    }
+
+    const candidates = [
+      getSegmentRectEntryFraction(startX, startY, endX, endY, {
+        x: rect.x,
+        y: rect.y - radius,
+        w: rect.w,
+        h: rect.h + radius * 2
+      }),
+      getSegmentRectEntryFraction(startX, startY, endX, endY, {
+        x: rect.x - radius,
+        y: rect.y,
+        w: rect.w + radius * 2,
+        h: rect.h
+      }),
+      ...[
+        [rect.x, rect.y],
+        [rect.x + rect.w, rect.y],
+        [rect.x, rect.y + rect.h],
+        [rect.x + rect.w, rect.y + rect.h]
+      ].map(([x, y]) => getSegmentCircleEntryFraction(
+        startX,
+        startY,
+        endX,
+        endY,
+        {x, y, r: radius}
+      ))
+    ].filter(fraction => fraction !== null);
+
+    if (candidates.length === 0) return null;
+    const fraction = Math.min(...candidates);
+    return {
+      fraction,
+      x: startX + (endX - startX) * fraction,
+      y: startY + (endY - startY) * fraction
+    };
+  }
+
   function pullStarTowardPlayer(star, dt, pullRadius, pullSpeed) {
     if (
       !star ||
@@ -127,6 +242,15 @@
     star.x += dx / distance * step;
     star.y += dy / distance * step;
     return true;
+  }
+
+  function applySlowFallDrag(verticalSpeed, dt) {
+    const triggerSpeed = window.SlimePerks.balance.SLOW_FALL_TRIGGER_SPEED;
+    if (verticalSpeed <= triggerSpeed) return verticalSpeed;
+
+    const drag = window.SlimePerks.balance.SLOW_FALL_DRAG;
+    const dragFactor = Math.exp(-Math.max(0, drag) * Math.max(0, dt));
+    return triggerSpeed + (verticalSpeed - triggerSpeed) * dragFactor;
   }
 
   function update(dt) {
@@ -166,6 +290,12 @@
       player.vy += 1570 * dt;
       player.vx *= Math.pow(player.onIce ? 0.9998 : 0.998, dt * 60);
       player.vy *= Math.pow(0.999, dt * 60);
+      if (
+        window.SlimePerks?.isActiveForRun?.("slow_fall") === true &&
+        player.vy > window.SlimePerks.balance.SLOW_FALL_TRIGGER_SPEED
+      ) {
+        player.vy = applySlowFallDrag(player.vy, dt);
+      }
       player.x += player.vx * dt;
       player.y += player.vy * dt;
     }
@@ -211,12 +341,7 @@
     for (const pad of level.pads) {
       if (intersectsRect(player.x, player.y, player.r, pad) && bouncePadImpactSpeed > 0) {
         const impactSpeed = bouncePadImpactSpeed;
-        const minimumBounce = 300;
-        const maximumBounce = 1050;
-        const impactRatio = clamp(impactSpeed / 900, 0, 1);
-        const smoothedImpact = impactRatio * impactRatio * (3 - 2 * impactRatio);
-        const bounceStrength = minimumBounce + (maximumBounce - minimumBounce) * smoothedImpact;
-        player.vy = -Math.min(maximumBounce, bounceStrength);
+        player.vy = -getBouncePadVerticalSpeed(impactSpeed);
         applyBouncePadMinimumHorizontalSpeed();
         player.onGround = false;
         player.squish = 1;

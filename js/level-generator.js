@@ -648,6 +648,37 @@
       });
     }
 
+    // Ein Lucky-Charm-Roll findet genau hier, einmal pro neu erzeugtem regulären
+    // Level statt. Respawns verwenden dasselbe Levelobjekt und rollen nicht neu.
+    if (window.SlimePerks?.shouldGenerateLuckyCharmBonusStar?.(random) === true) {
+      const nonHazardRoutePlatforms = routePlatforms.filter(
+        platform => !platform.replacedBySpike
+      );
+      const stableRoutePlatforms = nonHazardRoutePlatforms.filter(platform =>
+        !platform.replacedByMover &&
+        !platform.replacedByFalling &&
+        !platform.replacedByFade
+      );
+      const placementCandidates = stableRoutePlatforms.length > 0
+        ? stableRoutePlatforms
+        : nonHazardRoutePlatforms.length > 0
+          ? nonHazardRoutePlatforms
+          : [startPlatform];
+      const platform = chooseRandom(random, placementCandidates);
+      const horizontalOffset = Math.min(44, platform.w * 0.28);
+      const direction = random() < 0.5 ? -1 : 1;
+
+      stars.push({
+        x: clamp(
+          platform.x + platform.w / 2 + horizontalOffset * direction,
+          platform.x + 28,
+          platform.x + platform.w - 28
+        ),
+        y: platform.y - 72,
+        isLuckyCharmBonus: true
+      });
+    }
+
     return {
       seed,
       name: `${chooseRandom(random, adjectives)} ${chooseRandom(random, nouns)}`,
