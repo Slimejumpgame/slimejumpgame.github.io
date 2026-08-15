@@ -134,6 +134,7 @@
 
   let transactionInProgress = false;
   let wardrobeRegistry = null;
+  let prestigeEmblemMarkupSerial = 0;
   const selectedRewardCache = Object.create(null);
 
   function normalizePrestigeLevel(value) {
@@ -663,6 +664,10 @@
   function getPrestigeEmblemMarkup(level) {
     const definition = getDisplayPrestigeDefinition(level);
     if (!definition) return "";
+    prestigeEmblemMarkupSerial += 1;
+    const gradientSuffix = `${definition.level}-${prestigeEmblemMarkupSerial}`;
+    const metalGradientId = `prestigeMetalGradient-${gradientSuffix}`;
+    const slimeGradientId = `prestigeSlimeGradient-${gradientSuffix}`;
 
     const decorations = {
       1: '<circle class="prestigeMetal" cx="50" cy="51" r="39"/><circle class="prestigeInset" cx="50" cy="51" r="32"/>',
@@ -677,19 +682,25 @@
       10: '<path class="prestigeFinalWing" d="M34 31C20 12 5 15 2 37c9-5 16-2 24 6-14-2-21 5-22 16 10-4 19-1 31 10Z"/><path class="prestigeFinalWing" d="M66 31C80 12 95 15 98 37c-9-5-16-2-24 6 14-2 21 5 22 16-10-4-19-1-31 10Z"/><path class="prestigeShield prestigeShieldFinal" d="M50 13 79 24v28c0 22-14 34-29 44C35 86 21 74 21 52V24Z"/><path class="prestigeCrown" d="M29 24 27 6 42 17 50 2 58 17 73 6 71 24Z"/><path class="prestigeCrownBand" d="M30 23h40l-3 9H33Z"/>'
     };
 
+    const decorationMarkup = (decorations[definition.level] ?? "").replace(
+      /class="(prestigeShield[^"]*)"/g,
+      (_match, classNames) =>
+        `class="${classNames}" style="fill: url(#${metalGradientId})"`
+    );
+
     return `
       <svg class="prestigeEmblem prestigeEmblem--${definition.theme}" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
         <defs>
-          <linearGradient id="prestigeMetalGradient" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id="${metalGradientId}" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stop-color="#fff4a8"/><stop offset="0.48" stop-color="#d89138"/><stop offset="1" stop-color="#71336f"/>
           </linearGradient>
-          <linearGradient id="prestigeSlimeGradient" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id="${slimeGradientId}" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stop-color="#dcff83"/><stop offset="0.55" stop-color="#79ed35"/><stop offset="1" stop-color="#2d9d2d"/>
           </linearGradient>
         </defs>
-        <g class="prestigeDecoration">${decorations[definition.level] ?? ""}</g>
+        <g class="prestigeDecoration">${decorationMarkup}</g>
         <g class="prestigeSlimeCore">
-          <path d="M50 19C40 31 30 42 30 57c0 14 8 23 20 23s20-9 20-23C70 42 60 31 50 19Z"/>
+          <path style="fill: url(#${slimeGradientId})" d="M50 19C40 31 30 42 30 57c0 14 8 23 20 23s20-9 20-23C70 42 60 31 50 19Z"/>
           <ellipse class="prestigeSlimeShine" cx="42" cy="41" rx="7" ry="10"/>
           <circle class="prestigeSlimeFace" cx="43" cy="58" r="3"/><circle class="prestigeSlimeFace" cx="57" cy="58" r="3"/>
           <path class="prestigeSlimeSmile" d="M43 67c4 4 10 4 14 0"/>

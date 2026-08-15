@@ -1129,7 +1129,12 @@
     value.forEach(id => {
       if (typeof id !== "string") return;
       const cleanId = id.trim();
-      if (!cleanId || !knownIds.has(cleanId) || normalized.includes(cleanId)) return;
+      if (
+        !cleanId ||
+        !knownIds.has(cleanId) ||
+        normalized.includes(cleanId) ||
+        normalized.length >= 5
+      ) return;
       normalized.push(cleanId);
     });
 
@@ -1145,14 +1150,22 @@
 
   function normalizeHighScoreIdentitySnapshot(value) {
     const source = value && typeof value === "object" ? value : {};
+    const nestedSnapshot = source.callingCardSnapshot ?? source.calling_card_snapshot;
+    const identitySource = nestedSnapshot && typeof nestedSnapshot === "object"
+      ? nestedSnapshot
+      : source;
     const normalized = window.SlimePrestige?.normalizeIdentitySnapshot?.({
-      playerLevel: source.playerLevel ?? source.player_level,
-      prestigeLevel: source.prestigeLevel ?? source.prestige_level,
-      prestigeFrame: source.prestigeFrame ?? source.prestige_frame,
-      prestigeTitle: source.prestigeTitle ?? source.prestige_title,
-      prestigeAura: source.prestigeAura ?? source.prestige_aura,
-      prestigeTrail: source.prestigeTrail ?? source.prestige_trail,
-      slimeAchievements: source.slimeAchievements ?? source.slime_achievements
+      playerLevel: identitySource.playerLevel ?? identitySource.player_level,
+      prestigeLevel: identitySource.prestigeLevel ?? identitySource.prestige_level,
+      prestigeFrame: identitySource.prestigeFrame ?? identitySource.prestige_frame,
+      prestigeTitle: identitySource.prestigeTitle ?? identitySource.prestige_title,
+      prestigeAura: identitySource.prestigeAura ?? identitySource.prestige_aura,
+      prestigeTrail: identitySource.prestigeTrail ?? identitySource.prestige_trail,
+      slimeAchievements:
+        identitySource.slimeAchievements ??
+        identitySource.slime_achievements ??
+        source.slimeAchievements ??
+        source.slime_achievements
     });
     return normalized ?? {
       playerLevel: 1,
@@ -1171,11 +1184,24 @@
     if (typeof value.hasIdentitySnapshot === "boolean") {
       return value.hasIdentitySnapshot;
     }
+    const nestedSnapshot = value.callingCardSnapshot ?? value.calling_card_snapshot;
+    if (nestedSnapshot && typeof nestedSnapshot === "object") return true;
     return [
       "playerLevel", "player_level", "prestigeLevel", "prestige_level",
       "prestigeFrame", "prestige_frame", "prestigeTitle", "prestige_title",
       "prestigeAura", "prestige_aura", "prestigeTrail", "prestige_trail"
     ].some(key => Object.prototype.hasOwnProperty.call(value, key));
+  }
+
+  function hasHighScoreSnapshotField(value, camelKey, snakeKey, explicitFlag) {
+    if (!value || typeof value !== "object") return false;
+    if (typeof value[explicitFlag] === "boolean") return value[explicitFlag];
+    const nestedSnapshot = value.callingCardSnapshot ?? value.calling_card_snapshot;
+    const source = nestedSnapshot && typeof nestedSnapshot === "object"
+      ? nestedSnapshot
+      : value;
+    return Object.prototype.hasOwnProperty.call(source, camelKey) ||
+      Object.prototype.hasOwnProperty.call(source, snakeKey);
   }
 
   function sanitizeScoreEntries(entries) {
@@ -1191,9 +1217,7 @@
             entry?.slimeCosmetic ?? entry?.slime_cosmetic
           ),
           slimeBeard: normalizeSlimeBeard(entry?.slimeBeard ?? entry?.slime_beard),
-          slimeAchievements: normalizeHighScoreAchievementIds(
-            entry?.slimeAchievements ?? entry?.slime_achievements
-          ),
+          slimeAchievements: normalizeHighScoreAchievementIds(identity.slimeAchievements),
           playerLevel: identity.playerLevel,
           prestigeLevel: identity.prestigeLevel,
           prestigeEmblemId: identity.prestigeEmblemId,
@@ -1201,6 +1225,18 @@
           prestigeTitle: identity.prestigeTitle,
           prestigeAura: identity.prestigeAura,
           prestigeTrail: identity.prestigeTrail,
+          hasPlayerLevelSnapshot: hasHighScoreSnapshotField(
+            entry,
+            "playerLevel",
+            "player_level",
+            "hasPlayerLevelSnapshot"
+          ),
+          hasPrestigeLevelSnapshot: hasHighScoreSnapshotField(
+            entry,
+            "prestigeLevel",
+            "prestige_level",
+            "hasPrestigeLevelSnapshot"
+          ),
           hasIdentitySnapshot: hasHighScoreIdentitySnapshot(entry)
         };
       })
@@ -1225,8 +1261,24 @@
     }
   }
 
+  function loadStoredHighScoreRecords() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(highScoresStorageKey) || "[]");
+      return Array.isArray(stored)
+        ? stored.filter(entry => entry && typeof entry === "object" && !Array.isArray(entry))
+        : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
   function saveHighScore(name, finalScore, reachedLevel, identitySnapshot) {
-    const highScores = loadHighScores();
+    const storedHighScores = loadStoredHighScoreRecords();
+    const highScores = storedHighScores.length > 0
+      ? storedHighScores
+      : loadRecentScores().filter(
+          entry => entry && typeof entry === "object" && !Array.isArray(entry)
+        );
     const identity = normalizeHighScoreIdentitySnapshot(identitySnapshot);
     highScores.push({
       name: normalizeNickname(name),
@@ -1246,7 +1298,12 @@
       hasIdentitySnapshot: true
     });
 
-    highScores.sort((a, b) => b.score - a.score || b.level - a.level);
+    highScores.sort((a, b) =>
+      (Math.max(0, Math.floor(Number(b?.score) || 0)) -
+        Math.max(0, Math.floor(Number(a?.score) || 0))) ||
+      (Math.max(1, Math.floor(Number(b?.level) || 1)) -
+        Math.max(1, Math.floor(Number(a?.level) || 1)))
+    );
 
     try {
       localStorage.setItem(highScoresStorageKey, JSON.stringify(highScores.slice(0, 10)));
@@ -1286,7 +1343,8 @@
       prestigeFrame: identity.prestigeFrame,
       prestigeTitle: identity.prestigeTitle,
       prestigeAura: identity.prestigeAura,
-      prestigeTrail: identity.prestigeTrail
+      prestigeTrail: identity.prestigeTrail,
+      callingCardSnapshot: identity
     };
 
     lastOnlineScoreSubmit = (async () => {
@@ -1431,8 +1489,248 @@
     return pendingScore.commitPromise;
   }
 
+  let devCallingCardTestEntry = null;
+
+  function createDevCallingCardTestEntry() {
+    const badgeIds = [
+      "century_slime",
+      "biome_master",
+      "achievement_hunter",
+      "secret_star_sniper",
+      "secret_second_chance"
+    ];
+    const registryIds = new Set(
+      (window.SlimeAchievements?.registry ?? []).map(achievement => achievement.id)
+    );
+    if (!badgeIds.every(id => registryIds.has(id))) return null;
+
+    const identity = normalizeHighScoreIdentitySnapshot({
+      playerLevel: 100,
+      prestigeLevel: 10,
+      prestigeFrame: "prestige-frame-p10",
+      prestigeTitle: "prestige-title-p10",
+      prestigeAura: "prestige-aura-prism-p8",
+      prestigeTrail: "prestige-trail-prism-p9",
+      slimeAchievements: badgeIds
+    });
+    return Object.freeze({
+      name: "DEV TEST",
+      score: 999999,
+      level: 100,
+      slimeColor: "hot_pink",
+      slimeCosmetic: "wizard_hat",
+      slimeBeard: "braided_beard",
+      slimeAchievements: identity.slimeAchievements,
+      playerLevel: identity.playerLevel,
+      prestigeLevel: identity.prestigeLevel,
+      prestigeEmblemId: identity.prestigeEmblemId,
+      prestigeFrame: identity.prestigeFrame,
+      prestigeTitle: identity.prestigeTitle,
+      prestigeAura: identity.prestigeAura,
+      prestigeTrail: identity.prestigeTrail,
+      hasPlayerLevelSnapshot: true,
+      hasPrestigeLevelSnapshot: true,
+      hasIdentitySnapshot: true,
+      isDevCallingCardPreview: true
+    });
+  }
+
+  function showDevCallingCardTest() {
+    if (typeof DEV_MODE === "undefined" || !DEV_MODE) return false;
+    const entry = createDevCallingCardTestEntry();
+    if (!entry) return false;
+    devCallingCardTestEntry = entry;
+    ui.menu.classList.remove("hidden");
+    showMenuScreen("highscores");
+    return true;
+  }
+
+  function createHighScoreCallingCard(entry) {
+    const card = document.createElement("span");
+    card.className = "highscoreCallingCard";
+
+    const titleReward = window.SlimePrestige?.getRewardDefinition?.(
+      "title",
+      entry.prestigeTitle
+    );
+    const auraReward = window.SlimePrestige?.getRewardDefinition?.(
+      "aura",
+      entry.prestigeAura
+    );
+    const trailReward = window.SlimePrestige?.getRewardDefinition?.(
+      "trail",
+      entry.prestigeTrail
+    );
+    const nickname = (
+      typeof DEV_MODE !== "undefined" &&
+      DEV_MODE &&
+      entry.isDevCallingCardPreview === true
+    )
+      ? String(entry.name).trim().toUpperCase().slice(0, 16)
+      : normalizeNickname(entry.name, "---");
+    const snapshotIdentityParts = [];
+    if (entry.hasPlayerLevelSnapshot) {
+      snapshotIdentityParts.push(`Level ${entry.playerLevel}`);
+    }
+    if (entry.hasPrestigeLevelSnapshot) {
+      snapshotIdentityParts.push(`Prestige P${entry.prestigeLevel}`);
+    }
+    const snapshotIdentity = snapshotIdentityParts.length > 0
+      ? snapshotIdentityParts.join(", ")
+      : "Legacy-Eintrag ohne Level- und Prestige-Snapshot";
+    card.setAttribute(
+      "aria-label",
+      `${nickname}, ${Number(entry.score).toLocaleString("de-DE")} Punkte, ` +
+      `${snapshotIdentity}, Run-Level ${entry.level}`
+    );
+
+    const identity = document.createElement("span");
+    identity.className = "highscoreCallingCardIdentity";
+    const portrait = createLeaderboardSlimePreview(
+      entry.slimeColor,
+      entry.slimeCosmetic,
+      entry.slimeBeard
+    );
+    const name = document.createElement("strong");
+    name.textContent = nickname;
+    identity.append(portrait, name);
+
+    const playerLevelBlock = document.createElement("span");
+    playerLevelBlock.className = "highscoreCallingCardPlayerLevel";
+    if (entry.hasPlayerLevelSnapshot) {
+      const playerLevelLabel = document.createElement("small");
+      playerLevelLabel.textContent = "PLAYER";
+      const playerLevel = document.createElement("strong");
+      playerLevel.textContent = `LEVEL ${entry.playerLevel}`;
+      playerLevelBlock.append(playerLevelLabel, playerLevel);
+    } else {
+      const playerLevelLabel = document.createElement("small");
+      playerLevelLabel.textContent = "PLAYER LEVEL";
+      const unavailablePlayerLevel = document.createElement("strong");
+      unavailablePlayerLevel.textContent = "—";
+      playerLevelBlock.append(playerLevelLabel, unavailablePlayerLevel);
+    }
+
+    const prestigeBlock = document.createElement("span");
+    prestigeBlock.className = "highscoreCallingCardPrestigeBlock";
+    if (entry.hasPrestigeLevelSnapshot) {
+      if (entry.prestigeLevel > 0) {
+        const emblem = document.createElement("span");
+        emblem.className = "highscorePrestigeEmblem";
+        emblem.dataset.prestigeEmblem = entry.prestigeEmblemId ?? "none";
+        emblem.innerHTML = window.SlimePrestige?.getEmblemMarkup?.(
+          entry.prestigeLevel
+        ) ?? "";
+        prestigeBlock.appendChild(emblem);
+      }
+      const prestige = document.createElement("strong");
+      prestige.className = "highscoreCallingCardPrestige";
+      prestige.textContent = `P${entry.prestigeLevel}`;
+      prestigeBlock.appendChild(prestige);
+    } else {
+      prestigeBlock.setAttribute("aria-hidden", "true");
+    }
+
+    const callingCard = document.createElement("span");
+    callingCard.className = "highscoreCallingCardCore";
+    callingCard.dataset.prestigeFrame = entry.prestigeFrame ?? "none";
+    callingCard.dataset.prestigeAura = entry.prestigeAura ?? "none";
+    callingCard.dataset.prestigeTrail = entry.prestigeTrail ?? "none";
+
+    if (auraReward) {
+      const aura = document.createElement("span");
+      aura.className = "highscoreCallingCardAura";
+      aura.title = auraReward.displayName;
+      aura.setAttribute("aria-hidden", "true");
+      callingCard.appendChild(aura);
+    }
+
+    if (trailReward) {
+      const trail = document.createElement("span");
+      trail.className = "highscoreCallingCardTrail";
+      trail.title = trailReward.displayName;
+      trail.setAttribute("aria-hidden", "true");
+      for (let segmentIndex = 0; segmentIndex < 4; segmentIndex++) {
+        trail.appendChild(document.createElement("i"));
+      }
+      callingCard.appendChild(trail);
+    }
+
+    const title = document.createElement("small");
+    title.className = "highscoreCallingCardTitle";
+    title.textContent = titleReward?.displayName ?? (
+      entry.hasIdentitySnapshot ? "CALLING CARD" : "LEGACY"
+    );
+    callingCard.appendChild(title);
+
+    const badges = document.createElement("span");
+    badges.className = "highscoreCallingCardBadges";
+    const registry = window.SlimeAchievements?.registry;
+    const achievementById = new Map(
+      (Array.isArray(registry) ? registry : []).map(achievement => [
+        achievement.id,
+        achievement
+      ])
+    );
+    normalizeHighScoreAchievementIds(entry.slimeAchievements).forEach(id => {
+      const achievement = achievementById.get(id);
+      if (!achievement?.icon) return;
+      const icon = document.createElement("span");
+      icon.className = "highscoreBadgeIcon";
+      icon.textContent = achievement.icon;
+      icon.title = achievement.name;
+      icon.setAttribute("aria-label", achievement.name);
+      badges.appendChild(icon);
+    });
+    callingCard.appendChild(badges);
+
+    const runLevel = document.createElement("span");
+    runLevel.className = "highscoreCallingCardRunLevel";
+    const runLevelLabel = document.createElement("small");
+    runLevelLabel.textContent = "RUN LEVEL";
+    const runLevelValue = document.createElement("strong");
+    runLevelValue.textContent = String(entry.level);
+    runLevel.append(runLevelLabel, runLevelValue);
+
+    const score = document.createElement("span");
+    score.className = "highscoreCallingCardScore";
+    const scoreLabel = document.createElement("small");
+    scoreLabel.textContent = "PUNKTE";
+    const scoreValue = document.createElement("strong");
+    scoreValue.textContent = Number(entry.score).toLocaleString("de-DE");
+    score.append(scoreLabel, scoreValue);
+
+    card.append(
+      identity,
+      playerLevelBlock,
+      prestigeBlock,
+      callingCard,
+      runLevel,
+      score
+    );
+    return card;
+  }
+
   function renderHighScoreRows(highScores, emptyText = "Noch keine Highscores – spiel deine erste Runde!") {
     ui.highscoreRows.replaceChildren();
+
+    const hasDevCallingCardTest =
+      typeof DEV_MODE !== "undefined" && DEV_MODE && devCallingCardTestEntry !== null;
+    if (hasDevCallingCardTest) {
+      ui.highscoreRows.dataset.devCallingCardTest = "true";
+      const previewRow = document.createElement("div");
+      previewRow.className = "highscoreRow highscoreDevCallingCardPreview";
+      const previewLabel = document.createElement("span");
+      previewLabel.className = "highscoreDevPreviewLabel";
+      previewLabel.textContent = "DEV PREVIEW";
+      previewRow.append(
+        previewLabel,
+        createHighScoreCallingCard(devCallingCardTestEntry)
+      );
+      ui.highscoreRows.appendChild(previewRow);
+    } else {
+      delete ui.highscoreRows.dataset.devCallingCardTest;
+    }
 
     if (highScores.length === 0) {
       const empty = document.createElement("div");
@@ -1451,89 +1749,15 @@
       rank.className = "rankBadge";
       rank.textContent = String(index + 1);
 
-      const badges = document.createElement("span");
-      badges.className = "highscoreBadges";
-      badges.setAttribute("aria-hidden", "true");
-      if (entry) {
-        badges.dataset.prestigeFrame = entry.prestigeFrame ?? "none";
-        const registry = window.SlimeAchievements?.registry;
-        const achievementById = new Map(
-          (Array.isArray(registry) ? registry : []).map(achievement => [
-            achievement.id,
-            achievement
-          ])
-        );
-
-        normalizeHighScoreAchievementIds(entry.slimeAchievements).forEach(id => {
-          const achievement = achievementById.get(id);
-          if (!achievement?.icon) return;
-          const icon = document.createElement("span");
-          icon.className = "highscoreBadgeIcon";
-          icon.textContent = achievement.icon;
-          badges.appendChild(icon);
-        });
-        for (const [type, id] of [
-          ["aura", entry.prestigeAura],
-          ["trail", entry.prestigeTrail]
-        ]) {
-          const reward = window.SlimePrestige?.getRewardDefinition?.(type, id);
-          if (!reward) continue;
-          const marker = document.createElement("span");
-          marker.className = `highscorePrestigeMarker highscorePrestigeMarker--${type}`;
-          marker.textContent = type === "aura" ? "A" : "T";
-          marker.title = reward.displayName;
-          badges.appendChild(marker);
-        }
+      const card = entry
+        ? createHighScoreCallingCard(entry)
+        : document.createElement("span");
+      if (!entry) {
+        card.className = "highscoreCallingCard highscoreCallingCard--empty";
+        card.textContent = "—";
       }
 
-      const name = document.createElement("span");
-      name.className = "scoreName";
-      if (entry) {
-        if (entry.prestigeLevel > 0) {
-          const emblem = document.createElement("span");
-          emblem.className = "highscorePrestigeEmblem";
-          emblem.innerHTML = window.SlimePrestige?.getEmblemMarkup?.(
-            entry.prestigeLevel
-          ) ?? "";
-          name.appendChild(emblem);
-        }
-        name.appendChild(createLeaderboardSlimePreview(
-          entry.slimeColor,
-          entry.slimeCosmetic,
-          entry.slimeBeard
-        ));
-        const identityText = document.createElement("span");
-        identityText.className = "highscoreIdentityText";
-        const nickname = document.createElement("strong");
-        nickname.textContent = normalizeNickname(entry.name, "---");
-        identityText.appendChild(nickname);
-        const titleReward = window.SlimePrestige?.getRewardDefinition?.(
-          "title",
-          entry.prestigeTitle
-        );
-        if (titleReward) {
-          const title = document.createElement("small");
-          title.textContent = titleReward.displayName;
-          identityText.appendChild(title);
-        }
-        name.appendChild(identityText);
-      } else {
-        name.textContent = "—";
-      }
-
-      const points = document.createElement("span");
-      points.className = "scorePoints";
-      points.textContent = entry ? Number(entry.score).toLocaleString("de-DE") : "—";
-
-      const level = document.createElement("span");
-      level.className = "scoreLevel";
-      level.textContent = entry
-        ? entry.hasIdentitySnapshot
-          ? `#${entry.playerLevel} · Level ${entry.level}`
-          : `Level ${entry.level}`
-        : "—";
-
-      row.append(rank, badges, name, points, level);
+      row.append(rank, card);
       ui.highscoreRows.appendChild(row);
     }
   }
@@ -1756,5 +1980,10 @@
   if (DEV_MODE && ui.devShopTestBtn) {
     ui.devShopTestBtn.addEventListener("click", toggleDevShopTest);
     renderDevShopTestControl();
+  }
+
+  if (DEV_MODE) {
+    document.getElementById("devCallingCardTestBtn")
+      ?.addEventListener("click", showDevCallingCardTest);
   }
 

@@ -2892,7 +2892,7 @@ p {
 
 .achievementCallingCardPreview[data-prestige-frame="prestige-frame-p1"],
 .recentAchievements[data-prestige-frame="prestige-frame-p1"],
-.highscoreBadges[data-prestige-frame="prestige-frame-p1"],
+.highscoreCallingCardCore.highscoreCallingCardCore[data-prestige-frame="prestige-frame-p1"],
 .prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p1"] {
   border: 2px solid #8cf05a;
   background-image: linear-gradient(135deg, rgba(140, 240, 90, 0.1), transparent 42%);
@@ -2901,7 +2901,7 @@ p {
 
 .achievementCallingCardPreview[data-prestige-frame="prestige-frame-p4"],
 .recentAchievements[data-prestige-frame="prestige-frame-p4"],
-.highscoreBadges[data-prestige-frame="prestige-frame-p4"],
+.highscoreCallingCardCore.highscoreCallingCardCore[data-prestige-frame="prestige-frame-p4"],
 .prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p4"] {
   border: 3px double #78dcff;
   background-image:
@@ -2912,7 +2912,7 @@ p {
 
 .achievementCallingCardPreview[data-prestige-frame="prestige-frame-p7"],
 .recentAchievements[data-prestige-frame="prestige-frame-p7"],
-.highscoreBadges[data-prestige-frame="prestige-frame-p7"],
+.highscoreCallingCardCore.highscoreCallingCardCore[data-prestige-frame="prestige-frame-p7"],
 .prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p7"] {
   border: 3px ridge #ffe05c;
   background-image:
@@ -2923,7 +2923,7 @@ p {
 
 .achievementCallingCardPreview[data-prestige-frame="prestige-frame-p10"],
 .recentAchievements[data-prestige-frame="prestige-frame-p10"],
-.highscoreBadges[data-prestige-frame="prestige-frame-p10"],
+.highscoreCallingCardCore.highscoreCallingCardCore[data-prestige-frame="prestige-frame-p10"],
 .prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p10"] {
   border: 4px double #fff7ac;
   background-image:
@@ -2934,7 +2934,7 @@ p {
 
 .achievementCallingCardPreview[data-prestige-frame]:not([data-prestige-frame="none"]),
 .recentAchievements[data-prestige-frame]:not([data-prestige-frame="none"]),
-.highscoreBadges[data-prestige-frame]:not([data-prestige-frame="none"]),
+.highscoreCallingCardCore[data-prestige-frame]:not([data-prestige-frame="none"]),
 .prestigeRewardPreview--frame[data-prestige-frame] {
   position: relative;
   isolation: isolate;
@@ -2942,7 +2942,7 @@ p {
 
 .achievementCallingCardPreview[data-prestige-frame="prestige-frame-p4"]::before,
 .recentAchievements[data-prestige-frame="prestige-frame-p4"]::before,
-.highscoreBadges[data-prestige-frame="prestige-frame-p4"]::before,
+.highscoreCallingCardCore[data-prestige-frame="prestige-frame-p4"]::before,
 .prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p4"]::before {
   content: "";
   position: absolute;
@@ -2958,8 +2958,8 @@ p {
 .achievementCallingCardPreview[data-prestige-frame="prestige-frame-p7"]::after,
 .recentAchievements[data-prestige-frame="prestige-frame-p7"]::before,
 .recentAchievements[data-prestige-frame="prestige-frame-p7"]::after,
-.highscoreBadges[data-prestige-frame="prestige-frame-p7"]::before,
-.highscoreBadges[data-prestige-frame="prestige-frame-p7"]::after,
+.highscoreCallingCardCore[data-prestige-frame="prestige-frame-p7"]::before,
+.highscoreCallingCardCore[data-prestige-frame="prestige-frame-p7"]::after,
 .prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p7"]::before,
 .prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p7"]::after {
   content: "◆";
@@ -2977,14 +2977,14 @@ p {
 
 .achievementCallingCardPreview[data-prestige-frame="prestige-frame-p7"]::before,
 .recentAchievements[data-prestige-frame="prestige-frame-p7"]::before,
-.highscoreBadges[data-prestige-frame="prestige-frame-p7"]::before,
+.highscoreCallingCardCore[data-prestige-frame="prestige-frame-p7"]::before,
 .prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p7"]::before {
   left: clamp(8px, 8%, 22px);
 }
 
 .achievementCallingCardPreview[data-prestige-frame="prestige-frame-p7"]::after,
 .recentAchievements[data-prestige-frame="prestige-frame-p7"]::after,
-.highscoreBadges[data-prestige-frame="prestige-frame-p7"]::after,
+.highscoreCallingCardCore[data-prestige-frame="prestige-frame-p7"]::after,
 .prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p7"]::after {
   right: clamp(8px, 8%, 22px);
 }
@@ -2993,8 +2993,8 @@ p {
 .achievementCallingCardPreview[data-prestige-frame="prestige-frame-p10"]::after,
 .recentAchievements[data-prestige-frame="prestige-frame-p10"]::before,
 .recentAchievements[data-prestige-frame="prestige-frame-p10"]::after,
-.highscoreBadges[data-prestige-frame="prestige-frame-p10"]::before,
-.highscoreBadges[data-prestige-frame="prestige-frame-p10"]::after,
+.highscoreCallingCardCore[data-prestige-frame="prestige-frame-p10"]::before,
+.highscoreCallingCardCore[data-prestige-frame="prestige-frame-p10"]::after,
 .prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p10"]::before,
 .prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p10"]::after {
   content: "✦";
@@ -3017,14 +3017,14 @@ p {
 
 .achievementCallingCardPreview[data-prestige-frame="prestige-frame-p10"]::before,
 .recentAchievements[data-prestige-frame="prestige-frame-p10"]::before,
-.highscoreBadges[data-prestige-frame="prestige-frame-p10"]::before,
+.highscoreCallingCardCore[data-prestige-frame="prestige-frame-p10"]::before,
 .prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p10"]::before {
   left: clamp(7px, 7%, 20px);
 }
 
 .achievementCallingCardPreview[data-prestige-frame="prestige-frame-p10"]::after,
 .recentAchievements[data-prestige-frame="prestige-frame-p10"]::after,
-.highscoreBadges[data-prestige-frame="prestige-frame-p10"]::after,
+.highscoreCallingCardCore[data-prestige-frame="prestige-frame-p10"]::after,
 .prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p10"]::after {
   right: clamp(7px, 7%, 20px);
 }
@@ -3414,7 +3414,7 @@ p {
 .highscoreHeader,
 .highscoreRow {
   display: grid;
-  grid-template-columns: 11% 17% 30% 25% 17%;
+  grid-template-columns: 9% minmax(0, 91%);
   align-items: center;
   text-align: center;
 }
@@ -3440,16 +3440,24 @@ p {
   padding-top: clamp(5px, 0.8vh, 8px);
 }
 
+#highscoreRows[data-dev-calling-card-test="true"] {
+  grid-template-rows: minmax(0, 1.35fr) repeat(10, minmax(0, 1fr));
+}
+
+.highscoreDevPreviewLabel {
+  justify-self: center;
+  max-width: 100%;
+  color: #ffe977;
+  font-size: clamp(6px, 0.68vw, 9px);
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+  text-align: center;
+  text-shadow: 0 0 6px rgba(255, 224, 92, 0.55);
+}
+
 .highscoreRow {
   min-height: 0;
-  padding: 0 clamp(4px, 0.9vw, 12px);
-  border: 1px solid rgba(218, 168, 255, 0.28);
-  border-radius: clamp(7px, 0.85vw, 12px);
-  background:
-    linear-gradient(180deg, rgba(104, 52, 165, 0.88), rgba(49, 25, 94, 0.94));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 2px 5px rgba(0, 0, 0, 0.25);
+  padding: 0 clamp(2px, 0.4vw, 6px);
   color: #ffffff;
   font-size: clamp(9px, 1vw, 14px);
   font-weight: 1000;
@@ -3472,43 +3480,121 @@ p {
   text-shadow: none;
 }
 
-.highscoreBadges {
+.highscoreCallingCard {
+  min-width: 0;
+  height: calc(100% - 1px);
+  display: grid;
+  grid-template-columns:
+    minmax(86px, 1.3fr)
+    minmax(58px, 0.72fr)
+    minmax(52px, 0.62fr)
+    minmax(150px, 2fr)
+    minmax(58px, 0.72fr)
+    minmax(76px, 0.9fr);
+  align-items: center;
+  gap: clamp(3px, 0.55vw, 8px);
+  padding: 1px clamp(4px, 0.65vw, 9px);
+  overflow: visible;
+  border-radius: clamp(7px, 0.85vw, 12px);
+  background: linear-gradient(90deg, rgba(75, 37, 126, 0.78), rgba(37, 21, 76, 0.9));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 2px 5px rgba(0, 0, 0, 0.25);
+  text-align: left;
+}
+
+.highscoreCallingCard--empty {
+  display: grid;
+  grid-template-columns: 1fr;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.48);
+  text-align: center;
+}
+
+.highscoreCallingCardCore {
+  --calling-card-aura: rgba(174, 230, 255, 0.5);
+  --calling-card-trail-a: #ffe05c;
+  --calling-card-trail-b: #ff8b55;
+  min-width: 0;
+  min-height: clamp(33px, 5.3vh, 45px);
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: center;
+  justify-items: center;
+  gap: 1px;
+  padding: clamp(5px, 0.65vh, 8px) clamp(5px, 0.65vw, 9px) 3px;
+  overflow: visible;
+  border: 1px solid rgba(218, 168, 255, 0.38);
+  border-radius: clamp(6px, 0.7vw, 10px);
+  background-color: rgba(49, 25, 94, 0.96);
+  background-image: linear-gradient(180deg, rgba(104, 52, 165, 0.78), rgba(49, 25, 94, 0.96));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.highscoreCallingCardCore > *:not(.highscoreCallingCardAura):not(.highscoreCallingCardTrail) {
+  position: relative;
+  z-index: 1;
+}
+
+.highscoreCallingCardAura {
+  position: absolute;
+  z-index: 0;
+  inset: 1px;
+  border-radius: inherit;
+  background: radial-gradient(ellipse at center, transparent 28%, var(--calling-card-aura) 145%);
+  box-shadow: inset 0 0 15px var(--calling-card-aura), 0 0 8px color-mix(in srgb, var(--calling-card-aura) 70%, transparent);
+  pointer-events: none;
+}
+
+.highscoreCallingCardCore[data-prestige-aura="prestige-aura-bubble-p3"] { --calling-card-aura: rgba(103, 221, 255, 0.62); }
+.highscoreCallingCardCore[data-prestige-aura="prestige-aura-mist-p3"] { --calling-card-aura: rgba(163, 181, 218, 0.58); }
+.highscoreCallingCardCore[data-prestige-aura="prestige-aura-star-p3"] { --calling-card-aura: rgba(255, 211, 77, 0.65); }
+.highscoreCallingCardCore[data-prestige-aura="prestige-aura-p8"] { --calling-card-aura: rgba(178, 92, 255, 0.72); }
+.highscoreCallingCardCore[data-prestige-aura="prestige-aura-royal-p8"] { --calling-card-aura: rgba(224, 159, 255, 0.68); }
+.highscoreCallingCardCore[data-prestige-aura="prestige-aura-flame-p8"] { --calling-card-aura: rgba(255, 91, 55, 0.72); }
+.highscoreCallingCardCore[data-prestige-aura="prestige-aura-prism-p8"] { --calling-card-aura: rgba(108, 216, 255, 0.72); }
+
+.highscoreCallingCardTrail {
+  position: absolute;
+  z-index: 0;
+  right: 5px;
+  bottom: 3px;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.highscoreCallingCardTrail i {
+  width: clamp(8px, 1.1vw, 15px);
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--calling-card-trail-a, #ffe05c), var(--calling-card-trail-b, #ff8b55));
+  box-shadow: 0 0 5px var(--calling-card-trail-a, #ffe05c);
+}
+
+.highscoreCallingCardTrail i:nth-child(2) { width: clamp(6px, 0.85vw, 12px); opacity: 0.82; }
+.highscoreCallingCardTrail i:nth-child(3) { width: clamp(5px, 0.65vw, 9px); opacity: 0.65; }
+.highscoreCallingCardTrail i:nth-child(4) { width: clamp(3px, 0.45vw, 7px); opacity: 0.48; }
+.highscoreCallingCardCore[data-prestige-trail="prestige-trail-slime-p5"] { --calling-card-trail-a: #70f68a; --calling-card-trail-b: #36be5b; }
+.highscoreCallingCardCore[data-prestige-trail="prestige-trail-bubble-p5"] { --calling-card-trail-a: #7de0ff; --calling-card-trail-b: #d8faff; }
+.highscoreCallingCardCore[data-prestige-trail="prestige-trail-spark-p5"] { --calling-card-trail-a: #fff17a; --calling-card-trail-b: #ffffff; }
+.highscoreCallingCardCore[data-prestige-trail="prestige-trail-mist-p5"] { --calling-card-trail-a: #cdd5eb; --calling-card-trail-b: #97b5db; }
+.highscoreCallingCardCore[data-prestige-trail="prestige-trail-p9"] { --calling-card-trail-a: #b567ff; --calling-card-trail-b: #53e0ff; }
+.highscoreCallingCardCore[data-prestige-trail="prestige-trail-flame-p9"] { --calling-card-trail-a: #ff5b32; --calling-card-trail-b: #ffdc4b; }
+.highscoreCallingCardCore[data-prestige-trail="prestige-trail-royal-p9"] { --calling-card-trail-a: #d06fff; --calling-card-trail-b: #ffe05c; }
+.highscoreCallingCardCore[data-prestige-trail="prestige-trail-neon-p9"] { --calling-card-trail-a: #23ffde; --calling-card-trail-b: #ff36cf; }
+.highscoreCallingCardCore[data-prestige-trail="prestige-trail-prism-p9"] { --calling-card-trail-a: #ffde4c; --calling-card-trail-b: #cd70ff; }
+
+.highscoreCallingCardIdentity {
   min-width: 0;
   display: flex;
-  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: clamp(2px, 0.4vw, 6px);
-  overflow: visible;
-  white-space: normal;
-  flex-wrap: wrap;
-}
-
-.highscoreBadges[data-prestige-frame]:not([data-prestige-frame="none"]) {
-  min-height: 31px;
-  padding: 2px;
-  border-radius: 8px;
-}
-
-.highscorePrestigeMarker {
-  width: clamp(13px, 1.35vw, 18px);
-  aspect-ratio: 1;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  color: #130a2e;
-  font-size: clamp(7px, 0.65vw, 9px);
-  line-height: 1;
-}
-
-.highscorePrestigeMarker--aura {
-  background: #aee6ff;
-  box-shadow: 0 0 7px #9f78ff;
-}
-
-.highscorePrestigeMarker--trail {
-  background: #ffe05c;
-  box-shadow: 0 0 7px #ff8b55;
+  justify-content: flex-start;
+  gap: clamp(2px, 0.3vw, 5px);
 }
 
 .highscoreBadgeIcon {
@@ -3517,57 +3603,177 @@ p {
   line-height: 1;
 }
 
-.scoreName {
-  min-width: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(3px, 0.45vw, 7px);
-  overflow: hidden;
-  color: #f5f7ff;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-}
-
 .highscorePrestigeEmblem {
-  width: clamp(22px, 2.5vw, 34px);
+  width: clamp(25px, 2.8vw, 38px);
   aspect-ratio: 1;
   flex: 0 0 auto;
   line-height: 0;
 }
 
-.highscoreIdentityText {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+.highscoreCallingCardIdentity strong {
+  max-width: 100%;
   overflow: hidden;
-  line-height: 1;
+  color: #f5f7ff;
+  letter-spacing: 0.1em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.highscoreIdentityText small {
+.highscoreCallingCardTitle {
+  display: block;
   max-width: 100%;
   overflow: hidden;
   color: #ffe977;
-  font-size: clamp(6px, 0.62vw, 9px);
-  letter-spacing: 0;
+  font-family: var(--ui-title-font);
+  font-size: clamp(6px, 0.68vw, 10px);
+  font-weight: 1000;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-align: center;
   text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.highscoreCallingCardCore[data-prestige-frame="prestige-frame-p7"] .highscoreCallingCardTitle,
+.highscoreCallingCardCore[data-prestige-frame="prestige-frame-p10"] .highscoreCallingCardTitle {
+  padding-inline: clamp(25px, 18%, 42px);
+}
+
+.highscoreCallingCardPlayerLevel,
+.highscoreCallingCardPrestigeBlock,
+.highscoreCallingCardRunLevel,
+.highscoreCallingCardScore {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  line-height: 1.05;
+  text-align: center;
+}
+
+.highscoreCallingCardPlayerLevel strong,
+.highscoreCallingCardPlayerLevel small,
+.highscoreCallingCardRunLevel strong,
+.highscoreCallingCardRunLevel small {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--ui-green-light);
+  font-size: clamp(7px, 0.74vw, 10px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.highscoreCallingCardPrestigeBlock {
+  gap: 1px;
+}
+
+.highscoreCallingCardPrestige {
+  color: #ffe977 !important;
+  font-size: clamp(8px, 0.86vw, 12px);
+}
+
+.highscoreCallingCardBadges {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(2px, 0.38vw, 6px);
+  overflow: hidden;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.highscoreCallingCardScore small {
+  color: var(--ui-muted);
+  font-size: clamp(6px, 0.58vw, 8px);
+  white-space: nowrap;
+}
+
+.highscoreCallingCardScore strong {
+  max-width: 100%;
+  overflow: hidden;
+  color: #ffffff;
+  font-size: clamp(9px, 1vw, 14px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.highscoreCallingCardRunLevel strong {
+  color: #ffffff;
+  font-size: clamp(8px, 0.86vw, 12px);
 }
 
 .slimeLeaderboardPreview {
   display: block;
-  width: clamp(24px, 2.6vw, 36px);
-  height: clamp(19px, 2.1vw, 29px);
+  width: clamp(22px, 2.45vw, 34px);
+  height: clamp(17px, 1.95vw, 27px);
   flex: 0 0 auto;
   pointer-events: none;
 }
 
-.scorePoints {
-  color: #ffffff;
+@media (max-width: 700px) {
+  .highscoreHeader,
+  .highscoreRow {
+    grid-template-columns: clamp(28px, 9vw, 42px) minmax(0, 1fr);
+  }
+
+  .highscoreCallingCard {
+    grid-template-columns:
+      minmax(0, 1.25fr)
+      minmax(0, 0.72fr)
+      minmax(0, 0.62fr)
+      minmax(0, 1.8fr)
+      minmax(0, 0.72fr)
+      minmax(0, 0.9fr);
+    gap: 2px;
+    padding-inline: 4px;
+  }
+
+  .highscoreCallingCardIdentity {
+    gap: 1px;
+  }
+
+  .highscoreCallingCardBadges {
+    gap: 1px;
+  }
+
+  .highscoreCallingCardTrail {
+    right: 3px;
+  }
 }
 
-.scoreLevel {
-  color: var(--ui-green-light);
+@media (max-width: 560px) {
+  .highscoreCallingCard {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.82fr) minmax(0, 0.72fr) minmax(0, 1fr);
+    grid-template-areas:
+      "identity player prestige score"
+      "calling calling run score";
+    row-gap: 1px;
+  }
+
+  .highscoreCallingCardIdentity { grid-area: identity; }
+  .highscoreCallingCardPlayerLevel { grid-area: player; }
+  .highscoreCallingCardPrestigeBlock { grid-area: prestige; }
+  .highscoreCallingCardCore { grid-area: calling; }
+  .highscoreCallingCardRunLevel { grid-area: run; }
+  .highscoreCallingCardScore { grid-area: score; }
+
+  .highscoreCallingCardCore {
+    min-height: 20px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: 1fr;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 4px;
+  }
+
+  .highscoreCallingCardCore[data-prestige-frame="prestige-frame-p7"] .highscoreCallingCardTitle,
+  .highscoreCallingCardCore[data-prestige-frame="prestige-frame-p10"] .highscoreCallingCardTitle {
+    padding-inline: 18px;
+  }
 }
 
 .highscoreEmpty {
@@ -3581,6 +3787,10 @@ p {
   font-weight: 900;
   line-height: 1.35;
   text-align: center;
+}
+
+#highscoreRows[data-dev-calling-card-test="true"] .highscoreEmpty {
+  grid-row: 2 / -1;
 }
 
 /* How-to artwork remains content; only the moving scrollbar thumb uses its PNG artwork. */
@@ -4282,8 +4492,18 @@ p {
     font-size: clamp(7px, 2vh, 9px);
   }
 
-  .highscoreBadges {
+  .highscoreCallingCard {
     gap: clamp(1px, 0.3vw, 3px);
+    padding-inline: 4px;
+  }
+
+  .highscoreCallingCardCore {
+    min-height: clamp(22px, 7vh, 32px);
+    padding-block: 3px 2px;
+  }
+
+  .highscoreCallingCardTitle {
+    font-size: clamp(5px, 1.7vh, 8px);
   }
 
   .highscoreBadgeIcon {

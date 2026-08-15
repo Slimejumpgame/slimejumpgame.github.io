@@ -21,6 +21,9 @@
   const SLIME_BEARD_COLUMN_ENABLED = true;
   // Erst nach der kontrollierten slime_achievements-Migration aktivieren.
   const SLIME_ACHIEVEMENTS_COLUMN_ENABLED = true;
+  const CALLING_CARD_SNAPSHOT_COLUMN = "calling_card_snapshot";
+  const CALLING_CARD_SNAPSHOT_FORMAT_VERSION = 1;
+  let callingCardSnapshotColumnAvailable = null;
 
   function isConfigured() {
     return (
@@ -77,12 +80,71 @@
     value.forEach(id => {
       if (typeof id !== "string") return;
       const cleanId = id.trim();
-      if (!cleanId || normalized.includes(cleanId)) return;
+      if (!cleanId || normalized.includes(cleanId) || normalized.length >= 5) return;
       if (knownIds && !knownIds.has(cleanId)) return;
       normalized.push(cleanId);
     });
 
     return normalized;
+  }
+
+  function normalizeCallingCardSnapshot(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const nestedSnapshot = value.callingCardSnapshot ?? value.calling_card_snapshot;
+    const source = nestedSnapshot && typeof nestedSnapshot === "object"
+      ? nestedSnapshot
+      : value;
+    const hasSnapshotValue = (camelKey, snakeKey) =>
+      Object.prototype.hasOwnProperty.call(source, camelKey) ||
+      Object.prototype.hasOwnProperty.call(source, snakeKey);
+    if (
+      !hasSnapshotValue("playerLevel", "player_level") ||
+      !hasSnapshotValue("prestigeLevel", "prestige_level") ||
+      !hasSnapshotValue("prestigeFrame", "prestige_frame") ||
+      !hasSnapshotValue("prestigeTitle", "prestige_title") ||
+      !hasSnapshotValue("prestigeAura", "prestige_aura") ||
+      !hasSnapshotValue("prestigeTrail", "prestige_trail") ||
+      !Array.isArray(source.slimeAchievements ?? source.slime_achievements)
+    ) return null;
+    const normalized = window.SlimePrestige?.normalizeIdentitySnapshot?.({
+      playerLevel: source.playerLevel ?? source.player_level,
+      prestigeLevel: source.prestigeLevel ?? source.prestige_level,
+      prestigeFrame: source.prestigeFrame ?? source.prestige_frame,
+      prestigeTitle: source.prestigeTitle ?? source.prestige_title,
+      prestigeAura: source.prestigeAura ?? source.prestige_aura,
+      prestigeTrail: source.prestigeTrail ?? source.prestige_trail,
+      slimeAchievements:
+        source.slimeAchievements ??
+        source.slime_achievements ??
+        value.slimeAchievements ??
+        value.slime_achievements
+    });
+    if (!normalized) return null;
+    return {
+      formatVersion: CALLING_CARD_SNAPSHOT_FORMAT_VERSION,
+      playerLevel: normalized.playerLevel,
+      prestigeLevel: normalized.prestigeLevel,
+      prestigeEmblemId: normalized.prestigeEmblemId,
+      prestigeFrame: normalized.prestigeFrame,
+      prestigeTitle: normalized.prestigeTitle,
+      prestigeAura: normalized.prestigeAura,
+      prestigeTrail: normalized.prestigeTrail,
+      slimeAchievements: normalizeSlimeAchievementIds(normalized.slimeAchievements)
+    };
+  }
+
+  function isMissingCallingCardSnapshotColumn(status, errorDetails) {
+    return status === 400 &&
+      /calling_card_snapshot/i.test(errorDetails) &&
+      /(column|schema cache|does not exist|could not find)/i.test(errorDetails);
+  }
+
+  async function readResponseError(response) {
+    try {
+      return String(await response.text()).trim().slice(0, 500);
+    } catch (_) {
+      return "";
+    }
   }
 
   function headers(extra = {}) {
@@ -93,19 +155,13 @@
     };
   }
 
-  async function getTopScores(limit = 10) {
-    if (!isConfigured()) return [];
-
-    const safeLimit = Math.max(
-      1,
-      Math.min(100, Math.floor(Number(limit) || 10))
-    );
-
+  async function requestTopScoreRows(safeLimit, includeCallingCardSnapshot) {
     const selectedColumns = ["name", "score", "level", "game_version", "created_at"];
     if (SLIME_COLOR_COLUMN_ENABLED) selectedColumns.push("slime_color");
     if (SLIME_COSMETIC_COLUMN_ENABLED) selectedColumns.push("slime_cosmetic");
     if (SLIME_BEARD_COLUMN_ENABLED) selectedColumns.push("slime_beard");
     if (SLIME_ACHIEVEMENTS_COLUMN_ENABLED) selectedColumns.push("slime_achievements");
+    if (includeCallingCardSnapshot) selectedColumns.push(CALLING_CARD_SNAPSHOT_COLUMN);
 
     const query = new URLSearchParams({
       select: selectedColumns.join(","),
@@ -113,7 +169,7 @@
       limit: String(safeLimit)
     });
 
-    const response = await fetch(
+    return fetch(
       `${SUPABASE_URL}/rest/v1/${TABLE}?${query}`,
       {
         method: "GET",
@@ -123,35 +179,81 @@
         cache: "no-store"
       }
     );
+  }
+
+  async function getTopScores(limit = 10) {
+    if (!isConfigured()) return [];
+
+    const safeLimit = Math.max(
+      1,
+      Math.min(100, Math.floor(Number(limit) || 10))
+    );
+    let includesCallingCardSnapshot = callingCardSnapshotColumnAvailable !== false;
+    let response = await requestTopScoreRows(safeLimit, includesCallingCardSnapshot);
+
+    if (!response.ok && includesCallingCardSnapshot) {
+      const errorDetails = await readResponseError(response);
+      if (isMissingCallingCardSnapshotColumn(response.status, errorDetails)) {
+        callingCardSnapshotColumnAvailable = false;
+        includesCallingCardSnapshot = false;
+        response = await requestTopScoreRows(safeLimit, false);
+      } else {
+        throw new Error(
+          `Highscores konnten nicht geladen werden (${response.status})` +
+          `${errorDetails ? `: ${errorDetails}` : "."}`
+        );
+      }
+    }
 
     if (!response.ok) {
+      const errorDetails = await readResponseError(response);
       throw new Error(
-        `Highscores konnten nicht geladen werden (${response.status}).`
+        `Highscores konnten nicht geladen werden (${response.status})` +
+        `${errorDetails ? `: ${errorDetails}` : "."}`
       );
     }
+    if (includesCallingCardSnapshot) callingCardSnapshotColumnAvailable = true;
 
     const rows = await response.json();
 
     return Array.isArray(rows)
-      ? rows.map((row) => ({
-          name: normalizeNickname(row.name),
-          score: normalizeScore(row.score),
-          level: normalizeLevel(row.level),
-          slimeColor: SLIME_COLOR_COLUMN_ENABLED
-            ? normalizeSlimeColor(row.slime_color)
-            : "green",
-          slimeCosmetic: SLIME_COSMETIC_COLUMN_ENABLED
-            ? normalizeSlimeCosmetic(row.slime_cosmetic)
-            : "none",
-          slimeBeard: SLIME_BEARD_COLUMN_ENABLED
-            ? normalizeSlimeBeard(row.slime_beard)
-            : "none",
-          slimeAchievements: SLIME_ACHIEVEMENTS_COLUMN_ENABLED
-            ? normalizeSlimeAchievementIds(row.slime_achievements)
-            : [],
-          gameVersion: String(row.game_version || ""),
-          createdAt: row.created_at || null
-        }))
+      ? rows.map((row) => {
+          const callingCardSnapshot = includesCallingCardSnapshot
+            ? normalizeCallingCardSnapshot(row.calling_card_snapshot)
+            : null;
+          return {
+            name: normalizeNickname(row.name),
+            score: normalizeScore(row.score),
+            level: normalizeLevel(row.level),
+            slimeColor: SLIME_COLOR_COLUMN_ENABLED
+              ? normalizeSlimeColor(row.slime_color)
+              : "green",
+            slimeCosmetic: SLIME_COSMETIC_COLUMN_ENABLED
+              ? normalizeSlimeCosmetic(row.slime_cosmetic)
+              : "none",
+            slimeBeard: SLIME_BEARD_COLUMN_ENABLED
+              ? normalizeSlimeBeard(row.slime_beard)
+              : "none",
+            slimeAchievements: callingCardSnapshot?.slimeAchievements ?? (
+              SLIME_ACHIEVEMENTS_COLUMN_ENABLED
+                ? normalizeSlimeAchievementIds(row.slime_achievements)
+                : []
+            ),
+            playerLevel: callingCardSnapshot?.playerLevel,
+            prestigeLevel: callingCardSnapshot?.prestigeLevel,
+            prestigeEmblemId: callingCardSnapshot?.prestigeEmblemId,
+            prestigeFrame: callingCardSnapshot?.prestigeFrame,
+            prestigeTitle: callingCardSnapshot?.prestigeTitle,
+            prestigeAura: callingCardSnapshot?.prestigeAura,
+            prestigeTrail: callingCardSnapshot?.prestigeTrail,
+            callingCardSnapshot,
+            hasPlayerLevelSnapshot: Boolean(callingCardSnapshot),
+            hasPrestigeLevelSnapshot: Boolean(callingCardSnapshot),
+            hasIdentitySnapshot: Boolean(callingCardSnapshot),
+            gameVersion: String(row.game_version || ""),
+            createdAt: row.created_at || null
+          };
+        })
       : [];
   }
 
@@ -162,7 +264,14 @@
     slimeColor = "green",
     slimeCosmetic = "none",
     slimeBeard = "none",
-    slimeAchievements = []
+    slimeAchievements = [],
+    callingCardSnapshot = null,
+    playerLevel,
+    prestigeLevel,
+    prestigeFrame,
+    prestigeTitle,
+    prestigeAura,
+    prestigeTrail
   }) {
     if (!isConfigured()) {
       throw new Error("Online-Highscores sind noch nicht konfiguriert.");
@@ -174,6 +283,17 @@
       level: normalizeLevel(level),
       game_version: GAME_VERSION
     };
+    const normalizedCallingCardSnapshot = normalizeCallingCardSnapshot(
+      callingCardSnapshot ?? {
+        playerLevel,
+        prestigeLevel,
+        prestigeFrame,
+        prestigeTitle,
+        prestigeAura,
+        prestigeTrail,
+        slimeAchievements
+      }
+    );
 
     if (SLIME_COLOR_COLUMN_ENABLED) {
       payload.slime_color = normalizeSlimeColor(slimeColor);
@@ -187,10 +307,13 @@
     if (SLIME_ACHIEVEMENTS_COLUMN_ENABLED) {
       payload.slime_achievements = normalizeSlimeAchievementIds(slimeAchievements);
     }
+    if (normalizedCallingCardSnapshot && callingCardSnapshotColumnAvailable !== false) {
+      payload[CALLING_CARD_SNAPSHOT_COLUMN] = normalizedCallingCardSnapshot;
+    }
 
     console.info("[Highscore] INSERT START");
 
-    const response = await fetch(
+    const postPayload = body => fetch(
       `${SUPABASE_URL}/rest/v1/${TABLE}`,
       {
         method: "POST",
@@ -198,19 +321,40 @@
           "Content-Type": "application/json",
           Prefer: "return=minimal"
         }),
-        body: JSON.stringify(payload)
+        body: JSON.stringify(body)
       }
     );
+    let submittedCallingCardSnapshot = Object.prototype.hasOwnProperty.call(
+      payload,
+      CALLING_CARD_SNAPSHOT_COLUMN
+    );
+    let response = await postPayload(payload);
+    let errorDetails = "";
+
+    if (!response.ok && Object.prototype.hasOwnProperty.call(
+      payload,
+      CALLING_CARD_SNAPSHOT_COLUMN
+    )) {
+      errorDetails = await readResponseError(response);
+      if (isMissingCallingCardSnapshotColumn(response.status, errorDetails)) {
+        callingCardSnapshotColumnAvailable = false;
+        const legacyPayload = {...payload};
+        delete legacyPayload[CALLING_CARD_SNAPSHOT_COLUMN];
+        submittedCallingCardSnapshot = false;
+        response = await postPayload(legacyPayload);
+        errorDetails = "";
+      }
+    }
 
     if (!response.ok) {
-      let errorDetails = "";
-      try {
-        errorDetails = String(await response.text()).trim().slice(0, 500);
-      } catch (_) {}
+      if (!errorDetails) errorDetails = await readResponseError(response);
       throw new Error(
         `Highscore konnte nicht gespeichert werden (${response.status})` +
         `${errorDetails ? `: ${errorDetails}` : "."}`
       );
+    }
+    if (submittedCallingCardSnapshot) {
+      callingCardSnapshotColumnAvailable = true;
     }
 
     console.info("[Highscore] INSERT SUCCESS");
@@ -223,6 +367,7 @@
     slimeCosmeticColumnEnabled: SLIME_COSMETIC_COLUMN_ENABLED,
     slimeBeardColumnEnabled: SLIME_BEARD_COLUMN_ENABLED,
     slimeAchievementsColumnEnabled: SLIME_ACHIEVEMENTS_COLUMN_ENABLED,
+    callingCardSnapshotColumn: CALLING_CARD_SNAPSHOT_COLUMN,
     getTopScores,
     submitScore
   });
