@@ -5,20 +5,53 @@
   const PLAYER_LEVEL_XP_STORAGE_KEY = "slimejumperPlayerLevelXP";
 
   const RUN_SCORE_TO_XP_DIVISOR = 15;
+  const PRESTIGE_XP_BONUS_PER_LEVEL = 0.10;
+  const PRESTIGE_XP_BONUS_MAX = 1.00;
+  const CHECKPOINT_XP_BONUS_PER_10_LEVELS = 0.05;
+  const CHECKPOINT_XP_BONUS_MAX = 1.00;
+  const TOTAL_XP_MULTIPLIER_MAX = 3.00;
   const MAX_PLAYER_LEVEL = 100;
   const LEVEL_XP_BASE = 200;
   const LEVEL_XP_LINEAR_GROWTH = 60;
   const LEVEL_XP_QUADRATIC_GROWTH = 6;
 
-  function calculateRunXP(finalScore) {
+  function normalizeXPBonusLevel(value) {
+    const normalizedValue = Math.floor(Number(value));
+    return Number.isSafeInteger(normalizedValue) && normalizedValue > 0
+      ? normalizedValue
+      : 0;
+  }
+
+  function calculateRunXPMultiplier(prestigeLevel, selectedRunStartCheckpoint) {
+    const normalizedPrestigeLevel = normalizeXPBonusLevel(prestigeLevel);
+    const normalizedCheckpoint = normalizeXPBonusLevel(selectedRunStartCheckpoint);
+    const prestigeBonus = Math.min(
+      PRESTIGE_XP_BONUS_MAX,
+      normalizedPrestigeLevel * PRESTIGE_XP_BONUS_PER_LEVEL
+    );
+    const checkpointBonus = Math.min(
+      CHECKPOINT_XP_BONUS_MAX,
+      Math.floor(normalizedCheckpoint / 10) * CHECKPOINT_XP_BONUS_PER_10_LEVELS
+    );
+    return Math.min(
+      TOTAL_XP_MULTIPLIER_MAX,
+      Number((1 + prestigeBonus + checkpointBonus).toFixed(2))
+    );
+  }
+
+  function calculateRunXP(finalScore, selectedRunStartCheckpoint = 0) {
     const normalizedScore = Number(finalScore);
     if (!Number.isFinite(normalizedScore) || normalizedScore <= 0) return 0;
     const baseRunXP = Math.max(
       0,
       Math.floor(normalizedScore / RUN_SCORE_TO_XP_DIVISOR)
     );
-    const prestigeMultiplier = window.SlimePrestige?.getXpMultiplier?.() ?? 1;
-    return Math.max(0, Math.floor(baseRunXP * prestigeMultiplier));
+    const prestigeLevel = window.SlimePrestige?.getLevel?.() ?? 0;
+    const xpMultiplier = calculateRunXPMultiplier(
+      prestigeLevel,
+      selectedRunStartCheckpoint
+    );
+    return Math.max(0, Math.floor(baseRunXP * xpMultiplier));
   }
 
   function getXPRequiredForNextLevel(level) {
@@ -163,8 +196,8 @@
     return true;
   }
 
-  function awardRunXP(finalScore) {
-    const earnedXP = calculateRunXP(finalScore);
+  function awardRunXP(finalScore, selectedRunStartCheckpoint = 0) {
+    const earnedXP = calculateRunXP(finalScore, selectedRunStartCheckpoint);
     const previousProgress = getPlayerProgress();
     const nextProgress = applyLevelThresholds(
       previousProgress.level,
@@ -192,10 +225,16 @@
     playerLevelStorageKey: PLAYER_LEVEL_STORAGE_KEY,
     playerLevelXPStorageKey: PLAYER_LEVEL_XP_STORAGE_KEY,
     runScoreToXPDivisor: RUN_SCORE_TO_XP_DIVISOR,
+    prestigeXPBonusPerLevel: PRESTIGE_XP_BONUS_PER_LEVEL,
+    prestigeXPBonusMax: PRESTIGE_XP_BONUS_MAX,
+    checkpointXPBonusPer10Levels: CHECKPOINT_XP_BONUS_PER_10_LEVELS,
+    checkpointXPBonusMax: CHECKPOINT_XP_BONUS_MAX,
+    totalXPMultiplierMax: TOTAL_XP_MULTIPLIER_MAX,
     maxPlayerLevel: MAX_PLAYER_LEVEL,
     levelXPBase: LEVEL_XP_BASE,
     levelXPLinearGrowth: LEVEL_XP_LINEAR_GROWTH,
     levelXPQuadraticGrowth: LEVEL_XP_QUADRATIC_GROWTH,
+    calculateRunXPMultiplier,
     calculateRunXP,
     getXPRequiredForNextLevel,
     getPlayerProgress,

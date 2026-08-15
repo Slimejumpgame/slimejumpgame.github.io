@@ -1107,7 +1107,13 @@
       let runXPResult = null;
       if (recoveryCompleted && !activeRunXPAwarded) {
         activeRunXPAwarded = true;
-        runXPResult = window.SlimePlayerProgress?.awardRunXP?.(score) ?? null;
+        const selectedRunStartCheckpoint = runStartedFromCheckpoint
+          ? runStartLevel
+          : 0;
+        runXPResult = window.SlimePlayerProgress?.awardRunXP?.(
+          score,
+          selectedRunStartCheckpoint
+        ) ?? null;
       }
 
       showMessage(
