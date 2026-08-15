@@ -722,11 +722,11 @@
           .slice(0, CALLING_CARD_BADGE_LIMIT)
       : getRecentAchievements(CALLING_CARD_BADGE_LIMIT);
     if (title) {
-      title.textContent = callingCardIds.length > 0
-        ? prestigeTitleDefinition
-          ? `Calling Card · ${prestigeTitleDefinition.displayName}`
-          : "Calling Card"
-        : "Letzte Erfolge";
+      title.textContent = prestigeTitleDefinition
+        ? prestigeTitleDefinition.displayName
+        : callingCardIds.length > 0
+          ? "Calling Card"
+          : "Letzte Erfolge";
     }
     list.replaceChildren();
 

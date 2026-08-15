@@ -1654,7 +1654,7 @@ p {
   min-height: 0;
   margin: auto;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: stretch;
   gap: var(--ui-gap-lg);
 }
@@ -1686,6 +1686,198 @@ p {
   gap: var(--ui-gap-sm);
   flex: 0 0 auto;
 }
+
+.wardrobePrestigeMenuButton {
+  border-color: rgba(255, 224, 92, 0.72);
+  background:
+    radial-gradient(circle at 50% 8%, rgba(255, 235, 130, 0.2), transparent 42%),
+    linear-gradient(155deg, rgba(124, 51, 171, 0.96), rgba(47, 24, 91, 0.98));
+  color: #fff2a3;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 15px rgba(208, 111, 255, 0.2);
+}
+
+.wardrobePrestigePanel {
+  width: min(100%, 1020px);
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: clamp(7px, 1vw, 12px);
+  border-color: rgba(255, 224, 92, 0.55);
+  background:
+    radial-gradient(circle at 12% 0, rgba(255, 224, 92, 0.12), transparent 30%),
+    linear-gradient(155deg, rgba(101, 43, 151, 0.36), transparent 46%),
+    var(--ui-panel-strong);
+}
+
+.wardrobePrestigeSummary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(9px, 1.3vw, 15px);
+}
+
+.wardrobePrestigeSummary > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wardrobePrestigeSummary strong {
+  color: #fff2a3;
+  font: 900 clamp(17px, 2.3vw, 29px)/1 var(--ui-title-font);
+}
+
+.wardrobePrestigeSummary small {
+  color: #d9c5f3;
+  font-size: clamp(8px, 0.78vw, 11px);
+  font-weight: 800;
+}
+
+.wardrobePrestigeEmblem {
+  width: clamp(45px, 5.6vw, 68px);
+  aspect-ratio: 1;
+  display: block;
+  line-height: 0;
+}
+
+.wardrobePrestigeCategories {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(5px, 0.7vw, 9px);
+}
+
+.wardrobePrestigeCategoryButton {
+  min-height: clamp(34px, 5.8vh, 46px);
+  border: 1px solid rgba(218, 168, 255, 0.38);
+  border-radius: 9px;
+  background: rgba(48, 26, 91, 0.9);
+  color: #d9c5f3;
+  font: 900 clamp(9px, 0.92vw, 13px)/1 var(--ui-title-font);
+  text-transform: uppercase;
+}
+
+.wardrobePrestigeCategoryButton.active {
+  border-color: #ffe05c;
+  background: linear-gradient(180deg, #9253ca, #552878);
+  color: #fff4ae;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 0 10px rgba(255, 224, 92, 0.2);
+}
+
+.wardrobePrestigeOptions {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-content: start;
+  gap: clamp(6px, 0.8vw, 10px);
+  padding: 3px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.prestigeWardrobeOption {
+  min-width: 0;
+  min-height: clamp(82px, 14vh, 112px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 7px 5px;
+  border: 1px solid rgba(218, 168, 255, 0.36);
+  border-radius: 11px;
+  background: linear-gradient(155deg, rgba(91, 40, 143, 0.9), rgba(34, 19, 74, 0.96));
+  color: #f5efff;
+  font: 850 clamp(8px, 0.76vw, 11px)/1.1 var(--ui-title-font);
+  text-align: center;
+}
+
+.prestigeWardrobeOption.selected {
+  border-color: #ffe05c;
+  box-shadow: inset 0 0 0 1px rgba(255, 224, 92, 0.55), 0 0 12px rgba(255, 224, 92, 0.28);
+  color: #fff4ae;
+}
+
+.prestigeRewardPreview {
+  position: relative;
+  width: min(100%, 105px);
+  height: clamp(42px, 7.5vh, 58px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.prestigeRewardPreview--none {
+  color: rgba(235, 230, 247, 0.6);
+  font-size: clamp(9px, 0.9vw, 12px);
+  letter-spacing: 0.08em;
+}
+
+.prestigeRewardPreview--frame {
+  gap: 3px;
+  border-radius: 8px;
+  background: rgba(11, 8, 31, 0.76);
+}
+
+.prestigeRewardPreview--frame i {
+  width: clamp(9px, 1vw, 13px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(202, 255, 105, 0.72);
+  border-radius: 50%;
+  color: #caff69;
+  font-style: normal;
+  font-size: 8px;
+}
+
+.prestigeRewardPreview--title {
+  color: #fff2a3;
+  font: 900 clamp(10px, 1.05vw, 15px)/1 var(--ui-title-font);
+  text-shadow: 0 2px 0 #54218c;
+  text-transform: uppercase;
+}
+
+.prestigeRewardPreview--aura i {
+  width: clamp(26px, 3.2vw, 40px);
+  aspect-ratio: 1;
+  border: 2px solid var(--prestige-preview-accent, #9eeaff);
+  border-radius: 50%;
+  background: radial-gradient(circle, #71ef83 0 42%, var(--prestige-preview-color, rgba(119, 210, 255, 0.65)) 60%, transparent 74%);
+  box-shadow: 0 0 15px var(--prestige-preview-accent, #9eeaff);
+}
+
+.prestigeRewardPreview--trail {
+  flex-direction: row-reverse;
+  gap: 1px;
+}
+
+.prestigeRewardPreview--trail i {
+  width: 8px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--prestige-preview-color, #ffe05c);
+  box-shadow: 0 0 7px var(--prestige-preview-accent, #ff8b55);
+}
+
+.prestigeRewardPreview--trail i:nth-child(1) { width: 22px; }
+.prestigeRewardPreview--trail i:nth-child(2) { width: 18px; opacity: 0.9; }
+.prestigeRewardPreview--trail i:nth-child(3) { width: 14px; opacity: 0.78; }
+.prestigeRewardPreview--trail i:nth-child(4) { width: 11px; opacity: 0.64; }
+.prestigeRewardPreview--trail i:nth-child(5) { width: 8px; opacity: 0.5; }
+
+.prestigeRewardPreview[data-reward-id*="bubble"] { --prestige-preview-color: rgba(105, 225, 255, 0.45); --prestige-preview-accent: #d7fbff; }
+.prestigeRewardPreview[data-reward-id*="mist"] { --prestige-preview-color: rgba(173, 188, 221, 0.62); --prestige-preview-accent: #dfe7ff; }
+.prestigeRewardPreview[data-reward-id*="star"],
+.prestigeRewardPreview[data-reward-id="prestige-trail-p5"] { --prestige-preview-color: #ffe05c; --prestige-preview-accent: #fff6af; }
+.prestigeRewardPreview[data-reward-id*="slime"] { --prestige-preview-color: #70f68a; --prestige-preview-accent: #c5ffcb; }
+.prestigeRewardPreview[data-reward-id*="spark"] { --prestige-preview-color: #fff27a; --prestige-preview-accent: #ffffff; }
+.prestigeRewardPreview[data-reward-id*="flame"] { --prestige-preview-color: #ff653f; --prestige-preview-accent: #ffe05c; }
+.prestigeRewardPreview[data-reward-id*="royal"] { --prestige-preview-color: #c76cff; --prestige-preview-accent: #ffe05c; }
+.prestigeRewardPreview[data-reward-id*="neon"] { --prestige-preview-color: #23ffde; --prestige-preview-accent: #ff36cf; }
+.prestigeRewardPreview[data-reward-id*="cosmic"],
+.prestigeRewardPreview[data-reward-id$="p8"],
+.prestigeRewardPreview[data-reward-id$="p9"] { --prestige-preview-color: #b567ff; --prestige-preview-accent: #53e0ff; }
+.prestigeRewardPreview[data-reward-id*="prism"] { --prestige-preview-color: #65dcff; --prestige-preview-accent: #ff8be8; }
 
 .menuBestProgressGroup .menuStatusBadge--best {
   max-width: 100%;
@@ -2498,9 +2690,12 @@ p {
 }
 
 .recentAchievements {
-  width: 100%;
-  min-height: 0;
-  padding: clamp(4px, 0.6vh, 7px) clamp(7px, 0.75vw, 10px);
+  position: relative;
+  top: clamp(-5px, -0.65vh, -3px);
+  width: calc(100% + clamp(6px, 0.8vw, 12px));
+  min-height: clamp(40px, 6.7vh, 51px);
+  margin-inline: calc(clamp(3px, 0.4vw, 6px) * -1);
+  padding: clamp(5px, 0.75vh, 8px) clamp(8px, 0.9vw, 12px);
   border-radius: clamp(9px, 1vw, 13px);
   text-align: left;
 }
@@ -2697,31 +2892,109 @@ p {
 
 .achievementCallingCardPreview[data-prestige-frame="prestige-frame-p1"],
 .recentAchievements[data-prestige-frame="prestige-frame-p1"],
-.highscoreBadges[data-prestige-frame="prestige-frame-p1"] {
+.highscoreBadges[data-prestige-frame="prestige-frame-p1"],
+.prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p1"] {
   border: 2px solid #8cf05a;
-  box-shadow: inset 0 0 0 1px #2c8738, 0 0 9px rgba(109, 241, 77, 0.35);
+  background-image: linear-gradient(135deg, rgba(140, 240, 90, 0.1), transparent 42%);
+  box-shadow: inset 0 0 0 2px #245f31, inset 0 0 10px rgba(140, 240, 90, 0.13), 0 0 9px rgba(109, 241, 77, 0.38);
 }
 
 .achievementCallingCardPreview[data-prestige-frame="prestige-frame-p4"],
 .recentAchievements[data-prestige-frame="prestige-frame-p4"],
-.highscoreBadges[data-prestige-frame="prestige-frame-p4"] {
+.highscoreBadges[data-prestige-frame="prestige-frame-p4"],
+.prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p4"] {
   border: 3px double #78dcff;
-  box-shadow: inset 0 0 0 1px #4965bd, 0 0 11px rgba(106, 217, 255, 0.45);
+  background-image:
+    linear-gradient(135deg, rgba(120, 220, 255, 0.17), transparent 30%),
+    linear-gradient(315deg, rgba(96, 120, 230, 0.14), transparent 30%);
+  box-shadow: inset 0 0 0 2px #4965bd, inset 0 0 12px rgba(106, 217, 255, 0.16), 0 0 12px rgba(106, 217, 255, 0.5);
 }
 
 .achievementCallingCardPreview[data-prestige-frame="prestige-frame-p7"],
 .recentAchievements[data-prestige-frame="prestige-frame-p7"],
-.highscoreBadges[data-prestige-frame="prestige-frame-p7"] {
+.highscoreBadges[data-prestige-frame="prestige-frame-p7"],
+.prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p7"] {
   border: 3px ridge #ffe05c;
-  box-shadow: inset 0 0 0 2px #9b35bc, 0 0 13px rgba(255, 224, 92, 0.48);
+  background-image:
+    radial-gradient(circle at 50% -30%, rgba(255, 224, 92, 0.34), transparent 52%),
+    linear-gradient(135deg, rgba(155, 53, 188, 0.22), transparent 48%);
+  box-shadow: inset 0 0 0 3px #7133a8, inset 0 0 14px rgba(255, 224, 92, 0.14), 0 0 14px rgba(255, 224, 92, 0.54);
 }
 
 .achievementCallingCardPreview[data-prestige-frame="prestige-frame-p10"],
 .recentAchievements[data-prestige-frame="prestige-frame-p10"],
-.highscoreBadges[data-prestige-frame="prestige-frame-p10"] {
+.highscoreBadges[data-prestige-frame="prestige-frame-p10"],
+.prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p10"] {
   border: 4px double #fff7ac;
-  background-image: linear-gradient(135deg, rgba(255, 224, 92, 0.13), rgba(155, 53, 188, 0.18));
-  box-shadow: inset 0 0 0 2px #9b35bc, 0 0 16px rgba(255, 227, 90, 0.62);
+  background-image:
+    radial-gradient(circle at 50% 0, rgba(255, 255, 218, 0.3), transparent 38%),
+    linear-gradient(135deg, rgba(255, 224, 92, 0.18), rgba(155, 53, 188, 0.26));
+  box-shadow: inset 0 0 0 3px #9b35bc, inset 0 0 17px rgba(255, 244, 172, 0.2), 0 0 18px rgba(255, 227, 90, 0.68);
+}
+
+.achievementCallingCardPreview[data-prestige-frame]:not([data-prestige-frame="none"]),
+.recentAchievements[data-prestige-frame]:not([data-prestige-frame="none"]),
+.highscoreBadges[data-prestige-frame]:not([data-prestige-frame="none"]),
+.prestigeRewardPreview--frame[data-prestige-frame] {
+  position: relative;
+  isolation: isolate;
+}
+
+.achievementCallingCardPreview[data-prestige-frame="prestige-frame-p4"]::before,
+.recentAchievements[data-prestige-frame="prestige-frame-p4"]::before,
+.highscoreBadges[data-prestige-frame="prestige-frame-p4"]::before,
+.prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p4"]::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  z-index: -1;
+  border: 2px solid #b8eeff;
+  border-radius: inherit;
+  clip-path: polygon(0 0, 25% 0, 25% 5px, 75% 5px, 75% 0, 100% 0, 100% 30%, calc(100% - 5px) 30%, calc(100% - 5px) 70%, 100% 70%, 100% 100%, 75% 100%, 75% calc(100% - 5px), 25% calc(100% - 5px), 25% 100%, 0 100%, 0 70%, 5px 70%, 5px 30%, 0 30%);
+  pointer-events: none;
+}
+
+.achievementCallingCardPreview[data-prestige-frame="prestige-frame-p7"]::after,
+.recentAchievements[data-prestige-frame="prestige-frame-p7"]::after,
+.highscoreBadges[data-prestige-frame="prestige-frame-p7"]::after,
+.prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p7"]::after {
+  content: "◆";
+  position: absolute;
+  top: -0.72em;
+  left: 50%;
+  z-index: 2;
+  padding: 0 0.26em;
+  background: #4a206d;
+  color: #ffe05c;
+  font-size: clamp(8px, 0.8vw, 12px);
+  line-height: 1;
+  text-shadow: -2.2em 0 #ffe05c, 2.2em 0 #ffe05c;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.achievementCallingCardPreview[data-prestige-frame="prestige-frame-p10"]::after,
+.recentAchievements[data-prestige-frame="prestige-frame-p10"]::after,
+.highscoreBadges[data-prestige-frame="prestige-frame-p10"]::after,
+.prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p10"]::after {
+  content: "✦";
+  position: absolute;
+  top: -0.78em;
+  left: 50%;
+  z-index: 2;
+  width: 1.55em;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid #fff7ac;
+  border-radius: 50% 50% 44% 56%;
+  background: radial-gradient(circle at 36% 28%, #fffbd5, #ffe05c 42%, #9b35bc 78%);
+  color: #54218c;
+  font-size: clamp(9px, 0.95vw, 14px);
+  line-height: 1;
+  box-shadow: -2.3em 0 0 -0.35em #ffe05c, 2.3em 0 0 -0.35em #ffe05c, 0 0 9px rgba(255, 244, 172, 0.78);
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
 .achievementCallingCardPreview > strong {
@@ -3248,6 +3521,10 @@ p {
   #wardrobeScreen .slimeBeardOptions {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .wardrobePrestigeOptions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 /* Compact landscape keeps all important actions visible on short phones. */
@@ -3491,6 +3768,33 @@ p {
     margin-bottom: 1px;
   }
 
+  .wardrobePrestigePanel {
+    gap: 4px;
+  }
+
+  .wardrobePrestigeSummary small {
+    display: none;
+  }
+
+  .wardrobePrestigeEmblem {
+    width: clamp(36px, 10vh, 48px);
+  }
+
+  .wardrobePrestigeCategoryButton {
+    min-height: clamp(25px, 7vh, 33px);
+    font-size: clamp(7px, 2vh, 10px);
+  }
+
+  .prestigeWardrobeOption {
+    min-height: clamp(58px, 17vh, 78px);
+    padding: 3px;
+    gap: 2px;
+  }
+
+  .prestigeRewardPreview {
+    height: clamp(31px, 9vh, 42px);
+  }
+
   .menuMascotRow {
     grid-template-columns: minmax(48px, 1fr) auto minmax(48px, 1fr);
   }
@@ -3551,7 +3855,11 @@ p {
   }
 
   .recentAchievements {
-    padding: 1px 7px;
+    top: -2px;
+    width: calc(100% + 6px);
+    min-height: clamp(29px, 8vh, 36px);
+    margin-inline: -3px;
+    padding: 2px 8px;
   }
 
   .recentAchievementsTitle {

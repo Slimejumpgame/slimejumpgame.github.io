@@ -9,6 +9,7 @@
   let devPreviewSlimeBeard = null;
   let prestigeWardrobeChoiceCategory = null;
   let prestigeWardrobeChoiceCandidate = null;
+  let prestigeWardrobeCategory = "frame";
 
   function isDevShopTestActive() {
     return DEV_MODE && Boolean(window.SlimeDevShopTest?.isActive?.());
@@ -314,6 +315,84 @@
     select.disabled = rewards.length === 0;
   }
 
+  function createPrestigeRewardPreview(type, reward) {
+    const preview = document.createElement("span");
+    preview.className = `prestigeRewardPreview prestigeRewardPreview--${type}`;
+    preview.dataset.rewardId = reward.id;
+    preview.setAttribute("aria-hidden", "true");
+
+    if (reward.id === "none") {
+      preview.classList.add("prestigeRewardPreview--none");
+      preview.textContent = "NONE";
+    } else if (type === "frame") {
+      preview.dataset.prestigeFrame = reward.id;
+      for (let index = 0; index < 5; index++) {
+        const badge = document.createElement("i");
+        badge.textContent = "•";
+        preview.appendChild(badge);
+      }
+    } else if (type === "title") {
+      preview.textContent = reward.displayName;
+    } else if (type === "aura") {
+      preview.appendChild(document.createElement("i"));
+    } else if (type === "trail") {
+      for (let index = 0; index < 5; index++) {
+        preview.appendChild(document.createElement("i"));
+      }
+    }
+    return preview;
+  }
+
+  function createPrestigeWardrobeOption(type, reward, selectedId) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "prestigeWardrobeOption";
+    button.dataset.rewardId = reward.id;
+    button.classList.toggle("selected", reward.id === selectedId);
+    button.setAttribute("aria-pressed", String(reward.id === selectedId));
+    button.setAttribute("aria-label", `${reward.displayName} auswählen`);
+    button.appendChild(createPrestigeRewardPreview(type, reward));
+    const label = document.createElement("span");
+    label.textContent = reward.displayName;
+    button.appendChild(label);
+    button.addEventListener("click", () => {
+      selectPrestigeReward(type, reward.id);
+    });
+    return button;
+  }
+
+  function renderWardrobePrestigePicker() {
+    const prestige = window.SlimePrestige;
+    if (!prestige || !ui.wardrobePrestigeOptions) return;
+    const prestigeLevel = prestige.getLevel();
+    const definition = prestige.getDisplayDefinition(prestigeLevel);
+    if (ui.wardrobePrestigeEmblem) {
+      ui.wardrobePrestigeEmblem.innerHTML = prestigeLevel > 0
+        ? prestige.getEmblemMarkup(prestigeLevel)
+        : "";
+    }
+    if (ui.wardrobePrestigeLevel) {
+      ui.wardrobePrestigeLevel.textContent = definition?.displayLabel ?? "P0";
+    }
+    ui.wardrobePrestigeCategories?.querySelectorAll("[data-prestige-category]")
+      .forEach(button => {
+        const active = button.dataset.prestigeCategory === prestigeWardrobeCategory;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-pressed", String(active));
+      });
+
+    const selectedId = prestige.getSelectedReward(prestigeWardrobeCategory);
+    const rewards = prestige.getUnlockedRewardsByType(prestigeWardrobeCategory);
+    const options = [{id: "none", displayName: "NONE"}, ...rewards];
+    ui.wardrobePrestigeOptions.replaceChildren(
+      ...options.map(reward => createPrestigeWardrobeOption(
+        prestigeWardrobeCategory,
+        reward,
+        selectedId
+      ))
+    );
+  }
+
   function renderPrestigeCustomization() {
     const prestige = window.SlimePrestige;
     if (!prestige) return;
@@ -461,6 +540,7 @@
     renderPrestigeCustomization();
     window.SlimeAchievements?.renderMenu?.();
     window.SlimeAchievements?.renderRecent?.();
+    renderWardrobePrestigePicker();
     if (typeof renderDevPrestigeRewardInspector === "function") {
       renderDevPrestigeRewardInspector();
     }
@@ -916,13 +996,16 @@
     ui.wardrobeColorView.classList.toggle("hidden", viewName !== "color");
     ui.wardrobeCosmeticsView.classList.toggle("hidden", viewName !== "cosmetics");
     ui.wardrobeBeardsView.classList.toggle("hidden", viewName !== "beards");
+    ui.wardrobePrestigeView.classList.toggle("hidden", viewName !== "prestige");
     ui.wardrobeColorBackBtn.classList.toggle("hidden", viewName !== "color");
     ui.wardrobeCosmeticsBackBtn.classList.toggle("hidden", viewName !== "cosmetics");
     ui.wardrobeBeardsBackBtn.classList.toggle("hidden", viewName !== "beards");
+    ui.wardrobePrestigeBackBtn.classList.toggle("hidden", viewName !== "prestige");
     renderWardrobeProgress();
     if (viewName === "color") renderSlimeColorPicker();
     if (viewName === "cosmetics") renderSlimeCosmeticPicker();
     if (viewName === "beards") renderSlimeBeardPicker();
+    if (viewName === "prestige") renderWardrobePrestigePicker();
   }
 
   function hideWardrobeUnlockPanel() {

@@ -156,6 +156,7 @@
             <button id="wardrobeColorBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn backButton hidden" type="button">← Wardrobe</button>
             <button id="wardrobeCosmeticsBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn backButton hidden" type="button">← Wardrobe</button>
             <button id="wardrobeBeardsBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn backButton hidden" type="button">← Wardrobe</button>
+            <button id="wardrobePrestigeBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn backButton hidden" type="button">← Wardrobe</button>
             <button id="wardrobeBackBtn" class="menuHotspot uiButton uiButton--secondary backButton" type="button" aria-label="Zurück zum Hauptmenü">
               <span class="buttonIcon" aria-hidden="true">
                 <svg class="menuButtonIconSvg" viewBox="0 0 24 24" focusable="false">
@@ -177,6 +178,7 @@
             <button id="wardrobeColorMenuBtn" class="wardrobeMenuButton uiButton uiButton--secondary" type="button">Slime-Farbe</button>
             <button id="wardrobeCosmeticsMenuBtn" class="wardrobeMenuButton uiButton uiButton--secondary" type="button">Cosmetics</button>
             <button id="wardrobeBeardsMenuBtn" class="wardrobeMenuButton uiButton uiButton--secondary" type="button">Bärte</button>
+            <button id="wardrobePrestigeMenuBtn" class="wardrobeMenuButton wardrobePrestigeMenuButton uiButton uiButton--secondary" type="button">Prestige Customizables</button>
           </nav>
 
           <section id="wardrobeColorView" class="wardrobeSubmenu hidden" aria-label="Slime-Farbe">
@@ -194,6 +196,25 @@
           <section id="wardrobeBeardsView" class="wardrobeSubmenu hidden" aria-label="Bärte">
             <aside id="slimeBeardPicker" class="uiPanel wardrobePanel slimeBeardPicker" aria-label="Slime-Bart auswählen">
               <div id="slimeBeardOptions" class="slimeBeardOptions"></div>
+            </aside>
+          </section>
+
+          <section id="wardrobePrestigeView" class="wardrobeSubmenu wardrobePrestigeView hidden" aria-label="Prestige Customizables">
+            <aside class="uiPanel wardrobePanel wardrobePrestigePanel">
+              <header class="wardrobePrestigeSummary">
+                <span id="wardrobePrestigeEmblem" class="wardrobePrestigeEmblem" aria-hidden="true"></span>
+                <span>
+                  <strong id="wardrobePrestigeLevel">P0</strong>
+                  <small>Permanent · vom Prestige-Level freigeschaltet</small>
+                </span>
+              </header>
+              <nav id="wardrobePrestigeCategories" class="wardrobePrestigeCategories" aria-label="Prestige-Kategorien">
+                <button class="wardrobePrestigeCategoryButton active" data-prestige-category="frame" type="button">Frame</button>
+                <button class="wardrobePrestigeCategoryButton" data-prestige-category="title" type="button">Title</button>
+                <button class="wardrobePrestigeCategoryButton" data-prestige-category="aura" type="button">Aura</button>
+                <button class="wardrobePrestigeCategoryButton" data-prestige-category="trail" type="button">Trail</button>
+              </nav>
+              <div id="wardrobePrestigeOptions" class="wardrobePrestigeOptions"></div>
             </aside>
           </section>
         </div>

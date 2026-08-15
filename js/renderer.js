@@ -7,13 +7,152 @@
   const TUTORIAL_DRAG_HAND_FINGERTIP_X_RATIO = 496 / 1254;
   const TUTORIAL_DRAG_HAND_FINGERTIP_Y_RATIO = 24 / 1254;
   const PRESTIGE_TRAIL_STYLES = Object.freeze({
-    "prestige-trail-p5": Object.freeze({color: "255,215,82", alpha: 0.14, size: 0.58}),
-    "prestige-trail-p9": Object.freeze({color: "181,103,255", alpha: 0.18, size: 0.66})
+    "prestige-trail-p5": Object.freeze({colors: ["255,220,82", "255,150,66"], alpha: 0.25, size: 0.94, shape: "star"}),
+    "prestige-trail-slime-p5": Object.freeze({colors: ["112,246,138", "54,190,91"], alpha: 0.24, size: 1.02, shape: "slime"}),
+    "prestige-trail-bubble-p5": Object.freeze({colors: ["125,224,255", "216,250,255"], alpha: 0.34, size: 1.08, shape: "bubble"}),
+    "prestige-trail-spark-p5": Object.freeze({colors: ["255,241,122", "255,255,255"], alpha: 0.31, size: 0.88, shape: "spark"}),
+    "prestige-trail-mist-p5": Object.freeze({colors: ["205,213,235", "151,181,219"], alpha: 0.16, size: 1.22, shape: "mist"}),
+    "prestige-trail-p9": Object.freeze({colors: ["181,103,255", "83,224,255"], alpha: 0.29, size: 1.08, shape: "cosmic"}),
+    "prestige-trail-flame-p9": Object.freeze({colors: ["255,91,50", "255,220,75"], alpha: 0.31, size: 1.05, shape: "flame"}),
+    "prestige-trail-royal-p9": Object.freeze({colors: ["208,111,255", "255,220,82"], alpha: 0.30, size: 1.03, shape: "royal"}),
+    "prestige-trail-neon-p9": Object.freeze({colors: ["35,255,222", "255,54,207"], alpha: 0.38, size: 1.08, shape: "neon"}),
+    "prestige-trail-prism-p9": Object.freeze({colors: ["255,91,91", "255,222,76", "88,238,159", "85,188,255", "205,112,255"], alpha: 0.34, size: 1.14, shape: "prism"})
   });
   const PRESTIGE_AURA_STYLES = Object.freeze({
-    "prestige-aura-p3": Object.freeze({inner: "rgba(174,230,255,0.05)", outer: "rgba(119,210,255,0.58)"}),
-    "prestige-aura-p8": Object.freeze({inner: "rgba(248,185,255,0.08)", outer: "rgba(178,92,255,0.68)"})
+    "prestige-aura-p3": Object.freeze({inner: "rgba(174,230,255,0.08)", outer: "rgba(119,210,255,0.64)", accent: "#e8fbff", radius: 1.62, shape: "moon"}),
+    "prestige-aura-bubble-p3": Object.freeze({inner: "rgba(174,246,255,0.05)", outer: "rgba(103,221,255,0.54)", accent: "#c9f8ff", radius: 1.68, shape: "bubble"}),
+    "prestige-aura-mist-p3": Object.freeze({inner: "rgba(220,225,242,0.05)", outer: "rgba(163,181,218,0.48)", accent: "#dfe7ff", radius: 1.76, shape: "mist"}),
+    "prestige-aura-star-p3": Object.freeze({inner: "rgba(255,240,142,0.06)", outer: "rgba(255,211,77,0.57)", accent: "#fff5a8", radius: 1.67, shape: "star"}),
+    "prestige-aura-p8": Object.freeze({inner: "rgba(248,185,255,0.09)", outer: "rgba(178,92,255,0.70)", accent: "#9eeaff", radius: 1.75, shape: "cosmic"}),
+    "prestige-aura-royal-p8": Object.freeze({inner: "rgba(224,159,255,0.07)", outer: "rgba(159,70,220,0.68)", accent: "#ffe05c", radius: 1.72, shape: "royal"}),
+    "prestige-aura-flame-p8": Object.freeze({inner: "rgba(255,211,80,0.08)", outer: "rgba(255,91,55,0.68)", accent: "#ffe454", radius: 1.72, shape: "flame"}),
+    "prestige-aura-prism-p8": Object.freeze({inner: "rgba(255,255,255,0.08)", outer: "rgba(108,216,255,0.66)", accent: "#ff8be8", radius: 1.80, shape: "prism"})
   });
+
+  function drawFourPointStar(context, radius) {
+    context.beginPath();
+    context.moveTo(0, -radius);
+    context.lineTo(radius * 0.24, -radius * 0.24);
+    context.lineTo(radius, 0);
+    context.lineTo(radius * 0.24, radius * 0.24);
+    context.lineTo(0, radius);
+    context.lineTo(-radius * 0.24, radius * 0.24);
+    context.lineTo(-radius, 0);
+    context.lineTo(-radius * 0.24, -radius * 0.24);
+    context.closePath();
+  }
+
+  function drawPrestigeTrailSegment(point, style, index, alpha, radius) {
+    const color = style.colors[index % style.colors.length];
+    const alternateColor = style.colors[(index + 1) % style.colors.length];
+    ctx.save();
+    ctx.translate(point.x, point.y);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = `rgb(${color})`;
+    ctx.strokeStyle = `rgb(${alternateColor})`;
+    ctx.lineWidth = Math.max(2, radius * 0.12);
+
+    if (style.shape === "bubble" || style.shape === "neon") {
+      ctx.globalAlpha = Math.min(0.72, alpha * 1.85);
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.stroke();
+      if (style.shape === "neon") {
+        ctx.globalAlpha = alpha * 0.42;
+        ctx.fill();
+      }
+    } else if (style.shape === "spark" || style.shape === "star" || style.shape === "prism") {
+      ctx.rotate((index % 4) * Math.PI / 8);
+      drawFourPointStar(ctx, radius);
+      ctx.fill();
+      if (style.shape === "prism") ctx.stroke();
+    } else if (style.shape === "mist") {
+      ctx.beginPath();
+      ctx.ellipse(0, 0, radius * 1.25, radius * 0.72, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (style.shape === "flame") {
+      ctx.beginPath();
+      ctx.moveTo(-radius * 0.72, radius * 0.55);
+      ctx.quadraticCurveTo(-radius * 0.45, -radius * 0.55, radius * 0.72, -radius);
+      ctx.quadraticCurveTo(radius * 0.45, radius * 0.72, -radius * 0.72, radius * 0.55);
+      ctx.closePath();
+      ctx.fill();
+    } else if (style.shape === "royal") {
+      ctx.rotate(Math.PI / 4);
+      ctx.fillRect(-radius * 0.62, -radius * 0.62, radius * 1.24, radius * 1.24);
+      ctx.globalAlpha = alpha * 0.85;
+      ctx.strokeRect(-radius * 0.72, -radius * 0.72, radius * 1.44, radius * 1.44);
+    } else {
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.fill();
+      if (style.shape === "cosmic") {
+        ctx.globalAlpha = Math.min(0.8, alpha * 1.7);
+        ctx.fillStyle = `rgb(${alternateColor})`;
+        ctx.beginPath();
+        ctx.arc(-radius * 0.28, -radius * 0.32, radius * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawPrestigeAura(context, style, radius) {
+    if (!style) return;
+    const auraRadius = radius * style.radius;
+    context.save();
+    const aura = context.createRadialGradient(0, 0, radius * 0.72, 0, 0, auraRadius);
+    aura.addColorStop(0, style.inner);
+    aura.addColorStop(0.72, style.outer);
+    aura.addColorStop(1, "rgba(255,255,255,0)");
+    context.fillStyle = aura;
+    context.beginPath();
+    context.arc(0, 0, auraRadius, 0, Math.PI * 2);
+    context.fill();
+    context.strokeStyle = style.accent;
+    context.lineWidth = Math.max(1.5, radius * 0.07);
+    context.globalAlpha = 0.58;
+
+    if (["moon", "cosmic", "royal", "prism"].includes(style.shape)) {
+      context.beginPath();
+      context.ellipse(0, 0, auraRadius * 0.92, auraRadius * 0.66, -0.32, 0, Math.PI * 2);
+      context.stroke();
+    }
+    if (style.shape === "bubble") {
+      for (const [x, y, size] of [[-1.02, -0.68, 0.18], [1.12, -0.22, 0.14], [0.78, 0.92, 0.11], [-1.18, 0.55, 0.12]]) {
+        context.beginPath();
+        context.arc(x * radius, y * radius, size * radius, 0, Math.PI * 2);
+        context.stroke();
+      }
+    } else if (style.shape === "mist") {
+      context.globalAlpha = 0.28;
+      context.beginPath();
+      context.ellipse(0, radius * 0.12, auraRadius * 1.02, auraRadius * 0.54, 0, 0, Math.PI * 2);
+      context.stroke();
+    } else if (style.shape === "star" || style.shape === "prism") {
+      for (const [x, y] of [[-1.25, -0.55], [1.18, -0.72], [1.28, 0.62], [-1.08, 0.78]]) {
+        context.save();
+        context.translate(x * radius, y * radius);
+        drawFourPointStar(context, radius * 0.16);
+        context.fillStyle = style.accent;
+        context.fill();
+        context.restore();
+      }
+    } else if (style.shape === "royal") {
+      context.setLineDash([radius * 0.26, radius * 0.16]);
+      context.beginPath();
+      context.arc(0, 0, auraRadius * 0.9, 0, Math.PI * 2);
+      context.stroke();
+    } else if (style.shape === "flame") {
+      context.beginPath();
+      context.moveTo(-radius * 1.12, radius * 0.68);
+      context.quadraticCurveTo(-radius * 1.42, -radius * 0.45, -radius * 0.72, -radius * 1.22);
+      context.moveTo(radius * 1.12, radius * 0.68);
+      context.quadraticCurveTo(radius * 1.42, -radius * 0.45, radius * 0.72, -radius * 1.22);
+      context.stroke();
+    }
+    context.restore();
+  }
 
   function spawnBurst(x, y, count, color) {
     for (let i = 0; i < count; i++) {
@@ -1639,40 +1778,26 @@
 
     for (let i = player.trail.length - 1; i >= 0; i--) {
       const t = player.trail[i];
-      const alpha = (1 - i / player.trail.length) * (prestigeTrail?.alpha ?? 0.08);
-      ctx.fillStyle = `rgba(${prestigeTrail?.color ?? palette.trail},${alpha})`;
-      ctx.beginPath();
-      ctx.arc(
-        t.x,
-        t.y,
-        player.r * ((prestigeTrail?.size ?? 0.45) + alpha),
-        0,
-        Math.PI * 2
-      );
-      ctx.fill();
+      const trailStrength = 1 - i / player.trail.length;
+      if (prestigeTrail) {
+        drawPrestigeTrailSegment(
+          t,
+          prestigeTrail,
+          i,
+          trailStrength * prestigeTrail.alpha,
+          player.r * (prestigeTrail.size + trailStrength * 0.16)
+        );
+      } else {
+        const alpha = trailStrength * 0.08;
+        ctx.fillStyle = `rgba(${palette.trail},${alpha})`;
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, player.r * (0.45 + alpha), 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     const selectedAura = window.SlimePrestige?.getSelectedReward?.("aura") ?? "none";
     const prestigeAura = PRESTIGE_AURA_STYLES[selectedAura];
-    if (prestigeAura) {
-      ctx.save();
-      const aura = ctx.createRadialGradient(
-        player.x,
-        player.y,
-        player.r * 0.75,
-        player.x,
-        player.y,
-        player.r * 1.55
-      );
-      aura.addColorStop(0, prestigeAura.inner);
-      aura.addColorStop(0.7, prestigeAura.outer);
-      aura.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.fillStyle = aura;
-      ctx.beginPath();
-      ctx.arc(player.x, player.y, player.r * 1.58, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
 
     const speed = Math.hypot(player.vx, player.vy);
     const stretch = Math.min(0.22, speed / 2600);
@@ -1689,6 +1814,8 @@
     ctx.translate(player.x, player.y);
     ctx.rotate(speed > 40 ? Math.atan2(player.vy, player.vx) * 0.06 : 0);
     ctx.scale(sx, sy);
+
+    drawPrestigeAura(ctx, prestigeAura, player.r);
 
     ctx.shadowColor = palette.glow;
     ctx.shadowBlur = 22;

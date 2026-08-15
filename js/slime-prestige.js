@@ -58,17 +58,64 @@
     // Future cycle-bound perk and mastery keys belong in this explicit allowlist.
   });
 
+  const PRESTIGE_REWARD_PACKAGES = Object.freeze({
+    p1: Object.freeze([
+      Object.freeze({type: "frame", id: "prestige-frame-p1", displayName: "Verdant Frame"})
+    ]),
+    p2: Object.freeze([
+      Object.freeze({type: "title", id: "prestige-title-p2", displayName: "Slimebound"})
+    ]),
+    p3: Object.freeze([
+      Object.freeze({type: "aura", id: "prestige-aura-p3", displayName: "Moon Glow"}),
+      Object.freeze({type: "aura", id: "prestige-aura-bubble-p3", displayName: "Bubble Glow"}),
+      Object.freeze({type: "aura", id: "prestige-aura-mist-p3", displayName: "Mist Glow"}),
+      Object.freeze({type: "aura", id: "prestige-aura-star-p3", displayName: "Star Glow"})
+    ]),
+    p4: Object.freeze([
+      Object.freeze({type: "frame", id: "prestige-frame-p4", displayName: "Skywing Frame"})
+    ]),
+    p5: Object.freeze([
+      Object.freeze({type: "trail", id: "prestige-trail-p5", displayName: "Star Slime Trail"}),
+      Object.freeze({type: "trail", id: "prestige-trail-slime-p5", displayName: "Slime Trail"}),
+      Object.freeze({type: "trail", id: "prestige-trail-bubble-p5", displayName: "Bubble Trail"}),
+      Object.freeze({type: "trail", id: "prestige-trail-spark-p5", displayName: "Spark Trail"}),
+      Object.freeze({type: "trail", id: "prestige-trail-mist-p5", displayName: "Mist Trail"})
+    ]),
+    p6: Object.freeze([
+      Object.freeze({type: "title", id: "prestige-title-p6", displayName: "Crown Hopper"})
+    ]),
+    p7: Object.freeze([
+      Object.freeze({type: "frame", id: "prestige-frame-p7", displayName: "Crowned Frame"})
+    ]),
+    p8: Object.freeze([
+      Object.freeze({type: "aura", id: "prestige-aura-p8", displayName: "Cosmic Glow"}),
+      Object.freeze({type: "aura", id: "prestige-aura-royal-p8", displayName: "Royal Glow"}),
+      Object.freeze({type: "aura", id: "prestige-aura-flame-p8", displayName: "Flame Glow"}),
+      Object.freeze({type: "aura", id: "prestige-aura-prism-p8", displayName: "Prism Glow"})
+    ]),
+    p9: Object.freeze([
+      Object.freeze({type: "trail", id: "prestige-trail-p9", displayName: "Cosmic Slime Trail"}),
+      Object.freeze({type: "trail", id: "prestige-trail-flame-p9", displayName: "Flame Trail"}),
+      Object.freeze({type: "trail", id: "prestige-trail-royal-p9", displayName: "Royal Trail"}),
+      Object.freeze({type: "trail", id: "prestige-trail-neon-p9", displayName: "Neon Trail"}),
+      Object.freeze({type: "trail", id: "prestige-trail-prism-p9", displayName: "Master Prism Trail"})
+    ]),
+    p10: Object.freeze([
+      Object.freeze({type: "frame", id: "prestige-frame-p10", displayName: "Master Crest Frame"})
+    ])
+  });
+
   const PRESTIGE_DEFINITIONS = Object.freeze([
-    Object.freeze({level: 1, symbolId: "prestige-drop-ring", displayLabel: "P1", theme: "verdant", reward: Object.freeze({type: "frame", id: "prestige-frame-p1", displayName: "Verdant Frame"})}),
-    Object.freeze({level: 2, symbolId: "prestige-single-chevron", displayLabel: "P2", theme: "bronze", reward: Object.freeze({type: "title", id: "prestige-title-p2", displayName: "Slimebound"})}),
-    Object.freeze({level: 3, symbolId: "prestige-double-chevron", displayLabel: "P3", theme: "silver", reward: Object.freeze({type: "aura", id: "prestige-aura-p3", displayName: "Moon Glow"})}),
-    Object.freeze({level: 4, symbolId: "prestige-winged-slime", displayLabel: "P4", theme: "sky", reward: Object.freeze({type: "frame", id: "prestige-frame-p4", displayName: "Skywing Frame"})}),
-    Object.freeze({level: 5, symbolId: "prestige-starburst", displayLabel: "P5", theme: "gold", reward: Object.freeze({type: "trail", id: "prestige-trail-p5", displayName: "Star Slime Trail"})}),
-    Object.freeze({level: 6, symbolId: "prestige-ornament-shield", displayLabel: "P6", theme: "royal", reward: Object.freeze({type: "title", id: "prestige-title-p6", displayName: "Crown Hopper"})}),
-    Object.freeze({level: 7, symbolId: "prestige-crowned-slime", displayLabel: "P7", theme: "crown", reward: Object.freeze({type: "frame", id: "prestige-frame-p7", displayName: "Crowned Frame"})}),
-    Object.freeze({level: 8, symbolId: "prestige-speed-flame", displayLabel: "P8", theme: "inferno", reward: Object.freeze({type: "aura", id: "prestige-aura-p8", displayName: "Cosmic Glow"})}),
-    Object.freeze({level: 9, symbolId: "prestige-cosmic-halo", displayLabel: "P9", theme: "cosmic", reward: Object.freeze({type: "trail", id: "prestige-trail-p9", displayName: "Cosmic Slime Trail"})}),
-    Object.freeze({level: 10, symbolId: "prestige-final-crest", displayLabel: "P10", theme: "legendary", reward: Object.freeze({type: "frame", id: "prestige-frame-p10", displayName: "Master Crest Frame"})})
+    Object.freeze({level: 1, symbolId: "prestige-drop-ring", displayLabel: "P1", theme: "verdant", rewards: PRESTIGE_REWARD_PACKAGES.p1, reward: PRESTIGE_REWARD_PACKAGES.p1[0]}),
+    Object.freeze({level: 2, symbolId: "prestige-single-chevron", displayLabel: "P2", theme: "bronze", rewards: PRESTIGE_REWARD_PACKAGES.p2, reward: PRESTIGE_REWARD_PACKAGES.p2[0]}),
+    Object.freeze({level: 3, symbolId: "prestige-double-chevron", displayLabel: "P3", theme: "silver", rewards: PRESTIGE_REWARD_PACKAGES.p3, reward: PRESTIGE_REWARD_PACKAGES.p3[0]}),
+    Object.freeze({level: 4, symbolId: "prestige-winged-slime", displayLabel: "P4", theme: "sky", rewards: PRESTIGE_REWARD_PACKAGES.p4, reward: PRESTIGE_REWARD_PACKAGES.p4[0]}),
+    Object.freeze({level: 5, symbolId: "prestige-starburst", displayLabel: "P5", theme: "gold", rewards: PRESTIGE_REWARD_PACKAGES.p5, reward: PRESTIGE_REWARD_PACKAGES.p5[0]}),
+    Object.freeze({level: 6, symbolId: "prestige-ornament-shield", displayLabel: "P6", theme: "royal", rewards: PRESTIGE_REWARD_PACKAGES.p6, reward: PRESTIGE_REWARD_PACKAGES.p6[0]}),
+    Object.freeze({level: 7, symbolId: "prestige-crowned-slime", displayLabel: "P7", theme: "crown", rewards: PRESTIGE_REWARD_PACKAGES.p7, reward: PRESTIGE_REWARD_PACKAGES.p7[0]}),
+    Object.freeze({level: 8, symbolId: "prestige-speed-flame", displayLabel: "P8", theme: "inferno", rewards: PRESTIGE_REWARD_PACKAGES.p8, reward: PRESTIGE_REWARD_PACKAGES.p8[0]}),
+    Object.freeze({level: 9, symbolId: "prestige-cosmic-halo", displayLabel: "P9", theme: "cosmic", rewards: PRESTIGE_REWARD_PACKAGES.p9, reward: PRESTIGE_REWARD_PACKAGES.p9[0]}),
+    Object.freeze({level: 10, symbolId: "prestige-final-crest", displayLabel: "P10", theme: "legendary", rewards: PRESTIGE_REWARD_PACKAGES.p10, reward: PRESTIGE_REWARD_PACKAGES.p10[0]})
   ]);
 
   const ROMAN_PRESTIGE_LEVELS = Object.freeze([
@@ -139,8 +186,8 @@
   function getUnlockedRewards(level = readPrestigeLevel()) {
     const normalizedLevel = normalizePrestigeLevel(level);
     return PRESTIGE_DEFINITIONS
-      .filter(definition => definition.level <= normalizedLevel && definition.reward !== null)
-      .map(definition => definition.reward);
+      .filter(definition => definition.level <= normalizedLevel)
+      .flatMap(definition => definition.rewards ?? (definition.reward ? [definition.reward] : []));
   }
 
   function normalizeRewardType(value) {
@@ -152,10 +199,9 @@
     const normalizedType = normalizeRewardType(type);
     const normalizedId = String(id ?? "");
     if (!normalizedType || normalizedId === "none") return null;
-    return PRESTIGE_DEFINITIONS.find(definition =>
-      definition.reward?.type === normalizedType &&
-      definition.reward.id === normalizedId
-    )?.reward ?? null;
+    return PRESTIGE_DEFINITIONS
+      .flatMap(definition => definition.rewards ?? (definition.reward ? [definition.reward] : []))
+      .find(reward => reward.type === normalizedType && reward.id === normalizedId) ?? null;
   }
 
   function getUnlockedRewardsByType(type, level = readPrestigeLevel()) {

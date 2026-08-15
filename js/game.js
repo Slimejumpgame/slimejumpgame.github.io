@@ -571,8 +571,10 @@
       `titles: ${list(inspector.unlocked.title)}`,
       `selected title: ${inspector.selected.title}`,
       `auras: ${list(inspector.unlocked.aura)}`,
+      `aura count: ${inspector.unlocked.aura.length}`,
       `selected aura: ${inspector.selected.aura}`,
       `trails: ${list(inspector.unlocked.trail)}`,
+      `trail count: ${inspector.unlocked.trail.length}`,
       `selected trail: ${inspector.selected.trail}`,
       `xp multiplier: x${inspector.xpMultiplier.toFixed(2)}`
     ].join("\n");
@@ -1106,8 +1108,8 @@
     ui.startBtn, ui.achievementsBtn, ui.wardrobeBtn, ui.howToBtn, ui.highScoresBtn,
     ui.achievementsBackBtn,
     ui.wardrobeBackBtn, ui.wardrobeColorMenuBtn, ui.wardrobeCosmeticsMenuBtn,
-    ui.wardrobeBeardsMenuBtn, ui.wardrobeColorBackBtn,
-    ui.wardrobeCosmeticsBackBtn, ui.wardrobeBeardsBackBtn,
+    ui.wardrobeBeardsMenuBtn, ui.wardrobePrestigeMenuBtn, ui.wardrobeColorBackBtn,
+    ui.wardrobeCosmeticsBackBtn, ui.wardrobeBeardsBackBtn, ui.wardrobePrestigeBackBtn,
     ui.howToBackBtn, ui.highScoresBackBtn
   ]) {
     button.addEventListener("pointerdown", () => button.classList.add("menuPressed"));
@@ -1156,9 +1158,17 @@
   ui.wardrobeColorMenuBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeColorMenuBtn, () => showWardrobeView("color")));
   ui.wardrobeCosmeticsMenuBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeCosmeticsMenuBtn, () => showWardrobeView("cosmetics")));
   ui.wardrobeBeardsMenuBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeBeardsMenuBtn, () => showWardrobeView("beards")));
+  ui.wardrobePrestigeMenuBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobePrestigeMenuBtn, () => showWardrobeView("prestige")));
   ui.wardrobeColorBackBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeColorBackBtn, () => showWardrobeView("home")));
   ui.wardrobeCosmeticsBackBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeCosmeticsBackBtn, () => showWardrobeView("home")));
   ui.wardrobeBeardsBackBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeBeardsBackBtn, () => showWardrobeView("home")));
+  ui.wardrobePrestigeBackBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobePrestigeBackBtn, () => showWardrobeView("home")));
+  ui.wardrobePrestigeCategories.querySelectorAll("[data-prestige-category]").forEach(button => {
+    button.addEventListener("click", () => {
+      prestigeWardrobeCategory = button.dataset.prestigeCategory;
+      renderWardrobePrestigePicker();
+    });
+  });
   ui.howToBackBtn.addEventListener("click", () => runMenuButtonAction(ui.howToBackBtn, () => showMenuScreen("main")));
   ui.highScoresBackBtn.addEventListener("click", () => runMenuButtonAction(ui.highScoresBackBtn, () => showMenuScreen("main")));
   ui.nicknameInput.addEventListener("input", () => {
