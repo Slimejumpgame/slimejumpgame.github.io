@@ -7,16 +7,16 @@
   const TUTORIAL_DRAG_HAND_FINGERTIP_X_RATIO = 496 / 1254;
   const TUTORIAL_DRAG_HAND_FINGERTIP_Y_RATIO = 24 / 1254;
   const PRESTIGE_TRAIL_STYLES = Object.freeze({
-    "prestige-trail-p5": Object.freeze({colors: ["255,220,82", "255,150,66"], alpha: 0.25, size: 0.94, shape: "star"}),
-    "prestige-trail-slime-p5": Object.freeze({colors: ["112,246,138", "54,190,91"], alpha: 0.24, size: 1.02, shape: "slime"}),
-    "prestige-trail-bubble-p5": Object.freeze({colors: ["125,224,255", "216,250,255"], alpha: 0.34, size: 1.08, shape: "bubble"}),
-    "prestige-trail-spark-p5": Object.freeze({colors: ["255,241,122", "255,255,255"], alpha: 0.31, size: 0.88, shape: "spark"}),
-    "prestige-trail-mist-p5": Object.freeze({colors: ["205,213,235", "151,181,219"], alpha: 0.16, size: 1.22, shape: "mist"}),
-    "prestige-trail-p9": Object.freeze({colors: ["181,103,255", "83,224,255"], alpha: 0.29, size: 1.08, shape: "cosmic"}),
-    "prestige-trail-flame-p9": Object.freeze({colors: ["255,91,50", "255,220,75"], alpha: 0.31, size: 1.05, shape: "flame"}),
-    "prestige-trail-royal-p9": Object.freeze({colors: ["208,111,255", "255,220,82"], alpha: 0.30, size: 1.03, shape: "royal"}),
-    "prestige-trail-neon-p9": Object.freeze({colors: ["35,255,222", "255,54,207"], alpha: 0.38, size: 1.08, shape: "neon"}),
-    "prestige-trail-prism-p9": Object.freeze({colors: ["255,91,91", "255,222,76", "88,238,159", "85,188,255", "205,112,255"], alpha: 0.34, size: 1.14, shape: "prism"})
+    "prestige-trail-p5": Object.freeze({colors: ["255,220,82", "255,150,66"], alpha: 0.20, size: 0.42, reach: 2.22, segmentLength: 1.72, segmentWidth: 0.62, shape: "star"}),
+    "prestige-trail-slime-p5": Object.freeze({colors: ["112,246,138", "54,190,91"], alpha: 0.19, size: 0.48, reach: 2.18, segmentLength: 1.62, segmentWidth: 0.56, shape: "slime"}),
+    "prestige-trail-bubble-p5": Object.freeze({colors: ["125,224,255", "216,250,255"], alpha: 0.25, size: 0.52, reach: 2.12, segmentLength: 1.26, segmentWidth: 0.74, shape: "bubble"}),
+    "prestige-trail-spark-p5": Object.freeze({colors: ["255,241,122", "255,255,255"], alpha: 0.23, size: 0.38, reach: 2.28, segmentLength: 1.86, segmentWidth: 0.68, shape: "spark"}),
+    "prestige-trail-mist-p5": Object.freeze({colors: ["205,213,235", "151,181,219"], alpha: 0.12, size: 0.55, reach: 2.22, segmentLength: 1.82, segmentWidth: 0.65, shape: "mist"}),
+    "prestige-trail-p9": Object.freeze({colors: ["181,103,255", "83,224,255"], alpha: 0.22, size: 0.48, reach: 2.30, segmentLength: 1.82, segmentWidth: 0.56, shape: "cosmic"}),
+    "prestige-trail-flame-p9": Object.freeze({colors: ["255,91,50", "255,220,75"], alpha: 0.23, size: 0.46, reach: 2.34, segmentLength: 2.05, segmentWidth: 0.80, shape: "flame"}),
+    "prestige-trail-royal-p9": Object.freeze({colors: ["208,111,255", "255,220,82"], alpha: 0.22, size: 0.45, reach: 2.26, segmentLength: 1.72, segmentWidth: 0.60, shape: "royal"}),
+    "prestige-trail-neon-p9": Object.freeze({colors: ["35,255,222", "255,54,207"], alpha: 0.28, size: 0.44, reach: 2.34, segmentLength: 1.92, segmentWidth: 0.62, shape: "neon"}),
+    "prestige-trail-prism-p9": Object.freeze({colors: ["255,91,91", "255,222,76", "88,238,159", "85,188,255", "205,112,255"], alpha: 0.25, size: 0.47, reach: 2.32, segmentLength: 1.92, segmentWidth: 0.56, shape: "prism"})
   });
   const PRESTIGE_AURA_STYLES = Object.freeze({
     "prestige-aura-p3": Object.freeze({inner: "rgba(174,230,255,0.08)", outer: "rgba(119,210,255,0.64)", accent: "#e8fbff", radius: 1.62, shape: "moon"}),
@@ -42,11 +42,13 @@
     context.closePath();
   }
 
-  function drawPrestigeTrailSegment(point, style, index, alpha, radius) {
+  function drawPrestigeTrailSegment(point, style, index, alpha, radius, angle) {
     const color = style.colors[index % style.colors.length];
     const alternateColor = style.colors[(index + 1) % style.colors.length];
     ctx.save();
     ctx.translate(point.x, point.y);
+    ctx.rotate(angle);
+    ctx.scale(style.segmentLength, style.segmentWidth);
     ctx.globalAlpha = alpha;
     ctx.fillStyle = `rgb(${color})`;
     ctx.strokeStyle = `rgb(${alternateColor})`;
@@ -72,9 +74,9 @@
       ctx.fill();
     } else if (style.shape === "flame") {
       ctx.beginPath();
-      ctx.moveTo(-radius * 0.72, radius * 0.55);
-      ctx.quadraticCurveTo(-radius * 0.45, -radius * 0.55, radius * 0.72, -radius);
-      ctx.quadraticCurveTo(radius * 0.45, radius * 0.72, -radius * 0.72, radius * 0.55);
+      ctx.moveTo(radius, 0);
+      ctx.quadraticCurveTo(-radius * 0.15, -radius * 0.7, -radius, 0);
+      ctx.quadraticCurveTo(-radius * 0.15, radius * 0.7, radius, 0);
       ctx.closePath();
       ctx.fill();
     } else if (style.shape === "royal") {
@@ -1780,12 +1782,27 @@
       const t = player.trail[i];
       const trailStrength = 1 - i / player.trail.length;
       if (prestigeTrail) {
+        const directionPoint = i > 0
+          ? player.trail[i - 1]
+          : player.trail[Math.min(1, player.trail.length - 1)];
+        const directionX = i > 0
+          ? directionPoint.x - t.x
+          : t.x - directionPoint.x;
+        const directionY = i > 0
+          ? directionPoint.y - t.y
+          : t.y - directionPoint.y;
+        const trailAngle = Math.atan2(directionY, directionX);
+        const visualPoint = {
+          x: player.x + (t.x - player.x) * prestigeTrail.reach,
+          y: player.y + (t.y - player.y) * prestigeTrail.reach
+        };
         drawPrestigeTrailSegment(
-          t,
+          visualPoint,
           prestigeTrail,
           i,
           trailStrength * prestigeTrail.alpha,
-          player.r * (prestigeTrail.size + trailStrength * 0.16)
+          player.r * (prestigeTrail.size + trailStrength * 0.08),
+          trailAngle
         );
       } else {
         const alpha = trailStrength * 0.08;

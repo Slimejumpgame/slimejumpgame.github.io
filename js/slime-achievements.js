@@ -959,6 +959,31 @@
     if (runState.runStars >= 300) unlockAchievement("star_magnet");
   }
 
+  function getAchievementWardrobeCycleProgress() {
+    const permanentByCategory = {
+      color: new Set(),
+      cosmetic: new Set(),
+      beard: new Set()
+    };
+    const permanentUnlocks = window.SlimePrestige
+      ?.getPermanentWardrobeUnlocks?.() ?? [];
+    permanentUnlocks.forEach(unlock => {
+      const category = String(unlock?.category ?? "").toLowerCase();
+      const id = String(unlock?.id ?? "").toLowerCase();
+      permanentByCategory[category]?.add(id);
+    });
+
+    const withoutPermanentBaseline = (items, category) =>
+      items.filter(id => !permanentByCategory[category].has(id));
+
+    return {
+      permanentByCategory,
+      colors: withoutPermanentBaseline(unlockedSlimeColors, "color"),
+      cosmetics: withoutPermanentBaseline(unlockedSlimeCosmetics, "cosmetic"),
+      beards: withoutPermanentBaseline(unlockedSlimeBeards, "beard")
+    };
+  }
+
   function checkWardrobeAchievements() {
     if (
       typeof unlockedSlimeColors === "undefined" ||
@@ -968,36 +993,54 @@
       return;
     }
 
-    if (unlockedSlimeCosmetics.length > 0) unlockAchievement("fashion_slime");
-    if (unlockedSlimeBeards.length > 0) unlockAchievement("glorious_beard");
+    const cycleProgress = getAchievementWardrobeCycleProgress();
+    if (cycleProgress.cosmetics.length > 0) unlockAchievement("fashion_slime");
+    if (cycleProgress.beards.length > 0) unlockAchievement("glorious_beard");
     if (selectedSlimeCosmetic !== "none" && selectedSlimeBeard !== "none") {
       unlockAchievement("dressed_to_slime");
     }
 
     const unlockedWardrobeItemIds = new Set([
-      ...unlockedSlimeColors,
-      ...unlockedSlimeCosmetics,
-      ...unlockedSlimeBeards
+      ...cycleProgress.colors,
+      ...cycleProgress.cosmetics,
+      ...cycleProgress.beards
     ]);
     unlockedWardrobeItemIds.delete("none");
     if (unlockedWardrobeItemIds.size >= 25) {
       unlockAchievement("wardrobe_warrior");
     }
 
+    const cycleColorTargets = typeof SLIME_COLOR_ORDER !== "undefined"
+      ? SLIME_COLOR_ORDER.filter(
+          color => !cycleProgress.permanentByCategory.color.has(color)
+        )
+      : [];
+    const cycleCosmeticTargets = typeof UNLOCKABLE_SLIME_COSMETICS !== "undefined"
+      ? UNLOCKABLE_SLIME_COSMETICS.filter(
+          cosmetic => !cycleProgress.permanentByCategory.cosmetic.has(cosmetic)
+        )
+      : [];
+    const cycleBeardTargets = typeof UNLOCKABLE_SLIME_BEARDS !== "undefined"
+      ? UNLOCKABLE_SLIME_BEARDS.filter(
+          beard => !cycleProgress.permanentByCategory.beard.has(beard)
+        )
+      : [];
+
     const allColorsUnlocked =
       typeof SLIME_COLOR_ORDER !== "undefined" &&
       SLIME_COLOR_ORDER.length > 0 &&
-      SLIME_COLOR_ORDER.every(color => unlockedSlimeColors.includes(color));
+      cycleProgress.colors.some(color => color !== "green") &&
+      cycleColorTargets.every(color => cycleProgress.colors.includes(color));
     const allCosmeticsUnlocked =
       typeof UNLOCKABLE_SLIME_COSMETICS !== "undefined" &&
       UNLOCKABLE_SLIME_COSMETICS.length > 0 &&
-      UNLOCKABLE_SLIME_COSMETICS.every(cosmetic =>
-        unlockedSlimeCosmetics.includes(cosmetic)
-      );
+      cycleProgress.cosmetics.length > 0 &&
+      cycleCosmeticTargets.every(cosmetic => cycleProgress.cosmetics.includes(cosmetic));
     const allBeardsUnlocked =
       typeof UNLOCKABLE_SLIME_BEARDS !== "undefined" &&
       UNLOCKABLE_SLIME_BEARDS.length > 0 &&
-      UNLOCKABLE_SLIME_BEARDS.every(beard => unlockedSlimeBeards.includes(beard));
+      cycleProgress.beards.length > 0 &&
+      cycleBeardTargets.every(beard => cycleProgress.beards.includes(beard));
 
     if (allColorsUnlocked) {
       unlockAchievement("rainbow_slime");

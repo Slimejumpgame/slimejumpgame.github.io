@@ -2954,33 +2954,52 @@ p {
   pointer-events: none;
 }
 
+.achievementCallingCardPreview[data-prestige-frame="prestige-frame-p7"]::before,
 .achievementCallingCardPreview[data-prestige-frame="prestige-frame-p7"]::after,
+.recentAchievements[data-prestige-frame="prestige-frame-p7"]::before,
 .recentAchievements[data-prestige-frame="prestige-frame-p7"]::after,
+.highscoreBadges[data-prestige-frame="prestige-frame-p7"]::before,
 .highscoreBadges[data-prestige-frame="prestige-frame-p7"]::after,
+.prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p7"]::before,
 .prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p7"]::after {
   content: "◆";
   position: absolute;
-  top: -0.72em;
-  left: 50%;
+  top: -0.64em;
   z-index: 2;
   padding: 0 0.26em;
   background: #4a206d;
   color: #ffe05c;
   font-size: clamp(8px, 0.8vw, 12px);
   line-height: 1;
-  text-shadow: -2.2em 0 #ffe05c, 2.2em 0 #ffe05c;
-  transform: translateX(-50%);
+  text-shadow: 0 0 5px rgba(255, 224, 92, 0.68);
   pointer-events: none;
 }
 
+.achievementCallingCardPreview[data-prestige-frame="prestige-frame-p7"]::before,
+.recentAchievements[data-prestige-frame="prestige-frame-p7"]::before,
+.highscoreBadges[data-prestige-frame="prestige-frame-p7"]::before,
+.prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p7"]::before {
+  left: clamp(8px, 8%, 22px);
+}
+
+.achievementCallingCardPreview[data-prestige-frame="prestige-frame-p7"]::after,
+.recentAchievements[data-prestige-frame="prestige-frame-p7"]::after,
+.highscoreBadges[data-prestige-frame="prestige-frame-p7"]::after,
+.prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p7"]::after {
+  right: clamp(8px, 8%, 22px);
+}
+
+.achievementCallingCardPreview[data-prestige-frame="prestige-frame-p10"]::before,
 .achievementCallingCardPreview[data-prestige-frame="prestige-frame-p10"]::after,
+.recentAchievements[data-prestige-frame="prestige-frame-p10"]::before,
 .recentAchievements[data-prestige-frame="prestige-frame-p10"]::after,
+.highscoreBadges[data-prestige-frame="prestige-frame-p10"]::before,
 .highscoreBadges[data-prestige-frame="prestige-frame-p10"]::after,
+.prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p10"]::before,
 .prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p10"]::after {
   content: "✦";
   position: absolute;
-  top: -0.78em;
-  left: 50%;
+  top: -0.72em;
   z-index: 2;
   width: 1.55em;
   aspect-ratio: 1;
@@ -2992,9 +3011,30 @@ p {
   color: #54218c;
   font-size: clamp(9px, 0.95vw, 14px);
   line-height: 1;
-  box-shadow: -2.3em 0 0 -0.35em #ffe05c, 2.3em 0 0 -0.35em #ffe05c, 0 0 9px rgba(255, 244, 172, 0.78);
-  transform: translateX(-50%);
+  box-shadow: 0 0 9px rgba(255, 244, 172, 0.78);
   pointer-events: none;
+}
+
+.achievementCallingCardPreview[data-prestige-frame="prestige-frame-p10"]::before,
+.recentAchievements[data-prestige-frame="prestige-frame-p10"]::before,
+.highscoreBadges[data-prestige-frame="prestige-frame-p10"]::before,
+.prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p10"]::before {
+  left: clamp(7px, 7%, 20px);
+}
+
+.achievementCallingCardPreview[data-prestige-frame="prestige-frame-p10"]::after,
+.recentAchievements[data-prestige-frame="prestige-frame-p10"]::after,
+.highscoreBadges[data-prestige-frame="prestige-frame-p10"]::after,
+.prestigeRewardPreview--frame[data-prestige-frame="prestige-frame-p10"]::after {
+  right: clamp(7px, 7%, 20px);
+}
+
+.recentAchievements[data-prestige-frame="prestige-frame-p7"] .recentAchievementsTitle {
+  padding-inline: clamp(32px, 12%, 52px);
+}
+
+.recentAchievements[data-prestige-frame="prestige-frame-p10"] .recentAchievementsTitle {
+  padding-inline: clamp(36px, 14%, 58px);
 }
 
 .achievementCallingCardPreview > strong {

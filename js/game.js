@@ -569,6 +569,7 @@
       `frames: ${list(inspector.unlocked.frame)}`,
       `selected frame: ${inspector.selected.frame}`,
       `titles: ${list(inspector.unlocked.title)}`,
+      `title count: ${inspector.unlocked.title.length}`,
       `selected title: ${inspector.selected.title}`,
       `auras: ${list(inspector.unlocked.aura)}`,
       `aura count: ${inspector.unlocked.aura.length}`,

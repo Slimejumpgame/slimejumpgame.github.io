@@ -60,48 +60,56 @@
 
   const PRESTIGE_REWARD_PACKAGES = Object.freeze({
     p1: Object.freeze([
-      Object.freeze({type: "frame", id: "prestige-frame-p1", displayName: "Verdant Frame"})
+      Object.freeze({type: "frame", id: "prestige-frame-p1", displayName: "Verdant Frame"}),
+      Object.freeze({type: "title", id: "prestige-title-p1", displayName: "INITIATE"})
     ]),
     p2: Object.freeze([
-      Object.freeze({type: "title", id: "prestige-title-p2", displayName: "Slimebound"})
+      Object.freeze({type: "title", id: "prestige-title-p2", displayName: "SLIMEBOUND"})
     ]),
     p3: Object.freeze([
       Object.freeze({type: "aura", id: "prestige-aura-p3", displayName: "Moon Glow"}),
       Object.freeze({type: "aura", id: "prestige-aura-bubble-p3", displayName: "Bubble Glow"}),
       Object.freeze({type: "aura", id: "prestige-aura-mist-p3", displayName: "Mist Glow"}),
-      Object.freeze({type: "aura", id: "prestige-aura-star-p3", displayName: "Star Glow"})
+      Object.freeze({type: "aura", id: "prestige-aura-star-p3", displayName: "Star Glow"}),
+      Object.freeze({type: "title", id: "prestige-title-p3", displayName: "PATHFINDER"})
     ]),
     p4: Object.freeze([
-      Object.freeze({type: "frame", id: "prestige-frame-p4", displayName: "Skywing Frame"})
+      Object.freeze({type: "frame", id: "prestige-frame-p4", displayName: "Skywing Frame"}),
+      Object.freeze({type: "title", id: "prestige-title-p4", displayName: "SKY HOPPER"})
     ]),
     p5: Object.freeze([
       Object.freeze({type: "trail", id: "prestige-trail-p5", displayName: "Star Slime Trail"}),
       Object.freeze({type: "trail", id: "prestige-trail-slime-p5", displayName: "Slime Trail"}),
       Object.freeze({type: "trail", id: "prestige-trail-bubble-p5", displayName: "Bubble Trail"}),
       Object.freeze({type: "trail", id: "prestige-trail-spark-p5", displayName: "Spark Trail"}),
-      Object.freeze({type: "trail", id: "prestige-trail-mist-p5", displayName: "Mist Trail"})
+      Object.freeze({type: "trail", id: "prestige-trail-mist-p5", displayName: "Mist Trail"}),
+      Object.freeze({type: "title", id: "prestige-title-p5", displayName: "VETERAN"})
     ]),
     p6: Object.freeze([
-      Object.freeze({type: "title", id: "prestige-title-p6", displayName: "Crown Hopper"})
+      Object.freeze({type: "title", id: "prestige-title-p6", displayName: "CROWN HOPPER"})
     ]),
     p7: Object.freeze([
-      Object.freeze({type: "frame", id: "prestige-frame-p7", displayName: "Crowned Frame"})
+      Object.freeze({type: "frame", id: "prestige-frame-p7", displayName: "Crowned Frame"}),
+      Object.freeze({type: "title", id: "prestige-title-p7", displayName: "ELITE"})
     ]),
     p8: Object.freeze([
       Object.freeze({type: "aura", id: "prestige-aura-p8", displayName: "Cosmic Glow"}),
       Object.freeze({type: "aura", id: "prestige-aura-royal-p8", displayName: "Royal Glow"}),
       Object.freeze({type: "aura", id: "prestige-aura-flame-p8", displayName: "Flame Glow"}),
-      Object.freeze({type: "aura", id: "prestige-aura-prism-p8", displayName: "Prism Glow"})
+      Object.freeze({type: "aura", id: "prestige-aura-prism-p8", displayName: "Prism Glow"}),
+      Object.freeze({type: "title", id: "prestige-title-p8", displayName: "ASCENDANT"})
     ]),
     p9: Object.freeze([
       Object.freeze({type: "trail", id: "prestige-trail-p9", displayName: "Cosmic Slime Trail"}),
       Object.freeze({type: "trail", id: "prestige-trail-flame-p9", displayName: "Flame Trail"}),
       Object.freeze({type: "trail", id: "prestige-trail-royal-p9", displayName: "Royal Trail"}),
       Object.freeze({type: "trail", id: "prestige-trail-neon-p9", displayName: "Neon Trail"}),
-      Object.freeze({type: "trail", id: "prestige-trail-prism-p9", displayName: "Master Prism Trail"})
+      Object.freeze({type: "trail", id: "prestige-trail-prism-p9", displayName: "Master Prism Trail"}),
+      Object.freeze({type: "title", id: "prestige-title-p9", displayName: "LEGEND"})
     ]),
     p10: Object.freeze([
-      Object.freeze({type: "frame", id: "prestige-frame-p10", displayName: "Master Crest Frame"})
+      Object.freeze({type: "frame", id: "prestige-frame-p10", displayName: "Master Crest Frame"}),
+      Object.freeze({type: "title", id: "prestige-title-p10", displayName: "PRESTIGE MASTER"})
     ])
   });
 
