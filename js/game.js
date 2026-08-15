@@ -609,6 +609,8 @@
     const lastBubbleActive = active.includes("last_bubble");
     const mudShoesActive = active.includes("mud_shoes");
     const quickRecoveryActive = active.includes("quick_recovery");
+    const stickySlimeActive = active.includes("sticky_slime");
+    const secondChanceActive = active.includes("safe_return");
     const runIsActive = !isTutorialStage() &&
       ["playing", "paused", "gamePaused"].includes(state);
     const luckyBonusStarThisLevel = runIsActive &&
@@ -623,6 +625,7 @@
       : selected.includes("extra_life"))
       ? perks.balance.EXTRA_LIFE_BONUS
       : 0;
+    const secondChanceAnchor = getSecondChanceSafeAnchor();
 
     ui.devPerkInspector.textContent = [
       `Stored Unlocked Perks: ${JSON.stringify(storedUnlocked)}`,
@@ -682,7 +685,19 @@
       `Recovery Time Remaining: ${getQuickRecoveryTimeRemaining().toFixed(2)} s`,
       `Support Valid: ${hasQuickRecoveryValidSupport() ? "YES" : "NO"}`,
       `Current |vx|: ${Math.round(Math.abs(player.vx))} px/s`,
-      `Aim Ready Through Quick Recovery: ${isQuickRecoveryAimReady() ? "YES" : "NO"}`
+      `Aim Ready Through Quick Recovery: ${isQuickRecoveryAimReady() ? "YES" : "NO"}`,
+      `Sticky Slime: ${stickySlimeActive ? "ACTIVE" : "inactive"}`,
+      `Valid Normal Support: ${runIsActive && Boolean(getValidNormalSafeSupportPlatform()) ? "YES" : "NO"}`,
+      `Sticky Damping Active: ${isStickySlimeDampingActive() ? "YES" : "NO"}`,
+      `Sticky Current |vx|: ${Math.round(Math.abs(player.vx))} px/s`,
+      `Max Sticky Speed: ${perks.balance.STICKY_SLIME_MAX_GROUND_SPEED}`,
+      `Sticky Damping: ${perks.balance.STICKY_SLIME_GROUND_DAMPING.toFixed(2)} @ 60 Hz reference`,
+      `Second Chance: ${secondChanceActive ? "ACTIVE" : "inactive"}`,
+      `Available This Run: ${secondChanceActive && isSecondChanceAvailableThisRun() ? "YES" : "NO"}`,
+      `Used This Run: ${secondChanceActive && isSecondChanceUsedThisRun() ? "YES" : "NO"}`,
+      `Safe Anchor: ${secondChanceAnchor ? "VALID" : "NONE"}`,
+      `Anchor X/Y: ${secondChanceAnchor ? `${Math.round(secondChanceAnchor.x)} / ${Math.round(secondChanceAnchor.y)}` : "- / -"}`,
+      `Last Rescue Reason: ${getLastSecondChanceRescueReason()}`
     ].join("\n");
   }
 
@@ -1138,6 +1153,7 @@
       setMusicForLevel(levelIndex + 1);
       generatedLevel = generateProceduralLevel(levelIndex + 1);
       resetLastBubbleForNewLevel();
+      resetSecondChanceAnchorForNewLevel();
       state = "playing";
       resetLevel(true);
       window.SlimeAchievements?.onLevelStart?.(getAchievementLevelContext());

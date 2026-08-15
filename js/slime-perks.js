@@ -23,7 +23,9 @@
     QUICK_RECOVERY_WINDOW: 1.20,
     QUICK_RECOVERY_AIM_DELAY: 0.18,
     QUICK_RECOVERY_AIM_SPEED_LIMIT: 700,
-    QUICK_RECOVERY_HORIZONTAL_DAMPING: 0.82
+    QUICK_RECOVERY_HORIZONTAL_DAMPING: 0.82,
+    STICKY_SLIME_MAX_GROUND_SPEED: 240,
+    STICKY_SLIME_GROUND_DAMPING: 0.90
   });
 
   function createIcon(paths) {
@@ -87,7 +89,7 @@
       name: "STICKY SLIME",
       description: "Gibt auf normalen Plattformen zusätzlichen Halt.",
       icon: createIcon([{d: "M5 5h14v10a7 7 0 0 1-14 0Z"}, {d: "M8 5V2m4 3V2m4 3V2", accent: true}]),
-      implemented: false,
+      implemented: true,
       category: "control"
     }),
     Object.freeze({
@@ -117,9 +119,9 @@
     Object.freeze({
       id: "safe_return",
       name: "SECOND CHANCE",
-      description: "Bringt einen fehlgeschlagenen Fall einmal sicher zurück.",
+      description: "Rettet einmal pro Run vor Spike-Plattformen, Geistern oder Side-Out.",
       icon: createIcon([{d: "M20 11a8 8 0 1 1-3-6"}, {d: "M20 4v7h-7", accent: true}]),
-      implemented: false,
+      implemented: true,
       category: "survival"
     }),
     Object.freeze({

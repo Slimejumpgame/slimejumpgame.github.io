@@ -403,6 +403,9 @@
       }
     }
 
+    applyStickySlimeGroundDamping(dt);
+    updateSecondChanceSafeAnchor();
+
     updateAirHopFlightState(wasOnGround, player.onGround, bouncedOnPad);
 
     if (tracksRunProgress) {
@@ -434,6 +437,7 @@
         h: spikeHeight + 7
       };
       if (intersectsRect(player.x, player.y, player.r * 0.70, danger)) {
+        if (tryUseSecondChance("spike_platform")) return;
         spawnBurst(player.x, player.y, 12, "#ff7d63");
         loseLife();
         return;
@@ -446,6 +450,8 @@
         player.r * 0.74 + enemy.r * 0.82
       ) {
         if (tracksRunProgress) window.SlimeAchievements?.onGhostHit?.();
+        const secondChanceReason = enemy.type === "fast" ? "fast_ghost" : "ghost";
+        if (tryUseSecondChance(secondChanceReason)) return;
         spawnBurst(
           enemy.x,
           enemy.y,
@@ -485,12 +491,13 @@
 
     if (intersectsRect(player.x, player.y, player.r * 0.75, level.goal)) finishLevel();
 
-    if (player.x < -180 || player.x > W + 180) {
+    if (player.y > BOTTOM_DEATH_THRESHOLD) {
+      if (tryHandleLastBubbleContact("bottom_out")) return;
       loseLife();
       return;
     }
-    if (player.y > BOTTOM_DEATH_THRESHOLD) {
-      if (tryHandleLastBubbleContact("bottom_out")) return;
+    if (player.x < -180 || player.x > W + 180) {
+      if (tryUseSecondChance("side_out")) return;
       loseLife();
       return;
     }

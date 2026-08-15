@@ -97,6 +97,13 @@
   const AIM_MAX_ROLL_SPEED = 240;
   const AIM_SUPPORT_TOLERANCE = 4;
   const QUICK_RECOVERY_DAMPING_REFERENCE_FPS = 60;
+  const STICKY_SLIME_DAMPING_REFERENCE_FPS = 60;
+  const SECOND_CHANCE_RESCUE_REASONS = Object.freeze([
+    "spike_platform",
+    "ghost",
+    "fast_ghost",
+    "side_out"
+  ]);
   const STUCK_AIM_POSITION_EPSILON = 4;
   const STUCK_AIM_CONTACT_NORMAL_DOT_LIMIT = 0.95;
   const STUCK_AIM_DELAY = 0.5;
@@ -112,6 +119,9 @@
   let quickRecoveryTimer = 0;
   let quickRecoveryElapsed = 0;
   let quickRecoverySupportSource = null;
+  let secondChanceUsedThisRun = false;
+  let secondChanceSafeAnchor = null;
+  let lastSecondChanceRescueReason = "none";
   let stuckAimStillTime = 0;
   let stuckAimReferenceX = player.x;
   let stuckAimReferenceY = player.y;
@@ -153,6 +163,90 @@
     return Boolean(getValidAimSupportPlatform());
   }
 
+  function isNormalSafeStaticPlatform(platform) {
+    return Boolean(platform) &&
+      !platform.moving &&
+      !platform.conveyor &&
+      !platform.fallingPlatform &&
+      !platform.fade &&
+      !platform.ice &&
+      !platform.spikePlatform &&
+      !platform.lastBubbleSupport;
+  }
+
+  function isPlayerTouchingBouncePad() {
+    return currentLevel().pads.some(pad =>
+      intersectsRect(player.x, player.y, player.r, pad)
+    );
+  }
+
+  function getValidNormalSafeSupportPlatform() {
+    if (!player.onGround || isPlayerTouchingBouncePad()) return null;
+    return getPlatforms().find(platform =>
+      isNormalSafeStaticPlatform(platform) &&
+      isValidAimSupportPlatform(platform)
+    ) || null;
+  }
+
+  function isStickySlimeDampingActive() {
+    const horizontalSpeed = Math.abs(player.vx);
+    return state === "playing" &&
+      !aiming &&
+      window.SlimePerks?.isActiveForRun?.("sticky_slime") === true &&
+      !isLastBubbleProtectionActive() &&
+      horizontalSpeed > 0.5 &&
+      horizontalSpeed <= window.SlimePerks.balance.STICKY_SLIME_MAX_GROUND_SPEED &&
+      Boolean(getValidNormalSafeSupportPlatform());
+  }
+
+  function applyStickySlimeGroundDamping(dt) {
+    if (!isStickySlimeDampingActive()) return false;
+    player.vx *= Math.pow(
+      window.SlimePerks.balance.STICKY_SLIME_GROUND_DAMPING,
+      Math.max(0, dt) * STICKY_SLIME_DAMPING_REFERENCE_FPS
+    );
+    return true;
+  }
+
+  function updateSecondChanceSafeAnchor() {
+    const support = getValidNormalSafeSupportPlatform();
+    if (!support) return false;
+    const edgeMargin = player.r + 12;
+    const safeLeft = support.x + edgeMargin;
+    const safeRight = support.x + support.w - edgeMargin;
+    const anchorX = safeLeft <= safeRight
+      ? clamp(player.x, safeLeft, safeRight)
+      : support.x + support.w / 2;
+    secondChanceSafeAnchor = {
+      x: anchorX,
+      y: support.y - player.r,
+      platformSource: getPlatformSource(support)
+    };
+    return true;
+  }
+
+  function resetSecondChanceAnchorForNewLevel() {
+    secondChanceSafeAnchor = null;
+  }
+
+  function getValidatedSecondChanceAnchor() {
+    if (!secondChanceSafeAnchor) return null;
+    const support = getPlatforms().find(platform =>
+      isNormalSafeStaticPlatform(platform) &&
+      getPlatformSource(platform) === secondChanceSafeAnchor.platformSource
+    );
+    if (!support) return null;
+    const edgeMargin = player.r + 12;
+    const safeLeft = support.x + edgeMargin;
+    const safeRight = support.x + support.w - edgeMargin;
+    return {
+      x: safeLeft <= safeRight
+        ? clamp(secondChanceSafeAnchor.x, safeLeft, safeRight)
+        : support.x + support.w / 2,
+      y: support.y - player.r
+    };
+  }
+
   function getQuickRecoverySupportPlatform() {
     if (!quickRecoverySupportSource) return null;
     return getPlatforms().find(platform =>
@@ -184,6 +278,9 @@
     quickRecoveryTimer = 0;
     quickRecoveryElapsed = 0;
     quickRecoverySupportSource = null;
+    secondChanceUsedThisRun = false;
+    secondChanceSafeAnchor = null;
+    lastSecondChanceRescueReason = "none";
   }
 
   function resetFlightPerkState() {
@@ -433,6 +530,59 @@
 
   function getLastBubbleProtectionTimeRemaining() {
     return lastBubbleProtectionTimer;
+  }
+
+  function tryUseSecondChance(reason) {
+    if (
+      !SECOND_CHANCE_RESCUE_REASONS.includes(reason) ||
+      isTutorialStage() ||
+      secondChanceUsedThisRun ||
+      window.SlimePerks?.isActiveForRun?.("safe_return") !== true
+    ) return false;
+
+    const level = currentLevel();
+    const anchor = getValidatedSecondChanceAnchor() || {
+      x: level.spawn.x,
+      y: level.spawn.y
+    };
+    secondChanceUsedThisRun = true;
+    lastSecondChanceRescueReason = reason;
+    stopAiming();
+    activeTouchId = null;
+    stuckAimFallbackActive = false;
+    resetStuckAimTimer();
+    resetFlightPerkState();
+    drag.x = 0;
+    drag.y = 0;
+    player.x = anchor.x;
+    player.y = anchor.y;
+    player.vx = 0;
+    player.vy = 0;
+    player.onGround = false;
+    player.onIce = false;
+    player.conveyorSpeed = 0;
+    player.squish = 0.86;
+    player.trail = [];
+    tone(690, 0.12, "sine", 0.045, 980);
+    spawnBurst(player.x, player.y, 20, "#fff0a8");
+    return true;
+  }
+
+  function isSecondChanceAvailableThisRun() {
+    return !secondChanceUsedThisRun;
+  }
+
+  function isSecondChanceUsedThisRun() {
+    return secondChanceUsedThisRun;
+  }
+
+  function getSecondChanceSafeAnchor() {
+    const anchor = getValidatedSecondChanceAnchor();
+    return anchor ? {x: anchor.x, y: anchor.y} : null;
+  }
+
+  function getLastSecondChanceRescueReason() {
+    return lastSecondChanceRescueReason;
   }
 
   function getVerticalMoverY(mover) {
