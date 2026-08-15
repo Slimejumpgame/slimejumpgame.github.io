@@ -167,7 +167,7 @@
   }
 
   function carryAimingPlayerWithMovingPlatform(dt) {
-    if (!aiming || dt <= 0) return;
+    if (!aiming || dt <= 0) return false;
 
     const level = currentLevel();
     const previousTime = worldTime - dt;
@@ -202,8 +202,10 @@
       // nur die Plattform selbst den Slime bewegt.
       pointer.x += shiftX;
       pointer.y += shiftY;
-      return;
+      return true;
     }
+
+    return false;
   }
 
   function carryGroundedPlayerWithHorizontalMovingPlatform(dt) {

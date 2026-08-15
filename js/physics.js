@@ -112,9 +112,10 @@
     const wasOnGround = player.onGround;
     worldTime += dt;
     rememberPlayerHorizontalDirection();
+    let aimingCarriedByMovingPlatform = false;
     let aimingCarriedByConveyor = false;
     if (!hasActiveStuckAimPositionLock()) {
-      carryAimingPlayerWithMovingPlatform(dt);
+      aimingCarriedByMovingPlatform = carryAimingPlayerWithMovingPlatform(dt);
       aimingCarriedByConveyor = carryAimingPlayerWithConveyor(dt);
     }
     updateFallingPlatforms(dt);
@@ -123,7 +124,18 @@
 
     // Bleibt nur so lange eingefroren, wie die Plattform ihn wirklich trägt.
     // Moving Platforms und Conveyors wurden direkt davor bereits mitgeführt.
-    if (aiming && !stuckAimFallbackActive && !hasValidAimSupport()) stopAiming();
+    if (
+      aiming &&
+      (
+        (!stuckAimFallbackActive && !hasValidAimSupport()) ||
+        (
+          hasActiveVerticalMoverStuckAimFallback() &&
+          !aimingCarriedByMovingPlatform
+        )
+      )
+    ) {
+      stopAiming();
+    }
 
     if (aiming) {
       player.vx *= Math.pow(0.04, dt);

@@ -112,6 +112,7 @@
   let stuckAimReferenceFallingPlatform = null;
   let stuckAimFallbackActive = false;
   let stuckAimFallbackFallingPlatform = null;
+  let stuckAimFallbackVerticalMover = null;
   let stuckAimLockedX = player.x;
   let stuckAimLockedY = player.y;
 
@@ -468,7 +469,15 @@
   }
 
   function hasActiveStuckAimPositionLock() {
-    return aiming && stuckAimFallbackActive;
+    return aiming &&
+      stuckAimFallbackActive &&
+      !stuckAimFallbackVerticalMover;
+  }
+
+  function hasActiveVerticalMoverStuckAimFallback() {
+    return aiming &&
+      stuckAimFallbackActive &&
+      Boolean(stuckAimFallbackVerticalMover);
   }
 
   function restoreStuckAimPosition() {
@@ -487,6 +496,7 @@
     aimInputMode = "direct";
     stuckAimFallbackActive = false;
     stuckAimFallbackFallingPlatform = null;
+    stuckAimFallbackVerticalMover = null;
     resetStuckAimTimer();
     canvas.classList.remove("aiming");
   }
@@ -518,6 +528,11 @@
     stuckAimFallbackActive = useStuckFallback;
     stuckAimFallbackFallingPlatform = useStuckFallback
       ? stuckAimReferenceFallingPlatform
+      : null;
+    stuckAimFallbackVerticalMover = useStuckFallback &&
+      !stuckAimReferenceConveyor &&
+      !stuckAimReferenceFallingPlatform
+      ? stuckAimReferenceMover
       : null;
     stuckAimLockedX = player.x;
     stuckAimLockedY = player.y;
