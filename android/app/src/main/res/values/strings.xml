@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Slime Jumper</string>
-    <string name="title_activity_main">Slime Jumper</string>
+    <string name="app_name">Slime Soar</string>
+    <string name="title_activity_main">Slime Soar</string>
     <string name="package_name">com.slimejumpgame.app</string>
     <string name="custom_url_scheme">com.slimejumpgame.app</string>
 </resources>
