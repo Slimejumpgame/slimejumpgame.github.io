@@ -1297,18 +1297,53 @@
     requestAnimationFrame(frame);
   }
 
+  async function requestFullscreenLandscape() {
+    getAudio();
+
+    try {
+      await document.documentElement.requestFullscreen?.();
+    } catch (_) {}
+
+    if (document.fullscreenElement && screen.orientation?.lock) {
+      try {
+        const orientationLock = screen.orientation.lock("landscape");
+        orientationLock?.catch?.(() => {});
+      } catch (_) {}
+    }
+  }
+
   async function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      await requestFullscreenLandscape();
+      return;
+    }
+
     getAudio();
     try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen?.();
-        if (screen.orientation?.lock) {
-          try { await screen.orientation.lock("landscape"); } catch (_) {}
-        }
-      } else {
-        await document.exitFullscreen?.();
-      }
+      await document.exitFullscreen?.();
     } catch (_) {}
+  }
+
+  function initializeMobileEntryScreen() {
+    if (!ui.entryScreen || !ui.entryFullscreenBtn) return;
+
+    const hasCoarsePointer = window.matchMedia?.("(hover: none) and (pointer: coarse)").matches;
+    const hasPhoneSizedViewport = Math.min(window.innerWidth, window.innerHeight) <= 700;
+    const shouldShowEntry =
+      !isNativeCapacitorRuntime() &&
+      hasCoarsePointer &&
+      hasPhoneSizedViewport;
+
+    ui.menu.classList.toggle("mobileEntryActive", shouldShowEntry);
+    ui.entryScreen.setAttribute("aria-hidden", String(!shouldShowEntry));
+    if (shouldShowEntry) renderEntryMascot();
+  }
+
+  async function enterFromMobileEntry() {
+    await requestFullscreenLandscape();
+    ui.menu.classList.remove("mobileEntryActive");
+    ui.entryScreen.setAttribute("aria-hidden", "true");
+    showMenuScreen("main");
   }
 
   function setMenuButtonArtwork(button, screenElement, geometry) {
@@ -1464,6 +1499,7 @@
   ui.restartBtn.addEventListener("click", returnToMenuWithPendingScore);
   ui.messageRestartBtn.addEventListener("click", returnToMenuWithPendingScore);
   ui.fullscreenBtn.addEventListener("click", toggleFullscreen);
+  ui.entryFullscreenBtn?.addEventListener("click", enterFromMobileEntry);
   ui.pauseBtn.addEventListener("click", () => {
     if (state === "playing") pauseGame();
     else if (state === "gamePaused") resumeGame();
@@ -1521,6 +1557,7 @@
   updateAudioButtons();
   renderHowToAdvancedIcons();
   prepareMenuButtonArtwork();
+  initializeMobileEntryScreen();
   updateHighScores();
   showMenuScreen("main");
   initializeDevMode();

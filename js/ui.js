@@ -194,6 +194,22 @@
     );
   }
 
+  function renderEntryMascot() {
+    if (!ui.entryMascot) return;
+    drawSlimeCharacterPreview(
+      ui.entryMascot,
+      "none",
+      "none",
+      "green",
+      {
+        centerY: 86,
+        scale: 2,
+        prestigeAura: "none",
+        prestigeTrail: "none"
+      }
+    );
+  }
+
   function getPersonalBestScore() {
     try {
       return Math.max(

@@ -1631,6 +1631,102 @@ p {
   color: #72e823;
 }
 
+/* Mobile web entry reuses the main menu stage, logo, mascot and button language. */
+.entryScreen {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: none;
+  min-width: 0;
+  min-height: 0;
+  padding:
+    max(20px, env(safe-area-inset-top))
+    max(18px, env(safe-area-inset-right))
+    max(20px, env(safe-area-inset-bottom))
+    max(18px, env(safe-area-inset-left));
+}
+
+.frontShell.mobileEntryActive .menuStage {
+  width: 100vw;
+  height: 100dvh;
+  aspect-ratio: auto;
+}
+
+.frontShell.mobileEntryActive .entryScreen {
+  display: flex;
+}
+
+.frontShell.mobileEntryActive .entryScreen ~ .menuScreen {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.entryScreenContent {
+  display: flex;
+  width: min(100%, 520px);
+  min-height: 0;
+  margin: auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(12px, 2.6dvh, 24px);
+  text-align: center;
+}
+
+.entryHero {
+  flex: 0 0 auto;
+}
+
+.entrySubtitle {
+  max-width: 100%;
+  font-size: clamp(10px, min(3vw, 2.2dvh), 15px);
+  letter-spacing: 0.12em;
+  line-height: 1.35;
+}
+
+.entryTitle {
+  font-size: clamp(42px, min(13vw, 12dvh), 76px);
+  white-space: nowrap;
+}
+
+.menuMascot.entryMascot {
+  width: clamp(130px, min(44vw, 35dvh), 190px);
+  height: auto;
+  margin: 0;
+  transform: rotate(-2deg);
+}
+
+.entryFullscreenBtn {
+  width: min(78vw, 320px);
+  min-height: clamp(54px, 8dvh, 68px);
+  padding-inline: clamp(24px, 8vw, 54px);
+  font-size: clamp(18px, min(5vw, 3.4dvh), 24px);
+  letter-spacing: 0.08em;
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .entryScreen {
+    padding-top: max(10px, env(safe-area-inset-top));
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+
+  .entryScreenContent {
+    gap: clamp(7px, 2dvh, 12px);
+  }
+
+  .entryTitle {
+    font-size: clamp(38px, min(9vw, 13dvh), 62px);
+  }
+
+  .menuMascot.entryMascot {
+    width: clamp(100px, 33dvh, 145px);
+  }
+
+  .entryFullscreenBtn {
+    min-height: clamp(44px, 13dvh, 56px);
+  }
+}
+
 .mainMenuGrid {
   position: relative;
   z-index: 2;
