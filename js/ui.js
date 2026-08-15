@@ -10,6 +10,8 @@
   let prestigeWardrobeChoiceCategory = null;
   let prestigeWardrobeChoiceCandidate = null;
   let prestigeWardrobeCategory = "frame";
+  const PERK_POST_PURCHASE_GUARD_MS = 450;
+  let perkPurchaseGuardUntil = 0;
 
   function isDevShopTestActive() {
     return DEV_MODE && Boolean(window.SlimeDevShopTest?.isActive?.());
@@ -1562,10 +1564,137 @@
     }
   }
 
+  function createPerkIcon(iconDefinition) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", iconDefinition.viewBox);
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    svg.classList.add("perkCardIconSvg");
+    iconDefinition.paths.forEach(pathDefinition => {
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", pathDefinition.d);
+      if (pathDefinition.accent) path.classList.add("perkIconAccent");
+      svg.appendChild(path);
+    });
+    return svg;
+  }
+
+  function canChangePerkSelection() {
+    return state === "menu" &&
+      !ui.menu.classList.contains("hidden") &&
+      !ui.perksScreen.classList.contains("hidden") &&
+      window.SlimeRunRecovery?.hasStoredRecord?.() !== true;
+  }
+
+  function renderPerksScreen() {
+    const perks = window.SlimePerks;
+    if (!perks || !ui.perkGrid || !ui.activePerkCount) return;
+
+    const unlocked = new Set(perks.getUnlockedPerkIds());
+    const selected = new Set(perks.getSelectedPerkIds());
+    ui.activePerkCount.textContent = `${selected.size} / ${perks.maxSelected}`;
+    ui.perkGrid.replaceChildren();
+
+    perks.definitions.forEach(perk => {
+      const isUnlocked = unlocked.has(perk.id);
+      const isSelected = selected.has(perk.id);
+      const unlockCost = perks.balance.PERK_UNLOCK_COST;
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "perkCard";
+      card.dataset.perkId = perk.id;
+      card.classList.toggle("locked", !isUnlocked);
+      card.classList.toggle("active", isSelected);
+      card.classList.toggle("comingSoon", !perk.implemented);
+      card.classList.toggle("purchasable", perk.implemented && !isUnlocked);
+      card.disabled = !perk.implemented;
+      card.setAttribute("aria-pressed", String(isSelected));
+      card.setAttribute(
+        "aria-label",
+        `${perk.name}: ${!perk.implemented ? "Coming Soon" : isSelected ? "Active" : isUnlocked ? "Unlocked" : `Unlock für ${unlockCost} Sterne`}`
+      );
+
+      const icon = document.createElement("span");
+      icon.className = "perkCardIcon";
+      icon.appendChild(createPerkIcon(perk.icon));
+
+      const content = document.createElement("span");
+      content.className = "perkCardContent";
+      const name = document.createElement("strong");
+      name.textContent = perk.name;
+      const description = document.createElement("span");
+      description.className = "perkCardDescription";
+      description.textContent = perk.description;
+      const statuses = document.createElement("span");
+      statuses.className = "perkCardStatuses";
+
+      const availability = document.createElement("span");
+      availability.className = "perkStatus";
+      availability.textContent = isUnlocked
+        ? "UNLOCKED"
+        : perk.implemented
+          ? `UNLOCK · ${unlockCost} ★`
+          : "LOCKED";
+      statuses.appendChild(availability);
+      if (isSelected) {
+        const active = document.createElement("span");
+        active.className = "perkStatus perkStatus--active";
+        active.textContent = "ACTIVE";
+        statuses.appendChild(active);
+      }
+      if (!perk.implemented) {
+        const comingSoon = document.createElement("span");
+        comingSoon.className = "perkStatus perkStatus--soon";
+        comingSoon.textContent = "COMING SOON";
+        statuses.appendChild(comingSoon);
+      }
+
+      content.append(name, description, statuses);
+      card.append(icon, content);
+      card.addEventListener("click", () => {
+        if (!canChangePerkSelection()) return;
+        if (performance.now() < perkPurchaseGuardUntil) return;
+        if (!isUnlocked) {
+          const purchase = perks.purchasePerk(perk.id);
+          if (!purchase.ok) {
+            if (purchase.reason === "insufficient-stars") {
+              showGameToast(`Nicht genug Sterne · ${unlockCost} ★ benötigt.`);
+            } else if (purchase.reason === "dev-mode") {
+              showGameToast("Für einen echten Kauf DEV MODE ausschalten.");
+            } else if (purchase.reason !== "purchase-in-progress") {
+              showGameToast("Perk konnte nicht freigeschaltet werden.");
+            }
+            return;
+          }
+
+          perkPurchaseGuardUntil = performance.now() + PERK_POST_PURCHASE_GUARD_MS;
+          showGameToast(`⭐ ${perk.name} für ${unlockCost} Sterne freigeschaltet!`);
+          renderMainMenuStats();
+          renderPerksScreen();
+          window.dispatchEvent(new CustomEvent("slimeperkschange"));
+          return;
+        }
+        const result = perks.toggleSelectedPerk(perk.id);
+        if (!result.ok) {
+          if (result.reason === "max-selected") {
+            showGameToast(`Maximal ${perks.maxSelected} Perks gleichzeitig aktiv.`);
+          } else if (result.reason === "storage-error") {
+            showGameToast("Perk-Auswahl konnte nicht gespeichert werden.");
+          }
+          return;
+        }
+        renderPerksScreen();
+        window.dispatchEvent(new CustomEvent("slimeperkschange"));
+      });
+      ui.perkGrid.appendChild(card);
+    });
+  }
+
   function showMenuScreen(screenName = "main") {
     ui.mainMenuScreen.classList.toggle("hidden", screenName !== "main");
     ui.wardrobeScreen.classList.toggle("hidden", screenName !== "wardrobe");
     ui.achievementScreen.classList.toggle("hidden", screenName !== "achievements");
+    ui.perksScreen.classList.toggle("hidden", screenName !== "perks");
     ui.howToScreen.classList.toggle("hidden", screenName !== "howto");
     ui.highscoreScreen.classList.toggle("hidden", screenName !== "highscores");
     if (screenName === "main") {
@@ -1579,6 +1708,7 @@
     if (screenName === "achievements") {
       window.SlimeAchievements?.renderMenu?.();
     }
+    if (screenName === "perks") renderPerksScreen();
     if (screenName === "howto") {
       const scrollArea = ui.howToScreen.querySelector(".howToScrollArea");
       initializeHowToScrollbar();

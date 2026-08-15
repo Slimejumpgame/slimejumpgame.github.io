@@ -54,7 +54,9 @@
     slimejumperPendingWardrobeUnlockChoices: "0",
     slimejumperAchievements: JSON.stringify([]),
     slimejumperAchievementProgress: JSON.stringify(ACHIEVEMENT_PROGRESS_DEFAULT),
-    slimejumperSelectedAchievementBadges: JSON.stringify([])
+    slimejumperSelectedAchievementBadges: JSON.stringify([]),
+    slimejumperUnlockedPerks: JSON.stringify([]),
+    slimejumperSelectedPerks: JSON.stringify([])
     // Future cycle-bound perk and mastery keys belong in this explicit allowlist.
   });
 

@@ -107,6 +107,28 @@
     return (x - cx) ** 2 + (y - cy) ** 2 < r * r;
   }
 
+  function pullStarTowardPlayer(star, dt, pullRadius, pullSpeed) {
+    if (
+      !star ||
+      !Number.isFinite(star.x) ||
+      !Number.isFinite(star.y)
+    ) return false;
+
+    const dx = player.x - star.x;
+    const dy = player.y - star.y;
+    const distance = Math.hypot(dx, dy);
+    if (!Number.isFinite(distance) || distance <= 0 || distance > pullRadius) {
+      return false;
+    }
+
+    const maximumStep = Math.max(0, pullSpeed) * Math.max(0, dt);
+    const step = Math.min(distance, maximumStep);
+    if (step <= 0) return false;
+    star.x += dx / distance * step;
+    star.y += dy / distance * step;
+    return true;
+  }
+
   function update(dt) {
     if (state !== "playing") return;
     const wasOnGround = player.onGround;
@@ -252,8 +274,21 @@
       }
     }
 
+    const starMagnetActive = window.SlimePerks?.isActiveForRun?.("star_magnet") === true;
+    const starCollectionRadius = player.r + 25;
     level.stars.forEach((s, i) => {
-      if (!collected[i] && Math.hypot(player.x - s.x, player.y - s.y) < player.r + 25) {
+      if (collected[i] || !s || !Number.isFinite(s.x) || !Number.isFinite(s.y)) return;
+      if (starMagnetActive) {
+        pullStarTowardPlayer(
+          s,
+          dt,
+          window.SlimePerks.balance.STAR_MAGNET_PULL_RADIUS,
+          window.SlimePerks.balance.STAR_MAGNET_PULL_SPEED
+        );
+      }
+      if (
+        Math.hypot(player.x - s.x, player.y - s.y) < starCollectionRadius
+      ) {
         collected[i] = true;
         if (tracksRunProgress) {
           registerRunStarCollected();

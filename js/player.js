@@ -505,7 +505,10 @@
     const dragDistance = Math.hypot(drag.x, drag.y);
     const dragRatio = clamp(dragDistance / MAX_DRAG_DISTANCE, 0, 1);
     const forceRatio = dragRatio * dragRatio * (3 - 2 * dragRatio);
-    const launchSpeed = MAX_LAUNCH_SPEED * forceRatio;
+    const powerShotMultiplier = window.SlimePerks?.isActiveForRun?.("power_shot")
+      ? window.SlimePerks.balance.POWER_SHOT_MULTIPLIER
+      : 1;
+    const launchSpeed = MAX_LAUNCH_SPEED * powerShotMultiplier * forceRatio;
     const directionScale = dragDistance > 0 ? launchSpeed / dragDistance : 0;
 
     return {

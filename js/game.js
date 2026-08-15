@@ -244,6 +244,7 @@
 
     captureCheckpointLevelAtRunStart();
     initializeRunScoreState(levelNumber, {fromCheckpoint});
+    window.SlimePerks?.captureRunPerkSnapshot?.();
     enterRunStage();
     hideNicknameEntry();
     hideGameToast();
@@ -252,7 +253,10 @@
     levelIndex = levelNumber - 1;
     setMusicForLevel(levelIndex + 1);
     if (!musicMuted) startBackgroundMusic();
-    lives = 3;
+    const extraLifeBonus = window.SlimePerks?.isActiveForRun?.("extra_life")
+      ? window.SlimePerks.balance.EXTRA_LIFE_BONUS
+      : 0;
+    lives = Math.min(MAX_LIVES, 3 + extraLifeBonus);
     perfectLevelStreak = 0;
     levelHadDeath = false;
     score = 0;
@@ -267,6 +271,7 @@
     ui.message.classList.add("hidden");
     resetLevel(true);
     window.SlimeAchievements?.onRunStart?.(getAchievementLevelContext());
+    renderDevPerkInspector();
     return true;
   }
 
@@ -275,6 +280,7 @@
     hideNicknameEntry();
     hideGameToast();
     initializeRunScoreState(1);
+    window.SlimePerks?.clearRunPerkSnapshot?.();
     getAudio();
     enterTutorialStage(0);
     state = "playing";
@@ -581,6 +587,45 @@
     ].join("\n");
   }
 
+  function renderDevPerkInspector() {
+    if (!DEV_MODE || !ui.devPerkInspector) return;
+    const perks = window.SlimePerks;
+    if (!perks) return;
+    const storedUnlocked = perks.getStoredUnlockedPerkIds();
+    const storedSelected = perks.getStoredSelectedPerkIds();
+    const selected = perks.getSelectedPerkIds();
+    const active = perks.getActiveRunPerkIds();
+    const extraLifeActive = active.includes("extra_life");
+    const powerShotActive = active.includes("power_shot");
+    const starMagnetActive = active.includes("star_magnet");
+    const runIsActive = !isTutorialStage() &&
+      ["playing", "paused", "gamePaused"].includes(state);
+    const expectedExtraLifeBonus = (runIsActive
+      ? extraLifeActive
+      : selected.includes("extra_life"))
+      ? perks.balance.EXTRA_LIFE_BONUS
+      : 0;
+
+    ui.devPerkInspector.textContent = [
+      `Stored Unlocked Perks: ${JSON.stringify(storedUnlocked)}`,
+      `Stored Selected Perks: ${JSON.stringify(storedSelected)}`,
+      `Current Selected Perks: ${JSON.stringify(selected)}`,
+      `Active Run Perks: ${JSON.stringify(active)}`,
+      `Selected Count: ${selected.length} / ${perks.maxSelected}`,
+      `Current Run Lives: ${runIsActive ? lives : "-"}`,
+      "Base Run Lives: 3",
+      `Extra Life Bonus: +${expectedExtraLifeBonus}`,
+      `Expected Run Start Lives: ${Math.min(MAX_LIVES, 3 + expectedExtraLifeBonus)}`,
+      "",
+      `Extra Life: ${extraLifeActive ? "active" : "inactive"}`,
+      `Power Shot: ${powerShotActive ? "active" : "inactive"}`,
+      `multiplier: x${(powerShotActive ? perks.balance.POWER_SHOT_MULTIPLIER : 1).toFixed(2)}`,
+      `Star Magnet: ${starMagnetActive ? "active" : "inactive"}`,
+      `pull radius: ${starMagnetActive ? perks.balance.STAR_MAGNET_PULL_RADIUS : 0}`,
+      `pull speed: ${starMagnetActive ? perks.balance.STAR_MAGNET_PULL_SPEED : 0}`
+    ].join("\n");
+  }
+
   function initializeDevMode() {
     if (
       !IS_LOCALHOST_TEST_ENVIRONMENT ||
@@ -596,6 +641,7 @@
     if (ui.devPrestigeRewardInspector) {
       ui.devPrestigeRewardInspector.hidden = true;
     }
+    if (ui.devPerkInspector) ui.devPerkInspector.hidden = true;
     ui.devModeToggleBtn.textContent = `DEV MODE: ${DEV_MODE ? "ON" : "OFF"}`;
     ui.devModeToggleBtn.setAttribute("aria-pressed", String(DEV_MODE));
     ui.devModeToggleBtn.addEventListener("click", async () => {
@@ -653,6 +699,22 @@
       ui.devPrestigeRewardInspector.hidden = !ui.devPrestigeRewardInspector.hidden;
       renderDevPrestigeRewardInspector();
     });
+    ui.devUnlockPerksBtn.addEventListener("click", () => {
+      const enabled = !window.SlimePerks.isDevUnlockOverrideActive();
+      window.SlimePerks.setDevUnlockOverride(enabled);
+      ui.devUnlockPerksBtn.setAttribute("aria-pressed", String(enabled));
+      ui.devUnlockPerksBtn.textContent = enabled
+        ? "DEV PERKS UNLOCKED"
+        : "DEV UNLOCK PERKS";
+      renderPerksScreen();
+      renderDevPerkInspector();
+    });
+    ui.devPerkInspectorBtn.addEventListener("click", () => {
+      ui.devPerkInspector.hidden = !ui.devPerkInspector.hidden;
+      renderDevPerkInspector();
+    });
+    window.addEventListener("slimeperkschange", renderDevPerkInspector);
+    renderDevPerkInspector();
 
     document.addEventListener("keydown", event => {
       if (event.key !== "PageUp" && event.key !== "PageDown") return;
@@ -688,6 +750,7 @@
   async function returnToMenu() {
     if (pendingGameOverScore && !(await commitPendingHighScore())) return false;
     enterRunStage();
+    window.SlimePerks?.clearRunPerkSnapshot?.();
     state = "menu";
     initializeRunScoreState(1);
     setMusicMode("menu");
@@ -707,6 +770,7 @@
     showMenuScreen("main");
     updateHighScores();
     ui.menu.classList.remove("hidden");
+    renderDevPerkInspector();
     return true;
   }
 
@@ -714,11 +778,13 @@
     ui.level.textContent = isTutorialStage()
       ? `Tutorial ${tutorialStageIndex + 1}`
       : `Level ${levelIndex + 1}`;
-    ui.lives.textContent = `❤️ ${lives}`;
+    ui.lives.textContent = "❤️".repeat(Math.max(0, Math.floor(lives)));
+    ui.lives.setAttribute("aria-label", `${lives} Leben`);
     ui.stars.textContent = `⭐ ${collected.filter(Boolean).length}/${currentLevel().stars.length}`;
     ui.shots.textContent = `Schüsse: ${shots}`;
     ui.score.textContent = `Punkte: ${score}`;
     updateCheckpointBonusHUD();
+    renderDevPerkInspector();
   }
 
   function registerRunStarCollected() {
@@ -740,6 +806,7 @@
     if (action !== "gameover") hideNicknameEntry();
     if (action !== "gameover") hideGameOverXPProgress();
     state = action === "gameover" ? "gameover" : "paused";
+    renderDevPerkInspector();
     nextAction = action;
     ui.messageTitle.textContent = title;
     ui.messageText.textContent = text;
@@ -1081,7 +1148,7 @@
   function prepareMenuButtonArtwork() {
     setMenuButtonArtwork(ui.startBtn, ui.mainMenuScreen,
       {left: 34.57, top: 56.75, width: 32.18, height: 16.58});
-    setMenuButtonArtwork(ui.howToBtn, ui.mainMenuScreen,
+    setMenuButtonArtwork(ui.perksBtn, ui.mainMenuScreen,
       {left: 34.27, top: 72.69, width: 32.36, height: 13.92});
     setMenuButtonArtwork(ui.highScoresBtn, ui.mainMenuScreen,
       {left: 34.15, top: 86.08, width: 32.18, height: 13.39});
@@ -1106,12 +1173,12 @@
   }
 
   for (const button of [
-    ui.startBtn, ui.achievementsBtn, ui.wardrobeBtn, ui.howToBtn, ui.highScoresBtn,
+    ui.startBtn, ui.achievementsBtn, ui.wardrobeBtn, ui.perksBtn, ui.highScoresBtn,
     ui.achievementsBackBtn,
     ui.wardrobeBackBtn, ui.wardrobeColorMenuBtn, ui.wardrobeCosmeticsMenuBtn,
     ui.wardrobeBeardsMenuBtn, ui.wardrobePrestigeMenuBtn, ui.wardrobeColorBackBtn,
     ui.wardrobeCosmeticsBackBtn, ui.wardrobeBeardsBackBtn, ui.wardrobePrestigeBackBtn,
-    ui.howToBackBtn, ui.highScoresBackBtn
+    ui.perksBackBtn, ui.howToBackBtn, ui.highScoresBackBtn
   ]) {
     button.addEventListener("pointerdown", () => button.classList.add("menuPressed"));
     button.addEventListener("pointerup", () => button.classList.remove("menuPressed"));
@@ -1152,7 +1219,7 @@
   ui.prestigeWardrobeChoiceConfirmBtn.addEventListener("click", confirmPrestigeWardrobeChoice);
   ui.achievementsBtn.addEventListener("click", () => runMenuButtonAction(ui.achievementsBtn, () => showMenuScreen("achievements")));
   ui.wardrobeBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeBtn, () => showMenuScreen("wardrobe")));
-  ui.howToBtn.addEventListener("click", () => runMenuButtonAction(ui.howToBtn, () => showMenuScreen("howto")));
+  ui.perksBtn.addEventListener("click", () => runMenuButtonAction(ui.perksBtn, () => showMenuScreen("perks")));
   ui.highScoresBtn.addEventListener("click", () => runMenuButtonAction(ui.highScoresBtn, () => showMenuScreen("highscores")));
   ui.achievementsBackBtn.addEventListener("click", () => runMenuButtonAction(ui.achievementsBackBtn, () => showMenuScreen("main")));
   ui.wardrobeBackBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeBackBtn, () => showMenuScreen("main")));
@@ -1171,6 +1238,7 @@
     });
   });
   ui.howToBackBtn.addEventListener("click", () => runMenuButtonAction(ui.howToBackBtn, () => showMenuScreen("main")));
+  ui.perksBackBtn.addEventListener("click", () => runMenuButtonAction(ui.perksBackBtn, () => showMenuScreen("main")));
   ui.highScoresBackBtn.addEventListener("click", () => runMenuButtonAction(ui.highScoresBackBtn, () => showMenuScreen("main")));
   ui.nicknameInput.addEventListener("input", () => {
     const cleaned = ui.nicknameInput.value

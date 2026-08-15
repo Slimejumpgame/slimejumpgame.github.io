@@ -1,0 +1,311 @@
+(() => {
+  "use strict";
+
+  const UNLOCKED_PERKS_STORAGE_KEY = "slimejumperUnlockedPerks";
+  const SELECTED_PERKS_STORAGE_KEY = "slimejumperSelectedPerks";
+  const MAX_SELECTED_PERKS = 3;
+
+  const PERK_BALANCE = Object.freeze({
+    PERK_UNLOCK_COST: 500,
+    EXTRA_LIFE_BONUS: 1,
+    POWER_SHOT_MULTIPLIER: 1.10,
+    STAR_MAGNET_PULL_RADIUS: 200,
+    STAR_MAGNET_PULL_SPEED: 500
+  });
+
+  function createIcon(paths) {
+    return Object.freeze({
+      viewBox: "0 0 24 24",
+      paths: Object.freeze(paths.map(path => Object.freeze({...path})))
+    });
+  }
+
+  const PERK_DEFINITIONS = Object.freeze([
+    Object.freeze({
+      id: "air_hop",
+      name: "AIR HOP",
+      description: "Ein zusätzlicher gerichteter Impuls während einer Flugphase.",
+      icon: createIcon([{d: "M5 15 12 4l7 11-7-4Z"}, {d: "M7 20h10", accent: true}]),
+      implemented: false,
+      category: "mobility"
+    }),
+    Object.freeze({
+      id: "last_bubble",
+      name: "LAST BUBBLE",
+      description: "Rettet einmal pro Run vor der unteren Death-Zone.",
+      icon: createIcon([{d: "M12 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16Z"}, {d: "M8 8c1-2 3-3 5-3", accent: true}]),
+      implemented: false,
+      category: "survival"
+    }),
+    Object.freeze({
+      id: "extra_life",
+      name: "EXTRA LIFE",
+      description: "Startet jeden Run mit einem zusätzlichen Leben.",
+      icon: createIcon([{d: "M12 20S4 15 4 9a4 4 0 0 1 7-3 4 4 0 0 1 7 3c0 6-6 11-6 11Z"}, {d: "M12 8v6M9 11h6", accent: true}]),
+      implemented: true,
+      category: "survival"
+    }),
+    Object.freeze({
+      id: "mud_shoes",
+      name: "SCHLAMMSCHUHE",
+      description: "Verringert Rollen, Rutschen und Nachfedern nach Landungen.",
+      icon: createIcon([{d: "M4 15h7l2 3h7v3H4Z"}, {d: "M7 12v3m3-3v3", accent: true}]),
+      implemented: false,
+      category: "control"
+    }),
+    Object.freeze({
+      id: "power_shot",
+      name: "POWER SHOT",
+      description: "Erhöht die maximale Kraft normaler Slingshot-Schüsse.",
+      icon: createIcon([{d: "m14 2-8 11h6l-2 9 8-12h-6Z"}]),
+      implemented: true,
+      category: "power"
+    }),
+    Object.freeze({
+      id: "quick_recovery",
+      name: "QUICK RECOVERY",
+      description: "Macht den Slime nach harten Landungen schneller schussbereit.",
+      icon: createIcon([{d: "M20 8a8 8 0 1 0 1 6"}, {d: "M20 3v5h-5", accent: true}]),
+      implemented: false,
+      category: "control"
+    }),
+    Object.freeze({
+      id: "sticky_slime",
+      name: "STICKY SLIME",
+      description: "Gibt auf normalen Plattformen zusätzlichen Halt.",
+      icon: createIcon([{d: "M5 5h14v10a7 7 0 0 1-14 0Z"}, {d: "M8 5V2m4 3V2m4 3V2", accent: true}]),
+      implemented: false,
+      category: "control"
+    }),
+    Object.freeze({
+      id: "bounce_master",
+      name: "BOUNCE MASTER",
+      description: "Verstärkt den kontrollierten Boost von Bounce-Pads.",
+      icon: createIcon([{d: "M4 18h16v3H4Z"}, {d: "m7 14 5-8 5 8-5-3Z", accent: true}]),
+      implemented: false,
+      category: "power"
+    }),
+    Object.freeze({
+      id: "star_magnet",
+      name: "STAR MAGNET",
+      description: "Vergrößert die Sammelreichweite für Sterne.",
+      icon: createIcon([{d: "m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9L6.6 20l1-6.1-4.4-4.3 6.1-.9Z"}]),
+      implemented: true,
+      category: "utility"
+    }),
+    Object.freeze({
+      id: "slow_fall",
+      name: "SLOW FALL",
+      description: "Begrenzt starke Abwärtsgeschwindigkeit leicht.",
+      icon: createIcon([{d: "M12 3v14"}, {d: "m7 12 5 5 5-5M5 21h14", accent: true}]),
+      implemented: false,
+      category: "mobility"
+    }),
+    Object.freeze({
+      id: "safe_return",
+      name: "SECOND CHANCE",
+      description: "Bringt einen fehlgeschlagenen Fall einmal sicher zurück.",
+      icon: createIcon([{d: "M20 11a8 8 0 1 1-3-6"}, {d: "M20 4v7h-7", accent: true}]),
+      implemented: false,
+      category: "survival"
+    }),
+    Object.freeze({
+      id: "lucky_charm",
+      name: "LUCKY CHARM",
+      description: "Kann in normalen Levels einen zusätzlichen Stern erzeugen.",
+      icon: createIcon([{d: "M12 4a4 4 0 1 0-4 4 4 4 0 1 0 4 4 4 4 0 1 0 4-4 4 4 0 0 0-4-4Z"}, {d: "M12 12v8", accent: true}]),
+      implemented: false,
+      category: "utility"
+    })
+  ]);
+
+  const perkById = new Map(PERK_DEFINITIONS.map(perk => [perk.id, perk]));
+  let devUnlockOverride = false;
+  let devSelectedPerkIds = null;
+  let activeRunPerkIds = Object.freeze([]);
+
+  function parseStoredArray(key) {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(key) ?? "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function normalizeKnownIds(value) {
+    if (!Array.isArray(value)) return [];
+    const found = new Set(
+      value.filter(id => typeof id === "string" && perkById.has(id))
+    );
+    return PERK_DEFINITIONS.filter(perk => found.has(perk.id)).map(perk => perk.id);
+  }
+
+  function normalizeUnlockedIds(value) {
+    return normalizeKnownIds(value);
+  }
+
+  function normalizeSelectedIds(value, unlockedIds) {
+    const unlocked = new Set(normalizeUnlockedIds(unlockedIds));
+    return normalizeKnownIds(value)
+      .filter(id => unlocked.has(id) && perkById.get(id).implemented)
+      .slice(0, MAX_SELECTED_PERKS);
+  }
+
+  function persistCanonicalArray(key, ids) {
+    const serialized = JSON.stringify(ids);
+    try {
+      if (localStorage.getItem(key) !== serialized) {
+        localStorage.setItem(key, serialized);
+      }
+      return localStorage.getItem(key) === serialized;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function getStoredUnlockedPerkIds() {
+    const ids = normalizeUnlockedIds(parseStoredArray(UNLOCKED_PERKS_STORAGE_KEY));
+    persistCanonicalArray(UNLOCKED_PERKS_STORAGE_KEY, ids);
+    return ids;
+  }
+
+  function getStoredSelectedPerkIds() {
+    const ids = normalizeSelectedIds(
+      parseStoredArray(SELECTED_PERKS_STORAGE_KEY),
+      getStoredUnlockedPerkIds()
+    );
+    persistCanonicalArray(SELECTED_PERKS_STORAGE_KEY, ids);
+    return ids;
+  }
+
+  function unlockPerkForPurchase(id) {
+    const perk = perkById.get(id);
+    if (!perk?.implemented) return false;
+    const unlocked = getStoredUnlockedPerkIds();
+    if (unlocked.includes(id)) return true;
+    const updated = normalizeUnlockedIds([...unlocked, id]);
+    if (!persistCanonicalArray(UNLOCKED_PERKS_STORAGE_KEY, updated)) return false;
+    return getStoredUnlockedPerkIds().includes(id);
+  }
+
+  function rollbackPerkUnlock(id) {
+    const updated = getStoredUnlockedPerkIds().filter(unlockedId => unlockedId !== id);
+    if (!persistCanonicalArray(UNLOCKED_PERKS_STORAGE_KEY, updated)) return false;
+    return !getStoredUnlockedPerkIds().includes(id);
+  }
+
+  function purchasePerk(id) {
+    const perk = perkById.get(id);
+    const economy = window.SlimeStarEconomy;
+    const balance = economy?.getBalance?.() ?? 0;
+    if (!perk) return {ok: false, reason: "unknown-perk", balance};
+    if (!perk.implemented) return {ok: false, reason: "coming-soon", balance};
+    if (getStoredUnlockedPerkIds().includes(id)) {
+      return {ok: false, reason: "already-unlocked", balance};
+    }
+    if (typeof economy?.purchaseUnlock !== "function") {
+      return {ok: false, reason: "economy-unavailable", balance};
+    }
+
+    return economy.purchaseUnlock({
+      purchaseKey: `perk:${id}`,
+      price: PERK_BALANCE.PERK_UNLOCK_COST,
+      isUnlocked: () => getStoredUnlockedPerkIds().includes(id),
+      unlock: () => unlockPerkForPurchase(id),
+      rollback: () => rollbackPerkUnlock(id)
+    });
+  }
+
+  function getUnlockedPerkIds() {
+    const storedIds = getStoredUnlockedPerkIds();
+    if (!devUnlockOverride) return storedIds;
+    const unlocked = new Set(storedIds);
+    PERK_DEFINITIONS.forEach(perk => {
+      if (perk.implemented) unlocked.add(perk.id);
+    });
+    return PERK_DEFINITIONS.filter(perk => unlocked.has(perk.id)).map(perk => perk.id);
+  }
+
+  function getSelectedPerkIds() {
+    return devSelectedPerkIds === null
+      ? getStoredSelectedPerkIds()
+      : devSelectedPerkIds.slice();
+  }
+
+  function toggleSelectedPerk(id) {
+    const perk = perkById.get(id);
+    if (!perk) return {ok: false, reason: "unknown-perk", selected: getSelectedPerkIds()};
+    if (!perk.implemented) {
+      return {ok: false, reason: "coming-soon", selected: getSelectedPerkIds()};
+    }
+    if (!getUnlockedPerkIds().includes(id)) {
+      return {ok: false, reason: "locked", selected: getSelectedPerkIds()};
+    }
+
+    const selected = getSelectedPerkIds();
+    const selectedIndex = selected.indexOf(id);
+    if (selectedIndex >= 0) {
+      selected.splice(selectedIndex, 1);
+    } else if (selected.length >= MAX_SELECTED_PERKS) {
+      return {ok: false, reason: "max-selected", selected};
+    } else {
+      selected.push(id);
+    }
+
+    const normalized = normalizeSelectedIds(selected, getUnlockedPerkIds());
+    if (devSelectedPerkIds !== null) {
+      devSelectedPerkIds = normalized;
+      return {ok: true, reason: "updated", selected: normalized.slice()};
+    }
+    const saved = persistCanonicalArray(SELECTED_PERKS_STORAGE_KEY, normalized);
+    return {ok: saved, reason: saved ? "updated" : "storage-error", selected: normalized};
+  }
+
+  function setDevUnlockOverride(enabled) {
+    const nextEnabled = enabled === true;
+    if (nextEnabled === devUnlockOverride) return devUnlockOverride;
+    devUnlockOverride = nextEnabled;
+    devSelectedPerkIds = nextEnabled ? getStoredSelectedPerkIds() : null;
+    return devUnlockOverride;
+  }
+
+  function captureRunPerkSnapshot() {
+    activeRunPerkIds = Object.freeze(getSelectedPerkIds().slice(0, MAX_SELECTED_PERKS));
+    return activeRunPerkIds.slice();
+  }
+
+  function clearRunPerkSnapshot() {
+    activeRunPerkIds = Object.freeze([]);
+  }
+
+  function getActiveRunPerkIds() {
+    return activeRunPerkIds.slice();
+  }
+
+  function isActiveForRun(id) {
+    return activeRunPerkIds.includes(id);
+  }
+
+  window.SlimePerks = Object.freeze({
+    definitions: PERK_DEFINITIONS,
+    balance: PERK_BALANCE,
+    maxSelected: MAX_SELECTED_PERKS,
+    unlockedStorageKey: UNLOCKED_PERKS_STORAGE_KEY,
+    selectedStorageKey: SELECTED_PERKS_STORAGE_KEY,
+    normalizeUnlockedIds,
+    normalizeSelectedIds,
+    getStoredUnlockedPerkIds,
+    getStoredSelectedPerkIds,
+    getUnlockedPerkIds,
+    getSelectedPerkIds,
+    purchasePerk,
+    toggleSelectedPerk,
+    setDevUnlockOverride,
+    isDevUnlockOverrideActive: () => devUnlockOverride,
+    captureRunPerkSnapshot,
+    clearRunPerkSnapshot,
+    getActiveRunPerkIds,
+    isActiveForRun
+  });
+})();

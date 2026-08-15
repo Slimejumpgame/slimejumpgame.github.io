@@ -280,6 +280,15 @@
     }
   }
 
+  function saveStarBalanceVerified() {
+    if (!saveStarBalance()) return false;
+    try {
+      return localStorage.getItem(STAR_BALANCE_STORAGE_KEY) === String(starBalance);
+    } catch (_) {
+      return false;
+    }
+  }
+
   function cloneAchievementProgress() {
     return {
       discoveredBiomeIds: achievementProgress.discoveredBiomeIds.slice(),
@@ -1186,6 +1195,108 @@
     }
   }
 
+  function normalizeStarUnlockRequest(request) {
+    if (!request || typeof request !== "object") return null;
+    const purchaseKey = typeof request.purchaseKey === "string"
+      ? request.purchaseKey.trim()
+      : "";
+    const price = Number(request.price);
+    if (
+      purchaseKey.length === 0 ||
+      !Number.isSafeInteger(price) ||
+      price <= 0 ||
+      typeof request.isUnlocked !== "function" ||
+      typeof request.unlock !== "function"
+    ) return null;
+    return {
+      purchaseKey,
+      price,
+      isUnlocked: request.isUnlocked,
+      unlock: request.unlock,
+      rollback: typeof request.rollback === "function" ? request.rollback : null
+    };
+  }
+
+  function readStarUnlockState(request) {
+    try {
+      return request.isUnlocked() === true;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  function canPurchaseUnlock(request) {
+    if (isDevModeEnabled()) return false;
+    const normalized = normalizeStarUnlockRequest(request);
+    if (!normalized || readStarUnlockState(normalized)) return false;
+    return !activeWardrobePurchases.has(normalized.purchaseKey) &&
+      starBalance >= normalized.price;
+  }
+
+  function purchaseUnlock(request) {
+    if (isDevModeEnabled()) {
+      return {ok: false, reason: "dev-mode", balance: starBalance};
+    }
+    const normalized = normalizeStarUnlockRequest(request);
+    if (!normalized) {
+      return {ok: false, reason: "invalid-purchase", balance: starBalance};
+    }
+    if (readStarUnlockState(normalized)) {
+      return {ok: false, reason: "already-unlocked", balance: starBalance};
+    }
+    if (starBalance < normalized.price) {
+      return {ok: false, reason: "insufficient-stars", balance: starBalance};
+    }
+    if (activeWardrobePurchases.has(normalized.purchaseKey)) {
+      return {ok: false, reason: "purchase-in-progress", balance: starBalance};
+    }
+
+    activeWardrobePurchases.add(normalized.purchaseKey);
+    try {
+      if (readStarUnlockState(normalized)) {
+        return {ok: false, reason: "already-unlocked", balance: starBalance};
+      }
+      if (starBalance < normalized.price) {
+        return {ok: false, reason: "insufficient-stars", balance: starBalance};
+      }
+
+      const previousBalance = starBalance;
+      starBalance -= normalized.price;
+      let unlocked = false;
+      try {
+        unlocked = normalized.unlock() === true;
+      } catch (_) {
+        unlocked = false;
+      }
+      if (!unlocked || !readStarUnlockState(normalized)) {
+        try { normalized.rollback?.(); } catch (_) {}
+        starBalance = previousBalance;
+        return {ok: false, reason: "unlock-failed", balance: starBalance};
+      }
+
+      if (!saveStarBalanceVerified()) {
+        let rolledBack = false;
+        try {
+          rolledBack = normalized.rollback?.() === true;
+        } catch (_) {
+          rolledBack = false;
+        }
+        if (rolledBack) starBalance = previousBalance;
+        saveStarBalance();
+        return {ok: false, reason: "storage-error", balance: starBalance};
+      }
+
+      return {
+        ok: true,
+        purchaseKey: normalized.purchaseKey,
+        price: normalized.price,
+        balance: starBalance
+      };
+    } finally {
+      activeWardrobePurchases.delete(normalized.purchaseKey);
+    }
+  }
+
   function canPurchaseWardrobeItem(category, itemId) {
     if (isDevModeEnabled()) return false;
     const target = getWardrobePurchaseTarget(category, itemId);
@@ -1672,6 +1783,8 @@
     getBalance: () => starBalance,
     getLifetimeStars: () => achievementProgress.lifetimeStars,
     isPurchaseInProgress: () => activeWardrobePurchases.size > 0,
+    canPurchaseUnlock,
+    purchaseUnlock,
     canPurchaseWardrobeItem,
     purchaseWardrobeItem
   });

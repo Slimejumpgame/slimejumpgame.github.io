@@ -3120,6 +3120,184 @@ p {
   opacity: 0.62;
 }
 
+/* Perk loadout. */
+.perksPanel {
+  width: min(100%, 1020px);
+  min-height: 0;
+  justify-self: center;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--ui-gap-sm);
+  padding: clamp(10px, 1.4vw, 18px);
+  overflow: hidden;
+}
+
+.perksSummary {
+  min-height: clamp(38px, 6vh, 50px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(9px, 1.3vw, 18px);
+  padding: 5px 12px;
+  border: 1px solid rgba(216, 170, 255, 0.28);
+  border-radius: clamp(8px, 1vw, 13px);
+  background: rgba(26, 14, 61, 0.76);
+  color: var(--ui-green-light);
+  font-family: var(--ui-title-font);
+  font-size: clamp(12px, 1.25vw, 17px);
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.perksSummary strong {
+  color: #fff36e;
+  font-size: 1.12em;
+}
+
+.perkGrid {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: start;
+  gap: clamp(7px, 0.9vw, 12px);
+  padding: 2px 4px 5px 2px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--ui-green) rgba(19, 10, 48, 0.72);
+  scrollbar-width: thin;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.perkCard {
+  min-width: 0;
+  min-height: clamp(104px, 16vh, 138px);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(8px, 0.9vw, 12px);
+  padding: clamp(8px, 1vw, 13px);
+  border: 2px solid rgba(225, 180, 255, 0.4);
+  border-radius: clamp(10px, 1vw, 15px);
+  background:
+    radial-gradient(circle at 12% 12%, rgba(255, 255, 255, 0.14), transparent 19%),
+    linear-gradient(155deg, rgba(91, 40, 143, 0.94), rgba(34, 19, 74, 0.97));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 3px 0 rgba(12, 6, 32, 0.72);
+  color: #fff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.perkCard:not(:disabled):active {
+  transform: translateY(2px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 1px 0 rgba(12, 6, 32, 0.72);
+}
+
+.perkCard.active {
+  border-color: #a9ff48;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(234, 255, 170, 0.2), transparent 21%),
+    linear-gradient(155deg, rgba(57, 126, 44, 0.96), rgba(29, 55, 54, 0.98));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0 13px rgba(134, 245, 31, 0.38);
+}
+
+.perkCard.locked,
+.perkCard.comingSoon {
+  border-color: rgba(157, 157, 176, 0.3);
+  background: linear-gradient(155deg, rgba(68, 67, 82, 0.9), rgba(27, 27, 39, 0.96));
+}
+
+.perkCard.purchasable {
+  border-color: rgba(255, 224, 102, 0.68);
+  background:
+    radial-gradient(circle at 12% 12%, rgba(255, 238, 150, 0.16), transparent 21%),
+    linear-gradient(155deg, rgba(86, 65, 104, 0.94), rgba(36, 29, 57, 0.98));
+}
+
+.perkCard:disabled {
+  cursor: default;
+  opacity: 0.66;
+}
+
+.perkCardIcon {
+  width: clamp(42px, 5vw, 62px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(14, 8, 38, 0.48);
+  color: #d9ff7b;
+}
+
+.perkCardIconSvg {
+  width: 68%;
+  height: 68%;
+  fill: rgba(134, 245, 31, 0.2);
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.perkCardIconSvg .perkIconAccent {
+  fill: none;
+  stroke: #fff36e;
+}
+
+.perkCardContent {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.perkCardContent > strong {
+  color: #fff;
+  font-family: var(--ui-title-font);
+  font-size: clamp(12px, 1.25vw, 17px);
+  line-height: 1;
+}
+
+.perkCardDescription {
+  color: rgba(244, 239, 255, 0.84);
+  font-size: clamp(9px, 0.88vw, 12px);
+  line-height: 1.25;
+}
+
+.perkCardStatuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.perkStatus {
+  padding: 2px 5px;
+  border: 1px solid rgba(218, 210, 236, 0.32);
+  border-radius: 999px;
+  color: rgba(239, 235, 248, 0.72);
+  font-family: var(--ui-title-font);
+  font-size: clamp(6px, 0.62vw, 8px);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.perkStatus--active {
+  border-color: rgba(169, 255, 72, 0.8);
+  background: rgba(74, 151, 35, 0.48);
+  color: #eaffad;
+}
+
+.perkStatus--soon {
+  border-color: rgba(255, 224, 102, 0.64);
+  color: #fff09a;
+}
+
 .achievementCard.unlocked {
   border-color: rgba(202, 255, 105, 0.78);
   box-shadow:
@@ -3545,6 +3723,10 @@ p {
     grid-template-columns: 1fr;
   }
 
+  .perkGrid {
+    grid-template-columns: 1fr;
+  }
+
   .wardrobeCategoryMenu {
     width: min(100%, 420px);
     grid-template-columns: 1fr;
@@ -3961,6 +4143,50 @@ p {
 
   .achievementGrid {
     gap: 5px;
+  }
+
+  .perksPanel {
+    gap: 4px;
+    padding: 6px 8px;
+  }
+
+  .perksSummary {
+    min-height: 27px;
+    padding: 2px 7px;
+    font-size: clamp(7px, 2vh, 10px);
+  }
+
+  .perkGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .perkCard {
+    min-height: 72px;
+    gap: 6px;
+    padding: 5px 7px;
+    border-radius: 8px;
+  }
+
+  .perkCardIcon {
+    width: clamp(28px, 8vh, 38px);
+  }
+
+  .perkCardContent {
+    gap: 2px;
+  }
+
+  .perkCardContent > strong {
+    font-size: clamp(8px, 2.5vh, 11px);
+  }
+
+  .perkCardDescription {
+    font-size: clamp(6px, 1.8vh, 8px);
+  }
+
+  .perkStatus {
+    padding: 1px 4px;
+    font-size: clamp(5px, 1.45vh, 7px);
   }
 
   .achievementCard {

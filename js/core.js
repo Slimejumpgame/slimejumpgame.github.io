@@ -79,6 +79,7 @@
     starBalanceValue: document.getElementById("starBalanceValue"),
     wardrobeScreen: document.getElementById("wardrobeScreen"),
     achievementScreen: document.getElementById("achievementScreen"),
+    perksScreen: document.getElementById("perksScreen"),
     howToScreen: document.getElementById("howToScreen"),
     highscoreScreen: document.getElementById("highscoreScreen"),
     highscoreRows: document.getElementById("highscoreRows"),
@@ -143,9 +144,12 @@
     startBtn: document.getElementById("startBtn"),
     achievementsBtn: document.getElementById("achievementsBtn"),
     wardrobeBtn: document.getElementById("wardrobeBtn"),
-    howToBtn: document.getElementById("howToBtn"),
+    perksBtn: document.getElementById("perksBtn"),
     highScoresBtn: document.getElementById("highScoresBtn"),
     achievementsBackBtn: document.getElementById("achievementsBackBtn"),
+    perksBackBtn: document.getElementById("perksBackBtn"),
+    activePerkCount: document.getElementById("activePerkCount"),
+    perkGrid: document.getElementById("perkGrid"),
     wardrobeBackBtn: document.getElementById("wardrobeBackBtn"),
     wardrobeHome: document.getElementById("wardrobeHome"),
     wardrobeColorView: document.getElementById("wardrobeColorView"),
@@ -210,7 +214,10 @@
     devPrestigeFlowBtn: document.getElementById("devPrestigeFlowBtn"),
     devPrestigePermanentChoiceBtn: document.getElementById("devPrestigePermanentChoiceBtn"),
     devPrestigeRewardInspectorBtn: document.getElementById("devPrestigeRewardInspectorBtn"),
-    devPrestigeRewardInspector: document.getElementById("devPrestigeRewardInspector")
+    devPrestigeRewardInspector: document.getElementById("devPrestigeRewardInspector"),
+    devUnlockPerksBtn: document.getElementById("devUnlockPerksBtn"),
+    devPerkInspectorBtn: document.getElementById("devPerkInspectorBtn"),
+    devPerkInspector: document.getElementById("devPerkInspector")
   };
 
   let generatedLevel = null;

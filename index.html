@@ -35,6 +35,9 @@
       <button id="devPrestigePermanentChoiceBtn" data-dev-mode-only type="button">DEV PERMANENT CHOICE</button>
       <button id="devPrestigeRewardInspectorBtn" data-dev-mode-only type="button">DEV REWARD INSPECTOR</button>
       <pre id="devPrestigeRewardInspector" class="devPrestigeRewardInspector" data-dev-mode-only hidden></pre>
+      <button id="devUnlockPerksBtn" data-dev-mode-only type="button" aria-pressed="false">DEV UNLOCK PERKS</button>
+      <button id="devPerkInspectorBtn" data-dev-mode-only type="button">DEV PERK INSPECTOR</button>
+      <pre id="devPerkInspector" class="devPrestigeRewardInspector" data-dev-mode-only hidden></pre>
     </div>
   </aside>
 
@@ -118,15 +121,13 @@
               </span>
               <span>Wardrobe</span>
             </button>
-            <button id="howToBtn" class="menuHotspot uiButton uiButton--secondary" type="button">
+            <button id="perksBtn" class="menuHotspot uiButton uiButton--secondary" type="button">
               <span class="buttonIcon" aria-hidden="true">
                 <svg class="menuButtonIconSvg" viewBox="0 0 24 24" focusable="false">
-                  <path d="M4 5.5h4.25A3.75 3.75 0 0 1 12 9.25V19a3.75 3.75 0 0 0-3.75-3.75H4Z"></path>
-                  <path d="M20 5.5h-4.25A3.75 3.75 0 0 0 12 9.25V19a3.75 3.75 0 0 1 3.75-3.75H20Z"></path>
-                  <path d="M6.75 9h2.5M14.75 9h2.5" stroke-width="1.5"></path>
+                  <path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9L6.6 20l1-6.1-4.4-4.3 6.1-.9Z"></path>
                 </svg>
               </span>
-              <span>How to Play</span>
+              <span>Perks</span>
             </button>
             <button id="highScoresBtn" class="menuHotspot uiButton uiButton--secondary" type="button">
               <span class="buttonIcon" aria-hidden="true">
@@ -247,6 +248,31 @@
             <div id="achievementCallingCardSlots" class="achievementCallingCardSlots"></div>
           </div>
           <div id="achievementGrid" class="achievementGrid" aria-label="Achievement-Liste"></div>
+        </div>
+      </section>
+
+      <section id="perksScreen" class="menuScreen menuScreen--detail hidden" aria-label="Perks">
+        <header class="screenHeader">
+          <div class="screenTitleGroup">
+            <span class="screenKicker">Wähle dein Run-Loadout</span>
+            <h2>Perks</h2>
+          </div>
+          <button id="perksBackBtn" class="menuHotspot uiButton uiButton--secondary backButton" type="button" aria-label="Zurück zum Hauptmenü">
+            <span class="buttonIcon" aria-hidden="true">
+              <svg class="menuButtonIconSvg" viewBox="0 0 24 24" focusable="false">
+                <path d="m10 6-6 6 6 6"></path>
+                <path d="M4 12h9.5a6.5 6.5 0 0 1 6.5 6.5"></path>
+              </svg>
+            </span>
+            <span>Back</span>
+          </button>
+        </header>
+        <div class="perksPanel uiPanel">
+          <div class="perksSummary">
+            <span>Active Perks</span>
+            <strong id="activePerkCount" aria-live="polite">0 / 3</strong>
+          </div>
+          <div id="perkGrid" class="perkGrid" aria-label="Perk-Auswahl"></div>
         </div>
       </section>
 
@@ -510,6 +536,7 @@
   <script src="./js/slime-prestige.js"></script>
   <script src="./js/slime-run-recovery.js"></script>
   <script src="./js/slime-player-progress.js"></script>
+  <script src="./js/slime-perks.js"></script>
   <script src="./js/slime-colors.js"></script>
   <script src="./js/slime-cosmetics.js"></script>
   <script src="./js/slime-beards.js"></script>
