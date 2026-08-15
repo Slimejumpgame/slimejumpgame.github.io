@@ -1859,6 +1859,53 @@
     drawSlimeCharacterPreview(canvasElement, cosmetic, "none", color, options);
   }
 
+  function drawLastBubbleProtection(context, radius) {
+    if (!isLastBubbleProtectionActive()) return;
+    const duration = window.SlimePerks.balance.LAST_BUBBLE_DURATION;
+    const remainingRatio = clamp(
+      getLastBubbleProtectionTimeRemaining() / duration,
+      0,
+      1
+    );
+    const pulse = Math.sin(worldTime * 7.5) * 1.2;
+    const bubbleRadius = radius + 12 + pulse;
+
+    context.save();
+    context.shadowColor = "rgba(125, 226, 255, 0.82)";
+    context.shadowBlur = 14;
+    const bubbleGradient = context.createRadialGradient(
+      -radius * 0.35,
+      -radius * 0.45,
+      radius * 0.08,
+      0,
+      0,
+      bubbleRadius
+    );
+    bubbleGradient.addColorStop(0, "rgba(255, 255, 255, 0.22)");
+    bubbleGradient.addColorStop(0.68, "rgba(118, 220, 255, 0.08)");
+    bubbleGradient.addColorStop(1, "rgba(62, 173, 238, 0.18)");
+    context.fillStyle = bubbleGradient;
+    context.strokeStyle = `rgba(166, 238, 255, ${0.55 + remainingRatio * 0.35})`;
+    context.lineWidth = 3;
+    context.beginPath();
+    context.arc(0, 0, bubbleRadius, 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
+
+    context.shadowBlur = 0;
+    context.strokeStyle = "rgba(255, 255, 255, 0.8)";
+    context.lineWidth = 2.2;
+    context.beginPath();
+    context.arc(-5, -6, bubbleRadius - 6, Math.PI * 1.08, Math.PI * 1.53);
+    context.stroke();
+    context.fillStyle = "rgba(220, 250, 255, 0.72)";
+    context.beginPath();
+    context.arc(bubbleRadius * 0.66, -bubbleRadius * 0.53, 3.5, 0, Math.PI * 2);
+    context.arc(bubbleRadius * 0.82, -bubbleRadius * 0.2, 2.2, 0, Math.PI * 2);
+    context.fill();
+    context.restore();
+  }
+
   function drawPlayer() {
     const palette = getSlimeColorPalette(getActiveSlimeColor());
     const selectedTrail = window.SlimePrestige?.getSelectedReward?.("trail") ?? "none";
@@ -1919,6 +1966,7 @@
     ctx.scale(sx, sy);
 
     drawPrestigeAura(ctx, prestigeAura, player.r);
+    drawLastBubbleProtection(ctx, player.r);
 
     ctx.shadowColor = palette.glow;
     ctx.shadowBlur = 22;

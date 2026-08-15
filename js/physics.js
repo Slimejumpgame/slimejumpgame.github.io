@@ -135,7 +135,7 @@
         }
 
         if (hardLanding && !landingOnBouncePad) {
-          registerQuickRecoveryHardLanding();
+          registerQuickRecoveryHardLanding(rect);
         }
 
         // Ein deutlich zurückprallender Slime löst sich bereits wieder von
@@ -149,6 +149,32 @@
     const cx = Math.max(rect.x, Math.min(x, rect.x + rect.w));
     const cy = Math.max(rect.y, Math.min(y, rect.y + rect.h));
     return (x - cx) ** 2 + (y - cy) ** 2 < r * r;
+  }
+
+  function getSpikeDangerRect(spike) {
+    return {x: spike.x + 5, y: spike.y + 5, w: spike.w - 10, h: spike.h + 22};
+  }
+
+  function getBottomDeathHazard(level = currentLevel()) {
+    return level?.spikes?.find(spike => spike.isBottomDeathHazard === true) || null;
+  }
+
+  function isPlayerTouchingBottomDeathHazard() {
+    const hazard = getBottomDeathHazard();
+    if (!hazard) return false;
+    const danger = getSpikeDangerRect(hazard);
+    const touchesDeathCollision = intersectsRect(
+      player.x,
+      player.y,
+      player.r * 0.72,
+      danger
+    );
+    const restsOnProtectedSurface =
+      isLastBubbleProtectionActive() &&
+      player.x + player.r > danger.x &&
+      player.x - player.r < danger.x + danger.w &&
+      Math.abs(player.y + player.r - danger.y) <= AIM_SUPPORT_TOLERANCE;
+    return touchesDeathCollision || restsOnProtectedSurface;
   }
 
   function getSegmentRectEntryFraction(startX, startY, endX, endY, rect) {
@@ -277,7 +303,9 @@
   function update(dt) {
     if (state !== "playing") return;
     const wasOnGround = player.onGround;
+    updateLastBubbleProtection(dt);
     updateQuickRecovery(dt);
+    applyQuickRecoveryHorizontalDamping(dt);
     worldTime += dt;
     rememberPlayerHorizontalDirection();
     let aimingCarriedByMovingPlatform = false;
@@ -385,8 +413,12 @@
     }
 
     for (const spike of level.spikes) {
-      const danger = {x: spike.x + 5, y: spike.y + 5, w: spike.w - 10, h: spike.h + 22};
+      const danger = getSpikeDangerRect(spike);
       if (intersectsRect(player.x, player.y, player.r * 0.72, danger)) {
+        if (
+          spike.isBottomDeathHazard === true &&
+          tryHandleLastBubbleContact("bottom_death_hazard", spike)
+        ) return;
         loseLife();
         return;
       }
@@ -458,7 +490,7 @@
       return;
     }
     if (player.y > BOTTOM_DEATH_THRESHOLD) {
-      if (tryUseLastBubble()) return;
+      if (tryHandleLastBubbleContact("bottom_out")) return;
       loseLife();
       return;
     }

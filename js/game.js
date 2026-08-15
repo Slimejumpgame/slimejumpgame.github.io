@@ -663,16 +663,26 @@
       `Vertical Speed: ${perks.balance.AIR_HOP_VERTICAL_SPEED}`,
       `Last Air Hop Trigger: ${getLastAirHopTrigger()}`,
       `Last Bubble: ${lastBubbleActive ? "ACTIVE" : "inactive"}`,
-      `Available This Run: ${lastBubbleActive && isLastBubbleAvailableThisRun() ? "YES" : "NO"}`,
-      `Used This Run: ${lastBubbleActive && isLastBubbleUsedThisRun() ? "YES" : "NO"}`,
-      `Current Player Y: ${runIsActive ? Math.round(player.y) : "-"}`,
-      `Bottom Death Threshold: ${BOTTOM_DEATH_THRESHOLD}`,
+      `Available This Level: ${lastBubbleActive && isLastBubbleAvailableThisLevel() ? "YES" : "NO"}`,
+      `Used This Level: ${lastBubbleActive && isLastBubbleUsedThisLevel() ? "YES" : "NO"}`,
+      `Bubble Protection Active: ${isLastBubbleProtectionActive() ? "YES" : "NO"}`,
+      `Bubble Time Remaining: ${getLastBubbleProtectionTimeRemaining().toFixed(2)} s`,
+      `Bottom Hazard Contact: ${runIsActive && isPlayerTouchingBottomDeathHazard() ? "YES" : "NO"}`,
       `Mud Shoes: ${mudShoesActive ? "ACTIVE" : "inactive"}`,
       `Horizontal Damping: ${perks.balance.MUD_SHOES_HORIZONTAL_DAMPING.toFixed(2)}`,
       `Rebound Multiplier: ${perks.balance.MUD_SHOES_REBOUND_MULTIPLIER.toFixed(2)}`,
       `Quick Recovery: ${quickRecoveryActive ? "ACTIVE" : "inactive"}`,
-      `State: ${quickRecoveryActive && isQuickRecoveryRecovering() ? "RECOVERING" : "READY"}`,
-      `Window / Aim Speed: ${perks.balance.QUICK_RECOVERY_WINDOW.toFixed(2)} s / ${perks.balance.QUICK_RECOVERY_AIM_MAX_ROLL_SPEED}`
+      `State: ${!quickRecoveryActive ? "INACTIVE" : (isQuickRecoveryRecovering() ? "RECOVERING" : "READY")}`,
+      `Recovery Window: ${perks.balance.QUICK_RECOVERY_WINDOW.toFixed(2)} s`,
+      `Aim Delay: ${perks.balance.QUICK_RECOVERY_AIM_DELAY.toFixed(2)} s`,
+      `Quick Aim Limit: ${perks.balance.QUICK_RECOVERY_AIM_SPEED_LIMIT}`,
+      `Normal Aim Limit: ${AIM_MAX_ROLL_SPEED}`,
+      `Recovery Damping: ${perks.balance.QUICK_RECOVERY_HORIZONTAL_DAMPING.toFixed(2)} @ 60 Hz reference`,
+      `Recovery Elapsed: ${getQuickRecoveryElapsed().toFixed(2)} s`,
+      `Recovery Time Remaining: ${getQuickRecoveryTimeRemaining().toFixed(2)} s`,
+      `Support Valid: ${hasQuickRecoveryValidSupport() ? "YES" : "NO"}`,
+      `Current |vx|: ${Math.round(Math.abs(player.vx))} px/s`,
+      `Aim Ready Through Quick Recovery: ${isQuickRecoveryAimReady() ? "YES" : "NO"}`
     ].join("\n");
   }
 
@@ -1127,6 +1137,7 @@
       levelHadDeath = false;
       setMusicForLevel(levelIndex + 1);
       generatedLevel = generateProceduralLevel(levelIndex + 1);
+      resetLastBubbleForNewLevel();
       state = "playing";
       resetLevel(true);
       window.SlimeAchievements?.onLevelStart?.(getAchievementLevelContext());

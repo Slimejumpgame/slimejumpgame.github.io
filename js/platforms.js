@@ -7,7 +7,7 @@
       return {
         x: m.x + (m.axis === "x" ? offset : 0),
         y: m.y + (m.axis === "y" ? offset : 0),
-        w: m.w, h: m.h, moving: true
+        w: m.w, h: m.h, moving: true, movingData: m
       };
     });
 
@@ -59,13 +59,16 @@
       spikeData: platform
     }));
 
+    const lastBubbleSupports = getActiveLastBubbleSupportPlatforms();
+
     return level.platforms.concat(
       moving,
       falling,
       conveyorPlatforms,
       fading,
       ice,
-      spikeRoutePlatforms
+      spikeRoutePlatforms,
+      lastBubbleSupports
     );
   }
 

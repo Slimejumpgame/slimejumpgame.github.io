@@ -96,6 +96,7 @@
   let aimStartClientY = 0;
   const AIM_MAX_ROLL_SPEED = 240;
   const AIM_SUPPORT_TOLERANCE = 4;
+  const QUICK_RECOVERY_DAMPING_REFERENCE_FPS = 60;
   const STUCK_AIM_POSITION_EPSILON = 4;
   const STUCK_AIM_CONTACT_NORMAL_DOT_LIMIT = 0.95;
   const STUCK_AIM_DELAY = 0.5;
@@ -105,8 +106,12 @@
   let airHopUsedThisFlight = false;
   let airHopFlightActive = false;
   let lastAirHopTrigger = "NONE";
-  let lastBubbleUsedThisRun = false;
+  let lastBubbleUsedThisLevel = false;
+  let lastBubbleProtectionTimer = 0;
+  const lastBubbleBottomOutSupportSource = Object.freeze({type: "last_bubble_bottom_out"});
   let quickRecoveryTimer = 0;
+  let quickRecoveryElapsed = 0;
+  let quickRecoverySupportSource = null;
   let stuckAimStillTime = 0;
   let stuckAimReferenceX = player.x;
   let stuckAimReferenceY = player.y;
@@ -121,38 +126,78 @@
   let stuckAimLockedX = player.x;
   let stuckAimLockedY = player.y;
 
-  function hasValidAimSupport() {
-    return getPlatforms().some(platform =>
+  function getPlatformSource(platform) {
+    return platform.lastBubbleSupportSource ||
+      platform.movingData ||
+      platform.fallingPlatform ||
+      platform.conveyorData ||
+      platform.fadeData ||
+      platform.iceData ||
+      platform.spikeData ||
+      platform;
+  }
+
+  function isValidAimSupportPlatform(platform) {
+    return Boolean(platform) &&
       (!platform.fade || platform.fadeData.solid) &&
       player.x + player.r > platform.x + 2 &&
       player.x - player.r < platform.x + platform.w - 2 &&
-      Math.abs(player.y + player.r - platform.y) <= AIM_SUPPORT_TOLERANCE
-    );
+      Math.abs(player.y + player.r - platform.y) <= AIM_SUPPORT_TOLERANCE;
+  }
+
+  function getValidAimSupportPlatform() {
+    return getPlatforms().find(isValidAimSupportPlatform) || null;
+  }
+
+  function hasValidAimSupport() {
+    return Boolean(getValidAimSupportPlatform());
+  }
+
+  function getQuickRecoverySupportPlatform() {
+    if (!quickRecoverySupportSource) return null;
+    return getPlatforms().find(platform =>
+      getPlatformSource(platform) === quickRecoverySupportSource &&
+      isValidAimSupportPlatform(platform)
+    ) || null;
+  }
+
+  function isQuickRecoveryAimReady() {
+    return window.SlimePerks?.isActiveForRun?.("quick_recovery") === true &&
+      quickRecoveryTimer > 0 &&
+      quickRecoveryElapsed >= window.SlimePerks.balance.QUICK_RECOVERY_AIM_DELAY &&
+      Boolean(getQuickRecoverySupportPlatform()) &&
+      Math.abs(player.vx) <= window.SlimePerks.balance.QUICK_RECOVERY_AIM_SPEED_LIMIT;
   }
 
   function canUseNormalAim() {
-    const maximumRollSpeed =
-      window.SlimePerks?.isActiveForRun?.("quick_recovery") === true &&
-      quickRecoveryTimer > 0
-        ? window.SlimePerks.balance.QUICK_RECOVERY_AIM_MAX_ROLL_SPEED
-        : AIM_MAX_ROLL_SPEED;
-    return player.onGround &&
+    const normalAimReady = player.onGround &&
       hasValidAimSupport() &&
-      Math.abs(player.vx) <= maximumRollSpeed;
+      Math.abs(player.vx) <= AIM_MAX_ROLL_SPEED;
+    return normalAimReady || isQuickRecoveryAimReady();
   }
 
   function resetRunPerkConsumables() {
     airHopUsedThisFlight = false;
     airHopFlightActive = false;
     lastAirHopTrigger = "NONE";
-    lastBubbleUsedThisRun = false;
+    resetLastBubbleForNewLevel();
     quickRecoveryTimer = 0;
+    quickRecoveryElapsed = 0;
+    quickRecoverySupportSource = null;
   }
 
   function resetFlightPerkState() {
     airHopUsedThisFlight = false;
     airHopFlightActive = false;
     quickRecoveryTimer = 0;
+    quickRecoveryElapsed = 0;
+    quickRecoverySupportSource = null;
+    lastBubbleProtectionTimer = 0;
+  }
+
+  function resetLastBubbleForNewLevel() {
+    lastBubbleUsedThisLevel = false;
+    lastBubbleProtectionTimer = 0;
   }
 
   function updateAirHopFlightState(wasOnGround, isOnGround, bouncedOnPad) {
@@ -213,41 +258,149 @@
     return true;
   }
 
-  function tryUseLastBubble() {
-    if (
-      isTutorialStage() ||
-      lastBubbleUsedThisRun ||
-      window.SlimePerks?.isActiveForRun?.("last_bubble") !== true
-    ) return false;
+  function getActiveLastBubbleSupportPlatforms() {
+    if (!isLastBubbleProtectionActive()) return [];
+    const bottomDeathHazard = getBottomDeathHazard();
+    const supports = [];
+    if (bottomDeathHazard) {
+      const danger = getSpikeDangerRect(bottomDeathHazard);
+      supports.push({
+        ...danger,
+        lastBubbleSupport: true,
+        lastBubbleSupportSource: bottomDeathHazard,
+        bottomDeathHazard
+      });
+    }
+    supports.push({
+      x: 0,
+      y: BOTTOM_DEATH_THRESHOLD,
+      w: W,
+      h: 80,
+      lastBubbleSupport: true,
+      lastBubbleBottomOutSupport: true,
+      lastBubbleSupportSource: lastBubbleBottomOutSupportSource
+    });
+    return supports;
+  }
 
-    lastBubbleUsedThisRun = true;
-    stopAiming();
-    activeTouchId = null;
-    const horizontalMargin = player.r + 24;
-    player.x = clamp(player.x, horizontalMargin, W - horizontalMargin);
-    player.y = BOTTOM_DEATH_THRESHOLD - window.SlimePerks.balance.LAST_BUBBLE_DEATH_ZONE_CLEARANCE;
-    const inwardDirection = player.x < W / 2 ? 1 : -1;
-    player.vx = inwardDirection * window.SlimePerks.balance.LAST_BUBBLE_INWARD_IMPULSE;
-    player.vy = -window.SlimePerks.balance.LAST_BUBBLE_VERTICAL_IMPULSE;
-    player.onGround = false;
-    player.squish = 1;
-    airHopFlightActive = true;
-    tone(560, 0.16, "sine", 0.05, 920);
-    spawnBurst(player.x, player.y, 22, "#b9f4ff");
+  function getLastBubbleSupportForReason(reason, hazard) {
+    const supports = getActiveLastBubbleSupportPlatforms();
+    return reason === "bottom_death_hazard"
+      ? supports.find(support => support.bottomDeathHazard === hazard) || null
+      : supports.find(support => support.lastBubbleBottomOutSupport === true) || null;
+  }
+
+  function landPlayerOnLastBubbleSupport(reason, hazard) {
+    const support = getLastBubbleSupportForReason(reason, hazard);
+    if (!support) return false;
+    player.x = clamp(
+      player.x,
+      support.x + player.r,
+      support.x + support.w - player.r
+    );
+    player.y = support.y - player.r;
+    player.vy = 0;
+    player.onGround = true;
+    player.onIce = false;
+    player.conveyorSpeed = 0;
+    player.squish = Math.max(player.squish, 0.72);
+    updateAirHopFlightState(false, true, false);
+    clearQuickRecovery();
     return true;
   }
 
-  function registerQuickRecoveryHardLanding() {
+  function tryHandleLastBubbleContact(reason, hazard = null) {
+    const eligibleDeathReason =
+      reason === "bottom_out" ||
+      (reason === "bottom_death_hazard" && hazard?.isBottomDeathHazard === true);
+    if (!eligibleDeathReason || isTutorialStage()) return false;
+    if (isLastBubbleProtectionActive()) {
+      return landPlayerOnLastBubbleSupport(reason, hazard);
+    }
+    if (
+      lastBubbleUsedThisLevel ||
+      window.SlimePerks?.isActiveForRun?.("last_bubble") !== true
+    ) return false;
+
+    lastBubbleUsedThisLevel = true;
+    lastBubbleProtectionTimer = window.SlimePerks.balance.LAST_BUBBLE_DURATION;
+    stopAiming();
+    activeTouchId = null;
+    tone(560, 0.13, "sine", 0.045, 760);
+    spawnBurst(player.x, player.y, 18, "#b9f4ff");
+    return landPlayerOnLastBubbleSupport(reason, hazard);
+  }
+
+  function updateLastBubbleProtection(dt) {
+    if (lastBubbleProtectionTimer <= 0) return;
+    const previousTimer = lastBubbleProtectionTimer;
+    lastBubbleProtectionTimer = Math.max(
+      0,
+      lastBubbleProtectionTimer - Math.max(0, dt)
+    );
+    if (previousTimer > 0 && lastBubbleProtectionTimer === 0) {
+      spawnBurst(player.x, player.y, 12, "#d9f8ff");
+      tone(390, 0.08, "sine", 0.025, 260);
+    }
+  }
+
+  function clearQuickRecovery() {
+    quickRecoveryTimer = 0;
+    quickRecoveryElapsed = 0;
+    quickRecoverySupportSource = null;
+  }
+
+  function registerQuickRecoveryHardLanding(supportPlatform) {
     if (window.SlimePerks?.isActiveForRun?.("quick_recovery") !== true) return;
     quickRecoveryTimer = window.SlimePerks.balance.QUICK_RECOVERY_WINDOW;
+    quickRecoveryElapsed = 0;
+    quickRecoverySupportSource = getPlatformSource(supportPlatform);
   }
 
   function updateQuickRecovery(dt) {
-    quickRecoveryTimer = Math.max(0, quickRecoveryTimer - Math.max(0, dt));
+    if (quickRecoveryTimer <= 0) return;
+    const elapsedStep = Math.max(0, dt);
+    quickRecoveryElapsed = Math.min(
+      window.SlimePerks.balance.QUICK_RECOVERY_WINDOW,
+      quickRecoveryElapsed + elapsedStep
+    );
+    quickRecoveryTimer = Math.max(0, quickRecoveryTimer - elapsedStep);
+    if (quickRecoveryTimer === 0) quickRecoverySupportSource = null;
+  }
+
+  function getQuickRecoveryHorizontalDampingFactor(dt) {
+    return Math.pow(
+      window.SlimePerks.balance.QUICK_RECOVERY_HORIZONTAL_DAMPING,
+      Math.max(0, dt) * QUICK_RECOVERY_DAMPING_REFERENCE_FPS
+    );
+  }
+
+  function applyQuickRecoveryHorizontalDamping(dt) {
+    if (
+      window.SlimePerks?.isActiveForRun?.("quick_recovery") !== true ||
+      quickRecoveryTimer <= 0 ||
+      aiming
+    ) return false;
+    const support = getQuickRecoverySupportPlatform();
+    if (!support || support.moving || support.conveyor) return false;
+    player.vx *= getQuickRecoveryHorizontalDampingFactor(dt);
+    return true;
   }
 
   function isQuickRecoveryRecovering() {
-    return quickRecoveryTimer > 0 && !canUseNormalAim();
+    return quickRecoveryTimer > 0;
+  }
+
+  function getQuickRecoveryElapsed() {
+    return quickRecoveryElapsed;
+  }
+
+  function getQuickRecoveryTimeRemaining() {
+    return quickRecoveryTimer;
+  }
+
+  function hasQuickRecoveryValidSupport() {
+    return Boolean(getQuickRecoverySupportPlatform());
   }
 
   function isAirHopAvailableThisFlight() {
@@ -266,12 +419,20 @@
     return lastAirHopTrigger;
   }
 
-  function isLastBubbleAvailableThisRun() {
-    return !lastBubbleUsedThisRun;
+  function isLastBubbleAvailableThisLevel() {
+    return !lastBubbleUsedThisLevel;
   }
 
-  function isLastBubbleUsedThisRun() {
-    return lastBubbleUsedThisRun;
+  function isLastBubbleUsedThisLevel() {
+    return lastBubbleUsedThisLevel;
+  }
+
+  function isLastBubbleProtectionActive() {
+    return lastBubbleProtectionTimer > 0;
+  }
+
+  function getLastBubbleProtectionTimeRemaining() {
+    return lastBubbleProtectionTimer;
   }
 
   function getVerticalMoverY(mover) {

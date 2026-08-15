@@ -118,7 +118,7 @@
     platforms.push(goalPlatform);
 
     // Ein Stachelbett bestraft Abstürze, blockiert aber nie den Hauptweg.
-    spikes.push({x: 235, y: 690, w: 825, h: 30});
+    spikes.push({x: 235, y: 690, w: 825, h: 30, isBottomDeathHazard: true});
 
     const mechanicPool = [
       "pad", "falling", "normalEnemy", "moving", "conveyor",
