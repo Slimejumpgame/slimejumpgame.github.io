@@ -24,6 +24,14 @@
       <button id="devModeToggleBtn" type="button" aria-pressed="true">DEV MODE: ON</button>
       <button id="devTutorialToggleBtn" data-dev-mode-only type="button" aria-pressed="true">Einführung: AN</button>
       <button id="devShopTestBtn" data-dev-mode-only type="button" aria-pressed="false">SHOP TEST</button>
+      <button id="devPlayerLevel100Btn" data-dev-mode-only type="button">DEV LEVEL 100</button>
+      <button id="devPlayerLevel99NearBtn" data-dev-mode-only type="button">DEV LEVEL 99 NEAR</button>
+      <button id="devPlayerLevel100NearBtn" data-dev-mode-only type="button">DEV LEVEL 100 -1 XP</button>
+      <button id="devPrestigeReadyBtn" data-dev-mode-only type="button">DEV PRESTIGE READY</button>
+      <button id="devPrestigeDownBtn" data-dev-mode-only type="button">DEV PRESTIGE -</button>
+      <button id="devPrestigeUpBtn" data-dev-mode-only type="button">DEV PRESTIGE +</button>
+      <button id="devPrestigeZeroBtn" data-dev-mode-only type="button">DEV PRESTIGE P0</button>
+      <button id="devPrestigeFlowBtn" data-dev-mode-only type="button">DEV PRESTIGE FLOW TEST</button>
     </div>
   </aside>
 
@@ -69,7 +77,10 @@
         <div class="mainMenuGrid">
           <nav class="mainMenuActions" aria-label="Spielmenü">
             <div class="menuMascotRow">
-              <span class="menuMascotPrestigeSpace" aria-hidden="true"></span>
+              <button id="menuPrestigeBtn" class="menuMascotPrestigeSpace menuPrestigeButton hidden" type="button" aria-label="Prestige">
+                <span id="menuPrestigeEmblem" class="menuPrestigeEmblem" aria-hidden="true"></span>
+                <span id="menuPrestigeLabel" class="menuPrestigeLabel"></span>
+              </button>
               <canvas id="menuMascot" class="menuMascot" width="180" height="170" aria-hidden="true"></canvas>
               <strong id="menuPlayerLevel" class="menuPlayerLevel" aria-label="Spielerlevel 1">#1</strong>
             </div>
@@ -293,6 +304,27 @@
     </div>
   </section>
 
+  <section id="prestigeConfirmOverlay" class="prestigeConfirmOverlay hidden" role="alertdialog" aria-modal="true" aria-labelledby="prestigeConfirmTitle" aria-describedby="prestigeConfirmText">
+    <div class="prestigeConfirmPanel uiPanel">
+      <div class="dialogAccent prestigeConfirmAccent" aria-hidden="true"></div>
+      <h2 id="prestigeConfirmTitle">PRESTIGE AKTIVIEREN?</h2>
+      <p id="prestigeConfirmText">Du startest einen neuen Prestige-Zyklus.</p>
+      <p class="prestigeResetLead">Folgendes wird zurückgesetzt:</p>
+      <ul class="prestigeResetList">
+        <li>Player-Level und XP</li>
+        <li>Checkpoints und Stern-Guthaben</li>
+        <li>Farben, Cosmetics und Bärte</li>
+        <li>Achievements und Calling Card</li>
+        <li>später Perks und Mastery-Progress</li>
+      </ul>
+      <p class="prestigeKeepText">Dein Prestige-Level und deine historischen Highscores bleiben erhalten.</p>
+      <div class="prestigeConfirmActions">
+        <button id="prestigeConfirmCancelBtn" class="uiButton uiButton--secondary" type="button">Abbrechen</button>
+        <button id="prestigeConfirmBtn" class="uiButton uiButton--danger prestigeConfirmButton" type="button">Prestige</button>
+      </div>
+    </div>
+  </section>
+
   <div id="app">
     <header id="hud">
       <div class="hudGroup">
@@ -407,6 +439,7 @@
   </aside>
 
   <script src="./js/slime-progress-reset.js"></script>
+  <script src="./js/slime-prestige.js"></script>
   <script src="./js/slime-run-recovery.js"></script>
   <script src="./js/slime-player-progress.js"></script>
   <script src="./js/slime-colors.js"></script>

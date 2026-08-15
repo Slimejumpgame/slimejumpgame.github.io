@@ -174,6 +174,48 @@
     }
   }
 
+  function renderMainMenuPrestige(progress) {
+    const prestige = window.SlimePrestige;
+    if (!prestige || !ui.menuPrestigeBtn) return;
+
+    const prestigeLevel = prestige.getLevel();
+    const isReady = progress?.isPrestigeReady === true;
+    const isMastered = isReady && prestigeLevel >= prestige.maxAvailablePrestige;
+    const hasEmblem = prestigeLevel > 0;
+    const transactionPending = prestige.isTransactionPending();
+
+    ui.menuPrestigeBtn.classList.remove("hidden");
+    ui.menuPrestigeBtn.classList.toggle("prestigeInvisible", !hasEmblem && !isReady);
+    ui.menuPrestigeBtn.classList.toggle("prestigeReady", isReady && !isMastered);
+    ui.menuPrestigeBtn.classList.toggle("prestigeMastered", isMastered);
+    ui.menuPrestigeBtn.classList.toggle("prestigeZeroReady", !hasEmblem && isReady);
+    ui.menuPrestigeBtn.disabled = !isReady || isMastered || transactionPending;
+
+    if (ui.menuPrestigeEmblem) {
+      ui.menuPrestigeEmblem.innerHTML = hasEmblem
+        ? prestige.getEmblemMarkup(prestigeLevel)
+        : "";
+    }
+
+    const displayDefinition = prestige.getDisplayDefinition(prestigeLevel);
+    const label = transactionPending
+      ? "RESET AUSSTEHEND"
+      : isMastered
+        ? "PRESTIGE MASTERED"
+        : isReady
+          ? "PRESTIGE READY"
+          : displayDefinition?.displayLabel ?? `P${prestigeLevel}`;
+    if (ui.menuPrestigeLabel) ui.menuPrestigeLabel.textContent = label;
+    ui.menuPrestigeBtn.setAttribute(
+      "aria-label",
+      isMastered
+        ? `Prestige ${prestigeLevel} gemeistert`
+        : isReady
+          ? `Prestige ${prestigeLevel + 1} aktivieren`
+          : `Prestige ${prestigeLevel}`
+    );
+  }
+
   function renderMainMenuPlayerProgress() {
     const progress = window.SlimePlayerProgress?.getPlayerProgress?.();
     if (!progress) return;
@@ -192,25 +234,39 @@
 
     const levelXP = Math.max(0, Math.floor(Number(progress.levelXP) || 0));
     const requiredXP = Math.max(0, Math.floor(Number(progress.requiredXP) || 0));
-    const isMaxLevel = progress.isMaxLevel === true;
-    const progressPercent = isMaxLevel || requiredXP === 0
-      ? 100
+    const isPrestigeReady = progress.isPrestigeReady === true;
+    const prestigeLevel = window.SlimePrestige?.getLevel?.() ?? 0;
+    const isPrestigeMastered = isPrestigeReady &&
+      prestigeLevel >= (window.SlimePrestige?.maxAvailablePrestige ?? Infinity);
+    const progressPercent = requiredXP === 0
+      ? 0
       : Math.min(100, levelXP / requiredXP * 100);
 
-    ui.menuXPProgressText.textContent = isMaxLevel
-      ? "MAX LEVEL"
-      : `${levelXP.toLocaleString("de-DE")} / ${requiredXP.toLocaleString("de-DE")}`;
+    ui.menuXPProgressText.textContent = isPrestigeMastered
+      ? "PRESTIGE MASTERED"
+      : isPrestigeReady
+        ? "PRESTIGE READY"
+        : `${levelXP.toLocaleString("de-DE")} / ${requiredXP.toLocaleString("de-DE")}`;
     ui.menuXPProgressBarFill.style.width = `${progressPercent}%`;
-    ui.menuXPProgressBar.setAttribute("aria-valuemax", String(isMaxLevel ? 1 : requiredXP));
-    ui.menuXPProgressBar.setAttribute("aria-valuenow", String(isMaxLevel ? 1 : levelXP));
+    ui.menuXPProgressBar.setAttribute("aria-valuemax", String(requiredXP));
+    ui.menuXPProgressBar.setAttribute("aria-valuenow", String(levelXP));
     ui.menuXPProgressBar.setAttribute(
       "aria-valuetext",
-      isMaxLevel ? "Max-Level erreicht" : `${levelXP} von ${requiredXP} XP`
+      isPrestigeMastered
+        ? "Prestige gemeistert"
+        : isPrestigeReady
+          ? "Prestige bereit"
+          : `${levelXP} von ${requiredXP} XP`
     );
     ui.menuXPProgress.setAttribute(
       "aria-label",
-      isMaxLevel ? "XP · Max-Level" : `XP ${levelXP} von ${requiredXP}`
+      isPrestigeMastered
+        ? "XP · Prestige gemeistert"
+        : isPrestigeReady
+          ? "XP · Prestige bereit"
+          : `XP ${levelXP} von ${requiredXP}`
     );
+    renderMainMenuPrestige(progress);
   }
 
   function renderMainMenuStats() {
@@ -238,13 +294,16 @@
     const level = Math.max(1, Math.floor(Number(runXPResult.level) || 1));
     const levelXP = Math.max(0, Math.floor(Number(runXPResult.levelXP) || 0));
     const requiredXP = Math.max(0, Math.floor(Number(runXPResult.requiredXP) || 0));
-    const isMaxLevel = runXPResult.isMaxLevel === true;
+    const isPrestigeReady = runXPResult.isPrestigeReady === true;
+    const prestigeLevel = window.SlimePrestige?.getLevel?.() ?? 0;
+    const isPrestigeMastered = isPrestigeReady &&
+      prestigeLevel >= (window.SlimePrestige?.maxAvailablePrestige ?? Infinity);
     const levelsGained = Math.max(
       0,
       Math.floor(Number(runXPResult.levelsGained) || 0)
     );
-    const progressPercent = isMaxLevel || requiredXP === 0
-      ? 100
+    const progressPercent = requiredXP === 0
+      ? 0
       : Math.min(100, levelXP / requiredXP * 100);
 
     ui.gameOverXPEarned.textContent = `+${earnedXP.toLocaleString("de-DE")} XP`;
@@ -252,17 +311,27 @@
       ? `${levelsGained} LEVEL UPS!`
       : "LEVEL UP!";
     ui.gameOverLevelUp.classList.toggle("hidden", levelsGained === 0);
-    ui.gameOverPlayerLevel.textContent = isMaxLevel ? `LEVEL ${level} · MAX` : `LEVEL ${level}`;
+    ui.gameOverPlayerLevel.textContent = isPrestigeMastered
+      ? `LEVEL ${level} · PRESTIGE MASTERED`
+      : isPrestigeReady
+        ? `LEVEL ${level} · PRESTIGE READY`
+        : `LEVEL ${level}`;
     ui.gameOverXPBarFill.style.width = `${progressPercent}%`;
-    ui.gameOverXPBar.setAttribute("aria-valuemax", String(isMaxLevel ? 1 : requiredXP));
-    ui.gameOverXPBar.setAttribute("aria-valuenow", String(isMaxLevel ? 1 : levelXP));
+    ui.gameOverXPBar.setAttribute("aria-valuemax", String(requiredXP));
+    ui.gameOverXPBar.setAttribute("aria-valuenow", String(levelXP));
     ui.gameOverXPBar.setAttribute(
       "aria-valuetext",
-      isMaxLevel ? "Max-Level erreicht" : `${levelXP} von ${requiredXP} XP`
+      isPrestigeMastered
+        ? "Prestige gemeistert"
+        : isPrestigeReady
+          ? "Prestige bereit"
+          : `${levelXP} von ${requiredXP} XP`
     );
-    ui.gameOverXPProgress.textContent = isMaxLevel
-      ? "MAX LEVEL"
-      : `${levelXP.toLocaleString("de-DE")} / ${requiredXP.toLocaleString("de-DE")} XP`;
+    ui.gameOverXPProgress.textContent = isPrestigeMastered
+      ? "PRESTIGE MASTERED"
+      : isPrestigeReady
+        ? "PRESTIGE READY"
+        : `${levelXP.toLocaleString("de-DE")} / ${requiredXP.toLocaleString("de-DE")} XP`;
     ui.gameOverXPPanel.classList.remove("hidden");
     renderMainMenuPlayerProgress();
   }

@@ -1,0 +1,330 @@
+(() => {
+  "use strict";
+
+  const PRESTIGE_LEVEL_STORAGE_KEY = "slimejumperPrestigeLevel";
+  const PRESTIGE_TRANSACTION_STORAGE_KEY = "slimejumperPrestigeTransaction";
+  const PRESTIGE_TRANSACTION_FORMAT_VERSION = "prestige-transaction-v1";
+  const MAX_AVAILABLE_PRESTIGE = 10;
+
+  const ACHIEVEMENT_PROGRESS_DEFAULT = Object.freeze({
+    discoveredBiomeIds: [],
+    perfectBiomeIds: [],
+    deathFreeBiomeIds: [],
+    completedLookIds: [],
+    lifetimeStars: 0,
+    lifetimeAirTime: 0,
+    lifetimeCompletedLevels: 0,
+    lifetimeDeaths: 0,
+    lifetimePerfects: 0
+  });
+
+  const PRESTIGE_CYCLE_DEFAULTS = Object.freeze({
+    slimejumperPlayerLevel: "1",
+    slimejumperPlayerLevelXP: "0",
+    slimejumperHighestCheckpointLevel: "0",
+    slimejumperStarBalance: "0",
+    slimejumperUnlockedSlimeColors: JSON.stringify(["green"]),
+    slimejumperSelectedSlimeColor: "green",
+    slimejumperUnlockedSlimeCosmetics: JSON.stringify([]),
+    slimejumperSelectedSlimeCosmetic: "none",
+    slimejumperUnlockedSlimeBeards: JSON.stringify([]),
+    slimejumperSelectedSlimeBeard: "none",
+    slimejumperPendingWardrobeUnlockChoices: "0",
+    slimejumperAchievements: JSON.stringify([]),
+    slimejumperAchievementProgress: JSON.stringify(ACHIEVEMENT_PROGRESS_DEFAULT),
+    slimejumperSelectedAchievementBadges: JSON.stringify([])
+    // Future cycle-bound perk and mastery keys belong in this explicit allowlist.
+  });
+
+  const PRESTIGE_DEFINITIONS = Object.freeze([
+    Object.freeze({level: 1, symbolId: "prestige-drop-ring", displayLabel: "P1", theme: "verdant", reward: null}),
+    Object.freeze({level: 2, symbolId: "prestige-single-chevron", displayLabel: "P2", theme: "bronze", reward: null}),
+    Object.freeze({level: 3, symbolId: "prestige-double-chevron", displayLabel: "P3", theme: "silver", reward: null}),
+    Object.freeze({level: 4, symbolId: "prestige-winged-slime", displayLabel: "P4", theme: "sky", reward: null}),
+    Object.freeze({level: 5, symbolId: "prestige-starburst", displayLabel: "P5", theme: "gold", reward: null}),
+    Object.freeze({level: 6, symbolId: "prestige-ornament-shield", displayLabel: "P6", theme: "royal", reward: null}),
+    Object.freeze({level: 7, symbolId: "prestige-crowned-slime", displayLabel: "P7", theme: "crown", reward: null}),
+    Object.freeze({level: 8, symbolId: "prestige-speed-flame", displayLabel: "P8", theme: "inferno", reward: null}),
+    Object.freeze({level: 9, symbolId: "prestige-cosmic-halo", displayLabel: "P9", theme: "cosmic", reward: null}),
+    Object.freeze({level: 10, symbolId: "prestige-final-crest", displayLabel: "P10", theme: "legendary", reward: null})
+  ]);
+
+  const ROMAN_PRESTIGE_LEVELS = Object.freeze([
+    "", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"
+  ]);
+
+  let transactionInProgress = false;
+
+  function normalizePrestigeLevel(value) {
+    const numericValue = Math.floor(Number(value));
+    return Number.isSafeInteger(numericValue) && numericValue >= 0
+      ? numericValue
+      : 0;
+  }
+
+  function readPrestigeLevel() {
+    let storedValue = null;
+    try {
+      storedValue = localStorage.getItem(PRESTIGE_LEVEL_STORAGE_KEY);
+    } catch (_) {
+      return 0;
+    }
+
+    const prestigeLevel = normalizePrestigeLevel(storedValue);
+    if (storedValue !== String(prestigeLevel)) {
+      try {
+        localStorage.setItem(PRESTIGE_LEVEL_STORAGE_KEY, String(prestigeLevel));
+      } catch (_) {}
+    }
+    return prestigeLevel;
+  }
+
+  function writeVerifiedStorageValue(key, value) {
+    try {
+      localStorage.setItem(key, value);
+      return localStorage.getItem(key) === value;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function removeVerifiedStorageValue(key) {
+    try {
+      localStorage.removeItem(key);
+      return localStorage.getItem(key) === null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function getPrestigeDefinition(level = readPrestigeLevel()) {
+    const normalizedLevel = normalizePrestigeLevel(level);
+    return PRESTIGE_DEFINITIONS.find(
+      definition => definition.level === normalizedLevel
+    ) ?? null;
+  }
+
+  function getDisplayPrestigeDefinition(level = readPrestigeLevel()) {
+    const normalizedLevel = Math.min(
+      MAX_AVAILABLE_PRESTIGE,
+      normalizePrestigeLevel(level)
+    );
+    return getPrestigeDefinition(normalizedLevel);
+  }
+
+  function getUnlockedRewards(level = readPrestigeLevel()) {
+    const normalizedLevel = normalizePrestigeLevel(level);
+    return PRESTIGE_DEFINITIONS
+      .filter(definition => definition.level <= normalizedLevel && definition.reward !== null)
+      .map(definition => definition.reward);
+  }
+
+  function isPrestigeReady() {
+    return window.SlimePlayerProgress?.isPrestigeReady?.() === true;
+  }
+
+  function isPrestigeMastered() {
+    return readPrestigeLevel() >= MAX_AVAILABLE_PRESTIGE && isPrestigeReady();
+  }
+
+  function normalizePrestigeTransaction(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const fromPrestige = normalizePrestigeLevel(value.fromPrestige);
+    const targetPrestige = normalizePrestigeLevel(value.targetPrestige);
+    if (
+      value.formatVersion !== PRESTIGE_TRANSACTION_FORMAT_VERSION ||
+      value.status !== "pending" ||
+      targetPrestige !== fromPrestige + 1 ||
+      targetPrestige > MAX_AVAILABLE_PRESTIGE
+    ) {
+      return null;
+    }
+    return {
+      formatVersion: PRESTIGE_TRANSACTION_FORMAT_VERSION,
+      status: "pending",
+      fromPrestige,
+      targetPrestige
+    };
+  }
+
+  function readPrestigeTransaction() {
+    let rawValue = null;
+    try {
+      rawValue = localStorage.getItem(PRESTIGE_TRANSACTION_STORAGE_KEY);
+    } catch (_) {
+      return {kind: "error"};
+    }
+    if (rawValue === null) return {kind: "none"};
+
+    try {
+      const transaction = normalizePrestigeTransaction(JSON.parse(rawValue));
+      return transaction
+        ? {kind: "pending", transaction}
+        : {kind: "invalid"};
+    } catch (_) {
+      return {kind: "invalid"};
+    }
+  }
+
+  function isPrestigeTransactionPending() {
+    return readPrestigeTransaction().kind !== "none";
+  }
+
+  function resetPrestigeCycleStorage() {
+    for (const [key, value] of Object.entries(PRESTIGE_CYCLE_DEFAULTS)) {
+      if (!writeVerifiedStorageValue(key, value)) return false;
+    }
+    return Object.entries(PRESTIGE_CYCLE_DEFAULTS).every(([key, value]) => {
+      try {
+        return localStorage.getItem(key) === value;
+      } catch (_) {
+        return false;
+      }
+    });
+  }
+
+  function completePrestigeTransaction(transaction) {
+    const normalizedTransaction = normalizePrestigeTransaction(transaction);
+    if (!normalizedTransaction) return false;
+
+    if (!writeVerifiedStorageValue(
+      PRESTIGE_LEVEL_STORAGE_KEY,
+      String(normalizedTransaction.targetPrestige)
+    )) {
+      return false;
+    }
+    if (!resetPrestigeCycleStorage()) return false;
+    return removeVerifiedStorageValue(PRESTIGE_TRANSACTION_STORAGE_KEY);
+  }
+
+  function recoverPendingPrestigeTransaction() {
+    const storedTransaction = readPrestigeTransaction();
+    if (storedTransaction.kind === "none") return true;
+    if (storedTransaction.kind === "invalid") {
+      return removeVerifiedStorageValue(PRESTIGE_TRANSACTION_STORAGE_KEY);
+    }
+    if (storedTransaction.kind !== "pending") return false;
+    return completePrestigeTransaction(storedTransaction.transaction);
+  }
+
+  function performPrestigeReset({validateSafeState} = {}) {
+    if (transactionInProgress || typeof validateSafeState !== "function") {
+      return false;
+    }
+    if (!isPrestigeReady() || validateSafeState() !== true) return false;
+
+    const currentPrestige = readPrestigeLevel();
+    if (currentPrestige >= MAX_AVAILABLE_PRESTIGE) return false;
+
+    const transaction = {
+      formatVersion: PRESTIGE_TRANSACTION_FORMAT_VERSION,
+      status: "pending",
+      fromPrestige: currentPrestige,
+      targetPrestige: currentPrestige + 1
+    };
+    const serializedTransaction = JSON.stringify(transaction);
+
+    transactionInProgress = true;
+    let completed = false;
+    try {
+      if (!writeVerifiedStorageValue(
+        PRESTIGE_TRANSACTION_STORAGE_KEY,
+        serializedTransaction
+      )) {
+        return false;
+      }
+      if (!completePrestigeTransaction(transaction)) return false;
+      completed = true;
+      window.location.reload();
+      return true;
+    } finally {
+      if (!completed) transactionInProgress = false;
+    }
+  }
+
+  function isDevModeEnabled() {
+    return typeof DEV_MODE !== "undefined" && DEV_MODE;
+  }
+
+  function setPrestigeLevelForDev(level) {
+    if (
+      !isDevModeEnabled() ||
+      transactionInProgress ||
+      isPrestigeTransactionPending()
+    ) return false;
+    const nextLevel = Math.min(
+      MAX_AVAILABLE_PRESTIGE,
+      normalizePrestigeLevel(level)
+    );
+    if (!writeVerifiedStorageValue(PRESTIGE_LEVEL_STORAGE_KEY, String(nextLevel))) {
+      return false;
+    }
+    return true;
+  }
+
+  function adjustPrestigeLevelForDev(offset) {
+    if (!isDevModeEnabled()) return false;
+    const numericOffset = Math.trunc(Number(offset));
+    if (!Number.isFinite(numericOffset)) return false;
+    return setPrestigeLevelForDev(readPrestigeLevel() + numericOffset);
+  }
+
+  function getPrestigeEmblemMarkup(level) {
+    const definition = getDisplayPrestigeDefinition(level);
+    if (!definition) return "";
+
+    const decorations = {
+      1: '<circle class="prestigeMetal" cx="50" cy="51" r="39"/><circle class="prestigeInset" cx="50" cy="51" r="32"/>',
+      2: '<circle class="prestigeMetal" cx="50" cy="47" r="35"/><path class="prestigeAccent" d="M31 78 50 90 69 78 64 71 50 80 36 71Z"/>',
+      3: '<circle class="prestigeMetal" cx="50" cy="42" r="32"/><path class="prestigeAccent" d="M29 71 50 84 71 71 65 64 50 74 35 64Z"/><path class="prestigeAccent prestigeAccentLight" d="M32 82 50 94 68 82 63 77 50 85 37 77Z"/>',
+      4: '<path class="prestigeWing" d="M32 39C19 26 8 29 6 47c8-4 14-2 20 4-10-1-15 4-16 12 9-3 16-1 25 8Z"/><path class="prestigeWing" d="M68 39c13-13 24-10 26 8-8-4-14-2-20 4 10-1 15 4 16 12-9-3-16-1-25 8Z"/><circle class="prestigeMetal" cx="50" cy="52" r="30"/>',
+      5: '<path class="prestigeBurst" d="M50 4 59 20 76 12 78 31 96 34 86 50 98 64 80 70 80 89 61 83 50 98 39 83 20 89 20 70 2 64 14 50 4 34 22 31 24 12 41 20Z"/><circle class="prestigeInset" cx="50" cy="51" r="30"/>',
+      6: '<path class="prestigeOrnament" d="M27 34C15 23 6 30 8 44c6-5 12-4 18 1-11 1-15 8-12 17 5-5 11-6 17-3Z"/><path class="prestigeOrnament" d="M73 34c12-11 21-4 19 10-6-5-12-4-18 1 11 1 15 8 12 17-5-5-11-6-17-3Z"/><path class="prestigeShield" d="M50 9 80 20v28c0 23-14 36-30 46C34 84 20 71 20 48V20Z"/>',
+      7: '<circle class="prestigeMetal" cx="50" cy="54" r="32"/><path class="prestigeCrown" d="M27 27 25 8 41 20 50 4 59 20 75 8 73 27Z"/><path class="prestigeCrownBand" d="M28 27h44l-3 10H31Z"/>',
+      8: '<path class="prestigeFlame" d="M22 80C5 64 15 48 27 41c-5 15 4 17 9 8 7-11 0-24 17-40-2 18 15 18 10 36 9-9 14-15 13-27 18 19 21 46 2 63Z"/><path class="prestigeSpeed" d="M8 35h25M4 47h23M10 59h18"/><circle class="prestigeMetal" cx="54" cy="55" r="29"/>',
+      9: '<circle class="prestigeCosmic" cx="50" cy="52" r="34"/><ellipse class="prestigeOrbit" cx="50" cy="52" rx="48" ry="19" transform="rotate(-18 50 52)"/><circle class="prestigeStar" cx="11" cy="61" r="4"/><circle class="prestigeStar" cx="87" cy="31" r="3"/><path class="prestigeHalo" d="M29 22c10-8 32-8 42 0-8 7-34 7-42 0Z"/>',
+      10: '<path class="prestigeFinalWing" d="M34 31C20 12 5 15 2 37c9-5 16-2 24 6-14-2-21 5-22 16 10-4 19-1 31 10Z"/><path class="prestigeFinalWing" d="M66 31C80 12 95 15 98 37c-9-5-16-2-24 6 14-2 21 5 22 16-10-4-19-1-31 10Z"/><path class="prestigeShield prestigeShieldFinal" d="M50 13 79 24v28c0 22-14 34-29 44C35 86 21 74 21 52V24Z"/><path class="prestigeCrown" d="M29 24 27 6 42 17 50 2 58 17 73 6 71 24Z"/><path class="prestigeCrownBand" d="M30 23h40l-3 9H33Z"/>'
+    };
+
+    return `
+      <svg class="prestigeEmblem prestigeEmblem--${definition.theme}" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+        <defs>
+          <linearGradient id="prestigeMetalGradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#fff4a8"/><stop offset="0.48" stop-color="#d89138"/><stop offset="1" stop-color="#71336f"/>
+          </linearGradient>
+          <linearGradient id="prestigeSlimeGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#dcff83"/><stop offset="0.55" stop-color="#79ed35"/><stop offset="1" stop-color="#2d9d2d"/>
+          </linearGradient>
+        </defs>
+        <g class="prestigeDecoration">${decorations[definition.level] ?? ""}</g>
+        <g class="prestigeSlimeCore">
+          <path d="M50 19C40 31 30 42 30 57c0 14 8 23 20 23s20-9 20-23C70 42 60 31 50 19Z"/>
+          <ellipse class="prestigeSlimeShine" cx="42" cy="41" rx="7" ry="10"/>
+          <circle class="prestigeSlimeFace" cx="43" cy="58" r="3"/><circle class="prestigeSlimeFace" cx="57" cy="58" r="3"/>
+          <path class="prestigeSlimeSmile" d="M43 67c4 4 10 4 14 0"/>
+        </g>
+        <text class="prestigeRoman" x="50" y="96">${ROMAN_PRESTIGE_LEVELS[definition.level]}</text>
+      </svg>`;
+  }
+
+  recoverPendingPrestigeTransaction();
+  readPrestigeLevel();
+
+  window.SlimePrestige = Object.freeze({
+    prestigeLevelStorageKey: PRESTIGE_LEVEL_STORAGE_KEY,
+    prestigeTransactionStorageKey: PRESTIGE_TRANSACTION_STORAGE_KEY,
+    maxAvailablePrestige: MAX_AVAILABLE_PRESTIGE,
+    definitions: PRESTIGE_DEFINITIONS,
+    getLevel: readPrestigeLevel,
+    getDefinition: getPrestigeDefinition,
+    getDisplayDefinition: getDisplayPrestigeDefinition,
+    getUnlockedRewards,
+    getEmblemMarkup: getPrestigeEmblemMarkup,
+    isReady: isPrestigeReady,
+    isMastered: isPrestigeMastered,
+    isTransactionPending: isPrestigeTransactionPending,
+    performPrestigeReset,
+    setLevelForDev: setPrestigeLevelForDev,
+    adjustLevelForDev: adjustPrestigeLevelForDev
+  });
+})();

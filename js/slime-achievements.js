@@ -1605,6 +1605,7 @@
     itemPrice: WARDROBE_ITEM_STAR_PRICE,
     getBalance: () => starBalance,
     getLifetimeStars: () => achievementProgress.lifetimeStars,
+    isPurchaseInProgress: () => activeWardrobePurchases.size > 0,
     canPurchaseWardrobeItem,
     purchaseWardrobeItem
   });

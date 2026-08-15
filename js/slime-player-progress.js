@@ -21,7 +21,7 @@
     if (
       !Number.isSafeInteger(normalizedLevel) ||
       normalizedLevel < 1 ||
-      normalizedLevel >= MAX_PLAYER_LEVEL
+      normalizedLevel > MAX_PLAYER_LEVEL
     ) {
       return 0;
     }
@@ -58,8 +58,20 @@
       nextLevel++;
     }
 
-    if (nextLevel >= MAX_PLAYER_LEVEL) nextLevelXP = 0;
+    if (nextLevel >= MAX_PLAYER_LEVEL) {
+      nextLevelXP = Math.min(
+        nextLevelXP,
+        getXPRequiredForNextLevel(MAX_PLAYER_LEVEL)
+      );
+    }
     return {level: nextLevel, levelXP: nextLevelXP};
+  }
+
+  function isProgressPrestigeReady(progress) {
+    const requiredXP = getXPRequiredForNextLevel(MAX_PLAYER_LEVEL);
+    return progress.level === MAX_PLAYER_LEVEL &&
+      requiredXP > 0 &&
+      progress.levelXP >= requiredXP;
   }
 
   function restoreStorageValue(key, value) {
@@ -124,12 +136,26 @@
   let playerProgress = loadPlayerProgress();
 
   function getPlayerProgress() {
+    const requiredXP = getXPRequiredForNextLevel(playerProgress.level);
     return {
       level: playerProgress.level,
       levelXP: playerProgress.levelXP,
-      requiredXP: getXPRequiredForNextLevel(playerProgress.level),
-      isMaxLevel: playerProgress.level >= MAX_PLAYER_LEVEL
+      requiredXP,
+      isMaxLevel: playerProgress.level >= MAX_PLAYER_LEVEL,
+      isPrestigeReady: isProgressPrestigeReady(playerProgress)
     };
+  }
+
+  function isPrestigeReady() {
+    return isProgressPrestigeReady(playerProgress);
+  }
+
+  function setPlayerProgressForDev(level, levelXP) {
+    if (typeof DEV_MODE === "undefined" || !DEV_MODE) return false;
+    const nextProgress = applyLevelThresholds(level, levelXP);
+    if (!persistPlayerProgress(nextProgress)) return false;
+    playerProgress = nextProgress;
+    return true;
   }
 
   function awardRunXP(finalScore) {
@@ -152,6 +178,7 @@
       requiredXP: currentProgress.requiredXP,
       levelsGained: currentProgress.level - previousProgress.level,
       isMaxLevel: currentProgress.isMaxLevel,
+      isPrestigeReady: currentProgress.isPrestigeReady,
       persisted
     };
   }
@@ -167,6 +194,8 @@
     calculateRunXP,
     getXPRequiredForNextLevel,
     getPlayerProgress,
-    awardRunXP
+    isPrestigeReady,
+    awardRunXP,
+    setPlayerProgressForDev
   });
 })();

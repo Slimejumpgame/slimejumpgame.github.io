@@ -83,6 +83,12 @@
     highscoreScreen: document.getElementById("highscoreScreen"),
     highscoreRows: document.getElementById("highscoreRows"),
     menuPlayerLevel: document.getElementById("menuPlayerLevel"),
+    menuPrestigeBtn: document.getElementById("menuPrestigeBtn"),
+    menuPrestigeEmblem: document.getElementById("menuPrestigeEmblem"),
+    menuPrestigeLabel: document.getElementById("menuPrestigeLabel"),
+    prestigeConfirmOverlay: document.getElementById("prestigeConfirmOverlay"),
+    prestigeConfirmCancelBtn: document.getElementById("prestigeConfirmCancelBtn"),
+    prestigeConfirmBtn: document.getElementById("prestigeConfirmBtn"),
     message: document.getElementById("messageOverlay"),
     checkpointOverlay: document.getElementById("checkpointOverlay"),
     checkpointDialogTitle: document.getElementById("checkpointDialogTitle"),
@@ -167,7 +173,15 @@
     devNextLevelBtn: document.getElementById("devNextLevelBtn"),
     devModeToggleBtn: document.getElementById("devModeToggleBtn"),
     devTutorialToggleBtn: document.getElementById("devTutorialToggleBtn"),
-    devShopTestBtn: document.getElementById("devShopTestBtn")
+    devShopTestBtn: document.getElementById("devShopTestBtn"),
+    devPlayerLevel100Btn: document.getElementById("devPlayerLevel100Btn"),
+    devPlayerLevel99NearBtn: document.getElementById("devPlayerLevel99NearBtn"),
+    devPlayerLevel100NearBtn: document.getElementById("devPlayerLevel100NearBtn"),
+    devPrestigeReadyBtn: document.getElementById("devPrestigeReadyBtn"),
+    devPrestigeDownBtn: document.getElementById("devPrestigeDownBtn"),
+    devPrestigeUpBtn: document.getElementById("devPrestigeUpBtn"),
+    devPrestigeZeroBtn: document.getElementById("devPrestigeZeroBtn"),
+    devPrestigeFlowBtn: document.getElementById("devPrestigeFlowBtn")
   };
 
   let generatedLevel = null;

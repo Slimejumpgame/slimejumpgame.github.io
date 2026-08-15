@@ -139,6 +139,14 @@
     return cleared;
   }
 
+  function hasStoredRecoveryRecord() {
+    try {
+      return localStorage.getItem(ACTIVE_RUN_RECOVERY_STORAGE_KEY) !== null;
+    } catch (_) {
+      return true;
+    }
+  }
+
   function recoverInterruptedRun({
     isAchievementSnapshotValid,
     isWardrobeSnapshotValid,
@@ -204,6 +212,7 @@
     markRunCompleted,
     clearAfterRollback,
     recoverInterruptedRun,
+    hasStoredRecord: hasStoredRecoveryRecord,
     isBlocked: () => recoveryBlocked
   });
 })();

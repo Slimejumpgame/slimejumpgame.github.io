@@ -420,6 +420,109 @@
     return startGame(targetLevel);
   }
 
+  function canActivatePrestige({allowPrestigeDialog = false} = {}) {
+    const prestige = window.SlimePrestige;
+    if (
+      !prestige ||
+      !prestige.isReady() ||
+      prestige.getLevel() >= prestige.maxAvailablePrestige ||
+      prestige.isTransactionPending() ||
+      state !== "menu" ||
+      pendingGameOverScore !== null ||
+      getPendingWardrobeUnlockChoiceCount() > 0 ||
+      window.SlimeStarEconomy?.isPurchaseInProgress?.() === true ||
+      window.SlimeRunRecovery?.isBlocked?.() === true ||
+      window.SlimeRunRecovery?.hasStoredRecord?.() === true ||
+      ui.menu.classList.contains("hidden") ||
+      ui.mainMenuScreen.classList.contains("hidden")
+    ) {
+      return false;
+    }
+
+    const criticalOverlays = [
+      ui.checkpointOverlay,
+      ui.tutorialCompleteOverlay,
+      ui.pauseOverlay,
+      ui.message,
+      ui.endRunConfirmOverlay
+    ];
+    if (criticalOverlays.some(overlay => overlay && !overlay.classList.contains("hidden"))) {
+      return false;
+    }
+    if (
+      !allowPrestigeDialog &&
+      ui.prestigeConfirmOverlay &&
+      !ui.prestigeConfirmOverlay.classList.contains("hidden")
+    ) {
+      return false;
+    }
+    return true;
+  }
+
+  function showPrestigeConfirmation() {
+    if (!canActivatePrestige()) return false;
+    ui.prestigeConfirmBtn.disabled = false;
+    ui.prestigeConfirmOverlay.classList.remove("hidden");
+    window.requestAnimationFrame(() => ui.prestigeConfirmCancelBtn.focus());
+    return true;
+  }
+
+  function hidePrestigeConfirmation() {
+    ui.prestigeConfirmOverlay.classList.add("hidden");
+    ui.prestigeConfirmBtn.disabled = false;
+    ui.menuPrestigeBtn.focus();
+  }
+
+  function confirmPrestige() {
+    if (!canActivatePrestige({allowPrestigeDialog: true})) {
+      hidePrestigeConfirmation();
+      showGameToast("Prestige ist gerade nicht sicher verfügbar.");
+      renderMainMenuStats();
+      return false;
+    }
+
+    ui.prestigeConfirmBtn.disabled = true;
+    const completed = window.SlimePrestige.performPrestigeReset({
+      validateSafeState: () => canActivatePrestige({allowPrestigeDialog: true})
+    });
+    if (!completed) {
+      ui.prestigeConfirmBtn.disabled = false;
+      showGameToast("Prestige-Reset konnte nicht sicher abgeschlossen werden.");
+    }
+    return completed;
+  }
+
+  function setDevPlayerProgress(level, levelXP) {
+    if (!DEV_MODE || state !== "menu") return false;
+    const updated = window.SlimePlayerProgress?.setPlayerProgressForDev?.(
+      level,
+      levelXP
+    ) === true;
+    if (!updated) return false;
+    renderMainMenuStats();
+    console.info(`[DEV Prestige] Player-Level=${level}, XP=${levelXP}`);
+    return true;
+  }
+
+  function setDevPrestigeLevel(level) {
+    if (!DEV_MODE || state !== "menu") return false;
+    const updated = window.SlimePrestige?.setLevelForDev?.(level) === true;
+    if (!updated) return false;
+    renderMainMenuStats();
+    console.info(`[DEV Prestige] Prestige=${window.SlimePrestige.getLevel()}`);
+    return true;
+  }
+
+  function prepareDevPrestigeReady() {
+    const requiredXP = window.SlimePlayerProgress?.getXPRequiredForNextLevel?.(
+      window.SlimePlayerProgress.maxPlayerLevel
+    ) ?? 0;
+    return setDevPlayerProgress(
+      window.SlimePlayerProgress.maxPlayerLevel,
+      requiredXP
+    );
+  }
+
   function initializeDevMode() {
     if (
       !IS_LOCALHOST_TEST_ENVIRONMENT ||
@@ -447,6 +550,35 @@
     ui.devNextLevelBtn.addEventListener("click", () => startDevLevel(levelIndex + 2));
     updateDevTutorialToggle();
     ui.devTutorialToggleBtn.addEventListener("click", toggleDevTutorial);
+    ui.devPlayerLevel100Btn.addEventListener("click", () => {
+      setDevPlayerProgress(window.SlimePlayerProgress.maxPlayerLevel, 0);
+    });
+    ui.devPlayerLevel99NearBtn.addEventListener("click", () => {
+      const level = window.SlimePlayerProgress.maxPlayerLevel - 1;
+      const requiredXP = window.SlimePlayerProgress.getXPRequiredForNextLevel(level);
+      setDevPlayerProgress(level, Math.max(0, requiredXP - 100));
+    });
+    ui.devPlayerLevel100NearBtn.addEventListener("click", () => {
+      const level = window.SlimePlayerProgress.maxPlayerLevel;
+      const requiredXP = window.SlimePlayerProgress.getXPRequiredForNextLevel(level);
+      setDevPlayerProgress(level, Math.max(0, requiredXP - 1));
+    });
+    ui.devPrestigeReadyBtn.addEventListener("click", prepareDevPrestigeReady);
+    ui.devPrestigeDownBtn.addEventListener("click", () => {
+      setDevPrestigeLevel(window.SlimePrestige.getLevel() - 1);
+    });
+    ui.devPrestigeUpBtn.addEventListener("click", () => {
+      setDevPrestigeLevel(window.SlimePrestige.getLevel() + 1);
+    });
+    ui.devPrestigeZeroBtn.addEventListener("click", () => {
+      setDevPrestigeLevel(0);
+    });
+    ui.devPrestigeFlowBtn.addEventListener("click", () => {
+      if (!prepareDevPrestigeReady()) return;
+      showMenuScreen("main");
+      renderMainMenuStats();
+      console.info("[DEV Prestige] Echter Prestige-Flow ist bereit.");
+    });
 
     document.addEventListener("keydown", event => {
       if (event.key !== "PageUp" && event.key !== "PageDown") return;
@@ -910,6 +1042,9 @@
   }
 
   ui.startBtn.addEventListener("click", () => runMenuButtonAction(ui.startBtn, startFromPlay));
+  ui.menuPrestigeBtn.addEventListener("click", showPrestigeConfirmation);
+  ui.prestigeConfirmCancelBtn.addEventListener("click", hidePrestigeConfirmation);
+  ui.prestigeConfirmBtn.addEventListener("click", confirmPrestige);
   ui.achievementsBtn.addEventListener("click", () => runMenuButtonAction(ui.achievementsBtn, () => showMenuScreen("achievements")));
   ui.wardrobeBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeBtn, () => showMenuScreen("wardrobe")));
   ui.howToBtn.addEventListener("click", () => runMenuButtonAction(ui.howToBtn, () => showMenuScreen("howto")));
