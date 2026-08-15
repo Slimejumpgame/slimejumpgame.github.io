@@ -132,6 +132,24 @@
     return `x${multiplier.toFixed(2)}`;
   }
 
+  function getPrestigeXPDisplayMultiplier() {
+    const prestigeLevel = window.SlimePrestige?.getLevel?.() ?? 0;
+    return window.SlimePlayerProgress?.calculateRunXPMultiplier?.(
+      prestigeLevel,
+      0
+    ) ?? 1;
+  }
+
+  function formatPrestigeXPMultiplier(multiplier) {
+    const normalizedMultiplier = Number.isFinite(Number(multiplier))
+      ? Number(multiplier)
+      : 1;
+    return `x${normalizedMultiplier.toLocaleString("de-DE", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
+  }
+
   function updateCheckpointBonusHUD() {
     const multiplierText = formatScoreMultiplier(runScoreMultiplier);
     ui.checkpointBonusMultiplier.textContent = multiplierText;
@@ -144,6 +162,17 @@
       "hidden",
       !runIsVisible || !runStartedFromCheckpoint || runScoreMultiplier <= 1
     );
+    if (ui.prestigeXPBonusHud && ui.prestigeXPBonusMultiplier) {
+      const prestigeMultiplierText = formatPrestigeXPMultiplier(
+        getPrestigeXPDisplayMultiplier()
+      );
+      ui.prestigeXPBonusMultiplier.textContent = prestigeMultiplierText;
+      ui.prestigeXPBonusHud.setAttribute(
+        "aria-label",
+        `Prestige-XP-Bonus ${prestigeMultiplierText}`
+      );
+      ui.prestigeXPBonusHud.classList.toggle("hidden", !runIsVisible);
+    }
   }
 
   function initializeRunScoreState(startLevel, {fromCheckpoint = false} = {}) {

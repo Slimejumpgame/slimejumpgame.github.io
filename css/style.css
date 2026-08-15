@@ -274,6 +274,13 @@ button[disabled] {
   min-width: 0;
 }
 
+.hudMultiplierGroup {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .pill {
   min-width: 74px;
   padding: 7px 10px;
@@ -604,6 +611,47 @@ canvas.aiming {
 }
 
 #checkpointBonusMultiplier {
+  font-size: 18px;
+  font-weight: 1000;
+}
+
+.prestigeXPBonusHud {
+  flex: 0 0 auto;
+  min-width: 96px;
+  min-height: 38px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 3px 9px;
+  border: 2px solid var(--ui-purple-light);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 22% 18%, rgba(255, 255, 255, 0.52), transparent 18%),
+    linear-gradient(180deg, var(--ui-purple), var(--ui-purple-dark));
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.28),
+    0 3px 0 #32154f,
+    0 5px 12px rgba(0, 0, 0, 0.3),
+    0 0 9px rgba(168, 60, 255, 0.28);
+  color: #ffffff;
+  font-family: system-ui, sans-serif;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.prestigeXPBonusLabel {
+  color: #f5caff;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+#prestigeXPBonusMultiplier {
   font-size: 18px;
   font-weight: 1000;
 }
@@ -1487,12 +1535,11 @@ p {
 }
 
 .menuBestProgressGroup {
-  width: min(31vw, 190px);
+  width: min(52vw, 380px);
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: clamp(3px, 0.5vh, 5px);
+  align-items: center;
+  gap: clamp(5px, 0.75vw, 10px);
 }
 
 .menuStatusBadge {
@@ -1880,12 +1927,14 @@ p {
 .prestigeRewardPreview[data-reward-id*="prism"] { --prestige-preview-color: #65dcff; --prestige-preview-accent: #ff8be8; }
 
 .menuBestProgressGroup .menuStatusBadge--best {
-  max-width: 100%;
+  flex: 0 1 auto;
+  max-width: min(25vw, 150px);
 }
 
 .menuXPProgress {
-  width: 100%;
-  padding: clamp(3px, 0.55vh, 5px) clamp(6px, 0.65vw, 9px);
+  flex: 0 1 clamp(120px, 17vw, 165px);
+  width: clamp(120px, 17vw, 165px);
+  padding: clamp(2px, 0.4vh, 4px) clamp(5px, 0.55vw, 8px);
   border: 1px solid rgba(159, 248, 93, 0.55);
   border-radius: clamp(7px, 0.8vw, 11px);
   background: rgba(16, 28, 45, 0.82);
@@ -2405,7 +2454,8 @@ p {
   width: clamp(82px, 10.5vw, 132px);
   height: auto;
   aspect-ratio: 18 / 17;
-  margin: 0 auto clamp(1px, 0.5vh, 6px);
+  align-self: center;
+  margin: 0 auto;
   object-fit: contain;
   cursor: default;
   touch-action: none;
@@ -2413,7 +2463,7 @@ p {
   filter:
     drop-shadow(0 5px 0 rgba(14, 47, 16, 0.76))
     drop-shadow(0 0 12px rgba(134, 245, 31, 0.44));
-  transform: rotate(-2deg);
+  transform: translateY(-28px) rotate(-2deg);
 }
 
 .menuMascotPrestigeSpace {
@@ -2425,6 +2475,7 @@ p {
   --prestige-primary: #d89138;
   --prestige-secondary: #71336f;
   --prestige-highlight: #fff4a8;
+  align-self: center;
   justify-self: end;
   width: clamp(58px, 7vw, 82px);
   min-width: 44px;
@@ -2641,6 +2692,7 @@ p {
 }
 
 .menuPlayerLevel {
+  align-self: center;
   justify-self: start;
   margin-left: clamp(5px, 0.9vw, 11px);
   color: #9bfa20;
@@ -3838,7 +3890,7 @@ p {
     padding: 6px 8px;
   }
 
-  .checkpointBonusHud {
+  .hudMultiplierGroup {
     position: absolute;
     top: calc(100% + 6px);
     left: max(8px, env(safe-area-inset-left));
@@ -3958,23 +4010,30 @@ p {
     gap: 6px;
   }
 
+  .hudMultiplierGroup {
+    gap: 4px;
+  }
+
   .pill {
     min-width: 66px;
     padding: 3px 7px;
     font-size: 11px;
   }
 
-  .checkpointBonusHud {
+  .checkpointBonusHud,
+  .prestigeXPBonusHud {
     min-width: 78px;
     min-height: 30px;
     padding: 2px 6px;
   }
 
-  .checkpointBonusLabel {
+  .checkpointBonusLabel,
+  .prestigeXPBonusLabel {
     font-size: 6px;
   }
 
-  #checkpointBonusMultiplier {
+  #checkpointBonusMultiplier,
+  #prestigeXPBonusMultiplier {
     font-size: 14px;
   }
 
@@ -4009,11 +4068,13 @@ p {
   }
 
   .menuBestProgressGroup {
-    width: min(28vw, 190px);
-    gap: 2px;
+    width: min(48vw, 320px);
+    gap: 4px;
   }
 
   .menuXPProgress {
+    flex-basis: clamp(104px, 17vw, 142px);
+    width: clamp(104px, 17vw, 142px);
     padding: 2px 5px;
     border-radius: 7px;
   }
@@ -4141,6 +4202,7 @@ p {
     width: clamp(58px, 17vh, 80px);
     height: auto;
     margin-bottom: 1px;
+    transform: rotate(-2deg);
   }
 
   .wardrobePrestigePanel {
@@ -4494,6 +4556,10 @@ p {
   }
 
   .hudGroup {
+    gap: 0.65vw;
+  }
+
+  .hudMultiplierGroup {
     gap: 0.65vw;
   }
 

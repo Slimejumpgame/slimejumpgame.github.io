@@ -125,6 +125,8 @@
     checkpointLevelMultiplier: document.getElementById("checkpointLevelMultiplier"),
     checkpointBonusHud: document.getElementById("checkpointBonusHud"),
     checkpointBonusMultiplier: document.getElementById("checkpointBonusMultiplier"),
+    prestigeXPBonusHud: document.getElementById("prestigeXPBonusHud"),
+    prestigeXPBonusMultiplier: document.getElementById("prestigeXPBonusMultiplier"),
     tutorialCompleteOverlay: document.getElementById("tutorialCompleteOverlay"),
     tutorialSkipConfirmBtn: document.getElementById("tutorialSkipConfirmBtn"),
     tutorialSkipDeclineBtn: document.getElementById("tutorialSkipDeclineBtn"),

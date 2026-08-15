@@ -112,6 +112,113 @@ function assertLegitimateGameOverIntegration() {
   );
 }
 
+class FakeClassList {
+  constructor() { this.values = new Set(["hidden"]); }
+  toggle(name, force) {
+    if (force) this.values.add(name);
+    else this.values.delete(name);
+  }
+  contains(name) { return this.values.has(name); }
+}
+
+class FakeHudElement {
+  constructor() {
+    this.textContent = "";
+    this.attributes = {};
+    this.classList = new FakeClassList();
+  }
+  setAttribute(name, value) { this.attributes[name] = String(value); }
+}
+
+function assertPrestigeXPDisplay(api) {
+  const gameSource = read("js/game.js");
+  const displayStart = gameSource.indexOf("  function formatScoreMultiplier(");
+  const displayEnd = gameSource.indexOf("  function initializeRunScoreState(");
+  assert.ok(displayStart >= 0 && displayEnd > displayStart);
+
+  let prestigeLevel = 0;
+  const ui = {
+    checkpointBonusHud: new FakeHudElement(),
+    checkpointBonusMultiplier: new FakeHudElement(),
+    prestigeXPBonusHud: new FakeHudElement(),
+    prestigeXPBonusMultiplier: new FakeHudElement()
+  };
+  const context = vm.createContext({
+    window: {
+      SlimePrestige: {getLevel: () => prestigeLevel},
+      SlimePlayerProgress: api
+    },
+    ui
+  });
+  vm.runInContext(
+    `
+      let state = "playing";
+      let runScoreMultiplier = 1;
+      let runStartLevel = 1;
+      let runStartedFromCheckpoint = false;
+    ` + gameSource.slice(displayStart, displayEnd) + `
+      globalThis.prestigeXPDisplayTestApi = {
+        updateCheckpointBonusHUD,
+        setPrestigeLevel(value) { prestigeLevel = value; },
+        setCheckpoint(multiplier, level) {
+          runScoreMultiplier = multiplier;
+          runStartLevel = level;
+          runStartedFromCheckpoint = multiplier > 1;
+        }
+      };
+    `,
+    context,
+    {filename: "js/game-prestige-xp-display-test-slice.js"}
+  );
+
+  for (const [level, expected] of [[0, "x1,00"], [4, "x1,40"], [10, "x2,00"], [99, "x2,00"]]) {
+    prestigeLevel = level;
+    context.prestigeXPDisplayTestApi.updateCheckpointBonusHUD();
+    assert.equal(ui.prestigeXPBonusMultiplier.textContent, expected);
+    assert.equal(ui.prestigeXPBonusHud.classList.contains("hidden"), false);
+  }
+
+  context.prestigeXPDisplayTestApi.setCheckpoint(1.15, 30);
+  prestigeLevel = 4;
+  context.prestigeXPDisplayTestApi.updateCheckpointBonusHUD();
+  assert.equal(ui.checkpointBonusMultiplier.textContent, "x1.15");
+  assert.equal(ui.checkpointBonusHud.classList.contains("hidden"), false);
+  assert.equal(ui.prestigeXPBonusMultiplier.textContent, "x1,40");
+  assert.equal(api.calculateRunXPMultiplier(4, 30), 1.55);
+}
+
+function assertReleaseUILayout() {
+  const html = read("index.html");
+  const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
+  assert.equal(ids.length, new Set(ids).size, "index.html contains duplicate IDs");
+  assert.match(
+    html,
+    /class="menuBestProgressGroup"[\s\S]*?id="personalBestValue"[\s\S]*?id="menuXPProgress"/
+  );
+  assert.match(
+    html,
+    /class="hudMultiplierGroup"[\s\S]*?id="checkpointBonusHud"[\s\S]*?id="prestigeXPBonusHud"/
+  );
+
+  const coreSource = read("js/core.js");
+  assert.match(coreSource, /prestigeXPBonusHud: document\.getElementById\("prestigeXPBonusHud"\)/);
+  assert.match(coreSource, /prestigeXPBonusMultiplier: document\.getElementById\("prestigeXPBonusMultiplier"\)/);
+
+  const css = read("css/style.css");
+  assert.match(css, /\.menuBestProgressGroup\s*\{[\s\S]*?display: flex;[\s\S]*?align-items: center;/);
+  assert.match(css, /\.menuXPProgress\s*\{[\s\S]*?width: clamp\(120px, 17vw, 165px\)/);
+  assert.match(css, /\.menuMascot\s*\{[\s\S]*?align-self: center;/);
+  assert.match(css, /\.menuPrestigeButton\s*\{[\s\S]*?align-self: center;/);
+  assert.match(css, /\.menuPlayerLevel\s*\{[\s\S]*?align-self: center;/);
+  assert.match(css, /\.hudMultiplierGroup\s*\{[\s\S]*?display: flex;[\s\S]*?align-items: center;/);
+  assert.match(
+    css,
+    /\.prestigeXPBonusHud\s*\{[\s\S]*?var\(--ui-purple-light\)[\s\S]*?var\(--ui-purple\)[\s\S]*?var\(--ui-purple-dark\)/
+  );
+  assert.match(css, /\.checkpointBonusHud\s*\{[\s\S]*?border: 2px solid #baff72;/);
+  assert.match(css, /@media \(max-height: 520px\)[\s\S]*?\.prestigeXPBonusHud/);
+}
+
 function assertReleaseGuards() {
   const progressSource = read("js/slime-player-progress.js");
   assert.equal(
@@ -136,5 +243,7 @@ const fixture = loadPlayerProgressApi();
 assertMultiplierBalance(fixture.api);
 assertRunXPCalculation(fixture);
 assertLegitimateGameOverIntegration();
+assertPrestigeXPDisplay(fixture.api);
+assertReleaseUILayout();
 assertReleaseGuards();
 console.log("Player XP multiplier tests passed.");
