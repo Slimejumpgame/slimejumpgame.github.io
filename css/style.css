@@ -866,7 +866,7 @@ canvas.aiming {
 
 .prestigeCustomizationPanel,
 .prestigeWardrobeChoicePanel {
-  width: min(94%, 720px);
+  width: min(94%, 860px);
 }
 
 .prestigeCustomizationSummary {
@@ -905,7 +905,7 @@ canvas.aiming {
 .prestigeCustomizationFields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: clamp(7px, 1.2vw, 12px);
+  gap: clamp(10px, 1.4vw, 16px);
 }
 
 .prestigeCustomizationFields label {
@@ -923,13 +923,13 @@ canvas.aiming {
 
 .prestigeCustomizationFields select {
   width: 100%;
-  min-height: 39px;
-  padding: 6px 9px;
+  min-height: clamp(46px, 7dvh, 54px);
+  padding: 8px 11px;
   border: 1px solid rgba(225, 180, 255, 0.55);
   border-radius: 9px;
   background: #211342;
   color: #ffffff;
-  font: 800 clamp(11px, 2.35dvh, 15px)/1.2 var(--ui-title-font);
+  font: 800 clamp(13px, 2.5dvh, 17px)/1.2 var(--ui-title-font);
 }
 
 .prestigeCustomizationFields select:disabled {
@@ -945,15 +945,23 @@ canvas.aiming {
 
 .prestigeWardrobeChoiceOptions {
   max-height: min(48dvh, 390px);
+  min-height: 0;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: clamp(5px, 0.8vw, 9px);
+  grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+  align-content: start;
+  gap: clamp(7px, 0.9vw, 11px);
   padding: 3px;
+  overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--ui-green) rgba(19, 10, 48, 0.72);
+  scrollbar-width: thin;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 .prestigeWardrobeChoiceOption {
-  min-height: 76px;
+  min-height: clamp(96px, 15dvh, 120px);
 }
 
 .prestigeWardrobeChoiceConfirmation {
@@ -1793,33 +1801,39 @@ p {
 }
 
 .wardrobeCategoryMenu {
-  width: min(100%, 900px);
+  width: min(100%, 540px);
+  height: 100%;
   min-height: 0;
-  margin: auto;
+  margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
   align-items: stretch;
-  gap: var(--ui-gap-lg);
+  gap: clamp(10px, 1.5dvh, 16px);
+  padding: 3px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--ui-green) rgba(19, 10, 48, 0.72);
+  scrollbar-width: thin;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 .wardrobeMenuButton {
-  min-height: clamp(76px, 18vh, 132px);
-  padding: clamp(10px, 1.6vw, 20px);
-  font-size: clamp(16px, 2vw, 27px);
+  width: 100%;
+  min-height: clamp(64px, 10vh, 82px);
+  padding: clamp(10px, 1.6vw, 20px) clamp(18px, 3vw, 34px);
+  font-size: clamp(18px, 2vw, 26px);
   line-height: 1.05;
 }
 
 .wardrobeSubmenu {
   min-height: 0;
   display: grid;
-  grid-template-rows: auto;
-  align-content: start;
-  padding-right: 2px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  touch-action: pan-y;
-  -webkit-overflow-scrolling: touch;
+  grid-template-rows: minmax(0, 1fr);
+  align-content: stretch;
+  overflow: hidden;
 }
 
 .wardrobeHeaderActions {
@@ -1908,28 +1922,33 @@ p {
 .wardrobePrestigeOptions {
   min-height: 0;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   align-content: start;
-  gap: clamp(6px, 0.8vw, 10px);
+  gap: clamp(8px, 1vw, 13px);
   padding: 3px;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-color: var(--ui-green) rgba(19, 10, 48, 0.72);
+  scrollbar-width: thin;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 .prestigeWardrobeOption {
   min-width: 0;
-  min-height: clamp(82px, 14vh, 112px);
+  min-height: clamp(112px, 18vh, 146px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  padding: 7px 5px;
+  gap: clamp(6px, 1vh, 10px);
+  padding: clamp(9px, 1.4vh, 13px) 7px;
   border: 1px solid rgba(218, 168, 255, 0.36);
   border-radius: 11px;
   background: linear-gradient(155deg, rgba(91, 40, 143, 0.9), rgba(34, 19, 74, 0.96));
   color: #f5efff;
-  font: 850 clamp(8px, 0.76vw, 11px)/1.1 var(--ui-title-font);
+  font: 850 clamp(10px, 0.9vw, 13px)/1.1 var(--ui-title-font);
   text-align: center;
 }
 
@@ -1941,8 +1960,8 @@ p {
 
 .prestigeRewardPreview {
   position: relative;
-  width: min(100%, 105px);
-  height: clamp(42px, 7.5vh, 58px);
+  width: min(100%, 132px);
+  height: clamp(64px, 10vh, 82px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1962,7 +1981,7 @@ p {
 }
 
 .prestigeRewardPreview--frame i {
-  width: clamp(9px, 1vw, 13px);
+  width: clamp(11px, 1.2vw, 16px);
   aspect-ratio: 1;
   display: grid;
   place-items: center;
@@ -1975,13 +1994,13 @@ p {
 
 .prestigeRewardPreview--title {
   color: #fff2a3;
-  font: 900 clamp(10px, 1.05vw, 15px)/1 var(--ui-title-font);
+  font: 900 clamp(12px, 1.2vw, 17px)/1 var(--ui-title-font);
   text-shadow: 0 2px 0 #54218c;
   text-transform: uppercase;
 }
 
 .prestigeRewardPreview--aura i {
-  width: clamp(26px, 3.2vw, 40px);
+  width: clamp(36px, 4.2vw, 54px);
   aspect-ratio: 1;
   border: 2px solid var(--prestige-preview-accent, #9eeaff);
   border-radius: 50%;
@@ -2002,11 +2021,11 @@ p {
   box-shadow: 0 0 7px var(--prestige-preview-accent, #ff8b55);
 }
 
-.prestigeRewardPreview--trail i:nth-child(1) { width: 22px; }
-.prestigeRewardPreview--trail i:nth-child(2) { width: 18px; opacity: 0.9; }
-.prestigeRewardPreview--trail i:nth-child(3) { width: 14px; opacity: 0.78; }
-.prestigeRewardPreview--trail i:nth-child(4) { width: 11px; opacity: 0.64; }
-.prestigeRewardPreview--trail i:nth-child(5) { width: 8px; opacity: 0.5; }
+.prestigeRewardPreview--trail i:nth-child(1) { width: 30px; }
+.prestigeRewardPreview--trail i:nth-child(2) { width: 24px; opacity: 0.9; }
+.prestigeRewardPreview--trail i:nth-child(3) { width: 18px; opacity: 0.78; }
+.prestigeRewardPreview--trail i:nth-child(4) { width: 14px; opacity: 0.64; }
+.prestigeRewardPreview--trail i:nth-child(5) { width: 10px; opacity: 0.5; }
 
 .prestigeRewardPreview[data-reward-id*="bubble"] { --prestige-preview-color: rgba(105, 225, 255, 0.45); --prestige-preview-accent: #d7fbff; }
 .prestigeRewardPreview[data-reward-id*="mist"] { --prestige-preview-color: rgba(173, 188, 221, 0.62); --prestige-preview-accent: #dfe7ff; }
@@ -2205,23 +2224,64 @@ p {
   align-self: stretch;
 }
 
+#wardrobeScreen .wardrobePanel:not(.wardrobePrestigePanel) {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+}
+
 #wardrobeScreen .panelHeading {
   justify-content: flex-start;
 }
 
-#wardrobeScreen .slimeColorOptions {
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  align-items: center;
-}
-
-#wardrobeScreen .slimeCosmeticOptions {
-  grid-template-columns: repeat(9, minmax(0, 1fr));
-  align-items: center;
-}
-
+#wardrobeScreen .slimeColorOptions,
+#wardrobeScreen .slimeCosmeticOptions,
 #wardrobeScreen .slimeBeardOptions {
-  grid-template-columns: repeat(9, minmax(0, 1fr));
-  align-items: center;
+  min-height: 0;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  align-content: start;
+  align-items: start;
+  gap: clamp(8px, 1vw, 13px);
+  padding: 3px 5px 6px 3px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--ui-green) rgba(19, 10, 48, 0.72);
+  scrollbar-width: thin;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+#wardrobeScreen .slimeColorOption {
+  min-height: clamp(88px, 13vh, 108px);
+  padding: clamp(8px, 1vh, 12px) 6px;
+}
+
+#wardrobeScreen .slimeColorPreview {
+  width: clamp(48px, 4.8vw, 62px);
+  height: clamp(41px, 4.1vw, 53px);
+  margin-bottom: clamp(5px, 0.7vh, 8px);
+}
+
+#wardrobeScreen .slimeCosmeticPreview {
+  width: clamp(68px, 7vw, 88px);
+  height: auto;
+  aspect-ratio: 44 / 35;
+  margin-bottom: clamp(3px, 0.55vh, 7px);
+}
+
+#wardrobeScreen .slimeColorLabel {
+  font-size: clamp(10px, 0.95vw, 14px);
+}
+
+#wardrobeScreen .wardrobePurchaseRequirement {
+  font-size: clamp(8px, 0.72vw, 10px);
+}
+
+#wardrobeScreen .wardrobeBuyButton,
+#wardrobeScreen .wardrobeFreeUnlockButton {
+  min-height: clamp(34px, 5.4vh, 42px);
+  padding: 4px 7px;
+  font-size: clamp(8px, 0.78vw, 11px);
 }
 
 .panelHeading {
@@ -4298,7 +4358,7 @@ p {
     width: clamp(58px, 17vh, 80px);
     height: auto;
     margin-bottom: 1px;
-    transform: rotate(-2deg);
+    transform: translateY(-6px) rotate(-2deg);
   }
 
   .wardrobePrestigePanel {
@@ -4614,6 +4674,132 @@ p {
   .slimeLeaderboardPreview {
     width: clamp(18px, 5.4vh, 25px);
     height: clamp(14px, 4.3vh, 20px);
+  }
+}
+
+/* Large, scrollable customization controls for touch-first landscape menus. */
+@media (orientation: landscape) and (hover: none) and (pointer: coarse) {
+  .wardrobeCategoryMenu {
+    width: min(100%, 410px);
+    gap: clamp(5px, 1.6dvh, 8px);
+    padding: 2px;
+  }
+
+  .wardrobeMenuButton {
+    min-height: clamp(46px, 14dvh, 58px);
+    padding: 5px 16px;
+    font-size: clamp(12px, 3.6dvh, 17px);
+  }
+
+  #wardrobeScreen .wardrobePanel {
+    padding: clamp(7px, 2dvh, 10px);
+  }
+
+  #wardrobeScreen .slimeColorOptions,
+  #wardrobeScreen .slimeCosmeticOptions,
+  #wardrobeScreen .slimeBeardOptions {
+    grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+    gap: clamp(5px, 1.4dvh, 8px);
+  }
+
+  #wardrobeScreen .slimeColorOption {
+    min-height: clamp(70px, 20dvh, 84px);
+    padding: 5px 4px;
+    border-radius: 9px;
+  }
+
+  #wardrobeScreen .slimeColorPreview,
+  .prestigeWardrobeChoiceOption .slimeColorPreview {
+    width: clamp(40px, 12dvh, 50px);
+    height: clamp(34px, 10dvh, 43px);
+    margin-bottom: 3px;
+  }
+
+  #wardrobeScreen .slimeCosmeticPreview,
+  .prestigeWardrobeChoiceOption .slimeCosmeticPreview {
+    width: clamp(54px, 16dvh, 68px);
+    height: auto;
+    margin-bottom: 2px;
+  }
+
+  #wardrobeScreen .slimeColorLabel,
+  .prestigeWardrobeChoiceOption .slimeColorLabel {
+    font-size: clamp(8px, 2.3dvh, 11px);
+  }
+
+  #wardrobeScreen .wardrobePurchaseRequirement {
+    font-size: clamp(6px, 1.7dvh, 8px);
+  }
+
+  #wardrobeScreen .wardrobeBuyButton,
+  #wardrobeScreen .wardrobeFreeUnlockButton {
+    min-height: clamp(29px, 8dvh, 35px);
+    padding: 2px 5px;
+    font-size: clamp(7px, 1.9dvh, 9px);
+  }
+
+  .wardrobePrestigePanel {
+    gap: clamp(5px, 1.4dvh, 8px);
+  }
+
+  .wardrobePrestigeCategoryButton {
+    min-height: clamp(34px, 9.5dvh, 42px);
+    font-size: clamp(8px, 2.25dvh, 11px);
+  }
+
+  .wardrobePrestigeOptions {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: clamp(5px, 1.4dvh, 8px);
+  }
+
+  .prestigeWardrobeOption {
+    min-height: clamp(86px, 25dvh, 104px);
+    padding: 6px 5px;
+    gap: 4px;
+    font-size: clamp(8px, 2.2dvh, 10px);
+  }
+
+  .prestigeRewardPreview {
+    width: min(100%, 112px);
+    height: clamp(48px, 14dvh, 60px);
+  }
+
+  .prestigeCustomizationPanel,
+  .prestigeWardrobeChoicePanel {
+    width: min(96vw, 760px);
+  }
+
+  .prestigeCustomizationPanel {
+    gap: clamp(5px, 1.4dvh, 8px);
+    padding: clamp(8px, 2dvh, 12px) clamp(13px, 2.5vw, 20px);
+  }
+
+  .prestigeCustomizationFields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(6px, 1.7dvh, 9px);
+  }
+
+  .prestigeCustomizationFields select {
+    min-height: clamp(42px, 11dvh, 48px);
+    padding: 5px 8px;
+    font-size: clamp(10px, 2.7dvh, 13px);
+  }
+
+  .prestigeWardrobeChoiceOptions {
+    max-height: min(48dvh, 230px);
+    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+    gap: clamp(5px, 1.4dvh, 8px);
+  }
+
+  .prestigeWardrobeChoiceOption {
+    min-height: clamp(76px, 22dvh, 94px);
+  }
+}
+
+/* Installed homescreen mode needs only a tiny mascot lift; browser fullscreen stays unchanged. */
+@media (display-mode: standalone) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
+  #mainMenuScreen .menuMascot {
+    transform: translateY(-12px) rotate(-2deg);
   }
 }
 
