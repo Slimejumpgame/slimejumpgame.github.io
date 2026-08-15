@@ -134,17 +134,30 @@
     return preview;
   }
 
-  function createLeaderboardSlimePreview(color, cosmetic, beard = "none") {
+  function createLeaderboardSlimePreview(
+    color,
+    cosmetic,
+    beard = "none",
+    prestigeAura = "none",
+    prestigeTrail = "none"
+  ) {
     const preview = document.createElement("canvas");
     preview.className = "slimeLeaderboardPreview";
-    preview.width = 88;
-    preview.height = 70;
+    preview.width = 116;
+    preview.height = 100;
     preview.setAttribute("aria-hidden", "true");
     drawSlimeCharacterPreview(
       preview,
       normalizeSlimeCosmetic(cosmetic),
       normalizeSlimeBeard(beard),
-      normalizeSlimeColor(color)
+      normalizeSlimeColor(color),
+      {
+        centerX: 68,
+        centerY: 54,
+        scale: 0.8,
+        prestigeAura,
+        prestigeTrail
+      }
     );
     return preview;
   }
@@ -1553,14 +1566,6 @@
       "title",
       entry.prestigeTitle
     );
-    const auraReward = window.SlimePrestige?.getRewardDefinition?.(
-      "aura",
-      entry.prestigeAura
-    );
-    const trailReward = window.SlimePrestige?.getRewardDefinition?.(
-      "trail",
-      entry.prestigeTrail
-    );
     const nickname = (
       typeof DEV_MODE !== "undefined" &&
       DEV_MODE &&
@@ -1589,7 +1594,9 @@
     const portrait = createLeaderboardSlimePreview(
       entry.slimeColor,
       entry.slimeCosmetic,
-      entry.slimeBeard
+      entry.slimeBeard,
+      entry.prestigeAura,
+      entry.prestigeTrail
     );
     const name = document.createElement("strong");
     name.textContent = nickname;
@@ -1634,27 +1641,6 @@
     const callingCard = document.createElement("span");
     callingCard.className = "highscoreCallingCardCore";
     callingCard.dataset.prestigeFrame = entry.prestigeFrame ?? "none";
-    callingCard.dataset.prestigeAura = entry.prestigeAura ?? "none";
-    callingCard.dataset.prestigeTrail = entry.prestigeTrail ?? "none";
-
-    if (auraReward) {
-      const aura = document.createElement("span");
-      aura.className = "highscoreCallingCardAura";
-      aura.title = auraReward.displayName;
-      aura.setAttribute("aria-hidden", "true");
-      callingCard.appendChild(aura);
-    }
-
-    if (trailReward) {
-      const trail = document.createElement("span");
-      trail.className = "highscoreCallingCardTrail";
-      trail.title = trailReward.displayName;
-      trail.setAttribute("aria-hidden", "true");
-      for (let segmentIndex = 0; segmentIndex < 4; segmentIndex++) {
-        trail.appendChild(document.createElement("i"));
-      }
-      callingCard.appendChild(trail);
-    }
 
     const title = document.createElement("small");
     title.className = "highscoreCallingCardTitle";

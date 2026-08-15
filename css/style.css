@@ -3512,9 +3512,6 @@ p {
 }
 
 .highscoreCallingCardCore {
-  --calling-card-aura: rgba(174, 230, 255, 0.5);
-  --calling-card-trail-a: #ffe05c;
-  --calling-card-trail-b: #ff8b55;
   min-width: 0;
   min-height: clamp(33px, 5.3vh, 45px);
   position: relative;
@@ -3533,61 +3530,10 @@ p {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
-.highscoreCallingCardCore > *:not(.highscoreCallingCardAura):not(.highscoreCallingCardTrail) {
+.highscoreCallingCardCore > * {
   position: relative;
   z-index: 1;
 }
-
-.highscoreCallingCardAura {
-  position: absolute;
-  z-index: 0;
-  inset: 1px;
-  border-radius: inherit;
-  background: radial-gradient(ellipse at center, transparent 28%, var(--calling-card-aura) 145%);
-  box-shadow: inset 0 0 15px var(--calling-card-aura), 0 0 8px color-mix(in srgb, var(--calling-card-aura) 70%, transparent);
-  pointer-events: none;
-}
-
-.highscoreCallingCardCore[data-prestige-aura="prestige-aura-bubble-p3"] { --calling-card-aura: rgba(103, 221, 255, 0.62); }
-.highscoreCallingCardCore[data-prestige-aura="prestige-aura-mist-p3"] { --calling-card-aura: rgba(163, 181, 218, 0.58); }
-.highscoreCallingCardCore[data-prestige-aura="prestige-aura-star-p3"] { --calling-card-aura: rgba(255, 211, 77, 0.65); }
-.highscoreCallingCardCore[data-prestige-aura="prestige-aura-p8"] { --calling-card-aura: rgba(178, 92, 255, 0.72); }
-.highscoreCallingCardCore[data-prestige-aura="prestige-aura-royal-p8"] { --calling-card-aura: rgba(224, 159, 255, 0.68); }
-.highscoreCallingCardCore[data-prestige-aura="prestige-aura-flame-p8"] { --calling-card-aura: rgba(255, 91, 55, 0.72); }
-.highscoreCallingCardCore[data-prestige-aura="prestige-aura-prism-p8"] { --calling-card-aura: rgba(108, 216, 255, 0.72); }
-
-.highscoreCallingCardTrail {
-  position: absolute;
-  z-index: 0;
-  right: 5px;
-  bottom: 3px;
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  opacity: 0.72;
-  pointer-events: none;
-}
-
-.highscoreCallingCardTrail i {
-  width: clamp(8px, 1.1vw, 15px);
-  height: 3px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--calling-card-trail-a, #ffe05c), var(--calling-card-trail-b, #ff8b55));
-  box-shadow: 0 0 5px var(--calling-card-trail-a, #ffe05c);
-}
-
-.highscoreCallingCardTrail i:nth-child(2) { width: clamp(6px, 0.85vw, 12px); opacity: 0.82; }
-.highscoreCallingCardTrail i:nth-child(3) { width: clamp(5px, 0.65vw, 9px); opacity: 0.65; }
-.highscoreCallingCardTrail i:nth-child(4) { width: clamp(3px, 0.45vw, 7px); opacity: 0.48; }
-.highscoreCallingCardCore[data-prestige-trail="prestige-trail-slime-p5"] { --calling-card-trail-a: #70f68a; --calling-card-trail-b: #36be5b; }
-.highscoreCallingCardCore[data-prestige-trail="prestige-trail-bubble-p5"] { --calling-card-trail-a: #7de0ff; --calling-card-trail-b: #d8faff; }
-.highscoreCallingCardCore[data-prestige-trail="prestige-trail-spark-p5"] { --calling-card-trail-a: #fff17a; --calling-card-trail-b: #ffffff; }
-.highscoreCallingCardCore[data-prestige-trail="prestige-trail-mist-p5"] { --calling-card-trail-a: #cdd5eb; --calling-card-trail-b: #97b5db; }
-.highscoreCallingCardCore[data-prestige-trail="prestige-trail-p9"] { --calling-card-trail-a: #b567ff; --calling-card-trail-b: #53e0ff; }
-.highscoreCallingCardCore[data-prestige-trail="prestige-trail-flame-p9"] { --calling-card-trail-a: #ff5b32; --calling-card-trail-b: #ffdc4b; }
-.highscoreCallingCardCore[data-prestige-trail="prestige-trail-royal-p9"] { --calling-card-trail-a: #d06fff; --calling-card-trail-b: #ffe05c; }
-.highscoreCallingCardCore[data-prestige-trail="prestige-trail-neon-p9"] { --calling-card-trail-a: #23ffde; --calling-card-trail-b: #ff36cf; }
-.highscoreCallingCardCore[data-prestige-trail="prestige-trail-prism-p9"] { --calling-card-trail-a: #ffde4c; --calling-card-trail-b: #cd70ff; }
 
 .highscoreCallingCardIdentity {
   min-width: 0;
@@ -3740,9 +3686,6 @@ p {
     gap: 1px;
   }
 
-  .highscoreCallingCardTrail {
-    right: 3px;
-  }
 }
 
 @media (max-width: 560px) {

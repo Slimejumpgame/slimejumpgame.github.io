@@ -156,6 +156,42 @@
     context.restore();
   }
 
+  function drawStaticPrestigeTrail(context, style, radius) {
+    if (!style) return;
+    const segmentCount = 4;
+    context.save();
+    context.lineCap = "round";
+
+    for (let index = 0; index < segmentCount; index++) {
+      const strength = (index + 1) / segmentCount;
+      const centerX = radius * (-2.1 + index * 0.4);
+      const centerY = radius * (index % 2 === 0 ? 0.18 : -0.12);
+      const length = radius * (0.42 + strength * 0.38);
+      const color = style.colors[index % style.colors.length];
+      const alternateColor = style.colors[(index + 1) % style.colors.length];
+      const gradient = context.createLinearGradient(
+        centerX - length * 0.5,
+        centerY,
+        centerX + length * 0.5,
+        centerY
+      );
+      gradient.addColorStop(0, `rgba(${color},0)`);
+      gradient.addColorStop(0.34, `rgb(${color})`);
+      gradient.addColorStop(1, `rgb(${alternateColor})`);
+      context.globalAlpha = Math.min(0.82, style.alpha * (1.35 + strength * 1.75));
+      context.strokeStyle = gradient;
+      context.lineWidth = radius * (0.08 + strength * 0.08);
+      context.shadowColor = `rgb(${alternateColor})`;
+      context.shadowBlur = radius * (0.08 + strength * 0.12);
+      context.beginPath();
+      context.moveTo(centerX - length * 0.5, centerY);
+      context.lineTo(centerX + length * 0.5, centerY);
+      context.stroke();
+    }
+
+    context.restore();
+  }
+
   function spawnBurst(x, y, count, color) {
     for (let i = 0; i < count; i++) {
       const a = Math.random() * Math.PI * 2;
@@ -1826,12 +1862,20 @@
   ) {
     const previewContext = canvasElement.getContext("2d");
     const palette = getSlimeColorPalette(color);
+    const prestigeAura = PRESTIGE_AURA_STYLES[options.prestigeAura] ?? null;
+    const prestigeTrail = PRESTIGE_TRAIL_STYLES[options.prestigeTrail] ?? null;
+    const centerX = Number.isFinite(options.centerX)
+      ? options.centerX
+      : canvasElement.width / 2;
     const centerY = Number.isFinite(options.centerY) ? options.centerY : 48;
     const scale = Number.isFinite(options.scale) ? options.scale : 0.66;
     previewContext.clearRect(0, 0, canvasElement.width, canvasElement.height);
     previewContext.save();
-    previewContext.translate(canvasElement.width / 2, centerY);
+    previewContext.translate(centerX, centerY);
     previewContext.scale(scale, scale);
+
+    drawStaticPrestigeTrail(previewContext, prestigeTrail, 30);
+    drawPrestigeAura(previewContext, prestigeAura, 30);
 
     const bodyGradient = previewContext.createRadialGradient(-9, -10, 2, 0, 0, 30);
     bodyGradient.addColorStop(0, palette.light);

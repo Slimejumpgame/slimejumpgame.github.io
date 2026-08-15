@@ -300,8 +300,14 @@ function assertLocalPersistenceAndRendering(prestigeApi, snapshot) {
     selectedSlimeColor: "green",
     selectedSlimeCosmetic: "none",
     selectedSlimeBeard: "none",
-    createLeaderboardSlimePreview: (color, cosmetic, beard) => {
-      renderedSlimeSnapshots.push({color, cosmetic, beard});
+    createLeaderboardSlimePreview: (color, cosmetic, beard, prestigeAura, prestigeTrail) => {
+      renderedSlimeSnapshots.push({
+        color,
+        cosmetic,
+        beard,
+        prestigeAura,
+        prestigeTrail
+      });
       return new FakeElement("canvas");
     },
     showMenuScreen: screenName => openedScreens.push(screenName)
@@ -359,6 +365,20 @@ function assertLocalPersistenceAndRendering(prestigeApi, snapshot) {
   assert.equal(renderedNewCard.children[4].className, "highscoreCallingCardRunLevel");
   assert.equal(renderedNewCard.children[5].className, "highscoreCallingCardScore");
   assert.equal(renderedNewCard.children[3].dataset.prestigeFrame, "prestige-frame-p10");
+  assert.deepEqual(renderedSlimeSnapshots[0], {
+    color: "green",
+    cosmetic: "none",
+    beard: "none",
+    prestigeAura: "prestige-aura-p8",
+    prestigeTrail: "prestige-trail-p9"
+  });
+  assert.deepEqual(renderedSlimeSnapshots[1], {
+    color: "green",
+    cosmetic: "none",
+    beard: "none",
+    prestigeAura: "none",
+    prestigeTrail: "none"
+  });
 
   const storageBeforeDevTest = localStorage.snapshot();
   const devEntry = context.highscoreTestApi.createDevCallingCardTestEntry();
@@ -403,12 +423,15 @@ function assertLocalPersistenceAndRendering(prestigeApi, snapshot) {
   assert.equal(previewPrestige.children[0].className, "highscorePrestigeEmblem");
   assert.equal(previewPrestige.children[1].textContent, "P10");
   assert.equal(previewCallingCard.dataset.prestigeFrame, "prestige-frame-p10");
-  assert.equal(previewCallingCard.dataset.prestigeAura, "prestige-aura-prism-p8");
-  assert.equal(previewCallingCard.dataset.prestigeTrail, "prestige-trail-prism-p9");
+  assert.equal(Object.hasOwn(previewCallingCard.dataset, "prestigeAura"), false);
+  assert.equal(Object.hasOwn(previewCallingCard.dataset, "prestigeTrail"), false);
+  assert.equal(previewCallingCard.children.length, 2);
   assert.deepEqual(renderedSlimeSnapshots[0], {
     color: "hot_pink",
     cosmetic: "wizard_hat",
-    beard: "braided_beard"
+    beard: "braided_beard",
+    prestigeAura: "prestige-aura-prism-p8",
+    prestigeTrail: "prestige-trail-prism-p9"
   });
   assert.equal(
     previewCallingCard.children.at(-1).children.length,
@@ -465,12 +488,26 @@ function assertStaticReleaseGuards() {
   assert.match(css, /\.highscoreCallingCardCore\s*\{/);
   assert.match(css, /grid-template-columns:[\s\S]*?minmax\(150px, 2fr\)/);
   assert.match(css, /\.highscoreCallingCardCore\[data-prestige-frame="prestige-frame-p10"\] \.highscoreCallingCardTitle/);
-  assert.match(css, /\.highscoreCallingCardAura\s*\{[\s\S]*?radial-gradient/);
-  assert.match(css, /\.highscoreCallingCardTrail\s*\{/);
+  assert.doesNotMatch(css, /\.highscoreCallingCardAura\b/);
+  assert.doesNotMatch(css, /\.highscoreCallingCardTrail\b/);
   assert.match(css, /@media \(max-width: 700px\)/);
   assert.match(css, /@media \(max-width: 560px\)/);
   assert.match(css, /grid-template-columns:\s*clamp\(28px, 9vw, 42px\) minmax\(0, 1fr\)/);
   assert.doesNotMatch(css, /@keyframes\s+highscoreCallingCard/i);
+
+  const rendererSource = read("js/renderer.js");
+  const staticTrailStart = rendererSource.indexOf("  function drawStaticPrestigeTrail(");
+  const previewEnd = rendererSource.indexOf("  function drawSlimeCosmeticPreview(");
+  const leaderboardEffectSource = rendererSource.slice(staticTrailStart, previewEnd);
+  assert.ok(staticTrailStart >= 0 && previewEnd > staticTrailStart);
+  assert.match(leaderboardEffectSource, /PRESTIGE_AURA_STYLES\[options\.prestigeAura\]/);
+  assert.match(leaderboardEffectSource, /PRESTIGE_TRAIL_STYLES\[options\.prestigeTrail\]/);
+  assert.match(leaderboardEffectSource, /drawStaticPrestigeTrail\(previewContext, prestigeTrail, 30\)/);
+  assert.match(leaderboardEffectSource, /drawPrestigeAura\(previewContext, prestigeAura, 30\)/);
+  assert.doesNotMatch(
+    leaderboardEffectSource,
+    /requestAnimationFrame|getSelectedReward|localStorage|sessionStorage|fetch\(|console\./
+  );
 
   const migrationWithoutComments = read(
     "supabase/slime-jump-highscore-calling-card-migration.DRAFT.sql"
