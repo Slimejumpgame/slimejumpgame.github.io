@@ -6,6 +6,7 @@
   const ctx = canvas.getContext("2d");
   const W = canvas.width;
   const H = canvas.height;
+  const BOTTOM_DEATH_THRESHOLD = H + 140;
   const LOCAL_DEV_MODE_SESSION_KEY = "slimejumperLocalDevMode";
 
   function isNativeCapacitorRuntime() {

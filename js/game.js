@@ -201,6 +201,7 @@
       generatedLevel = generateProceduralLevel(levelIndex + 1);
     }
     const level = currentLevel();
+    resetFlightPerkState();
     if (isTutorialStage() && level.showDragHand === true) {
       resetTutorialDragHand();
     }
@@ -245,6 +246,7 @@
     captureCheckpointLevelAtRunStart();
     initializeRunScoreState(levelNumber, {fromCheckpoint});
     window.SlimePerks?.captureRunPerkSnapshot?.();
+    resetRunPerkConsumables();
     enterRunStage();
     hideNicknameEntry();
     hideGameToast();
@@ -281,6 +283,7 @@
     hideGameToast();
     initializeRunScoreState(1);
     window.SlimePerks?.clearRunPerkSnapshot?.();
+    resetRunPerkConsumables();
     getAudio();
     enterTutorialStage(0);
     state = "playing";
@@ -602,6 +605,10 @@
     const bounceMasterActive = active.includes("bounce_master");
     const slowFallActive = active.includes("slow_fall");
     const luckyCharmActive = active.includes("lucky_charm");
+    const airHopActive = active.includes("air_hop");
+    const lastBubbleActive = active.includes("last_bubble");
+    const mudShoesActive = active.includes("mud_shoes");
+    const quickRecoveryActive = active.includes("quick_recovery");
     const runIsActive = !isTutorialStage() &&
       ["playing", "paused", "gamePaused"].includes(state);
     const luckyBonusStarThisLevel = runIsActive &&
@@ -646,7 +653,26 @@
       `Chance: ${Math.round(perks.balance.LUCKY_CHARM_EXTRA_STAR_CHANCE * 100)} %`,
       `Force Next Lucky Star: ${forceNextLuckyStar ? "YES" : "NO"}`,
       `Lucky Bonus Star Current Level: ${runIsActive ? (luckyBonusStarThisLevel ? "YES" : "NO") : "-"}`,
-      `Lucky Roll This Level: ${luckyRollThisLevel}`
+      `Lucky Roll This Level: ${luckyRollThisLevel}`,
+      `Air Hop: ${airHopActive ? "ACTIVE" : "inactive"}`,
+      `Airborne: ${runIsActive && !player.onGround && !hasValidAimSupport() ? "YES" : "NO"}`,
+      `Flight Active: ${airHopActive && isAirHopFlightActive() ? "YES" : "NO"}`,
+      `Available This Flight: ${airHopActive && isAirHopAvailableThisFlight() ? "YES" : "NO"}`,
+      `Used This Flight: ${airHopActive && isAirHopUsedThisFlight() ? "YES" : "NO"}`,
+      `Horizontal Speed: ${perks.balance.AIR_HOP_HORIZONTAL_SPEED}`,
+      `Vertical Speed: ${perks.balance.AIR_HOP_VERTICAL_SPEED}`,
+      `Last Air Hop Trigger: ${getLastAirHopTrigger()}`,
+      `Last Bubble: ${lastBubbleActive ? "ACTIVE" : "inactive"}`,
+      `Available This Run: ${lastBubbleActive && isLastBubbleAvailableThisRun() ? "YES" : "NO"}`,
+      `Used This Run: ${lastBubbleActive && isLastBubbleUsedThisRun() ? "YES" : "NO"}`,
+      `Current Player Y: ${runIsActive ? Math.round(player.y) : "-"}`,
+      `Bottom Death Threshold: ${BOTTOM_DEATH_THRESHOLD}`,
+      `Mud Shoes: ${mudShoesActive ? "ACTIVE" : "inactive"}`,
+      `Horizontal Damping: ${perks.balance.MUD_SHOES_HORIZONTAL_DAMPING.toFixed(2)}`,
+      `Rebound Multiplier: ${perks.balance.MUD_SHOES_REBOUND_MULTIPLIER.toFixed(2)}`,
+      `Quick Recovery: ${quickRecoveryActive ? "ACTIVE" : "inactive"}`,
+      `State: ${quickRecoveryActive && isQuickRecoveryRecovering() ? "RECOVERING" : "READY"}`,
+      `Window / Aim Speed: ${perks.balance.QUICK_RECOVERY_WINDOW.toFixed(2)} s / ${perks.balance.QUICK_RECOVERY_AIM_MAX_ROLL_SPEED}`
     ].join("\n");
   }
 
@@ -1080,6 +1106,7 @@
       player.trail = [];
       aiming = false;
       resetStuckAimTimer();
+      resetFlightPerkState();
     }
   }
 

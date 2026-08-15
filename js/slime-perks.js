@@ -14,7 +14,16 @@
     SLOW_FALL_TRIGGER_SPEED: 150,
     SLOW_FALL_TERMINAL_SPEED: 675,
     SLOW_FALL_DRAG: 2.85,
-    LUCKY_CHARM_EXTRA_STAR_CHANCE: 0.15
+    LUCKY_CHARM_EXTRA_STAR_CHANCE: 0.15,
+    AIR_HOP_HORIZONTAL_SPEED: 420,
+    AIR_HOP_VERTICAL_SPEED: 650,
+    LAST_BUBBLE_VERTICAL_IMPULSE: 780,
+    LAST_BUBBLE_INWARD_IMPULSE: 220,
+    LAST_BUBBLE_DEATH_ZONE_CLEARANCE: 80,
+    MUD_SHOES_HORIZONTAL_DAMPING: 0.75,
+    MUD_SHOES_REBOUND_MULTIPLIER: 0.55,
+    QUICK_RECOVERY_WINDOW: 0.85,
+    QUICK_RECOVERY_AIM_MAX_ROLL_SPEED: 420
   });
 
   function createIcon(paths) {
@@ -30,7 +39,7 @@
       name: "AIR HOP",
       description: "Ein zusätzlicher gerichteter Impuls während einer Flugphase.",
       icon: createIcon([{d: "M5 15 12 4l7 11-7-4Z"}, {d: "M7 20h10", accent: true}]),
-      implemented: false,
+      implemented: true,
       category: "mobility"
     }),
     Object.freeze({
@@ -38,7 +47,7 @@
       name: "LAST BUBBLE",
       description: "Rettet einmal pro Run vor der unteren Death-Zone.",
       icon: createIcon([{d: "M12 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16Z"}, {d: "M8 8c1-2 3-3 5-3", accent: true}]),
-      implemented: false,
+      implemented: true,
       category: "survival"
     }),
     Object.freeze({
@@ -54,7 +63,7 @@
       name: "SCHLAMMSCHUHE",
       description: "Verringert Rollen, Rutschen und Nachfedern nach Landungen.",
       icon: createIcon([{d: "M4 15h7l2 3h7v3H4Z"}, {d: "M7 12v3m3-3v3", accent: true}]),
-      implemented: false,
+      implemented: true,
       category: "control"
     }),
     Object.freeze({
@@ -70,7 +79,7 @@
       name: "QUICK RECOVERY",
       description: "Macht den Slime nach harten Landungen schneller schussbereit.",
       icon: createIcon([{d: "M20 8a8 8 0 1 0 1 6"}, {d: "M20 3v5h-5", accent: true}]),
-      implemented: false,
+      implemented: true,
       category: "control"
     }),
     Object.freeze({

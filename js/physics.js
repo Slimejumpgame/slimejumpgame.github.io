@@ -83,17 +83,34 @@
 
     const normalVelocity = player.vx * hit.nx + player.vy * hit.ny;
     if (normalVelocity < 0) {
-      const restitution = Math.abs(normalVelocity) > 360 ? 0.34 : 0.06;
+      const isTopLanding = hit.ny < -0.6;
+      const landingOnBouncePad = isTopLanding && currentLevel().pads.some(pad =>
+        intersectsRect(player.x, player.y, player.r, pad)
+      );
+      const mudShoesActive =
+        isTopLanding &&
+        !landingOnBouncePad &&
+        window.SlimePerks?.isActiveForRun?.("mud_shoes") === true;
+      const hardLanding = isTopLanding && Math.abs(normalVelocity) > 360;
+      let restitution = Math.abs(normalVelocity) > 360 ? 0.34 : 0.06;
+      if (mudShoesActive) {
+        restitution *= window.SlimePerks.balance.MUD_SHOES_REBOUND_MULTIPLIER;
+      }
       player.vx -= (1 + restitution) * normalVelocity * hit.nx;
       player.vy -= (1 + restitution) * normalVelocity * hit.ny;
 
-      if (hit.ny < -0.6) {
+      if (isTopLanding) {
         player.onGround = true;
         if (rect.ice) {
           player.onIce = true;
           player.vx *= 0.9996;
         } else {
           player.vx *= 0.988;
+        }
+
+        // Moving Platforms und Conveyors behalten ihre etablierten Carry-Pfade.
+        if (mudShoesActive && !rect.moving && !rect.conveyor) {
+          player.vx *= window.SlimePerks.balance.MUD_SHOES_HORIZONTAL_DAMPING;
         }
 
         if (rect.conveyor) {
@@ -115,6 +132,10 @@
         if (Math.abs(normalVelocity) > 220) {
           player.squish = Math.min(1, Math.abs(normalVelocity) / 750);
           playBounce();
+        }
+
+        if (hardLanding && !landingOnBouncePad) {
+          registerQuickRecoveryHardLanding();
         }
 
         // Ein deutlich zurückprallender Slime löst sich bereits wieder von
@@ -256,6 +277,7 @@
   function update(dt) {
     if (state !== "playing") return;
     const wasOnGround = player.onGround;
+    updateQuickRecovery(dt);
     worldTime += dt;
     rememberPlayerHorizontalDirection();
     let aimingCarriedByMovingPlatform = false;
@@ -337,6 +359,7 @@
 
     const level = currentLevel();
     const tracksRunProgress = !isTutorialStage();
+    let bouncedOnPad = false;
 
     for (const pad of level.pads) {
       if (intersectsRect(player.x, player.y, player.r, pad) && bouncePadImpactSpeed > 0) {
@@ -345,11 +368,14 @@
         applyBouncePadMinimumHorizontalSpeed();
         player.onGround = false;
         player.squish = 1;
+        bouncedOnPad = true;
         tone(230, 0.13, "square", 0.045, 520);
         spawnBurst(player.x, player.y + player.r, 12, "#68ddff");
         if (tracksRunProgress) window.SlimeAchievements?.onBounce?.();
       }
     }
+
+    updateAirHopFlightState(wasOnGround, player.onGround, bouncedOnPad);
 
     if (tracksRunProgress) {
       window.SlimeAchievements?.onFrame?.(dt, {grounded: player.onGround});
@@ -427,7 +453,15 @@
 
     if (intersectsRect(player.x, player.y, player.r * 0.75, level.goal)) finishLevel();
 
-    if (player.y > H + 140 || player.x < -180 || player.x > W + 180) loseLife();
+    if (player.x < -180 || player.x > W + 180) {
+      loseLife();
+      return;
+    }
+    if (player.y > BOTTOM_DEATH_THRESHOLD) {
+      if (tryUseLastBubble()) return;
+      loseLife();
+      return;
+    }
 
     updateStuckAimTimer(dt);
     player.squish = Math.max(0, player.squish - dt * 3.7);

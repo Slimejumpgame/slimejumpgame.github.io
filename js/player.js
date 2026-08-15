@@ -102,6 +102,11 @@
   const MAX_DRAG_DISTANCE = 330;
   const MAX_LAUNCH_SPEED = 205 * 5.7;
   const MIN_LAUNCH_DRAG = 10;
+  let airHopUsedThisFlight = false;
+  let airHopFlightActive = false;
+  let lastAirHopTrigger = "NONE";
+  let lastBubbleUsedThisRun = false;
+  let quickRecoveryTimer = 0;
   let stuckAimStillTime = 0;
   let stuckAimReferenceX = player.x;
   let stuckAimReferenceY = player.y;
@@ -126,9 +131,147 @@
   }
 
   function canUseNormalAim() {
+    const maximumRollSpeed =
+      window.SlimePerks?.isActiveForRun?.("quick_recovery") === true &&
+      quickRecoveryTimer > 0
+        ? window.SlimePerks.balance.QUICK_RECOVERY_AIM_MAX_ROLL_SPEED
+        : AIM_MAX_ROLL_SPEED;
     return player.onGround &&
       hasValidAimSupport() &&
-      Math.abs(player.vx) <= AIM_MAX_ROLL_SPEED;
+      Math.abs(player.vx) <= maximumRollSpeed;
+  }
+
+  function resetRunPerkConsumables() {
+    airHopUsedThisFlight = false;
+    airHopFlightActive = false;
+    lastAirHopTrigger = "NONE";
+    lastBubbleUsedThisRun = false;
+    quickRecoveryTimer = 0;
+  }
+
+  function resetFlightPerkState() {
+    airHopUsedThisFlight = false;
+    airHopFlightActive = false;
+    quickRecoveryTimer = 0;
+  }
+
+  function updateAirHopFlightState(wasOnGround, isOnGround, bouncedOnPad) {
+    if (bouncedOnPad) {
+      airHopFlightActive = true;
+    } else if (wasOnGround && !isOnGround) {
+      airHopFlightActive = true;
+    } else if (!wasOnGround && isOnGround) {
+      airHopUsedThisFlight = false;
+      airHopFlightActive = false;
+    }
+  }
+
+  function beginAirHopFlight() {
+    airHopFlightActive = true;
+  }
+
+  function canUseAirHop() {
+    return state === "playing" &&
+      !isTutorialStage() &&
+      !aiming &&
+      window.SlimePerks?.isActiveForRun?.("air_hop") === true &&
+      airHopFlightActive &&
+      !player.onGround &&
+      !hasValidAimSupport() &&
+      !airHopUsedThisFlight;
+  }
+
+  function useAirHop(trigger) {
+    if (!canUseAirHop()) return false;
+    const minimumDirectionalSpeed = 60;
+    const direction = Math.abs(player.vx) >= minimumDirectionalSpeed
+      ? Math.sign(player.vx)
+      : player.lastHorizontalDirection || 1;
+
+    airHopUsedThisFlight = true;
+    lastAirHopTrigger = trigger;
+    player.lastHorizontalDirection = direction;
+    player.vx = direction * window.SlimePerks.balance.AIR_HOP_HORIZONTAL_SPEED;
+    player.vy = -window.SlimePerks.balance.AIR_HOP_VERTICAL_SPEED;
+    player.squish = 0.8;
+    tone(390, 0.1, "sine", 0.04, 680);
+    spawnBurst(player.x, player.y + player.r * 0.4, 10, "#9deeff");
+    return true;
+  }
+
+  function consumeAirHopCanvasInput(trigger) {
+    const targetsActiveAirHopFlight =
+      state === "playing" &&
+      !isTutorialStage() &&
+      window.SlimePerks?.isActiveForRun?.("air_hop") === true &&
+      airHopFlightActive &&
+      !player.onGround &&
+      !hasValidAimSupport();
+    if (!targetsActiveAirHopFlight) return false;
+
+    useAirHop(trigger);
+    return true;
+  }
+
+  function tryUseLastBubble() {
+    if (
+      isTutorialStage() ||
+      lastBubbleUsedThisRun ||
+      window.SlimePerks?.isActiveForRun?.("last_bubble") !== true
+    ) return false;
+
+    lastBubbleUsedThisRun = true;
+    stopAiming();
+    activeTouchId = null;
+    const horizontalMargin = player.r + 24;
+    player.x = clamp(player.x, horizontalMargin, W - horizontalMargin);
+    player.y = BOTTOM_DEATH_THRESHOLD - window.SlimePerks.balance.LAST_BUBBLE_DEATH_ZONE_CLEARANCE;
+    const inwardDirection = player.x < W / 2 ? 1 : -1;
+    player.vx = inwardDirection * window.SlimePerks.balance.LAST_BUBBLE_INWARD_IMPULSE;
+    player.vy = -window.SlimePerks.balance.LAST_BUBBLE_VERTICAL_IMPULSE;
+    player.onGround = false;
+    player.squish = 1;
+    airHopFlightActive = true;
+    tone(560, 0.16, "sine", 0.05, 920);
+    spawnBurst(player.x, player.y, 22, "#b9f4ff");
+    return true;
+  }
+
+  function registerQuickRecoveryHardLanding() {
+    if (window.SlimePerks?.isActiveForRun?.("quick_recovery") !== true) return;
+    quickRecoveryTimer = window.SlimePerks.balance.QUICK_RECOVERY_WINDOW;
+  }
+
+  function updateQuickRecovery(dt) {
+    quickRecoveryTimer = Math.max(0, quickRecoveryTimer - Math.max(0, dt));
+  }
+
+  function isQuickRecoveryRecovering() {
+    return quickRecoveryTimer > 0 && !canUseNormalAim();
+  }
+
+  function isAirHopAvailableThisFlight() {
+    return airHopFlightActive && !airHopUsedThisFlight;
+  }
+
+  function isAirHopFlightActive() {
+    return airHopFlightActive;
+  }
+
+  function isAirHopUsedThisFlight() {
+    return airHopUsedThisFlight;
+  }
+
+  function getLastAirHopTrigger() {
+    return lastAirHopTrigger;
+  }
+
+  function isLastBubbleAvailableThisRun() {
+    return !lastBubbleUsedThisRun;
+  }
+
+  function isLastBubbleUsedThisRun() {
+    return lastBubbleUsedThisRun;
   }
 
   function getVerticalMoverY(mover) {
@@ -596,6 +739,7 @@
     if (canLaunch && launch.dragDistance > MIN_LAUNCH_DRAG) {
       player.vx = launch.vx;
       player.vy = launch.vy;
+      beginAirHopFlight();
       shots++;
       if (!isTutorialStage()) {
         window.SlimeAchievements?.onShot?.({
@@ -614,6 +758,10 @@
   // Maus und moderne Pointer-Eingabe.
   function pointerDown(e) {
     if (e.pointerType === "touch") return;
+    if (consumeAirHopCanvasInput("MOUSE")) {
+      e.preventDefault();
+      return;
+    }
     e.preventDefault();
 
     if (beginAimAt(e.clientX, e.clientY)) {
@@ -645,6 +793,11 @@
 
   function touchStart(e) {
     if (activeTouchId !== null || !e.changedTouches.length) return;
+
+    if (consumeAirHopCanvasInput("TOUCH")) {
+      e.preventDefault();
+      return;
+    }
 
     const touch = e.changedTouches[0];
 
@@ -689,4 +842,3 @@
   canvas.addEventListener("touchcancel", touchEnd, {passive: false});
 
   canvas.addEventListener("contextmenu", e => e.preventDefault());
-
