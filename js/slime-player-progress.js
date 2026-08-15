@@ -13,7 +13,12 @@
   function calculateRunXP(finalScore) {
     const normalizedScore = Number(finalScore);
     if (!Number.isFinite(normalizedScore) || normalizedScore <= 0) return 0;
-    return Math.max(0, Math.floor(normalizedScore / RUN_SCORE_TO_XP_DIVISOR));
+    const baseRunXP = Math.max(
+      0,
+      Math.floor(normalizedScore / RUN_SCORE_TO_XP_DIVISOR)
+    );
+    const prestigeMultiplier = window.SlimePrestige?.getXpMultiplier?.() ?? 1;
+    return Math.max(0, Math.floor(baseRunXP * prestigeMultiplier));
   }
 
   function getXPRequiredForNextLevel(level) {

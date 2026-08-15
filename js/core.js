@@ -89,6 +89,25 @@
     prestigeConfirmOverlay: document.getElementById("prestigeConfirmOverlay"),
     prestigeConfirmCancelBtn: document.getElementById("prestigeConfirmCancelBtn"),
     prestigeConfirmBtn: document.getElementById("prestigeConfirmBtn"),
+    prestigeCustomizationOverlay: document.getElementById("prestigeCustomizationOverlay"),
+    prestigeCustomizationEmblem: document.getElementById("prestigeCustomizationEmblem"),
+    prestigeCustomizationLevel: document.getElementById("prestigeCustomizationLevel"),
+    prestigePermanentUnlockCount: document.getElementById("prestigePermanentUnlockCount"),
+    prestigeFrameSelect: document.getElementById("prestigeFrameSelect"),
+    prestigeTitleSelect: document.getElementById("prestigeTitleSelect"),
+    prestigeAuraSelect: document.getElementById("prestigeAuraSelect"),
+    prestigeTrailSelect: document.getElementById("prestigeTrailSelect"),
+    prestigeCustomizationCloseBtn: document.getElementById("prestigeCustomizationCloseBtn"),
+    prestigeCustomizationActivateBtn: document.getElementById("prestigeCustomizationActivateBtn"),
+    prestigeWardrobeChoiceOverlay: document.getElementById("prestigeWardrobeChoiceOverlay"),
+    prestigeWardrobeChoiceText: document.getElementById("prestigeWardrobeChoiceText"),
+    prestigeWardrobeChoiceCategories: document.getElementById("prestigeWardrobeChoiceCategories"),
+    prestigeWardrobeChoiceOptions: document.getElementById("prestigeWardrobeChoiceOptions"),
+    prestigeWardrobeChoiceConfirmation: document.getElementById("prestigeWardrobeChoiceConfirmation"),
+    prestigeWardrobeChoiceConfirmationName: document.getElementById("prestigeWardrobeChoiceConfirmationName"),
+    prestigeWardrobeChoiceConfirmBtn: document.getElementById("prestigeWardrobeChoiceConfirmBtn"),
+    prestigeWardrobeChoiceBackBtn: document.getElementById("prestigeWardrobeChoiceBackBtn"),
+    prestigeWardrobeChoiceCloseBtn: document.getElementById("prestigeWardrobeChoiceCloseBtn"),
     message: document.getElementById("messageOverlay"),
     checkpointOverlay: document.getElementById("checkpointOverlay"),
     checkpointDialogTitle: document.getElementById("checkpointDialogTitle"),
@@ -181,7 +200,10 @@
     devPrestigeDownBtn: document.getElementById("devPrestigeDownBtn"),
     devPrestigeUpBtn: document.getElementById("devPrestigeUpBtn"),
     devPrestigeZeroBtn: document.getElementById("devPrestigeZeroBtn"),
-    devPrestigeFlowBtn: document.getElementById("devPrestigeFlowBtn")
+    devPrestigeFlowBtn: document.getElementById("devPrestigeFlowBtn"),
+    devPrestigePermanentChoiceBtn: document.getElementById("devPrestigePermanentChoiceBtn"),
+    devPrestigeRewardInspectorBtn: document.getElementById("devPrestigeRewardInspectorBtn"),
+    devPrestigeRewardInspector: document.getElementById("devPrestigeRewardInspector")
   };
 
   let generatedLevel = null;

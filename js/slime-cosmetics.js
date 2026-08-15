@@ -261,13 +261,22 @@
     if (normalized === "none" || unlockedSlimeCosmetics.includes(normalized)) {
       return false;
     }
+    if (!ensureSlimeCosmeticUnlocked(normalized)) return false;
+    selectedSlimeCosmetic = normalized;
+    saveSlimeCosmeticProgress();
+    return true;
+  }
+
+  function ensureSlimeCosmeticUnlocked(cosmetic) {
+    const normalized = normalizeSlimeCosmetic(cosmetic);
+    if (normalized === "none") return false;
+    if (unlockedSlimeCosmetics.includes(normalized)) return true;
 
     unlockedSlimeCosmetics = UNLOCKABLE_SLIME_COSMETICS.filter(
       candidate => candidate === normalized || unlockedSlimeCosmetics.includes(candidate)
     );
-    selectedSlimeCosmetic = normalized;
     saveSlimeCosmeticProgress();
-    return true;
+    return unlockedSlimeCosmetics.includes(normalized);
   }
 
   function getSlimeCosmeticDefinition(cosmetic = selectedSlimeCosmetic) {

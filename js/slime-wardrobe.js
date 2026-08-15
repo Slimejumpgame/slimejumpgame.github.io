@@ -215,3 +215,30 @@
   }
 
   migrateUnifiedWardrobeProgress();
+
+  window.SlimePrestige?.configureWardrobeRegistry?.({
+    color: {
+      items: SLIME_COLOR_ORDER.map(id => ({
+        id,
+        displayName: SLIME_COLOR_NAMES[id] ?? id
+      }))
+    },
+    cosmetic: {
+      items: SLIME_COSMETIC_ORDER.map(id => ({
+        id,
+        displayName: getSlimeCosmeticDefinition(id)?.name ?? id
+      }))
+    },
+    beard: {
+      items: SLIME_BEARD_ORDER.map(id => ({
+        id,
+        displayName: getSlimeBeardDefinition(id)?.name ?? id
+      }))
+    },
+    applyUnlock(category, id) {
+      if (category === "color") return ensureSlimeColorUnlocked(id);
+      if (category === "cosmetic") return ensureSlimeCosmeticUnlocked(id);
+      if (category === "beard") return ensureSlimeBeardUnlocked(id);
+      return false;
+    }
+  });

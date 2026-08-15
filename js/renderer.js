@@ -6,6 +6,14 @@
   const TUTORIAL_DRAG_HAND_RENDER_SIZE = 108;
   const TUTORIAL_DRAG_HAND_FINGERTIP_X_RATIO = 496 / 1254;
   const TUTORIAL_DRAG_HAND_FINGERTIP_Y_RATIO = 24 / 1254;
+  const PRESTIGE_TRAIL_STYLES = Object.freeze({
+    "prestige-trail-p5": Object.freeze({color: "255,215,82", alpha: 0.14, size: 0.58}),
+    "prestige-trail-p9": Object.freeze({color: "181,103,255", alpha: 0.18, size: 0.66})
+  });
+  const PRESTIGE_AURA_STYLES = Object.freeze({
+    "prestige-aura-p3": Object.freeze({inner: "rgba(174,230,255,0.05)", outer: "rgba(119,210,255,0.58)"}),
+    "prestige-aura-p8": Object.freeze({inner: "rgba(248,185,255,0.08)", outer: "rgba(178,92,255,0.68)"})
+  });
 
   function spawnBurst(x, y, count, color) {
     for (let i = 0; i < count; i++) {
@@ -1626,14 +1634,44 @@
 
   function drawPlayer() {
     const palette = getSlimeColorPalette(getActiveSlimeColor());
+    const selectedTrail = window.SlimePrestige?.getSelectedReward?.("trail") ?? "none";
+    const prestigeTrail = PRESTIGE_TRAIL_STYLES[selectedTrail] ?? null;
 
     for (let i = player.trail.length - 1; i >= 0; i--) {
       const t = player.trail[i];
-      const alpha = (1 - i / player.trail.length) * 0.08;
-      ctx.fillStyle = `rgba(${palette.trail},${alpha})`;
+      const alpha = (1 - i / player.trail.length) * (prestigeTrail?.alpha ?? 0.08);
+      ctx.fillStyle = `rgba(${prestigeTrail?.color ?? palette.trail},${alpha})`;
       ctx.beginPath();
-      ctx.arc(t.x, t.y, player.r * (0.45 + alpha), 0, Math.PI * 2);
+      ctx.arc(
+        t.x,
+        t.y,
+        player.r * ((prestigeTrail?.size ?? 0.45) + alpha),
+        0,
+        Math.PI * 2
+      );
       ctx.fill();
+    }
+
+    const selectedAura = window.SlimePrestige?.getSelectedReward?.("aura") ?? "none";
+    const prestigeAura = PRESTIGE_AURA_STYLES[selectedAura];
+    if (prestigeAura) {
+      ctx.save();
+      const aura = ctx.createRadialGradient(
+        player.x,
+        player.y,
+        player.r * 0.75,
+        player.x,
+        player.y,
+        player.r * 1.55
+      );
+      aura.addColorStop(0, prestigeAura.inner);
+      aura.addColorStop(0.7, prestigeAura.outer);
+      aura.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = aura;
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.r * 1.58, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
 
     const speed = Math.hypot(player.vx, player.vy);

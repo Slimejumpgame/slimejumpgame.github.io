@@ -319,12 +319,20 @@
   function unlockSlimeColor(color) {
     const normalized = normalizeSlimeColor(color);
     if (unlockedSlimeColors.includes(normalized)) return false;
-    unlockedSlimeColors = SLIME_COLOR_ORDER.filter(
-      candidate => candidate === normalized || unlockedSlimeColors.includes(candidate)
-    );
+    if (!ensureSlimeColorUnlocked(normalized)) return false;
     selectedSlimeColor = normalized;
     saveSlimeColorProgress();
     return true;
+  }
+
+  function ensureSlimeColorUnlocked(color) {
+    const normalized = normalizeSlimeColor(color);
+    if (unlockedSlimeColors.includes(normalized)) return true;
+    unlockedSlimeColors = SLIME_COLOR_ORDER.filter(
+      candidate => candidate === normalized || unlockedSlimeColors.includes(candidate)
+    );
+    saveSlimeColorProgress();
+    return unlockedSlimeColors.includes(normalized);
   }
 
   function getSlimeColorPalette(color = selectedSlimeColor) {

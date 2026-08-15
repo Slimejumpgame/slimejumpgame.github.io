@@ -3,8 +3,30 @@
 
   const PRESTIGE_LEVEL_STORAGE_KEY = "slimejumperPrestigeLevel";
   const PRESTIGE_TRANSACTION_STORAGE_KEY = "slimejumperPrestigeTransaction";
+  const PERMANENT_WARDROBE_UNLOCKS_STORAGE_KEY =
+    "slimejumperPrestigePermanentWardrobeUnlocks";
+  const PENDING_WARDROBE_CHOICE_STORAGE_KEY =
+    "slimejumperPendingPrestigeWardrobeChoice";
   const PRESTIGE_TRANSACTION_FORMAT_VERSION = "prestige-transaction-v1";
   const MAX_AVAILABLE_PRESTIGE = 10;
+  const PRESTIGE_BALANCE = Object.freeze({xpBonusPerPrestige: 0.00});
+  const PRESTIGE_REWARD_TYPES = Object.freeze([
+    "frame", "title", "aura", "trail"
+  ]);
+  const PRESTIGE_SELECTION_STORAGE_KEYS = Object.freeze({
+    frame: "slimejumperSelectedPrestigeFrame",
+    title: "slimejumperSelectedPrestigeTitle",
+    aura: "slimejumperSelectedPrestigeAura",
+    trail: "slimejumperSelectedPrestigeTrail"
+  });
+  const PERMANENT_WARDROBE_CATEGORIES = Object.freeze([
+    "color", "cosmetic", "beard"
+  ]);
+  const EXCLUDED_PERMANENT_WARDROBE_IDS = Object.freeze({
+    color: Object.freeze(["green", "silver", "gold"]),
+    cosmetic: Object.freeze(["none"]),
+    beard: Object.freeze(["none"])
+  });
 
   const ACHIEVEMENT_PROGRESS_DEFAULT = Object.freeze({
     discoveredBiomeIds: [],
@@ -37,16 +59,16 @@
   });
 
   const PRESTIGE_DEFINITIONS = Object.freeze([
-    Object.freeze({level: 1, symbolId: "prestige-drop-ring", displayLabel: "P1", theme: "verdant", reward: null}),
-    Object.freeze({level: 2, symbolId: "prestige-single-chevron", displayLabel: "P2", theme: "bronze", reward: null}),
-    Object.freeze({level: 3, symbolId: "prestige-double-chevron", displayLabel: "P3", theme: "silver", reward: null}),
-    Object.freeze({level: 4, symbolId: "prestige-winged-slime", displayLabel: "P4", theme: "sky", reward: null}),
-    Object.freeze({level: 5, symbolId: "prestige-starburst", displayLabel: "P5", theme: "gold", reward: null}),
-    Object.freeze({level: 6, symbolId: "prestige-ornament-shield", displayLabel: "P6", theme: "royal", reward: null}),
-    Object.freeze({level: 7, symbolId: "prestige-crowned-slime", displayLabel: "P7", theme: "crown", reward: null}),
-    Object.freeze({level: 8, symbolId: "prestige-speed-flame", displayLabel: "P8", theme: "inferno", reward: null}),
-    Object.freeze({level: 9, symbolId: "prestige-cosmic-halo", displayLabel: "P9", theme: "cosmic", reward: null}),
-    Object.freeze({level: 10, symbolId: "prestige-final-crest", displayLabel: "P10", theme: "legendary", reward: null})
+    Object.freeze({level: 1, symbolId: "prestige-drop-ring", displayLabel: "P1", theme: "verdant", reward: Object.freeze({type: "frame", id: "prestige-frame-p1", displayName: "Verdant Frame"})}),
+    Object.freeze({level: 2, symbolId: "prestige-single-chevron", displayLabel: "P2", theme: "bronze", reward: Object.freeze({type: "title", id: "prestige-title-p2", displayName: "Slimebound"})}),
+    Object.freeze({level: 3, symbolId: "prestige-double-chevron", displayLabel: "P3", theme: "silver", reward: Object.freeze({type: "aura", id: "prestige-aura-p3", displayName: "Moon Glow"})}),
+    Object.freeze({level: 4, symbolId: "prestige-winged-slime", displayLabel: "P4", theme: "sky", reward: Object.freeze({type: "frame", id: "prestige-frame-p4", displayName: "Skywing Frame"})}),
+    Object.freeze({level: 5, symbolId: "prestige-starburst", displayLabel: "P5", theme: "gold", reward: Object.freeze({type: "trail", id: "prestige-trail-p5", displayName: "Star Slime Trail"})}),
+    Object.freeze({level: 6, symbolId: "prestige-ornament-shield", displayLabel: "P6", theme: "royal", reward: Object.freeze({type: "title", id: "prestige-title-p6", displayName: "Crown Hopper"})}),
+    Object.freeze({level: 7, symbolId: "prestige-crowned-slime", displayLabel: "P7", theme: "crown", reward: Object.freeze({type: "frame", id: "prestige-frame-p7", displayName: "Crowned Frame"})}),
+    Object.freeze({level: 8, symbolId: "prestige-speed-flame", displayLabel: "P8", theme: "inferno", reward: Object.freeze({type: "aura", id: "prestige-aura-p8", displayName: "Cosmic Glow"})}),
+    Object.freeze({level: 9, symbolId: "prestige-cosmic-halo", displayLabel: "P9", theme: "cosmic", reward: Object.freeze({type: "trail", id: "prestige-trail-p9", displayName: "Cosmic Slime Trail"})}),
+    Object.freeze({level: 10, symbolId: "prestige-final-crest", displayLabel: "P10", theme: "legendary", reward: Object.freeze({type: "frame", id: "prestige-frame-p10", displayName: "Master Crest Frame"})})
   ]);
 
   const ROMAN_PRESTIGE_LEVELS = Object.freeze([
@@ -54,6 +76,8 @@
   ]);
 
   let transactionInProgress = false;
+  let wardrobeRegistry = null;
+  const selectedRewardCache = Object.create(null);
 
   function normalizePrestigeLevel(value) {
     const numericValue = Math.floor(Number(value));
@@ -117,6 +141,278 @@
     return PRESTIGE_DEFINITIONS
       .filter(definition => definition.level <= normalizedLevel && definition.reward !== null)
       .map(definition => definition.reward);
+  }
+
+  function normalizeRewardType(value) {
+    const type = String(value ?? "").toLowerCase();
+    return PRESTIGE_REWARD_TYPES.includes(type) ? type : null;
+  }
+
+  function getRewardDefinition(type, id) {
+    const normalizedType = normalizeRewardType(type);
+    const normalizedId = String(id ?? "");
+    if (!normalizedType || normalizedId === "none") return null;
+    return PRESTIGE_DEFINITIONS.find(definition =>
+      definition.reward?.type === normalizedType &&
+      definition.reward.id === normalizedId
+    )?.reward ?? null;
+  }
+
+  function getUnlockedRewardsByType(type, level = readPrestigeLevel()) {
+    const normalizedType = normalizeRewardType(type);
+    if (!normalizedType) return [];
+    return getUnlockedRewards(level).filter(reward => reward.type === normalizedType);
+  }
+
+  function normalizeRewardSelection(type, id, level = readPrestigeLevel()) {
+    const normalizedType = normalizeRewardType(type);
+    const normalizedId = String(id ?? "none");
+    if (!normalizedType || normalizedId === "none") return "none";
+    return getUnlockedRewardsByType(normalizedType, level)
+      .some(reward => reward.id === normalizedId)
+      ? normalizedId
+      : "none";
+  }
+
+  function getSelectedReward(type) {
+    const normalizedType = normalizeRewardType(type);
+    if (!normalizedType) return "none";
+    if (Object.prototype.hasOwnProperty.call(selectedRewardCache, normalizedType)) {
+      return selectedRewardCache[normalizedType];
+    }
+    const storageKey = PRESTIGE_SELECTION_STORAGE_KEYS[normalizedType];
+    let storedValue = "none";
+    try {
+      storedValue = localStorage.getItem(storageKey) ?? "none";
+    } catch (_) {}
+    const selectedId = normalizeRewardSelection(normalizedType, storedValue);
+    if (storedValue !== selectedId) writeVerifiedStorageValue(storageKey, selectedId);
+    selectedRewardCache[normalizedType] = selectedId;
+    return selectedId;
+  }
+
+  function selectReward(type, id) {
+    const normalizedType = normalizeRewardType(type);
+    if (!normalizedType) return false;
+    const selectedId = normalizeRewardSelection(normalizedType, id);
+    if (String(id ?? "none") !== selectedId) return false;
+    const saved = writeVerifiedStorageValue(
+      PRESTIGE_SELECTION_STORAGE_KEYS[normalizedType],
+      selectedId
+    );
+    if (saved) selectedRewardCache[normalizedType] = selectedId;
+    return saved;
+  }
+
+  function getPrestigeXpMultiplier(level = readPrestigeLevel()) {
+    const prestigeLevel = normalizePrestigeLevel(level);
+    return 1 + prestigeLevel * PRESTIGE_BALANCE.xpBonusPerPrestige;
+  }
+
+  function normalizePermanentWardrobeChoice(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const category = String(value.category ?? "").toLowerCase();
+    const id = String(value.id ?? "").toLowerCase();
+    if (!PERMANENT_WARDROBE_CATEGORIES.includes(category) || !id) return null;
+    if (EXCLUDED_PERMANENT_WARDROBE_IDS[category].includes(id)) return null;
+    if (wardrobeRegistry && !wardrobeRegistry.items[category].has(id)) return null;
+    return {category, id};
+  }
+
+  function normalizePermanentWardrobeUnlockMap(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+    const normalized = {};
+    const usedItems = new Set();
+    Object.keys(value)
+      .map(stage => normalizePrestigeLevel(stage))
+      .filter(stage => stage > 0 && getPrestigeDefinition(stage))
+      .sort((a, b) => a - b)
+      .forEach(stage => {
+        const choice = normalizePermanentWardrobeChoice(value[String(stage)]);
+        if (!choice) return;
+        const itemKey = `${choice.category}:${choice.id}`;
+        if (usedItems.has(itemKey)) return;
+        usedItems.add(itemKey);
+        normalized[String(stage)] = choice;
+      });
+    return normalized;
+  }
+
+  function readPermanentWardrobeUnlockMap() {
+    let parsedValue = {};
+    try {
+      parsedValue = JSON.parse(
+        localStorage.getItem(PERMANENT_WARDROBE_UNLOCKS_STORAGE_KEY) || "{}"
+      );
+    } catch (_) {}
+    const normalized = normalizePermanentWardrobeUnlockMap(parsedValue);
+    writeVerifiedStorageValue(
+      PERMANENT_WARDROBE_UNLOCKS_STORAGE_KEY,
+      JSON.stringify(normalized)
+    );
+    return normalized;
+  }
+
+  function getPermanentWardrobeUnlocks() {
+    const unlockMap = readPermanentWardrobeUnlockMap();
+    return Object.keys(unlockMap)
+      .map(stage => ({prestigeLevel: Number(stage), ...unlockMap[stage]}))
+      .sort((a, b) => a.prestigeLevel - b.prestigeLevel);
+  }
+
+  function normalizePendingWardrobeChoice(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const prestigeLevel = normalizePrestigeLevel(value.prestigeLevel);
+    if (
+      prestigeLevel < 1 ||
+      prestigeLevel > readPrestigeLevel() ||
+      !getPrestigeDefinition(prestigeLevel)
+    ) return null;
+    return {prestigeLevel};
+  }
+
+  function getPendingPermanentWardrobeChoice() {
+    let parsedValue = null;
+    try {
+      const rawValue = localStorage.getItem(PENDING_WARDROBE_CHOICE_STORAGE_KEY);
+      if (rawValue !== null) parsedValue = JSON.parse(rawValue);
+    } catch (_) {}
+    const pendingChoice = normalizePendingWardrobeChoice(parsedValue);
+    const unlockMap = readPermanentWardrobeUnlockMap();
+    if (!pendingChoice || unlockMap[String(pendingChoice.prestigeLevel)]) {
+      removeVerifiedStorageValue(PENDING_WARDROBE_CHOICE_STORAGE_KEY);
+      return null;
+    }
+    return pendingChoice;
+  }
+
+  function ensurePendingPermanentWardrobeChoice(prestigeLevel) {
+    const normalizedLevel = normalizePrestigeLevel(prestigeLevel);
+    if (!getPrestigeDefinition(normalizedLevel)) return false;
+    const unlockMap = readPermanentWardrobeUnlockMap();
+    if (unlockMap[String(normalizedLevel)]) {
+      removeVerifiedStorageValue(PENDING_WARDROBE_CHOICE_STORAGE_KEY);
+      return true;
+    }
+    return writeVerifiedStorageValue(
+      PENDING_WARDROBE_CHOICE_STORAGE_KEY,
+      JSON.stringify({prestigeLevel: normalizedLevel})
+    );
+  }
+
+  function configureWardrobeRegistry(configuration) {
+    if (!configuration || typeof configuration !== "object") return false;
+    const items = {};
+    for (const category of PERMANENT_WARDROBE_CATEGORIES) {
+      const categoryItems = Array.isArray(configuration[category]?.items)
+        ? configuration[category].items
+        : [];
+      items[category] = new Map();
+      categoryItems.forEach(item => {
+        const id = String(item?.id ?? "").toLowerCase();
+        if (
+          !id ||
+          EXCLUDED_PERMANENT_WARDROBE_IDS[category].includes(id) ||
+          items[category].has(id)
+        ) return;
+        items[category].set(id, Object.freeze({
+          category,
+          id,
+          displayName: String(item?.displayName || id)
+        }));
+      });
+    }
+    wardrobeRegistry = {
+      items,
+      applyUnlock: typeof configuration.applyUnlock === "function"
+        ? configuration.applyUnlock
+        : null
+    };
+
+    const unlocks = getPermanentWardrobeUnlocks();
+    unlocks.forEach(unlock => wardrobeRegistry.applyUnlock?.(unlock.category, unlock.id));
+    getPendingPermanentWardrobeChoice();
+    return true;
+  }
+
+  function getPermanentWardrobeCandidates(category) {
+    const normalizedCategory = String(category ?? "").toLowerCase();
+    if (!wardrobeRegistry || !PERMANENT_WARDROBE_CATEGORIES.includes(normalizedCategory)) {
+      return [];
+    }
+    const permanentlyUsed = new Set(
+      getPermanentWardrobeUnlocks().map(unlock => `${unlock.category}:${unlock.id}`)
+    );
+    return [...wardrobeRegistry.items[normalizedCategory].values()]
+      .filter(item => !permanentlyUsed.has(`${item.category}:${item.id}`))
+      .map(item => ({...item}));
+  }
+
+  function choosePermanentWardrobeUnlock(category, id) {
+    const pendingChoice = getPendingPermanentWardrobeChoice();
+    if (!pendingChoice || !wardrobeRegistry) return false;
+    const normalizedCategory = String(category ?? "").toLowerCase();
+    const normalizedId = String(id ?? "").toLowerCase();
+    const candidate = getPermanentWardrobeCandidates(normalizedCategory)
+      .find(item => item.id === normalizedId);
+    if (!candidate) return false;
+
+    const unlockMap = readPermanentWardrobeUnlockMap();
+    const stageKey = String(pendingChoice.prestigeLevel);
+    if (unlockMap[stageKey]) return false;
+    unlockMap[stageKey] = {category: candidate.category, id: candidate.id};
+    if (!writeVerifiedStorageValue(
+      PERMANENT_WARDROBE_UNLOCKS_STORAGE_KEY,
+      JSON.stringify(unlockMap)
+    )) return false;
+
+    wardrobeRegistry.applyUnlock?.(candidate.category, candidate.id);
+    return removeVerifiedStorageValue(PENDING_WARDROBE_CHOICE_STORAGE_KEY);
+  }
+
+  function normalizeIdentitySnapshot(value) {
+    const snapshot = value && typeof value === "object" && !Array.isArray(value)
+      ? value
+      : {};
+    const playerLevelNumber = Math.floor(Number(snapshot.playerLevel));
+    const playerLevel = Number.isSafeInteger(playerLevelNumber) && playerLevelNumber >= 1
+      ? Math.min(100, playerLevelNumber)
+      : 1;
+    const prestigeLevel = Math.min(
+      MAX_AVAILABLE_PRESTIGE,
+      normalizePrestigeLevel(snapshot.prestigeLevel)
+    );
+    const definition = getDisplayPrestigeDefinition(prestigeLevel);
+    const slimeAchievements = [];
+    (Array.isArray(snapshot.slimeAchievements) ? snapshot.slimeAchievements : [])
+      .forEach(id => {
+        const normalizedId = typeof id === "string" ? id.trim() : "";
+        if (normalizedId && !slimeAchievements.includes(normalizedId) && slimeAchievements.length < 5) {
+          slimeAchievements.push(normalizedId);
+        }
+      });
+    return Object.freeze({
+      playerLevel,
+      prestigeLevel,
+      prestigeEmblemId: definition?.symbolId ?? "none",
+      prestigeFrame: normalizeRewardSelection("frame", snapshot.prestigeFrame, prestigeLevel),
+      prestigeTitle: normalizeRewardSelection("title", snapshot.prestigeTitle, prestigeLevel),
+      prestigeAura: normalizeRewardSelection("aura", snapshot.prestigeAura, prestigeLevel),
+      prestigeTrail: normalizeRewardSelection("trail", snapshot.prestigeTrail, prestigeLevel),
+      slimeAchievements: Object.freeze(slimeAchievements.slice())
+    });
+  }
+
+  function capturePlayerIdentitySnapshot() {
+    return normalizeIdentitySnapshot({
+      playerLevel: window.SlimePlayerProgress?.getPlayerProgress?.().level ?? 1,
+      prestigeLevel: readPrestigeLevel(),
+      prestigeFrame: getSelectedReward("frame"),
+      prestigeTitle: getSelectedReward("title"),
+      prestigeAura: getSelectedReward("aura"),
+      prestigeTrail: getSelectedReward("trail"),
+      slimeAchievements: window.SlimeAchievements?.getSelectedBadgeIds?.() ?? []
+    });
   }
 
   function isPrestigeReady() {
@@ -193,6 +489,9 @@
     )) {
       return false;
     }
+    if (!ensurePendingPermanentWardrobeChoice(normalizedTransaction.targetPrestige)) {
+      return false;
+    }
     if (!resetPrestigeCycleStorage()) return false;
     return removeVerifiedStorageValue(PRESTIGE_TRANSACTION_STORAGE_KEY);
   }
@@ -259,6 +558,11 @@
     if (!writeVerifiedStorageValue(PRESTIGE_LEVEL_STORAGE_KEY, String(nextLevel))) {
       return false;
     }
+    for (const type of PRESTIGE_REWARD_TYPES) {
+      const selectedId = normalizeRewardSelection(type, getSelectedReward(type), nextLevel);
+      selectedRewardCache[type] = selectedId;
+      writeVerifiedStorageValue(PRESTIGE_SELECTION_STORAGE_KEYS[type], selectedId);
+    }
     return true;
   }
 
@@ -267,6 +571,37 @@
     const numericOffset = Math.trunc(Number(offset));
     if (!Number.isFinite(numericOffset)) return false;
     return setPrestigeLevelForDev(readPrestigeLevel() + numericOffset);
+  }
+
+  function createPendingPermanentChoiceForDev() {
+    if (!isDevModeEnabled()) return false;
+    const prestigeLevel = readPrestigeLevel();
+    if (prestigeLevel < 1 || getPendingPermanentWardrobeChoice()) return false;
+    const unlockMap = readPermanentWardrobeUnlockMap();
+    if (unlockMap[String(prestigeLevel)]) return false;
+    return ensurePendingPermanentWardrobeChoice(prestigeLevel);
+  }
+
+  function getRewardInspectorData() {
+    const prestigeLevel = readPrestigeLevel();
+    const selected = Object.fromEntries(
+      PRESTIGE_REWARD_TYPES.map(type => [type, getSelectedReward(type)])
+    );
+    const unlocked = Object.fromEntries(
+      PRESTIGE_REWARD_TYPES.map(type => [
+        type,
+        getUnlockedRewardsByType(type, prestigeLevel).map(reward => reward.id)
+      ])
+    );
+    return {
+      prestigeLevel,
+      mastered: isPrestigeMastered(),
+      permanentWardrobeUnlocks: getPermanentWardrobeUnlocks(),
+      pendingPermanentChoice: getPendingPermanentWardrobeChoice(),
+      unlocked,
+      selected,
+      xpMultiplier: getPrestigeXpMultiplier(prestigeLevel)
+    };
   }
 
   function getPrestigeEmblemMarkup(level) {
@@ -309,22 +644,43 @@
 
   recoverPendingPrestigeTransaction();
   readPrestigeLevel();
+  readPermanentWardrobeUnlockMap();
+  getPendingPermanentWardrobeChoice();
+  PRESTIGE_REWARD_TYPES.forEach(getSelectedReward);
 
   window.SlimePrestige = Object.freeze({
     prestigeLevelStorageKey: PRESTIGE_LEVEL_STORAGE_KEY,
     prestigeTransactionStorageKey: PRESTIGE_TRANSACTION_STORAGE_KEY,
+    permanentWardrobeUnlocksStorageKey: PERMANENT_WARDROBE_UNLOCKS_STORAGE_KEY,
+    pendingWardrobeChoiceStorageKey: PENDING_WARDROBE_CHOICE_STORAGE_KEY,
+    selectionStorageKeys: PRESTIGE_SELECTION_STORAGE_KEYS,
     maxAvailablePrestige: MAX_AVAILABLE_PRESTIGE,
+    balance: PRESTIGE_BALANCE,
     definitions: PRESTIGE_DEFINITIONS,
     getLevel: readPrestigeLevel,
     getDefinition: getPrestigeDefinition,
     getDisplayDefinition: getDisplayPrestigeDefinition,
     getUnlockedRewards,
+    getUnlockedRewardsByType,
+    getRewardDefinition,
+    getSelectedReward,
+    selectReward,
+    getXpMultiplier: getPrestigeXpMultiplier,
+    configureWardrobeRegistry,
+    getPermanentWardrobeUnlocks,
+    getPermanentWardrobeCandidates,
+    getPendingPermanentWardrobeChoice,
+    choosePermanentWardrobeUnlock,
+    capturePlayerIdentitySnapshot,
+    normalizeIdentitySnapshot,
+    getRewardInspectorData,
     getEmblemMarkup: getPrestigeEmblemMarkup,
     isReady: isPrestigeReady,
     isMastered: isPrestigeMastered,
     isTransactionPending: isPrestigeTransactionPending,
     performPrestigeReset,
     setLevelForDev: setPrestigeLevelForDev,
-    adjustLevelForDev: adjustPrestigeLevelForDev
+    adjustLevelForDev: adjustPrestigeLevelForDev,
+    createPendingPermanentChoiceForDev
   });
 })();

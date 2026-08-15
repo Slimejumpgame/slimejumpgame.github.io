@@ -173,13 +173,22 @@
     if (normalized === "none" || unlockedSlimeBeards.includes(normalized)) {
       return false;
     }
+    if (!ensureSlimeBeardUnlocked(normalized)) return false;
+    selectedSlimeBeard = normalized;
+    saveSlimeBeardProgress();
+    return true;
+  }
+
+  function ensureSlimeBeardUnlocked(beard) {
+    const normalized = normalizeSlimeBeard(beard);
+    if (normalized === "none") return false;
+    if (unlockedSlimeBeards.includes(normalized)) return true;
 
     unlockedSlimeBeards = UNLOCKABLE_SLIME_BEARDS.filter(
       candidate => candidate === normalized || unlockedSlimeBeards.includes(candidate)
     );
-    selectedSlimeBeard = normalized;
     saveSlimeBeardProgress();
-    return true;
+    return unlockedSlimeBeards.includes(normalized);
   }
 
   function getSlimeBeardDefinition(beard = selectedSlimeBeard) {

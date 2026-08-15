@@ -427,6 +427,7 @@
       !prestige.isReady() ||
       prestige.getLevel() >= prestige.maxAvailablePrestige ||
       prestige.isTransactionPending() ||
+      prestige.getPendingPermanentWardrobeChoice?.() ||
       state !== "menu" ||
       pendingGameOverScore !== null ||
       getPendingWardrobeUnlockChoiceCount() > 0 ||
@@ -444,7 +445,9 @@
       ui.tutorialCompleteOverlay,
       ui.pauseOverlay,
       ui.message,
-      ui.endRunConfirmOverlay
+      ui.endRunConfirmOverlay,
+      ui.prestigeCustomizationOverlay,
+      ui.prestigeWardrobeChoiceOverlay
     ];
     if (criticalOverlays.some(overlay => overlay && !overlay.classList.contains("hidden"))) {
       return false;
@@ -457,6 +460,34 @@
       return false;
     }
     return true;
+  }
+
+  function canOpenPrestigeMenu() {
+    return state === "menu" &&
+      pendingGameOverScore === null &&
+      !window.SlimePrestige?.isTransactionPending?.() &&
+      !ui.menu.classList.contains("hidden") &&
+      !ui.mainMenuScreen.classList.contains("hidden") &&
+      [
+        ui.checkpointOverlay,
+        ui.tutorialCompleteOverlay,
+        ui.pauseOverlay,
+        ui.message,
+        ui.endRunConfirmOverlay,
+        ui.prestigeConfirmOverlay,
+        ui.prestigeCustomizationOverlay,
+        ui.prestigeWardrobeChoiceOverlay
+      ].every(overlay => !overlay || overlay.classList.contains("hidden"));
+  }
+
+  function openPrestigeMenu() {
+    if (!canOpenPrestigeMenu()) return false;
+    const prestige = window.SlimePrestige;
+    if (prestige.getPendingPermanentWardrobeChoice?.()) {
+      return showPrestigeWardrobeChoice();
+    }
+    if (prestige.getLevel() > 0) return showPrestigeCustomization();
+    return showPrestigeConfirmation();
   }
 
   function showPrestigeConfirmation() {
@@ -500,6 +531,7 @@
     ) === true;
     if (!updated) return false;
     renderMainMenuStats();
+    renderDevPrestigeRewardInspector();
     console.info(`[DEV Prestige] Player-Level=${level}, XP=${levelXP}`);
     return true;
   }
@@ -509,6 +541,7 @@
     const updated = window.SlimePrestige?.setLevelForDev?.(level) === true;
     if (!updated) return false;
     renderMainMenuStats();
+    renderDevPrestigeRewardInspector();
     console.info(`[DEV Prestige] Prestige=${window.SlimePrestige.getLevel()}`);
     return true;
   }
@@ -523,6 +556,28 @@
     );
   }
 
+  function renderDevPrestigeRewardInspector() {
+    if (!DEV_MODE || !ui.devPrestigeRewardInspector) return;
+    const inspector = window.SlimePrestige?.getRewardInspectorData?.();
+    if (!inspector) return;
+    const list = values => values.length > 0 ? values.join(", ") : "none";
+    ui.devPrestigeRewardInspector.textContent = [
+      `prestige: P${inspector.prestigeLevel}`,
+      `mastered: ${inspector.mastered}`,
+      `permanent: ${JSON.stringify(inspector.permanentWardrobeUnlocks)}`,
+      `pending: ${JSON.stringify(inspector.pendingPermanentChoice)}`,
+      `frames: ${list(inspector.unlocked.frame)}`,
+      `selected frame: ${inspector.selected.frame}`,
+      `titles: ${list(inspector.unlocked.title)}`,
+      `selected title: ${inspector.selected.title}`,
+      `auras: ${list(inspector.unlocked.aura)}`,
+      `selected aura: ${inspector.selected.aura}`,
+      `trails: ${list(inspector.unlocked.trail)}`,
+      `selected trail: ${inspector.selected.trail}`,
+      `xp multiplier: x${inspector.xpMultiplier.toFixed(2)}`
+    ].join("\n");
+  }
+
   function initializeDevMode() {
     if (
       !IS_LOCALHOST_TEST_ENVIRONMENT ||
@@ -535,6 +590,9 @@
     ui.devPanel.querySelectorAll("[data-dev-mode-only]").forEach(control => {
       control.hidden = !DEV_MODE;
     });
+    if (ui.devPrestigeRewardInspector) {
+      ui.devPrestigeRewardInspector.hidden = true;
+    }
     ui.devModeToggleBtn.textContent = `DEV MODE: ${DEV_MODE ? "ON" : "OFF"}`;
     ui.devModeToggleBtn.setAttribute("aria-pressed", String(DEV_MODE));
     ui.devModeToggleBtn.addEventListener("click", async () => {
@@ -578,6 +636,19 @@
       showMenuScreen("main");
       renderMainMenuStats();
       console.info("[DEV Prestige] Echter Prestige-Flow ist bereit.");
+    });
+    ui.devPrestigePermanentChoiceBtn.addEventListener("click", () => {
+      if (!window.SlimePrestige?.createPendingPermanentChoiceForDev?.()) {
+        showGameToast("Für dieses Prestige ist keine neue Test-Wahl verfügbar.");
+        return;
+      }
+      renderMainMenuStats();
+      renderDevPrestigeRewardInspector();
+      showPrestigeWardrobeChoice();
+    });
+    ui.devPrestigeRewardInspectorBtn.addEventListener("click", () => {
+      ui.devPrestigeRewardInspector.hidden = !ui.devPrestigeRewardInspector.hidden;
+      renderDevPrestigeRewardInspector();
     });
 
     document.addEventListener("keydown", event => {
@@ -815,7 +886,11 @@
 
       localStorage.setItem("slimejumperBest", String(best));
       localStorage.setItem("slimejumperBestLevel", String(bestLevel));
-      pendingGameOverScore = { score, reachedLevel };
+      pendingGameOverScore = {
+        score,
+        reachedLevel,
+        identitySnapshot: window.SlimePrestige?.capturePlayerIdentitySnapshot?.()
+      };
       let runXPResult = null;
       if (recoveryCompleted && !activeRunXPAwarded) {
         activeRunXPAwarded = true;
@@ -1042,9 +1117,36 @@
   }
 
   ui.startBtn.addEventListener("click", () => runMenuButtonAction(ui.startBtn, startFromPlay));
-  ui.menuPrestigeBtn.addEventListener("click", showPrestigeConfirmation);
+  ui.menuPrestigeBtn.addEventListener("click", openPrestigeMenu);
   ui.prestigeConfirmCancelBtn.addEventListener("click", hidePrestigeConfirmation);
   ui.prestigeConfirmBtn.addEventListener("click", confirmPrestige);
+  ui.prestigeCustomizationCloseBtn.addEventListener("click", hidePrestigeCustomization);
+  ui.prestigeCustomizationActivateBtn.addEventListener("click", () => {
+    hidePrestigeCustomization();
+    showPrestigeConfirmation();
+  });
+  ui.prestigeFrameSelect.addEventListener("change", event => {
+    selectPrestigeReward("frame", event.currentTarget.value);
+  });
+  ui.prestigeTitleSelect.addEventListener("change", event => {
+    selectPrestigeReward("title", event.currentTarget.value);
+  });
+  ui.prestigeAuraSelect.addEventListener("change", event => {
+    selectPrestigeReward("aura", event.currentTarget.value);
+  });
+  ui.prestigeTrailSelect.addEventListener("change", event => {
+    selectPrestigeReward("trail", event.currentTarget.value);
+  });
+  ui.prestigeWardrobeChoiceCloseBtn.addEventListener("click", hidePrestigeWardrobeChoice);
+  ui.prestigeWardrobeChoiceBackBtn.addEventListener("click", () => {
+    if (prestigeWardrobeChoiceCandidate) {
+      prestigeWardrobeChoiceCandidate = null;
+    } else {
+      prestigeWardrobeChoiceCategory = null;
+    }
+    renderPrestigeWardrobeChoice();
+  });
+  ui.prestigeWardrobeChoiceConfirmBtn.addEventListener("click", confirmPrestigeWardrobeChoice);
   ui.achievementsBtn.addEventListener("click", () => runMenuButtonAction(ui.achievementsBtn, () => showMenuScreen("achievements")));
   ui.wardrobeBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeBtn, () => showMenuScreen("wardrobe")));
   ui.howToBtn.addEventListener("click", () => runMenuButtonAction(ui.howToBtn, () => showMenuScreen("howto")));

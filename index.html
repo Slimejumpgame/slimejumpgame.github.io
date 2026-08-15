@@ -32,6 +32,9 @@
       <button id="devPrestigeUpBtn" data-dev-mode-only type="button">DEV PRESTIGE +</button>
       <button id="devPrestigeZeroBtn" data-dev-mode-only type="button">DEV PRESTIGE P0</button>
       <button id="devPrestigeFlowBtn" data-dev-mode-only type="button">DEV PRESTIGE FLOW TEST</button>
+      <button id="devPrestigePermanentChoiceBtn" data-dev-mode-only type="button">DEV PERMANENT CHOICE</button>
+      <button id="devPrestigeRewardInspectorBtn" data-dev-mode-only type="button">DEV REWARD INSPECTOR</button>
+      <pre id="devPrestigeRewardInspector" class="devPrestigeRewardInspector" data-dev-mode-only hidden></pre>
     </div>
   </aside>
 
@@ -219,6 +222,7 @@
           </div>
           <div class="achievementCallingCardPreview" aria-label="Calling-Card-Auswahl">
             <strong>Calling Card</strong>
+            <span id="achievementPrestigeTitle" class="achievementPrestigeTitle hidden"></span>
             <div id="achievementCallingCardSlots" class="achievementCallingCardSlots"></div>
           </div>
           <div id="achievementGrid" class="achievementGrid" aria-label="Achievement-Liste"></div>
@@ -321,6 +325,49 @@
       <div class="prestigeConfirmActions">
         <button id="prestigeConfirmCancelBtn" class="uiButton uiButton--secondary" type="button">Abbrechen</button>
         <button id="prestigeConfirmBtn" class="uiButton uiButton--danger prestigeConfirmButton" type="button">Prestige</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="prestigeCustomizationOverlay" class="prestigeConfirmOverlay hidden" role="dialog" aria-modal="true" aria-labelledby="prestigeCustomizationTitle">
+    <div class="prestigeConfirmPanel prestigeCustomizationPanel uiPanel">
+      <div class="dialogAccent prestigeConfirmAccent" aria-hidden="true"></div>
+      <h2 id="prestigeCustomizationTitle">PRESTIGE CUSTOMIZATION</h2>
+      <div class="prestigeCustomizationSummary">
+        <span id="prestigeCustomizationEmblem" class="prestigeCustomizationEmblem" aria-hidden="true"></span>
+        <span>
+          <strong id="prestigeCustomizationLevel">P0</strong>
+          <small id="prestigePermanentUnlockCount">0 / 10 Permanent Unlocks</small>
+        </span>
+      </div>
+      <div class="prestigeCustomizationFields">
+        <label for="prestigeFrameSelect">Calling Card Frame<select id="prestigeFrameSelect"></select></label>
+        <label for="prestigeTitleSelect">Prestige Title<select id="prestigeTitleSelect"></select></label>
+        <label for="prestigeAuraSelect">Aura<select id="prestigeAuraSelect"></select></label>
+        <label for="prestigeTrailSelect">Trail<select id="prestigeTrailSelect"></select></label>
+      </div>
+      <div class="prestigeConfirmActions">
+        <button id="prestigeCustomizationCloseBtn" class="uiButton uiButton--secondary" type="button">Schließen</button>
+        <button id="prestigeCustomizationActivateBtn" class="uiButton uiButton--danger hidden" type="button">Prestige aktivieren</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="prestigeWardrobeChoiceOverlay" class="prestigeConfirmOverlay hidden" role="dialog" aria-modal="true" aria-labelledby="prestigeWardrobeChoiceTitle">
+    <div class="prestigeConfirmPanel prestigeWardrobeChoicePanel uiPanel">
+      <div class="dialogAccent prestigeConfirmAccent" aria-hidden="true"></div>
+      <h2 id="prestigeWardrobeChoiceTitle">PERMANENT UNLOCK WÄHLEN</h2>
+      <p id="prestigeWardrobeChoiceText">Wähle genau ein Wardrobe-Item, das alle Prestige-Resets übersteht.</p>
+      <div id="prestigeWardrobeChoiceCategories" class="prestigeWardrobeChoiceCategories"></div>
+      <div id="prestigeWardrobeChoiceOptions" class="prestigeWardrobeChoiceOptions hidden"></div>
+      <div id="prestigeWardrobeChoiceConfirmation" class="prestigeWardrobeChoiceConfirmation hidden">
+        <strong id="prestigeWardrobeChoiceConfirmationName"></strong>
+        <p>Dieses Item wird für diese Prestige-Stufe permanent gesichert.</p>
+        <button id="prestigeWardrobeChoiceConfirmBtn" class="uiButton uiButton--primary" type="button">Permanent freischalten</button>
+      </div>
+      <div class="prestigeConfirmActions">
+        <button id="prestigeWardrobeChoiceBackBtn" class="uiButton uiButton--secondary hidden" type="button">Zurück</button>
+        <button id="prestigeWardrobeChoiceCloseBtn" class="uiButton uiButton--secondary" type="button">Später</button>
       </div>
     </div>
   </section>

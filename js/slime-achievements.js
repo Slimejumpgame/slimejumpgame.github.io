@@ -706,6 +706,14 @@
     const list = document.getElementById("recentAchievementList");
     if (!list) return;
     const title = document.getElementById("recentAchievementsTitle");
+    const recentPanel = document.getElementById("recentAchievements");
+    const selectedPrestigeFrame = window.SlimePrestige?.getSelectedReward?.("frame") ?? "none";
+    const selectedPrestigeTitle = window.SlimePrestige?.getSelectedReward?.("title") ?? "none";
+    const prestigeTitleDefinition = window.SlimePrestige?.getRewardDefinition?.(
+      "title",
+      selectedPrestigeTitle
+    );
+    if (recentPanel) recentPanel.dataset.prestigeFrame = selectedPrestigeFrame;
     const callingCardIds = getCallingCardDisplayIds();
     const achievements = callingCardIds.length > 0
       ? callingCardIds
@@ -715,7 +723,9 @@
       : getRecentAchievements(CALLING_CARD_BADGE_LIMIT);
     if (title) {
       title.textContent = callingCardIds.length > 0
-        ? "Calling Card"
+        ? prestigeTitleDefinition
+          ? `Calling Card · ${prestigeTitleDefinition.displayName}`
+          : "Calling Card"
         : "Letzte Erfolge";
     }
     list.replaceChildren();
@@ -745,6 +755,19 @@
     if (typeof document === "undefined") return;
     const preview = document.getElementById("achievementCallingCardSlots");
     if (!preview) return;
+    const previewPanel = preview.closest(".achievementCallingCardPreview");
+    const selectedPrestigeFrame = window.SlimePrestige?.getSelectedReward?.("frame") ?? "none";
+    if (previewPanel) previewPanel.dataset.prestigeFrame = selectedPrestigeFrame;
+    const title = document.getElementById("achievementPrestigeTitle");
+    const selectedPrestigeTitle = window.SlimePrestige?.getSelectedReward?.("title") ?? "none";
+    const titleDefinition = window.SlimePrestige?.getRewardDefinition?.(
+      "title",
+      selectedPrestigeTitle
+    );
+    if (title) {
+      title.textContent = titleDefinition?.displayName ?? "";
+      title.classList.toggle("hidden", !titleDefinition);
+    }
 
     const selectedIds = getCallingCardDisplayIds();
     preview.replaceChildren();

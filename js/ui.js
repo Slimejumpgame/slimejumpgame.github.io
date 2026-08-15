@@ -7,6 +7,8 @@
   let devPreviewSlimeColor = null;
   let devPreviewSlimeCosmetic = null;
   let devPreviewSlimeBeard = null;
+  let prestigeWardrobeChoiceCategory = null;
+  let prestigeWardrobeChoiceCandidate = null;
 
   function isDevShopTestActive() {
     return DEV_MODE && Boolean(window.SlimeDevShopTest?.isActive?.());
@@ -183,13 +185,25 @@
     const isMastered = isReady && prestigeLevel >= prestige.maxAvailablePrestige;
     const hasEmblem = prestigeLevel > 0;
     const transactionPending = prestige.isTransactionPending();
+    const pendingPermanentChoice = prestige.getPendingPermanentWardrobeChoice?.();
 
     ui.menuPrestigeBtn.classList.remove("hidden");
-    ui.menuPrestigeBtn.classList.toggle("prestigeInvisible", !hasEmblem && !isReady);
-    ui.menuPrestigeBtn.classList.toggle("prestigeReady", isReady && !isMastered);
+    ui.menuPrestigeBtn.classList.toggle(
+      "prestigeInvisible",
+      !hasEmblem && !isReady && !pendingPermanentChoice
+    );
+    ui.menuPrestigeBtn.classList.toggle(
+      "prestigeReady",
+      (isReady && !isMastered) || Boolean(pendingPermanentChoice)
+    );
     ui.menuPrestigeBtn.classList.toggle("prestigeMastered", isMastered);
-    ui.menuPrestigeBtn.classList.toggle("prestigeZeroReady", !hasEmblem && isReady);
-    ui.menuPrestigeBtn.disabled = !isReady || isMastered || transactionPending;
+    ui.menuPrestigeBtn.classList.toggle(
+      "prestigeZeroReady",
+      (!hasEmblem && isReady) || Boolean(pendingPermanentChoice)
+    );
+    ui.menuPrestigeBtn.disabled = transactionPending || (
+      !pendingPermanentChoice && !hasEmblem && !isReady
+    );
 
     if (ui.menuPrestigeEmblem) {
       ui.menuPrestigeEmblem.innerHTML = hasEmblem
@@ -200,6 +214,8 @@
     const displayDefinition = prestige.getDisplayDefinition(prestigeLevel);
     const label = transactionPending
       ? "RESET AUSSTEHEND"
+      : pendingPermanentChoice
+        ? "PERMANENT UNLOCK WÄHLEN"
       : isMastered
         ? "PRESTIGE MASTERED"
         : isReady
@@ -208,7 +224,9 @@
     if (ui.menuPrestigeLabel) ui.menuPrestigeLabel.textContent = label;
     ui.menuPrestigeBtn.setAttribute(
       "aria-label",
-      isMastered
+      pendingPermanentChoice
+        ? `P${pendingPermanentChoice.prestigeLevel} Permanent Unlock wählen`
+        : isMastered
         ? `Prestige ${prestigeLevel} gemeistert`
         : isReady
           ? `Prestige ${prestigeLevel + 1} aktivieren`
@@ -278,6 +296,175 @@
       ui.starBalanceValue.textContent = Math.max(0, balance).toLocaleString("de-DE");
     }
     renderMainMenuPlayerProgress();
+  }
+
+  function populatePrestigeRewardSelect(select, type) {
+    if (!select) return;
+    const prestige = window.SlimePrestige;
+    const selectedId = prestige?.getSelectedReward?.(type) ?? "none";
+    const rewards = prestige?.getUnlockedRewardsByType?.(type) ?? [];
+    const options = [{id: "none", displayName: "NONE"}, ...rewards];
+    select.replaceChildren(...options.map(reward => {
+      const option = document.createElement("option");
+      option.value = reward.id;
+      option.textContent = reward.displayName;
+      option.selected = reward.id === selectedId;
+      return option;
+    }));
+    select.disabled = rewards.length === 0;
+  }
+
+  function renderPrestigeCustomization() {
+    const prestige = window.SlimePrestige;
+    if (!prestige) return;
+    const prestigeLevel = prestige.getLevel();
+    const displayDefinition = prestige.getDisplayDefinition(prestigeLevel);
+    if (ui.prestigeCustomizationEmblem) {
+      ui.prestigeCustomizationEmblem.innerHTML = prestige.getEmblemMarkup(prestigeLevel);
+    }
+    if (ui.prestigeCustomizationLevel) {
+      ui.prestigeCustomizationLevel.textContent =
+        `${displayDefinition?.displayLabel ?? `P${prestigeLevel}`} · AKTUELLES PRESTIGE`;
+    }
+    if (ui.prestigePermanentUnlockCount) {
+      ui.prestigePermanentUnlockCount.textContent =
+        `${prestige.getPermanentWardrobeUnlocks().length} / ${prestige.maxAvailablePrestige} Permanent Unlocks`;
+    }
+    populatePrestigeRewardSelect(ui.prestigeFrameSelect, "frame");
+    populatePrestigeRewardSelect(ui.prestigeTitleSelect, "title");
+    populatePrestigeRewardSelect(ui.prestigeAuraSelect, "aura");
+    populatePrestigeRewardSelect(ui.prestigeTrailSelect, "trail");
+    ui.prestigeCustomizationActivateBtn?.classList.toggle(
+      "hidden",
+      !prestige.isReady() || prestige.isMastered()
+    );
+  }
+
+  function showPrestigeCustomization() {
+    if (!ui.prestigeCustomizationOverlay || window.SlimePrestige?.getLevel?.() < 1) {
+      return false;
+    }
+    renderPrestigeCustomization();
+    ui.prestigeCustomizationOverlay.classList.remove("hidden");
+    window.requestAnimationFrame(() => ui.prestigeCustomizationCloseBtn?.focus());
+    return true;
+  }
+
+  function hidePrestigeCustomization() {
+    ui.prestigeCustomizationOverlay?.classList.add("hidden");
+    ui.menuPrestigeBtn?.focus();
+  }
+
+  function createPermanentWardrobeChoicePreview(item) {
+    if (item.category === "color") return createSlimeColorPreview(item.id);
+    if (item.category === "cosmetic") return createSlimeCosmeticPreview(item.id);
+    return createSlimeBeardPreview(item.id);
+  }
+
+  function renderPrestigeWardrobeChoice() {
+    const prestige = window.SlimePrestige;
+    const pendingChoice = prestige?.getPendingPermanentWardrobeChoice?.();
+    if (!pendingChoice || !ui.prestigeWardrobeChoiceCategories) return false;
+
+    ui.prestigeWardrobeChoiceText.textContent =
+      `P${pendingChoice.prestigeLevel}: Wähle genau ein normales Wardrobe-Item, das alle künftigen Prestige-Resets übersteht.`;
+    const categories = [
+      {id: "color", label: "🎨 FARBE"},
+      {id: "cosmetic", label: "🎩 COSMETIC"},
+      {id: "beard", label: "🧔 BART"}
+    ];
+    ui.prestigeWardrobeChoiceCategories.replaceChildren(...categories.map(category => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "uiButton uiButton--secondary";
+      button.textContent = category.label;
+      button.disabled = prestige.getPermanentWardrobeCandidates(category.id).length === 0;
+      button.addEventListener("click", () => {
+        prestigeWardrobeChoiceCategory = category.id;
+        prestigeWardrobeChoiceCandidate = null;
+        renderPrestigeWardrobeChoice();
+      });
+      return button;
+    }));
+
+    const candidates = prestigeWardrobeChoiceCategory
+      ? prestige.getPermanentWardrobeCandidates(prestigeWardrobeChoiceCategory)
+      : [];
+    ui.prestigeWardrobeChoiceOptions.replaceChildren(...candidates.map(item => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "slimeColorOption prestigeWardrobeChoiceOption";
+      button.appendChild(createPermanentWardrobeChoicePreview(item));
+      const label = document.createElement("span");
+      label.className = "slimeColorLabel";
+      label.textContent = item.displayName;
+      button.appendChild(label);
+      button.addEventListener("click", () => {
+        prestigeWardrobeChoiceCandidate = {...item};
+        renderPrestigeWardrobeChoice();
+      });
+      return button;
+    }));
+
+    const hasCategory = Boolean(prestigeWardrobeChoiceCategory);
+    const hasCandidate = Boolean(prestigeWardrobeChoiceCandidate);
+    ui.prestigeWardrobeChoiceCategories.classList.toggle("hidden", hasCategory);
+    ui.prestigeWardrobeChoiceOptions.classList.toggle("hidden", !hasCategory || hasCandidate);
+    ui.prestigeWardrobeChoiceConfirmation.classList.toggle("hidden", !hasCandidate);
+    ui.prestigeWardrobeChoiceBackBtn.classList.toggle("hidden", !hasCategory);
+    if (hasCandidate) {
+      ui.prestigeWardrobeChoiceConfirmationName.textContent =
+        prestigeWardrobeChoiceCandidate.displayName;
+    }
+    return true;
+  }
+
+  function showPrestigeWardrobeChoice() {
+    if (!renderPrestigeWardrobeChoice()) return false;
+    ui.prestigeWardrobeChoiceOverlay.classList.remove("hidden");
+    window.requestAnimationFrame(() => ui.prestigeWardrobeChoiceCloseBtn?.focus());
+    return true;
+  }
+
+  function hidePrestigeWardrobeChoice() {
+    ui.prestigeWardrobeChoiceOverlay?.classList.add("hidden");
+    prestigeWardrobeChoiceCategory = null;
+    prestigeWardrobeChoiceCandidate = null;
+    ui.menuPrestigeBtn?.focus();
+  }
+
+  function confirmPrestigeWardrobeChoice() {
+    const choice = prestigeWardrobeChoiceCandidate;
+    if (!choice) return false;
+    if (!window.SlimePrestige?.choosePermanentWardrobeUnlock?.(choice.category, choice.id)) {
+      showGameToast("Permanent Unlock konnte nicht sicher gespeichert werden.");
+      return false;
+    }
+    hidePrestigeWardrobeChoice();
+    showGameToast(`✨ ${choice.displayName} ist jetzt permanent!`);
+    renderMainMenuStats();
+    renderSlimeColorPicker();
+    renderSlimeCosmeticPicker();
+    renderSlimeBeardPicker();
+    renderMenuMascot();
+    window.SlimeAchievements?.checkWardrobe?.();
+    window.SlimeAchievements?.renderMenu?.();
+    window.SlimeAchievements?.renderRecent?.();
+    if (typeof renderDevPrestigeRewardInspector === "function") {
+      renderDevPrestigeRewardInspector();
+    }
+    return true;
+  }
+
+  function selectPrestigeReward(type, id) {
+    if (!window.SlimePrestige?.selectReward?.(type, id)) return false;
+    renderPrestigeCustomization();
+    window.SlimeAchievements?.renderMenu?.();
+    window.SlimeAchievements?.renderRecent?.();
+    if (typeof renderDevPrestigeRewardInspector === "function") {
+      renderDevPrestigeRewardInspector();
+    }
+    return true;
   }
 
   function hideGameOverXPProgress() {
@@ -871,21 +1058,67 @@
     );
   }
 
+  function normalizeHighScoreIdentitySnapshot(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const normalized = window.SlimePrestige?.normalizeIdentitySnapshot?.({
+      playerLevel: source.playerLevel ?? source.player_level,
+      prestigeLevel: source.prestigeLevel ?? source.prestige_level,
+      prestigeFrame: source.prestigeFrame ?? source.prestige_frame,
+      prestigeTitle: source.prestigeTitle ?? source.prestige_title,
+      prestigeAura: source.prestigeAura ?? source.prestige_aura,
+      prestigeTrail: source.prestigeTrail ?? source.prestige_trail,
+      slimeAchievements: source.slimeAchievements ?? source.slime_achievements
+    });
+    return normalized ?? {
+      playerLevel: 1,
+      prestigeLevel: 0,
+      prestigeEmblemId: "none",
+      prestigeFrame: "none",
+      prestigeTitle: "none",
+      prestigeAura: "none",
+      prestigeTrail: "none",
+      slimeAchievements: []
+    };
+  }
+
+  function hasHighScoreIdentitySnapshot(value) {
+    if (!value || typeof value !== "object") return false;
+    if (typeof value.hasIdentitySnapshot === "boolean") {
+      return value.hasIdentitySnapshot;
+    }
+    return [
+      "playerLevel", "player_level", "prestigeLevel", "prestige_level",
+      "prestigeFrame", "prestige_frame", "prestigeTitle", "prestige_title",
+      "prestigeAura", "prestige_aura", "prestigeTrail", "prestige_trail"
+    ].some(key => Object.prototype.hasOwnProperty.call(value, key));
+  }
+
   function sanitizeScoreEntries(entries) {
     return (Array.isArray(entries) ? entries : [])
-      .map(entry => ({
-        name: normalizeNickname(entry?.name, "---"),
-        score: Math.max(0, Math.floor(Number(entry?.score) || 0)),
-        level: Math.max(1, Math.floor(Number(entry?.level) || 1)),
-        slimeColor: normalizeSlimeColor(entry?.slimeColor ?? entry?.slime_color),
-        slimeCosmetic: normalizeSlimeCosmetic(
-          entry?.slimeCosmetic ?? entry?.slime_cosmetic
-        ),
-        slimeBeard: normalizeSlimeBeard(entry?.slimeBeard ?? entry?.slime_beard),
-        slimeAchievements: normalizeHighScoreAchievementIds(
-          entry?.slimeAchievements ?? entry?.slime_achievements
-        )
-      }))
+      .map(entry => {
+        const identity = normalizeHighScoreIdentitySnapshot(entry);
+        return {
+          name: normalizeNickname(entry?.name, "---"),
+          score: Math.max(0, Math.floor(Number(entry?.score) || 0)),
+          level: Math.max(1, Math.floor(Number(entry?.level) || 1)),
+          slimeColor: normalizeSlimeColor(entry?.slimeColor ?? entry?.slime_color),
+          slimeCosmetic: normalizeSlimeCosmetic(
+            entry?.slimeCosmetic ?? entry?.slime_cosmetic
+          ),
+          slimeBeard: normalizeSlimeBeard(entry?.slimeBeard ?? entry?.slime_beard),
+          slimeAchievements: normalizeHighScoreAchievementIds(
+            entry?.slimeAchievements ?? entry?.slime_achievements
+          ),
+          playerLevel: identity.playerLevel,
+          prestigeLevel: identity.prestigeLevel,
+          prestigeEmblemId: identity.prestigeEmblemId,
+          prestigeFrame: identity.prestigeFrame,
+          prestigeTitle: identity.prestigeTitle,
+          prestigeAura: identity.prestigeAura,
+          prestigeTrail: identity.prestigeTrail,
+          hasIdentitySnapshot: hasHighScoreIdentitySnapshot(entry)
+        };
+      })
       .filter(entry => Number.isFinite(entry.score) && Number.isFinite(entry.level));
   }
 
@@ -907,8 +1140,9 @@
     }
   }
 
-  function saveHighScore(name, finalScore, reachedLevel, slimeAchievements) {
+  function saveHighScore(name, finalScore, reachedLevel, identitySnapshot) {
     const highScores = loadHighScores();
+    const identity = normalizeHighScoreIdentitySnapshot(identitySnapshot);
     highScores.push({
       name: normalizeNickname(name),
       score: Math.max(0, Math.floor(finalScore)),
@@ -916,7 +1150,15 @@
       slimeColor: selectedSlimeColor,
       slimeCosmetic: selectedSlimeCosmetic,
       slimeBeard: selectedSlimeBeard,
-      slimeAchievements: normalizeHighScoreAchievementIds(slimeAchievements)
+      slimeAchievements: normalizeHighScoreAchievementIds(identity.slimeAchievements),
+      playerLevel: identity.playerLevel,
+      prestigeLevel: identity.prestigeLevel,
+      prestigeEmblemId: identity.prestigeEmblemId,
+      prestigeFrame: identity.prestigeFrame,
+      prestigeTitle: identity.prestigeTitle,
+      prestigeAura: identity.prestigeAura,
+      prestigeTrail: identity.prestigeTrail,
+      hasIdentitySnapshot: true
     });
 
     highScores.sort((a, b) => b.score - a.score || b.level - a.level);
@@ -936,7 +1178,7 @@
     return Math.max(0, Math.floor(Number(finalScore) || 0)) > lowestTopTenScore;
   }
 
-  function submitOnlineHighScore(name, finalScore, reachedLevel, slimeAchievements) {
+  function submitOnlineHighScore(name, finalScore, reachedLevel, identitySnapshot) {
     const online = window.SlimeJumpHighscores;
     if (!online?.isConfigured?.()) {
       console.info("[Highscore] COMMIT SKIPPED reason=online-not-configured");
@@ -944,6 +1186,7 @@
       return lastOnlineScoreSubmit;
     }
 
+    const identity = normalizeHighScoreIdentitySnapshot(identitySnapshot);
     const submittedScore = {
       name: normalizeNickname(name),
       score: Math.max(0, Math.floor(finalScore)),
@@ -951,7 +1194,14 @@
       slimeColor: selectedSlimeColor,
       slimeCosmetic: selectedSlimeCosmetic,
       slimeBeard: selectedSlimeBeard,
-      slimeAchievements: normalizeHighScoreAchievementIds(slimeAchievements)
+      slimeAchievements: normalizeHighScoreAchievementIds(identity.slimeAchievements),
+      playerLevel: identity.playerLevel,
+      prestigeLevel: identity.prestigeLevel,
+      prestigeEmblemId: identity.prestigeEmblemId,
+      prestigeFrame: identity.prestigeFrame,
+      prestigeTitle: identity.prestigeTitle,
+      prestigeAura: identity.prestigeAura,
+      prestigeTrail: identity.prestigeTrail
     };
 
     lastOnlineScoreSubmit = (async () => {
@@ -983,9 +1233,10 @@
     name,
     finalScore,
     reachedLevel,
-    slimeAchievements = getHighScoreAchievementSnapshot()
+    identitySnapshot = window.SlimePrestige?.capturePlayerIdentitySnapshot?.()
   ) {
     const recentScores = sanitizeScoreEntries(loadRecentScores());
+    const identity = normalizeHighScoreIdentitySnapshot(identitySnapshot);
     recentScores.unshift({
       name: normalizeNickname(name),
       score: Math.max(0, Math.floor(finalScore)),
@@ -993,7 +1244,15 @@
       slimeColor: selectedSlimeColor,
       slimeCosmetic: selectedSlimeCosmetic,
       slimeBeard: selectedSlimeBeard,
-      slimeAchievements: slimeAchievements.slice()
+      slimeAchievements: normalizeHighScoreAchievementIds(identity.slimeAchievements),
+      playerLevel: identity.playerLevel,
+      prestigeLevel: identity.prestigeLevel,
+      prestigeEmblemId: identity.prestigeEmblemId,
+      prestigeFrame: identity.prestigeFrame,
+      prestigeTitle: identity.prestigeTitle,
+      prestigeAura: identity.prestigeAura,
+      prestigeTrail: identity.prestigeTrail,
+      hasIdentitySnapshot: true
     });
 
     try {
@@ -1003,7 +1262,7 @@
       );
     } catch (_) {}
 
-    saveHighScore(name, finalScore, reachedLevel, slimeAchievements);
+    saveHighScore(name, finalScore, reachedLevel, identity);
   }
 
   function showNicknameEntry() {
@@ -1045,7 +1304,12 @@
       return false;
     }
 
-    const slimeAchievements = getHighScoreAchievementSnapshot();
+    const identitySnapshot = normalizeHighScoreIdentitySnapshot(
+      pendingScore.identitySnapshot ?? {
+        ...window.SlimePrestige?.capturePlayerIdentitySnapshot?.(),
+        slimeAchievements: getHighScoreAchievementSnapshot()
+      }
+    );
 
     pendingScore.commitPromise = (async () => {
       try {
@@ -1053,7 +1317,7 @@
           nickname,
           pendingScore.score,
           pendingScore.reachedLevel,
-          slimeAchievements
+          identitySnapshot
         );
       } catch (error) {
         console.info("[Highscore] COMMIT SKIPPED reason=online-error");
@@ -1066,7 +1330,7 @@
           nickname,
           pendingScore.score,
           pendingScore.reachedLevel,
-          slimeAchievements
+          identitySnapshot
         );
         try { localStorage.setItem("slimejumperLastNickname", nickname); } catch (_) {}
       } catch (error) {
@@ -1106,6 +1370,7 @@
       badges.className = "highscoreBadges";
       badges.setAttribute("aria-hidden", "true");
       if (entry) {
+        badges.dataset.prestigeFrame = entry.prestigeFrame ?? "none";
         const registry = window.SlimeAchievements?.registry;
         const achievementById = new Map(
           (Array.isArray(registry) ? registry : []).map(achievement => [
@@ -1122,19 +1387,51 @@
           icon.textContent = achievement.icon;
           badges.appendChild(icon);
         });
+        for (const [type, id] of [
+          ["aura", entry.prestigeAura],
+          ["trail", entry.prestigeTrail]
+        ]) {
+          const reward = window.SlimePrestige?.getRewardDefinition?.(type, id);
+          if (!reward) continue;
+          const marker = document.createElement("span");
+          marker.className = `highscorePrestigeMarker highscorePrestigeMarker--${type}`;
+          marker.textContent = type === "aura" ? "A" : "T";
+          marker.title = reward.displayName;
+          badges.appendChild(marker);
+        }
       }
 
       const name = document.createElement("span");
       name.className = "scoreName";
       if (entry) {
-        name.append(
-          createLeaderboardSlimePreview(
-            entry.slimeColor,
-            entry.slimeCosmetic,
-            entry.slimeBeard
-          ),
-          document.createTextNode(normalizeNickname(entry.name, "---"))
+        if (entry.prestigeLevel > 0) {
+          const emblem = document.createElement("span");
+          emblem.className = "highscorePrestigeEmblem";
+          emblem.innerHTML = window.SlimePrestige?.getEmblemMarkup?.(
+            entry.prestigeLevel
+          ) ?? "";
+          name.appendChild(emblem);
+        }
+        name.appendChild(createLeaderboardSlimePreview(
+          entry.slimeColor,
+          entry.slimeCosmetic,
+          entry.slimeBeard
+        ));
+        const identityText = document.createElement("span");
+        identityText.className = "highscoreIdentityText";
+        const nickname = document.createElement("strong");
+        nickname.textContent = normalizeNickname(entry.name, "---");
+        identityText.appendChild(nickname);
+        const titleReward = window.SlimePrestige?.getRewardDefinition?.(
+          "title",
+          entry.prestigeTitle
         );
+        if (titleReward) {
+          const title = document.createElement("small");
+          title.textContent = titleReward.displayName;
+          identityText.appendChild(title);
+        }
+        name.appendChild(identityText);
       } else {
         name.textContent = "—";
       }
@@ -1145,7 +1442,11 @@
 
       const level = document.createElement("span");
       level.className = "scoreLevel";
-      level.textContent = entry ? `Level ${entry.level}` : "—";
+      level.textContent = entry
+        ? entry.hasIdentitySnapshot
+          ? `#${entry.playerLevel} · Level ${entry.level}`
+          : `Level ${entry.level}`
+        : "—";
 
       row.append(rank, badges, name, points, level);
       ui.highscoreRows.appendChild(row);
