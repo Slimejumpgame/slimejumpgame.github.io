@@ -35,9 +35,9 @@
       <button id="devPrestigePermanentChoiceBtn" data-dev-mode-only type="button">DEV PERMANENT CHOICE</button>
       <button id="devPrestigeRewardInspectorBtn" data-dev-mode-only type="button">DEV REWARD INSPECTOR</button>
       <pre id="devPrestigeRewardInspector" class="devPrestigeRewardInspector" data-dev-mode-only hidden></pre>
-      <button id="devUnlockPerksBtn" data-dev-mode-only type="button" aria-pressed="false">DEV UNLOCK PERKS</button>
+      <button id="devUnlockPerksBtn" data-dev-mode-only type="button" aria-pressed="false">DEV FÄHIGKEITEN FREISCHALTEN</button>
       <button id="devForceLuckyStarBtn" data-dev-mode-only type="button" aria-pressed="false">DEV FORCE LUCKY STAR</button>
-      <button id="devPerkInspectorBtn" data-dev-mode-only type="button">DEV PERK INSPECTOR</button>
+      <button id="devPerkInspectorBtn" data-dev-mode-only type="button">DEV FÄHIGKEITEN-INSPEKTOR</button>
       <pre id="devPerkInspector" class="devPrestigeRewardInspector" data-dev-mode-only hidden></pre>
     </div>
   </aside>
@@ -128,7 +128,7 @@
                   <path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9L6.6 20l1-6.1-4.4-4.3 6.1-.9Z"></path>
                 </svg>
               </span>
-              <span>Perks</span>
+              <span>Fähigkeiten</span>
             </button>
             <button id="highScoresBtn" class="menuHotspot uiButton uiButton--secondary" type="button">
               <span class="buttonIcon" aria-hidden="true">
@@ -252,11 +252,11 @@
         </div>
       </section>
 
-      <section id="perksScreen" class="menuScreen menuScreen--detail hidden" aria-label="Perks">
+      <section id="perksScreen" class="menuScreen menuScreen--detail hidden" aria-label="Fähigkeiten">
         <header class="screenHeader">
           <div class="screenTitleGroup">
             <span class="screenKicker">Wähle dein Run-Loadout</span>
-            <h2>Perks</h2>
+            <h2>Fähigkeiten</h2>
           </div>
           <button id="perksBackBtn" class="menuHotspot uiButton uiButton--secondary backButton" type="button" aria-label="Zurück zum Hauptmenü">
             <span class="buttonIcon" aria-hidden="true">
@@ -270,10 +270,10 @@
         </header>
         <div class="perksPanel uiPanel">
           <div class="perksSummary">
-            <span>Active Perks</span>
+            <span>Aktive Fähigkeiten</span>
             <strong id="activePerkCount" aria-live="polite">0 / 3</strong>
           </div>
-          <div id="perkGrid" class="perkGrid" aria-label="Perk-Auswahl"></div>
+          <div id="perkGrid" class="perkGrid" aria-label="Fähigkeiten-Auswahl"></div>
         </div>
       </section>
 
@@ -367,7 +367,7 @@
         <li>Checkpoints und Stern-Guthaben</li>
         <li>Farben, Cosmetics und Bärte</li>
         <li>Achievements und Calling Card</li>
-        <li>später Perks und Mastery-Progress</li>
+        <li>spätere Fähigkeiten und Mastery-Progress</li>
       </ul>
       <p class="prestigeKeepText">Dein Prestige-Level und deine historischen Highscores bleiben erhalten.</p>
       <div class="prestigeConfirmActions">

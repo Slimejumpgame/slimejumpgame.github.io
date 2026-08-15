@@ -628,10 +628,10 @@
     const secondChanceAnchor = getSecondChanceSafeAnchor();
 
     ui.devPerkInspector.textContent = [
-      `Stored Unlocked Perks: ${JSON.stringify(storedUnlocked)}`,
-      `Stored Selected Perks: ${JSON.stringify(storedSelected)}`,
-      `Current Selected Perks: ${JSON.stringify(selected)}`,
-      `Active Run Perks: ${JSON.stringify(active)}`,
+      `Gespeicherte freigeschaltete Fähigkeiten: ${JSON.stringify(storedUnlocked)}`,
+      `Gespeicherte ausgewählte Fähigkeiten: ${JSON.stringify(storedSelected)}`,
+      `Aktuell ausgewählte Fähigkeiten: ${JSON.stringify(selected)}`,
+      `Aktive Run-Fähigkeiten: ${JSON.stringify(active)}`,
       `Selected Count: ${selected.length} / ${perks.maxSelected}`,
       `Current Run Lives: ${runIsActive ? lives : "-"}`,
       "Base Run Lives: 3",
@@ -810,8 +810,8 @@
       window.SlimePerks.setDevUnlockOverride(enabled);
       ui.devUnlockPerksBtn.setAttribute("aria-pressed", String(enabled));
       ui.devUnlockPerksBtn.textContent = enabled
-        ? "DEV PERKS UNLOCKED"
-        : "DEV UNLOCK PERKS";
+        ? "DEV FÄHIGKEITEN FREIGESCHALTET"
+        : "DEV FÄHIGKEITEN FREISCHALTEN";
       renderPerksScreen();
       renderDevPerkInspector();
     });

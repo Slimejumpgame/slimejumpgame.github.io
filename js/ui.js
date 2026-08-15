@@ -1662,7 +1662,7 @@
             } else if (purchase.reason === "dev-mode") {
               showGameToast("Für einen echten Kauf DEV MODE ausschalten.");
             } else if (purchase.reason !== "purchase-in-progress") {
-              showGameToast("Perk konnte nicht freigeschaltet werden.");
+              showGameToast("Fähigkeit konnte nicht freigeschaltet werden.");
             }
             return;
           }
@@ -1677,9 +1677,9 @@
         const result = perks.toggleSelectedPerk(perk.id);
         if (!result.ok) {
           if (result.reason === "max-selected") {
-            showGameToast(`Maximal ${perks.maxSelected} Perks gleichzeitig aktiv.`);
+            showGameToast(`Maximal ${perks.maxSelected} Fähigkeiten gleichzeitig aktiv.`);
           } else if (result.reason === "storage-error") {
-            showGameToast("Perk-Auswahl konnte nicht gespeichert werden.");
+            showGameToast("Fähigkeiten-Auswahl konnte nicht gespeichert werden.");
           }
           return;
         }
