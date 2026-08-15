@@ -441,6 +441,66 @@ function assertLocalPersistenceAndRendering(prestigeApi, snapshot) {
   assert.equal(highscoreRows.children[1].children[0].textContent, "1");
 }
 
+function assertMainMenuPrestigePreview() {
+  const source = read("js/ui.js");
+  const previewStart = source.indexOf("  function getSelectedPrestigeSlimePreviewOptions(");
+  const previewEnd = source.indexOf("  function getPersonalBestScore(");
+  assert.ok(previewStart >= 0 && previewEnd > previewStart);
+
+  const selectedRewards = {
+    aura: "prestige-aura-prism-p8",
+    trail: "prestige-trail-prism-p9"
+  };
+  const draws = [];
+  const context = vm.createContext({
+    window: {
+      SlimePrestige: {
+        getSelectedReward: type => selectedRewards[type] ?? "none"
+      }
+    },
+    ui: {menuMascot: new FakeElement("canvas")},
+    getActiveSlimeCosmetic: () => "wizard_hat",
+    getActiveSlimeBeard: () => "braided_beard",
+    getActiveSlimeColor: () => "hot_pink",
+    getSlimeCosmeticDefinition: () => ({type: "hat"}),
+    drawSlimeCharacterPreview: (...args) => draws.push(args),
+    document: {createElement: tagName => new FakeElement(tagName)},
+    normalizeSlimeCosmetic: value => value,
+    normalizeSlimeBeard: value => value,
+    normalizeSlimeColor: value => value
+  });
+  vm.runInContext(
+    source.slice(previewStart, previewEnd) + `
+      globalThis.menuPreviewTestApi = {
+        getSelectedPrestigeSlimePreviewOptions,
+        renderMenuMascot
+      };
+    `,
+    context,
+    {filename: "js/ui-menu-preview-test-slice.js"}
+  );
+
+  context.menuPreviewTestApi.renderMenuMascot();
+  assert.equal(draws[0][1], "wizard_hat");
+  assert.equal(draws[0][2], "braided_beard");
+  assert.equal(draws[0][3], "hot_pink");
+  assert.equal(draws[0][4].prestigeAura, "prestige-aura-prism-p8");
+  assert.equal(draws[0][4].prestigeTrail, "prestige-trail-prism-p9");
+  assert.equal(draws[0][4].prestigeEffectRadius, 20);
+
+  selectedRewards.aura = "prestige-aura-p8";
+  selectedRewards.trail = "prestige-trail-p9";
+  context.menuPreviewTestApi.renderMenuMascot();
+  assert.equal(draws[1][4].prestigeAura, "prestige-aura-p8");
+  assert.equal(draws[1][4].prestigeTrail, "prestige-trail-p9");
+
+  selectedRewards.aura = "none";
+  selectedRewards.trail = "none";
+  context.menuPreviewTestApi.renderMenuMascot();
+  assert.equal(draws[2][4].prestigeAura, "none");
+  assert.equal(draws[2][4].prestigeTrail, "none");
+}
+
 function assertStaticReleaseGuards() {
   const html = read("index.html");
   const staticIds = [...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
@@ -451,6 +511,18 @@ function assertStaticReleaseGuards() {
   );
 
   const uiSource = read("js/ui.js");
+  const selectPrestigeStart = uiSource.indexOf("  function selectPrestigeReward(");
+  const selectPrestigeEnd = uiSource.indexOf("  function hideGameOverXPProgress(");
+  const selectPrestigeSource = uiSource.slice(selectPrestigeStart, selectPrestigeEnd);
+  assert.match(selectPrestigeSource, /renderMenuMascot\(\)/);
+  assert.match(
+    uiSource,
+    /function createSlimeCosmeticPreview[\s\S]*?getSelectedPrestigeSlimePreviewOptions\(\)/
+  );
+  assert.match(
+    uiSource,
+    /function createSlimeBeardPreview[\s\S]*?getSelectedPrestigeSlimePreviewOptions\(\)/
+  );
   const devTestStart = uiSource.indexOf("  function createDevCallingCardTestEntry(");
   const devTestEnd = uiSource.indexOf("  function createHighScoreCallingCard(");
   const devTestSource = uiSource.slice(devTestStart, devTestEnd);
@@ -502,8 +574,8 @@ function assertStaticReleaseGuards() {
   assert.ok(staticTrailStart >= 0 && previewEnd > staticTrailStart);
   assert.match(leaderboardEffectSource, /PRESTIGE_AURA_STYLES\[options\.prestigeAura\]/);
   assert.match(leaderboardEffectSource, /PRESTIGE_TRAIL_STYLES\[options\.prestigeTrail\]/);
-  assert.match(leaderboardEffectSource, /drawStaticPrestigeTrail\(previewContext, prestigeTrail, 30\)/);
-  assert.match(leaderboardEffectSource, /drawPrestigeAura\(previewContext, prestigeAura, 30\)/);
+  assert.match(leaderboardEffectSource, /drawStaticPrestigeTrail\(previewContext, prestigeTrail, prestigeEffectRadius\)/);
+  assert.match(leaderboardEffectSource, /drawPrestigeAura\(previewContext, prestigeAura, prestigeEffectRadius\)/);
   assert.doesNotMatch(
     leaderboardEffectSource,
     /requestAnimationFrame|getSelectedReward|localStorage|sessionStorage|fetch\(|console\./
@@ -525,6 +597,7 @@ function assertStaticReleaseGuards() {
   await assertGlobalSnapshotRoundTrip(prestige.api, snapshot);
   await assertMissingColumnFallback(prestige.api, snapshot);
   assertLocalPersistenceAndRendering(prestige.api, snapshot);
+  assertMainMenuPrestigePreview();
   assertStaticReleaseGuards();
   console.log("Calling-card highscore tests passed.");
 })().catch(error => {

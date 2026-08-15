@@ -102,6 +102,15 @@
       : selectedSlimeBeard;
   }
 
+  function getSelectedPrestigeSlimePreviewOptions() {
+    const prestige = window.SlimePrestige;
+    return {
+      prestigeAura: prestige?.getSelectedReward?.("aura") ?? "none",
+      prestigeTrail: prestige?.getSelectedReward?.("trail") ?? "none",
+      prestigeEffectRadius: 20
+    };
+  }
+
   function hideGameToast() {
     if (gameToastTimer !== null) window.clearTimeout(gameToastTimer);
     gameToastTimer = null;
@@ -168,16 +177,20 @@
     const definition = getSlimeCosmeticDefinition(cosmetic);
     const isHat = definition?.type === "hat";
     const isBow = cosmetic === "bow";
+    const previewLayout = isHat
+      ? {centerY: 128, scale: 1.35}
+      : isBow
+        ? {centerY: 96, scale: 1.7}
+        : {centerY: 95, scale: 2};
     drawSlimeCharacterPreview(
       ui.menuMascot,
       cosmetic,
       getActiveSlimeBeard(),
       getActiveSlimeColor(),
-      isHat
-        ? {centerY: 128, scale: 1.35}
-        : isBow
-          ? {centerY: 96, scale: 1.7}
-          : {centerY: 95, scale: 2}
+      {
+        ...previewLayout,
+        ...getSelectedPrestigeSlimePreviewOptions()
+      }
     );
   }
 
@@ -553,6 +566,7 @@
   function selectPrestigeReward(type, id) {
     if (!window.SlimePrestige?.selectReward?.(type, id)) return false;
     renderPrestigeCustomization();
+    renderMenuMascot();
     window.SlimeAchievements?.renderMenu?.();
     window.SlimeAchievements?.renderRecent?.();
     renderWardrobePrestigePicker();
@@ -820,7 +834,8 @@
       preview,
       cosmetic,
       getActiveSlimeBeard(),
-      getActiveSlimeColor()
+      getActiveSlimeColor(),
+      getSelectedPrestigeSlimePreviewOptions()
     );
     return preview;
   }
@@ -918,7 +933,8 @@
       preview,
       getActiveSlimeCosmetic(),
       beard,
-      getActiveSlimeColor()
+      getActiveSlimeColor(),
+      getSelectedPrestigeSlimePreviewOptions()
     );
     return preview;
   }

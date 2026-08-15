@@ -1864,6 +1864,9 @@
     const palette = getSlimeColorPalette(color);
     const prestigeAura = PRESTIGE_AURA_STYLES[options.prestigeAura] ?? null;
     const prestigeTrail = PRESTIGE_TRAIL_STYLES[options.prestigeTrail] ?? null;
+    const prestigeEffectRadius = Number.isFinite(options.prestigeEffectRadius)
+      ? Math.max(0, options.prestigeEffectRadius)
+      : 30;
     const centerX = Number.isFinite(options.centerX)
       ? options.centerX
       : canvasElement.width / 2;
@@ -1874,8 +1877,8 @@
     previewContext.translate(centerX, centerY);
     previewContext.scale(scale, scale);
 
-    drawStaticPrestigeTrail(previewContext, prestigeTrail, 30);
-    drawPrestigeAura(previewContext, prestigeAura, 30);
+    drawStaticPrestigeTrail(previewContext, prestigeTrail, prestigeEffectRadius);
+    drawPrestigeAura(previewContext, prestigeAura, prestigeEffectRadius);
 
     const bodyGradient = previewContext.createRadialGradient(-9, -10, 2, 0, 0, 30);
     bodyGradient.addColorStop(0, palette.light);
