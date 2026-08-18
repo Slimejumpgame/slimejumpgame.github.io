@@ -1023,16 +1023,16 @@ canvas.aiming {
     width: min(96vw, 760px);
     max-height: calc(100dvh - 12px);
     overflow: hidden;
-    gap: clamp(5px, 1.6dvh, 8px);
-    padding: clamp(8px, 2.4dvh, 12px) clamp(18px, 3.5vw, 30px);
+    gap: clamp(3px, 1dvh, 5px);
+    padding: clamp(6px, 1.7dvh, 9px) clamp(18px, 3.5vw, 30px);
   }
 
   .updateLogo {
-    font-size: clamp(38px, 10.5dvh, 50px);
+    font-size: clamp(32px, 8.5dvh, 42px);
   }
 
   .updatePanel h2 {
-    font-size: clamp(28px, 7.8dvh, 38px);
+    font-size: clamp(22px, 6.2dvh, 31px);
   }
 
   .updateVersionSummary {
@@ -1040,20 +1040,22 @@ canvas.aiming {
   }
 
   .updateVersionCard {
-    padding: clamp(7px, 2dvh, 10px);
+    padding: clamp(4px, 1.2dvh, 7px);
   }
 
   .updateVersionCard span {
-    font-size: clamp(13px, 3.5dvh, 16px);
+    font-size: clamp(11px, 2.8dvh, 14px);
   }
 
   .updateVersionCard strong {
-    font-size: clamp(24px, 6.5dvh, 31px);
+    font-size: clamp(20px, 5.2dvh, 26px);
   }
 
   .updateNotesPanel {
-    min-height: 0;
+    min-height: clamp(118px, 38dvh, 180px);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
     padding: clamp(8px, 2.2dvh, 11px) clamp(15px, 2.8vw, 22px);
   }
 
@@ -1063,7 +1065,9 @@ canvas.aiming {
   }
 
   .updateNotesList {
-    max-height: clamp(58px, 19dvh, 96px);
+    min-height: 0;
+    max-height: none;
+    flex: 1 1 auto;
     padding-left: clamp(22px, 3.5vw, 30px);
     font-size: clamp(14px, 3.7dvh, 17px);
     line-height: 1.25;
