@@ -306,6 +306,7 @@
     updateLastBubbleProtection(dt);
     updateQuickRecovery(dt);
     applyQuickRecoveryHorizontalDamping(dt);
+    carryGroundedPlayerWithVerticalMovingPlatform(dt);
     worldTime += dt;
     rememberPlayerHorizontalDirection();
     let aimingCarriedByMovingPlatform = false;
@@ -405,6 +406,7 @@
 
     applyNormalSafeGroundDamping(dt);
     applyHorizontalMovingGroundDamping(dt);
+    applyVerticalMovingGroundDamping(dt);
     updateSecondChanceSafeAnchor();
 
     updateAirHopFlightState(wasOnGround, player.onGround, bouncedOnPad);

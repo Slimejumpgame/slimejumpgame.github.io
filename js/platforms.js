@@ -211,6 +211,27 @@
     return false;
   }
 
+  function carryGroundedPlayerWithVerticalMovingPlatform(dt) {
+    if (
+      aiming ||
+      dt <= 0 ||
+      !player.onGround ||
+      isPlayerTouchingBouncePad()
+    ) return false;
+
+    const topSupports = getPlatforms().filter(isValidAimSupportPlatform);
+    if (topSupports.length !== 1) return false;
+    const support = topSupports[0];
+    const mover = support.movingData;
+    if (!support.moving || mover?.axis !== "y") return false;
+
+    const previousOffset = Math.sin(worldTime * mover.speed + mover.phase) * mover.range;
+    const currentOffset = Math.sin((worldTime + dt) * mover.speed + mover.phase) * mover.range;
+    const shiftY = currentOffset - previousOffset;
+    player.y += shiftY;
+    return shiftY !== 0;
+  }
+
   function carryGroundedPlayerWithHorizontalMovingPlatform(dt) {
     if (aiming || dt <= 0 || !player.onGround) return false;
 
