@@ -40,6 +40,7 @@
       <button id="devPerkInspectorBtn" data-dev-mode-only type="button">DEV FÄHIGKEITEN-INSPEKTOR</button>
       <pre id="devPerkInspector" class="devPrestigeRewardInspector" data-dev-mode-only hidden></pre>
       <button id="devCallingCardTestBtn" data-dev-mode-only type="button">DEV CALLING CARD TEST</button>
+      <button id="devUpdateScreenTestBtn" data-dev-mode-only type="button">UPDATE SCREEN TESTEN</button>
     </div>
   </aside>
 
@@ -52,21 +53,6 @@
         <span class="menuIsland menuIsland--left"></span>
         <span class="menuIsland menuIsland--right"></span>
       </div>
-
-      <section id="entryScreen" class="entryScreen" aria-label="Slime Soar Vollbild-Start" aria-hidden="true">
-        <div class="entryScreenContent">
-          <header class="menuHero entryHero">
-            <p class="menuEyebrow entrySubtitle">SPRINGEN · STERNE SAMMELN · ÜBERLEBEN</p>
-            <h1 class="slimeLogo entryTitle" aria-label="Slime Soar">
-              <span>SLIME</span> <span>SOAR</span>
-            </h1>
-          </header>
-          <canvas id="entryMascot" class="menuMascot entryMascot" width="180" height="170" aria-hidden="true"></canvas>
-          <button id="entryFullscreenBtn" class="uiButton uiButton--primary uiButton--large entryFullscreenBtn" type="button">
-            FULLSCREEN
-          </button>
-        </div>
-      </section>
 
       <section id="mainMenuScreen" class="menuScreen menuScreen--main" aria-label="Hauptmenü">
         <div class="menuStatusBar" aria-label="Persönliche Spielwerte">
@@ -343,6 +329,34 @@
           <div id="highscoreRows"></div>
         </div>
       </section>
+    </div>
+  </section>
+
+  <section id="updateOverlay" class="updateOverlay hidden" role="dialog" aria-modal="true" aria-labelledby="updateAvailableTitle" aria-describedby="updateVersionSummary updateNotesTitle" aria-hidden="true">
+    <div class="updatePanel uiPanel">
+      <div class="dialogAccent updateAccent" aria-hidden="true"></div>
+      <p class="slimeLogo updateLogo" aria-label="Slime Soar">
+        <span>SLIME</span> <span>SOAR</span>
+      </p>
+      <h2 id="updateAvailableTitle">UPDATE AVAILABLE</h2>
+      <div id="updateVersionSummary" class="updateVersionSummary">
+        <p class="updateVersionCard">
+          <span>Installiert</span>
+          <strong id="updateInstalledVersion">-</strong>
+        </p>
+        <p class="updateVersionCard updateVersionCard--new">
+          <span>Neu</span>
+          <strong id="updateNewVersion">-</strong>
+        </p>
+      </div>
+      <section class="updateNotesPanel" aria-labelledby="updateNotesTitle">
+        <h3 id="updateNotesTitle">WHAT'S NEW</h3>
+        <ul id="updateNotesList" class="updateNotesList"></ul>
+      </section>
+      <div class="updateActions">
+        <button id="updateOpenStoreBtn" class="uiButton uiButton--primary" type="button">UPDATE</button>
+        <button id="updateLaterBtn" class="uiButton uiButton--secondary" type="button">SPÄTER</button>
+      </div>
     </div>
   </section>
 

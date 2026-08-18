@@ -1,0 +1,9 @@
+{
+  "android": {
+    "versionCode": 5,
+    "versionName": "2.61",
+    "notes": [
+      "Bugfixes und Stabilitätsverbesserungen"
+    ]
+  }
+}

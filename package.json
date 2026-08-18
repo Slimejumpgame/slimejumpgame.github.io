@@ -20,6 +20,7 @@
   "homepage": "https://github.com/Slimejumpgame/Slimejumpgame.github.io#readme",
   "dependencies": {
     "@capacitor/android": "^8.5.0",
+    "@capacitor/app": "^8.0.0",
     "@capacitor/cli": "^8.5.0",
     "@capacitor/core": "^8.5.0"
   }

@@ -11,7 +11,214 @@
   let prestigeWardrobeChoiceCandidate = null;
   let prestigeWardrobeCategory = "frame";
   const PERK_POST_PURCHASE_GUARD_MS = 450;
+  const UPDATE_STORE_URL =
+    "https://play.google.com/store/apps/details?id=com.slimejumpgame.app";
+  const ANDROID_UPDATE_ENDPOINT =
+    "https://slimejumpgame.github.io/android-update.json";
+  const ANDROID_UPDATE_TIMEOUT_MS = 2500;
+  const MAX_ANDROID_UPDATE_NOTES = 12;
+  const MAX_ANDROID_UPDATE_NOTE_LENGTH = 240;
+  const MAX_ANDROID_VERSION_NAME_LENGTH = 64;
+  const TEST_UPDATE_DATA = Object.freeze({
+    installedVersion: "2.61",
+    versionName: "2.62",
+    notes: Object.freeze([
+      "Bugfixes und Stabilitätsverbesserungen",
+      "Verbessertes Slime-Verhalten",
+      "Weitere Verbesserungen"
+    ])
+  });
   let perkPurchaseGuardUntil = 0;
+  let updateScreenPreviousFocus = null;
+
+  function showUpdateScreen(updateData) {
+    if (
+      !ui.updateOverlay ||
+      !ui.updateInstalledVersion ||
+      !ui.updateNewVersion ||
+      !ui.updateNotesList
+    ) {
+      return false;
+    }
+
+    const notes = Array.isArray(updateData?.notes) ? updateData.notes : [];
+    ui.updateInstalledVersion.textContent = String(updateData?.installedVersion ?? "-");
+    ui.updateNewVersion.textContent = String(updateData?.versionName ?? "-");
+    ui.updateNotesList.replaceChildren();
+    notes.forEach(note => {
+      const item = document.createElement("li");
+      item.textContent = String(note);
+      ui.updateNotesList.appendChild(item);
+    });
+
+    updateScreenPreviousFocus = document.activeElement;
+    ui.updateOverlay.classList.remove("hidden");
+    ui.updateOverlay.setAttribute("aria-hidden", "false");
+    window.requestAnimationFrame(() => ui.updateOpenStoreBtn?.focus());
+    return true;
+  }
+
+  function closeUpdateScreen() {
+    if (!ui.updateOverlay) return;
+    ui.updateOverlay.classList.add("hidden");
+    ui.updateOverlay.setAttribute("aria-hidden", "true");
+    updateScreenPreviousFocus?.focus?.();
+    updateScreenPreviousFocus = null;
+  }
+
+  function openUpdateStorePage() {
+    window.open(UPDATE_STORE_URL, "_blank", "noopener,noreferrer");
+  }
+
+  function isPrivateUpdateTestHostname(hostname) {
+    if (hostname === "localhost" || hostname === "127.0.0.1") return true;
+
+    const segments = hostname.split(".");
+    if (
+      segments.length !== 4 ||
+      segments.some(segment => !/^\d{1,3}$/.test(segment))
+    ) {
+      return false;
+    }
+
+    const octets = segments.map(Number);
+    if (octets.some(octet => octet < 0 || octet > 255)) return false;
+
+    return (
+      octets[0] === 10 ||
+      (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
+      (octets[0] === 192 && octets[1] === 168)
+    );
+  }
+
+  function shouldShowUpdateScreenFromLocalTestUrl() {
+    if (isNativeCapacitorRuntime()) return false;
+    if (location.protocol !== "http:" || location.port !== "8129") return false;
+    if (!isPrivateUpdateTestHostname(location.hostname.toLowerCase())) return false;
+
+    return new URLSearchParams(location.search).get("testUpdate") === "1";
+  }
+
+  function isNativeAndroidUpdateRuntime() {
+    if (!isNativeCapacitorRuntime()) return false;
+
+    try {
+      return window.Capacitor?.getPlatform?.() === "android";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function parseInstalledAndroidVersion(appInfo) {
+    const versionName = typeof appInfo?.version === "string"
+      ? appInfo.version.trim()
+      : "";
+    const versionCode = Number(appInfo?.build);
+
+    if (
+      !versionName ||
+      versionName.length > MAX_ANDROID_VERSION_NAME_LENGTH ||
+      !Number.isSafeInteger(versionCode) ||
+      versionCode <= 0
+    ) {
+      return null;
+    }
+
+    return {versionCode, versionName};
+  }
+
+  function validateRemoteAndroidUpdateData(payload) {
+    const android = payload?.android;
+    if (!android || typeof android !== "object" || Array.isArray(android)) return null;
+    if (
+      typeof android.versionCode !== "number" ||
+      !Number.isSafeInteger(android.versionCode) ||
+      android.versionCode <= 0
+    ) {
+      return null;
+    }
+
+    const versionName = typeof android.versionName === "string"
+      ? android.versionName.trim()
+      : "";
+    if (!versionName || versionName.length > MAX_ANDROID_VERSION_NAME_LENGTH) {
+      return null;
+    }
+    if (
+      !Array.isArray(android.notes) ||
+      android.notes.length === 0 ||
+      android.notes.length > MAX_ANDROID_UPDATE_NOTES
+    ) {
+      return null;
+    }
+
+    const notes = [];
+    for (const note of android.notes) {
+      if (typeof note !== "string") return null;
+      const normalizedNote = note.trim();
+      if (!normalizedNote || normalizedNote.length > MAX_ANDROID_UPDATE_NOTE_LENGTH) {
+        return null;
+      }
+      notes.push(normalizedNote);
+    }
+
+    return {
+      versionCode: android.versionCode,
+      versionName,
+      notes
+    };
+  }
+
+  async function fetchRemoteAndroidUpdateData() {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(
+      () => controller.abort(),
+      ANDROID_UPDATE_TIMEOUT_MS
+    );
+
+    try {
+      const cacheBuster = encodeURIComponent(String(Date.now()));
+      const response = await fetch(`${ANDROID_UPDATE_ENDPOINT}?_=${cacheBuster}`, {
+        cache: "no-store",
+        credentials: "omit",
+        signal: controller.signal
+      });
+      if (!response.ok) throw new Error(`Update-Check HTTP ${response.status}`);
+      return validateRemoteAndroidUpdateData(await response.json());
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
+  }
+
+  async function initializeAndroidUpdateCheck() {
+    if (!isNativeAndroidUpdateRuntime()) return false;
+
+    try {
+      const appPlugin = window.Capacitor?.Plugins?.App;
+      if (typeof appPlugin?.getInfo !== "function") return false;
+
+      const installedVersion = parseInstalledAndroidVersion(
+        await appPlugin.getInfo()
+      );
+      if (!installedVersion) return false;
+
+      const remoteUpdate = await fetchRemoteAndroidUpdateData();
+      if (
+        !remoteUpdate ||
+        remoteUpdate.versionCode <= installedVersion.versionCode
+      ) {
+        return false;
+      }
+
+      return showUpdateScreen({
+        installedVersion: installedVersion.versionName,
+        versionName: remoteUpdate.versionName,
+        notes: remoteUpdate.notes
+      });
+    } catch (_) {
+      return false;
+    }
+  }
 
   function isDevShopTestActive() {
     return DEV_MODE && Boolean(window.SlimeDevShopTest?.isActive?.());
@@ -190,22 +397,6 @@
       {
         ...previewLayout,
         ...getSelectedPrestigeSlimePreviewOptions()
-      }
-    );
-  }
-
-  function renderEntryMascot() {
-    if (!ui.entryMascot) return;
-    drawSlimeCharacterPreview(
-      ui.entryMascot,
-      "none",
-      "none",
-      "green",
-      {
-        centerY: 86,
-        scale: 2,
-        prestigeAura: "none",
-        prestigeTrail: "none"
       }
     );
   }
@@ -2003,5 +2194,14 @@
   if (DEV_MODE) {
     document.getElementById("devCallingCardTestBtn")
       ?.addEventListener("click", showDevCallingCardTest);
+    ui.devUpdateScreenTestBtn
+      ?.addEventListener("click", () => showUpdateScreen(TEST_UPDATE_DATA));
+  }
+
+  ui.updateOpenStoreBtn?.addEventListener("click", openUpdateStorePage);
+  ui.updateLaterBtn?.addEventListener("click", closeUpdateScreen);
+
+  if (shouldShowUpdateScreenFromLocalTestUrl()) {
+    showUpdateScreen(TEST_UPDATE_DATA);
   }
 

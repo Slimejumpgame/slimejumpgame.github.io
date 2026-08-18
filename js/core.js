@@ -71,9 +71,6 @@
     score: document.getElementById("scoreLabel"),
     gameToast: document.getElementById("gameToast"),
     menu: document.getElementById("menuOverlay"),
-    entryScreen: document.getElementById("entryScreen"),
-    entryMascot: document.getElementById("entryMascot"),
-    entryFullscreenBtn: document.getElementById("entryFullscreenBtn"),
     mainMenuScreen: document.getElementById("mainMenuScreen"),
     personalBestValue: document.getElementById("personalBestValue"),
     menuXPProgress: document.getElementById("menuXPProgress"),
@@ -91,6 +88,12 @@
     menuPrestigeBtn: document.getElementById("menuPrestigeBtn"),
     menuPrestigeEmblem: document.getElementById("menuPrestigeEmblem"),
     menuPrestigeLabel: document.getElementById("menuPrestigeLabel"),
+    updateOverlay: document.getElementById("updateOverlay"),
+    updateInstalledVersion: document.getElementById("updateInstalledVersion"),
+    updateNewVersion: document.getElementById("updateNewVersion"),
+    updateNotesList: document.getElementById("updateNotesList"),
+    updateOpenStoreBtn: document.getElementById("updateOpenStoreBtn"),
+    updateLaterBtn: document.getElementById("updateLaterBtn"),
     prestigeConfirmOverlay: document.getElementById("prestigeConfirmOverlay"),
     prestigeConfirmCancelBtn: document.getElementById("prestigeConfirmCancelBtn"),
     prestigeConfirmBtn: document.getElementById("prestigeConfirmBtn"),
@@ -224,7 +227,8 @@
     devUnlockPerksBtn: document.getElementById("devUnlockPerksBtn"),
     devForceLuckyStarBtn: document.getElementById("devForceLuckyStarBtn"),
     devPerkInspectorBtn: document.getElementById("devPerkInspectorBtn"),
-    devPerkInspector: document.getElementById("devPerkInspector")
+    devPerkInspector: document.getElementById("devPerkInspector"),
+    devUpdateScreenTestBtn: document.getElementById("devUpdateScreenTestBtn")
   };
 
   let generatedLevel = null;
