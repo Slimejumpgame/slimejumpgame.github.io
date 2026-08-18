@@ -97,7 +97,8 @@
   const AIM_MAX_ROLL_SPEED = 240;
   const AIM_SUPPORT_TOLERANCE = 4;
   const QUICK_RECOVERY_DAMPING_REFERENCE_FPS = 60;
-  const STICKY_SLIME_DAMPING_REFERENCE_FPS = 60;
+  const NORMAL_SAFE_GROUND_DAMPING = 0.90;
+  const NORMAL_SAFE_GROUND_DAMPING_REFERENCE_FPS = 60;
   const SECOND_CHANCE_RESCUE_REASONS = Object.freeze([
     "spike_platform",
     "ghost",
@@ -188,22 +189,20 @@
     ) || null;
   }
 
-  function isStickySlimeDampingActive() {
+  function isNormalSafeGroundDampingActive() {
     const horizontalSpeed = Math.abs(player.vx);
     return state === "playing" &&
       !aiming &&
-      window.SlimePerks?.isActiveForRun?.("sticky_slime") === true &&
       !isLastBubbleProtectionActive() &&
       horizontalSpeed > 0.5 &&
-      horizontalSpeed <= window.SlimePerks.balance.STICKY_SLIME_MAX_GROUND_SPEED &&
       Boolean(getValidNormalSafeSupportPlatform());
   }
 
-  function applyStickySlimeGroundDamping(dt) {
-    if (!isStickySlimeDampingActive()) return false;
+  function applyNormalSafeGroundDamping(dt) {
+    if (!isNormalSafeGroundDampingActive()) return false;
     player.vx *= Math.pow(
-      window.SlimePerks.balance.STICKY_SLIME_GROUND_DAMPING,
-      Math.max(0, dt) * STICKY_SLIME_DAMPING_REFERENCE_FPS
+      NORMAL_SAFE_GROUND_DAMPING,
+      Math.max(0, dt) * NORMAL_SAFE_GROUND_DAMPING_REFERENCE_FPS
     );
     return true;
   }

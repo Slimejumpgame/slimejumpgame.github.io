@@ -104,7 +104,7 @@
         if (rect.ice) {
           player.onIce = true;
           player.vx *= 0.9996;
-        } else {
+        } else if (landingOnBouncePad || !isNormalSafeStaticPlatform(rect)) {
           player.vx *= 0.988;
         }
 
@@ -403,7 +403,7 @@
       }
     }
 
-    applyStickySlimeGroundDamping(dt);
+    applyNormalSafeGroundDamping(dt);
     updateSecondChanceSafeAnchor();
 
     updateAirHopFlightState(wasOnGround, player.onGround, bouncedOnPad);
