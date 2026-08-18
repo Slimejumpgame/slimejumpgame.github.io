@@ -1,7 +1,7 @@
 ﻿{
     "android":  {
-                    "versionCode":  7,
-                    "versionName":  "2.63 TEST",
+                    "versionCode":  5,
+                    "versionName":  "2.61",
                     "notes":  [
                                   "Bugfixes und StabilitÃ¤tsverbesserungen"
                               ]
