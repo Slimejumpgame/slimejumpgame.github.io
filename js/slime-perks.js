@@ -24,8 +24,7 @@
     QUICK_RECOVERY_AIM_DELAY: 0.18,
     QUICK_RECOVERY_AIM_SPEED_LIMIT: 700,
     QUICK_RECOVERY_HORIZONTAL_DAMPING: 0.82,
-    STICKY_SLIME_MAX_GROUND_SPEED: 240,
-    STICKY_SLIME_GROUND_DAMPING: 0.90
+    STAR_SHIELD_DURATION: 1.0
   });
 
   function createIcon(paths) {
@@ -86,11 +85,11 @@
     }),
     Object.freeze({
       id: "sticky_slime",
-      name: "STICKY SLIME",
-      description: "Gibt auf normalen Plattformen zusätzlichen Halt.",
-      icon: createIcon([{d: "M5 5h14v10a7 7 0 0 1-14 0Z"}, {d: "M8 5V2m4 3V2m4 3V2", accent: true}]),
+      name: "STAR SHIELD",
+      description: "Der erste Stern eines Lebens gewährt einmalig 1 Sekunde Unverwundbarkeit.",
+      icon: createIcon([{d: "M12 2.5 20 5v6c0 5-3.4 8.6-8 10.5C7.4 19.6 4 16 4 11V5Z"}, {d: "m12 7 1.2 2.5 2.8.4-2 2 .5 2.8-2.5-1.3-2.5 1.3.5-2.8-2-2 2.8-.4Z", accent: true}]),
       implemented: true,
-      category: "control"
+      category: "survival"
     }),
     Object.freeze({
       id: "bounce_master",

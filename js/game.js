@@ -638,7 +638,7 @@
     const lastBubbleActive = active.includes("last_bubble");
     const mudShoesActive = active.includes("mud_shoes");
     const quickRecoveryActive = active.includes("quick_recovery");
-    const stickySlimeActive = active.includes("sticky_slime");
+    const starShieldActive = active.includes("sticky_slime");
     const secondChanceActive = active.includes("safe_return");
     const runIsActive = !isTutorialStage() &&
       ["playing", "paused", "gamePaused"].includes(state);
@@ -715,9 +715,12 @@
       `Support Valid: ${hasQuickRecoveryValidSupport() ? "YES" : "NO"}`,
       `Current |vx|: ${Math.round(Math.abs(player.vx))} px/s`,
       `Aim Ready Through Quick Recovery: ${isQuickRecoveryAimReady() ? "YES" : "NO"}`,
-      `Sticky Slime: ${stickySlimeActive ? "ACTIVE" : "inactive"}`,
+      `Star Shield: ${starShieldActive ? "ACTIVE" : "inactive"}`,
+      `Ready This Life: ${starShieldActive && isStarShieldReadyThisLife() ? "YES" : "NO"}`,
+      `Consumed This Life: ${starShieldActive && isStarShieldConsumedThisLife() ? "YES" : "NO"}`,
+      `Shield Protection Active: ${isStarShieldProtectionActive() ? "YES" : "NO"}`,
+      `Shield Time Remaining: ${getStarShieldProtectionTimeRemaining().toFixed(2)} s`,
       `Valid Normal Support: ${runIsActive && Boolean(getValidNormalSafeSupportPlatform()) ? "YES" : "NO"}`,
-      "Sticky Extra Ground Damping: DISABLED (normal baseline)",
       `Normal Ground Damping Active: ${isNormalSafeGroundDampingActive() ? "YES" : "NO"}`,
       `Normal Ground Current |vx|: ${Math.round(Math.abs(player.vx))} px/s`,
       `Normal Ground Damping: ${NORMAL_SAFE_GROUND_DAMPING.toFixed(2)} @ 60 Hz reference`,
@@ -1098,6 +1101,7 @@
       resetLevel(true);
       return;
     }
+    clearStarShieldProtection();
     window.SlimeAchievements?.onDeath?.();
     stuckAimFallbackActive = false;
     resetStuckAimTimer();
@@ -1167,6 +1171,7 @@
       aiming = false;
       resetStuckAimTimer();
       resetFlightPerkState();
+      resetStarShieldForNewLife();
     }
   }
 
@@ -1189,6 +1194,7 @@
       generatedLevel = generateProceduralLevel(levelIndex + 1);
       resetLastBubbleForNewLevel();
       resetSecondChanceAnchorForNewLevel();
+      resetStarShieldForNewLife();
       state = "playing";
       resetLevel(true);
       window.SlimeAchievements?.onLevelStart?.(getAchievementLevelContext());

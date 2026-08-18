@@ -105,6 +105,11 @@
     "fast_ghost",
     "side_out"
   ]);
+  const STAR_SHIELD_PROTECTION_REASONS = Object.freeze([
+    "spike_platform",
+    "ghost",
+    "fast_ghost"
+  ]);
   const STUCK_AIM_POSITION_EPSILON = 4;
   const STUCK_AIM_CONTACT_NORMAL_DOT_LIMIT = 0.95;
   const STUCK_AIM_DELAY = 0.5;
@@ -123,6 +128,8 @@
   let secondChanceUsedThisRun = false;
   let secondChanceSafeAnchor = null;
   let lastSecondChanceRescueReason = "none";
+  let starShieldConsumedThisLife = false;
+  let starShieldProtectionUntil = 0;
   let stuckAimStillTime = 0;
   let stuckAimReferenceX = player.x;
   let stuckAimReferenceY = player.y;
@@ -330,6 +337,46 @@
     secondChanceUsedThisRun = false;
     secondChanceSafeAnchor = null;
     lastSecondChanceRescueReason = "none";
+    resetStarShieldForNewLife();
+  }
+
+  function resetStarShieldForNewLife() {
+    starShieldConsumedThisLife = false;
+    starShieldProtectionUntil = 0;
+  }
+
+  function tryActivateStarShieldFromStarPickup() {
+    if (
+      isTutorialStage() ||
+      starShieldConsumedThisLife ||
+      window.SlimePerks?.isActiveForRun?.("sticky_slime") !== true
+    ) return false;
+
+    starShieldConsumedThisLife = true;
+    starShieldProtectionUntil = performance.now() +
+      window.SlimePerks.balance.STAR_SHIELD_DURATION * 1000;
+    return true;
+  }
+
+  function clearStarShieldProtection() {
+    starShieldProtectionUntil = 0;
+  }
+
+  function isStarShieldProtectionActive() {
+    return getStarShieldProtectionTimeRemaining() > 0 &&
+      window.SlimePerks?.isActiveForRun?.("sticky_slime") === true;
+  }
+
+  function isStarShieldReadyThisLife() {
+    return !starShieldConsumedThisLife;
+  }
+
+  function isStarShieldConsumedThisLife() {
+    return starShieldConsumedThisLife;
+  }
+
+  function getStarShieldProtectionTimeRemaining() {
+    return Math.max(0, (starShieldProtectionUntil - performance.now()) / 1000);
   }
 
   function resetFlightPerkState() {
@@ -615,6 +662,14 @@
     tone(690, 0.12, "sine", 0.045, 980);
     spawnBurst(player.x, player.y, 20, "#fff0a8");
     return true;
+  }
+
+  function tryHandleProtectedDeadlyContact(reason) {
+    if (
+      STAR_SHIELD_PROTECTION_REASONS.includes(reason) &&
+      isStarShieldProtectionActive()
+    ) return "star_shield";
+    return tryUseSecondChance(reason) ? "second_chance" : "";
   }
 
   function isSecondChanceAvailableThisRun() {

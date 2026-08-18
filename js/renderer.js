@@ -1953,6 +1953,50 @@
     context.restore();
   }
 
+  function drawStarShieldProtection(context, radius) {
+    if (!isStarShieldProtectionActive()) return;
+    const duration = window.SlimePerks.balance.STAR_SHIELD_DURATION;
+    const remainingRatio = clamp(
+      getStarShieldProtectionTimeRemaining() / duration,
+      0,
+      1
+    );
+    const shieldRadius = radius + 7 + Math.sin(worldTime * 10) * 0.8;
+
+    context.save();
+    context.shadowColor = "#ffe95c";
+    context.shadowBlur = 22;
+    const shieldGradient = context.createRadialGradient(
+      0,
+      0,
+      radius * 0.78,
+      0,
+      0,
+      shieldRadius
+    );
+    shieldGradient.addColorStop(0, "rgba(255, 246, 176, 0.04)");
+    shieldGradient.addColorStop(0.62, "rgba(255, 230, 106, 0.10)");
+    shieldGradient.addColorStop(
+      1,
+      `rgba(255, 233, 92, ${0.28 + remainingRatio * 0.10})`
+    );
+    context.fillStyle = shieldGradient;
+    context.strokeStyle = `rgba(255, 230, 106, ${0.90 + remainingRatio * 0.10})`;
+    context.lineWidth = 6;
+    context.beginPath();
+    context.arc(0, 0, shieldRadius, 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
+
+    context.shadowBlur = 0;
+    context.strokeStyle = "rgba(255, 246, 176, 1)";
+    context.lineWidth = 3.2;
+    context.beginPath();
+    context.arc(0, 0, shieldRadius - 2.2, Math.PI * 1.08, Math.PI * 1.62);
+    context.stroke();
+    context.restore();
+  }
+
   function drawPlayer() {
     const palette = getSlimeColorPalette(getActiveSlimeColor());
     const selectedTrail = window.SlimePrestige?.getSelectedReward?.("trail") ?? "none";
@@ -2014,6 +2058,7 @@
 
     drawPrestigeAura(ctx, prestigeAura, player.r);
     drawLastBubbleProtection(ctx, player.r);
+    drawStarShieldProtection(ctx, player.r);
 
     ctx.shadowColor = palette.glow;
     ctx.shadowBlur = 22;

@@ -440,7 +440,9 @@
         h: spikeHeight + 7
       };
       if (intersectsRect(player.x, player.y, player.r * 0.70, danger)) {
-        if (tryUseSecondChance("spike_platform")) return;
+        const protection = tryHandleProtectedDeadlyContact("spike_platform");
+        if (protection === "star_shield") continue;
+        if (protection) return;
         spawnBurst(player.x, player.y, 12, "#ff7d63");
         loseLife();
         return;
@@ -452,9 +454,13 @@
         Math.hypot(player.x - enemy.x, player.y - enemy.y) <
         player.r * 0.74 + enemy.r * 0.82
       ) {
-        if (tracksRunProgress) window.SlimeAchievements?.onGhostHit?.();
         const secondChanceReason = enemy.type === "fast" ? "fast_ghost" : "ghost";
-        if (tryUseSecondChance(secondChanceReason)) return;
+        const protection = tryHandleProtectedDeadlyContact(secondChanceReason);
+        if (tracksRunProgress && protection !== "star_shield") {
+          window.SlimeAchievements?.onGhostHit?.();
+        }
+        if (protection === "star_shield") continue;
+        if (protection) return;
         spawnBurst(
           enemy.x,
           enemy.y,
@@ -482,6 +488,7 @@
         Math.hypot(player.x - s.x, player.y - s.y) < starCollectionRadius
       ) {
         collected[i] = true;
+        tryActivateStarShieldFromStarPickup();
         if (tracksRunProgress) {
           registerRunStarCollected();
           awardRunScore(250);
@@ -500,7 +507,7 @@
       return;
     }
     if (player.x < -180 || player.x > W + 180) {
-      if (tryUseSecondChance("side_out")) return;
+      if (tryHandleProtectedDeadlyContact("side_out")) return;
       loseLife();
       return;
     }
