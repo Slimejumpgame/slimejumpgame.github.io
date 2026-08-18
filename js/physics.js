@@ -404,6 +404,7 @@
     }
 
     applyNormalSafeGroundDamping(dt);
+    applyHorizontalMovingGroundDamping(dt);
     updateSecondChanceSafeAnchor();
 
     updateAirHopFlightState(wasOnGround, player.onGround, bouncedOnPad);
