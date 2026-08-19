@@ -20,6 +20,7 @@
         <input id="devLevelInput" type="number" min="1" step="1" value="1">
       </label>
       <button id="devStartLevelBtn" data-dev-mode-only type="button">Level starten</button>
+      <button id="devCheckpoint100Btn" data-dev-mode-only type="button">START CHECKPOINT 100</button>
       <button id="devNextLevelBtn" data-dev-mode-only type="button">Nächstes Level</button>
       <button id="devModeToggleBtn" type="button" aria-pressed="true">DEV MODE: ON</button>
       <button id="devTutorialToggleBtn" data-dev-mode-only type="button" aria-pressed="true">Einführung: AN</button>
@@ -456,6 +457,10 @@
           <div id="checkpointBonusHud" class="checkpointBonusHud hidden" aria-label="Checkpoint-Scorebonus">
             <span class="checkpointBonusLabel">Checkpoint Bonus</span>
             <strong id="checkpointBonusMultiplier">x1.05</strong>
+          </div>
+          <div id="runXPBonusHud" class="checkpointBonusHud runXPBonusHud hidden" aria-label="Run-XP-Multiplikator">
+            <span class="checkpointBonusLabel">Player XP</span>
+            <strong id="runXPBonusMultiplier">x1,00</strong>
           </div>
           <div id="prestigeXPBonusHud" class="prestigeXPBonusHud hidden" aria-label="Prestige-XP-Bonus">
             <span class="prestigeXPBonusLabel">Prestige XP</span>

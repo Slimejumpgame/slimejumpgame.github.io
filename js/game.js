@@ -140,6 +140,17 @@
     ) ?? 1;
   }
 
+  function getRunXPDisplayMultiplier() {
+    const prestigeLevel = window.SlimePrestige?.getLevel?.() ?? 0;
+    const selectedRunStartCheckpoint = runStartedFromCheckpoint
+      ? runStartLevel
+      : 0;
+    return window.SlimePlayerProgress?.calculateRunXPMultiplier?.(
+      prestigeLevel,
+      selectedRunStartCheckpoint
+    ) ?? 1;
+  }
+
   function formatPrestigeXPMultiplier(multiplier) {
     const normalizedMultiplier = Number.isFinite(Number(multiplier))
       ? Number(multiplier)
@@ -162,7 +173,19 @@
       "hidden",
       !runIsVisible || !runStartedFromCheckpoint || runScoreMultiplier <= 1
     );
+    if (ui.runXPBonusHud && ui.runXPBonusMultiplier) {
+      const runXPMultiplierText = formatPrestigeXPMultiplier(
+        getRunXPDisplayMultiplier()
+      );
+      ui.runXPBonusMultiplier.textContent = runXPMultiplierText;
+      ui.runXPBonusHud.setAttribute(
+        "aria-label",
+        `Run-XP-Multiplikator ${runXPMultiplierText}`
+      );
+      ui.runXPBonusHud.classList.toggle("hidden", !runIsVisible);
+    }
     if (ui.prestigeXPBonusHud && ui.prestigeXPBonusMultiplier) {
+      const prestigeLevel = window.SlimePrestige?.getLevel?.() ?? 0;
       const prestigeMultiplierText = formatPrestigeXPMultiplier(
         getPrestigeXPDisplayMultiplier()
       );
@@ -171,7 +194,10 @@
         "aria-label",
         `Prestige-XP-Bonus ${prestigeMultiplierText}`
       );
-      ui.prestigeXPBonusHud.classList.toggle("hidden", !runIsVisible);
+      ui.prestigeXPBonusHud.classList.toggle(
+        "hidden",
+        !runIsVisible || prestigeLevel < 1
+      );
     }
   }
 
@@ -792,6 +818,9 @@
 
     ui.devPreviousLevelBtn.addEventListener("click", () => startDevLevel(levelIndex));
     ui.devStartLevelBtn.addEventListener("click", () => startDevLevel(ui.devLevelInput.value));
+    ui.devCheckpoint100Btn.addEventListener("click", () => {
+      startGame(100, {fromCheckpoint: true});
+    });
     ui.devNextLevelBtn.addEventListener("click", () => startDevLevel(levelIndex + 2));
     updateDevTutorialToggle();
     ui.devTutorialToggleBtn.addEventListener("click", toggleDevTutorial);

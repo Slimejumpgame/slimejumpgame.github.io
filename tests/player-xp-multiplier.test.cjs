@@ -50,8 +50,13 @@ function assertMultiplierBalance(api) {
   assert.equal(multiplier(10, 0), 2.00);
   assert.equal(multiplier(10, 100), 2.50);
   assert.equal(multiplier(99, 0), 2.00);
-  assert.equal(multiplier(0, 10000), 2.00);
-  assert.equal(multiplier(99, 10000), 3.00);
+  assert.equal(multiplier(0, 200), 2.00);
+  assert.equal(multiplier(0, 250), 2.25);
+  assert.equal(multiplier(0, 300), 2.50);
+  assert.equal(multiplier(0, 10000), 2.50);
+  assert.equal(multiplier(10, 200), 3.00);
+  assert.equal(multiplier(10, 300), 3.50);
+  assert.equal(multiplier(99, 10000), 3.50);
   assert.equal(multiplier(0, 0), 1.00, "an unlocked checkpoint cannot affect a Level 1 start");
   assert.equal(multiplier(-4, -30), 1.00);
   assert.equal(multiplier("invalid", Infinity), 1.00);
@@ -59,8 +64,8 @@ function assertMultiplierBalance(api) {
   assert.equal(api.prestigeXPBonusPerLevel, 0.10);
   assert.equal(api.prestigeXPBonusMax, 1.00);
   assert.equal(api.checkpointXPBonusPer10Levels, 0.05);
-  assert.equal(api.checkpointXPBonusMax, 1.00);
-  assert.equal(api.totalXPMultiplierMax, 3.00);
+  assert.equal(api.checkpointXPBonusMax, 1.50);
+  assert.equal(api.totalXPMultiplierMax, 3.50);
 }
 
 function assertRunXPCalculation(fixture) {
@@ -79,6 +84,8 @@ function assertRunXPCalculation(fixture) {
   setPrestigeLevel(10);
   assert.equal(api.calculateRunXP(150, 0), 20);
   assert.equal(api.calculateRunXP(150, 100), 25);
+  assert.equal(api.calculateRunXP(150, 200), 30);
+  assert.equal(api.calculateRunXP(150, 300), 35);
 
   setPrestigeLevel(4);
   const award = api.awardRunXP(150, 30);
@@ -140,6 +147,8 @@ function assertPrestigeXPDisplay(api) {
   const ui = {
     checkpointBonusHud: new FakeHudElement(),
     checkpointBonusMultiplier: new FakeHudElement(),
+    runXPBonusHud: new FakeHudElement(),
+    runXPBonusMultiplier: new FakeHudElement(),
     prestigeXPBonusHud: new FakeHudElement(),
     prestigeXPBonusMultiplier: new FakeHudElement()
   };
@@ -171,20 +180,38 @@ function assertPrestigeXPDisplay(api) {
     {filename: "js/game-prestige-xp-display-test-slice.js"}
   );
 
-  for (const [level, expected] of [[0, "x1,00"], [4, "x1,40"], [10, "x2,00"], [99, "x2,00"]]) {
-    prestigeLevel = level;
-    context.prestigeXPDisplayTestApi.updateCheckpointBonusHUD();
-    assert.equal(ui.prestigeXPBonusMultiplier.textContent, expected);
-    assert.equal(ui.prestigeXPBonusHud.classList.contains("hidden"), false);
-  }
+  prestigeLevel = 0;
+  context.prestigeXPDisplayTestApi.updateCheckpointBonusHUD();
+  assert.equal(ui.runXPBonusMultiplier.textContent, "x1,00");
+  assert.equal(ui.runXPBonusHud.classList.contains("hidden"), false);
+  assert.equal(ui.prestigeXPBonusMultiplier.textContent, "x1,00");
+  assert.equal(ui.prestigeXPBonusHud.classList.contains("hidden"), true);
 
-  context.prestigeXPDisplayTestApi.setCheckpoint(1.15, 30);
+  context.prestigeXPDisplayTestApi.setCheckpoint(1.50, 100);
+  context.prestigeXPDisplayTestApi.updateCheckpointBonusHUD();
+  assert.equal(ui.checkpointBonusMultiplier.textContent, "x1.50");
+  assert.equal(ui.runXPBonusMultiplier.textContent, "x1,50");
+  assert.equal(ui.prestigeXPBonusHud.classList.contains("hidden"), true);
+
   prestigeLevel = 4;
   context.prestigeXPDisplayTestApi.updateCheckpointBonusHUD();
-  assert.equal(ui.checkpointBonusMultiplier.textContent, "x1.15");
+  assert.equal(ui.checkpointBonusMultiplier.textContent, "x1.50");
   assert.equal(ui.checkpointBonusHud.classList.contains("hidden"), false);
+  assert.equal(ui.runXPBonusMultiplier.textContent, "x1,90");
   assert.equal(ui.prestigeXPBonusMultiplier.textContent, "x1,40");
-  assert.equal(api.calculateRunXPMultiplier(4, 30), 1.55);
+  assert.equal(ui.prestigeXPBonusHud.classList.contains("hidden"), false);
+
+  context.prestigeXPDisplayTestApi.setCheckpoint(2.00, 200);
+  prestigeLevel = 10;
+  context.prestigeXPDisplayTestApi.updateCheckpointBonusHUD();
+  assert.equal(ui.runXPBonusMultiplier.textContent, "x3,00");
+  assert.equal(ui.prestigeXPBonusMultiplier.textContent, "x2,00");
+
+  context.prestigeXPDisplayTestApi.setCheckpoint(2.00, 300);
+  context.prestigeXPDisplayTestApi.updateCheckpointBonusHUD();
+  assert.equal(ui.checkpointBonusMultiplier.textContent, "x2.00");
+  assert.equal(ui.runXPBonusMultiplier.textContent, "x3,50");
+  assert.equal(ui.prestigeXPBonusMultiplier.textContent, "x2,00");
 }
 
 function assertReleaseUILayout() {
@@ -197,10 +224,12 @@ function assertReleaseUILayout() {
   );
   assert.match(
     html,
-    /class="hudMultiplierGroup"[\s\S]*?id="checkpointBonusHud"[\s\S]*?id="prestigeXPBonusHud"/
+    /class="hudMultiplierGroup"[\s\S]*?id="checkpointBonusHud"[\s\S]*?id="runXPBonusHud"[\s\S]*?id="prestigeXPBonusHud"/
   );
 
   const coreSource = read("js/core.js");
+  assert.match(coreSource, /runXPBonusHud: document\.getElementById\("runXPBonusHud"\)/);
+  assert.match(coreSource, /runXPBonusMultiplier: document\.getElementById\("runXPBonusMultiplier"\)/);
   assert.match(coreSource, /prestigeXPBonusHud: document\.getElementById\("prestigeXPBonusHud"\)/);
   assert.match(coreSource, /prestigeXPBonusMultiplier: document\.getElementById\("prestigeXPBonusMultiplier"\)/);
 
@@ -215,6 +244,7 @@ function assertReleaseUILayout() {
     css,
     /\.prestigeXPBonusHud\s*\{[\s\S]*?var\(--ui-purple-light\)[\s\S]*?var\(--ui-purple\)[\s\S]*?var\(--ui-purple-dark\)/
   );
+  assert.match(css, /\.runXPBonusHud\s*\{[\s\S]*?border-color: #9beaff;/);
   assert.match(css, /\.checkpointBonusHud\s*\{[\s\S]*?border: 2px solid #baff72;/);
   assert.match(css, /@media \(max-height: 520px\)[\s\S]*?\.prestigeXPBonusHud/);
 }
@@ -231,7 +261,7 @@ function assertReleaseGuards() {
   assert.doesNotMatch(progressSource, /slimejumperBest|slimejumperStars|Supabase|calling_card/);
 
   assert.match(read("js/slime-prestige.js"), /const PRESTIGE_BALANCE = Object\.freeze\(\{xpBonusPerPrestige: 0\.00\}\);/);
-  assert.match(read("js/slime-jump-highscores.js"), /GAME_VERSION = "2\.58"/);
+  assert.match(read("js/slime-jump-highscores.js"), /GAME_VERSION = "2\.62"/);
   assert.match(read("js/slime-progress-reset.js"), /RESET_VERSION = "progress-reset-2\.43"/);
   assert.match(
     read("js/slime-progress-reset.js"),
