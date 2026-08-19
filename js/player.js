@@ -96,6 +96,7 @@
   let aimStartClientY = 0;
   const AIM_MAX_ROLL_SPEED = 240;
   const AIM_SUPPORT_TOLERANCE = 4;
+  const AIR_HOP_DETACHMENT_GRACE = 0.05;
   const QUICK_RECOVERY_DAMPING_REFERENCE_FPS = 60;
   const NORMAL_SAFE_GROUND_DAMPING = 0.90;
   const NORMAL_SAFE_GROUND_DAMPING_REFERENCE_FPS = 60;
@@ -118,6 +119,7 @@
   const MIN_LAUNCH_DRAG = 10;
   let airHopUsedThisFlight = false;
   let airHopFlightActive = false;
+  let airHopDetachmentStartedAt = null;
   let lastAirHopTrigger = "NONE";
   let lastBubbleUsedThisLevel = false;
   let lastBubbleProtectionTimer = 0;
@@ -329,6 +331,7 @@
   function resetRunPerkConsumables() {
     airHopUsedThisFlight = false;
     airHopFlightActive = false;
+    airHopDetachmentStartedAt = null;
     lastAirHopTrigger = "NONE";
     resetLastBubbleForNewLevel();
     quickRecoveryTimer = 0;
@@ -382,6 +385,7 @@
   function resetFlightPerkState() {
     airHopUsedThisFlight = false;
     airHopFlightActive = false;
+    airHopDetachmentStartedAt = null;
     quickRecoveryTimer = 0;
     quickRecoveryElapsed = 0;
     quickRecoverySupportSource = null;
@@ -396,16 +400,42 @@
   function updateAirHopFlightState(wasOnGround, isOnGround, bouncedOnPad) {
     if (bouncedOnPad) {
       airHopFlightActive = true;
-    } else if (wasOnGround && !isOnGround) {
-      airHopFlightActive = true;
-    } else if (!wasOnGround && isOnGround) {
-      airHopUsedThisFlight = false;
+      airHopDetachmentStartedAt = null;
+      return;
+    }
+
+    if (isOnGround) {
+      if (!wasOnGround) airHopUsedThisFlight = false;
       airHopFlightActive = false;
+      airHopDetachmentStartedAt = null;
+      return;
+    }
+
+    // Slingshot und Bounce Pad starten ihre Flugphase ausdrücklich. Nur ein
+    // impliziter Ground-Verlust braucht die kurze Entkopplungs-Grace.
+    if (airHopFlightActive) {
+      airHopDetachmentStartedAt = null;
+      return;
+    }
+
+    if (wasOnGround) {
+      airHopDetachmentStartedAt = worldTime;
+      return;
+    }
+
+    if (
+      airHopDetachmentStartedAt !== null &&
+      !hasSolidAirHopBlockingContact() &&
+      worldTime - airHopDetachmentStartedAt >= AIR_HOP_DETACHMENT_GRACE
+    ) {
+      airHopFlightActive = true;
+      airHopDetachmentStartedAt = null;
     }
   }
 
   function beginAirHopFlight() {
     airHopFlightActive = true;
+    airHopDetachmentStartedAt = null;
   }
 
   function canUseAirHop() {
@@ -416,6 +446,7 @@
       airHopFlightActive &&
       !player.onGround &&
       !hasValidAimSupport() &&
+      !hasSolidAirHopBlockingContact() &&
       !airHopUsedThisFlight;
   }
 
@@ -438,17 +469,9 @@
   }
 
   function consumeAirHopCanvasInput(trigger) {
-    const targetsActiveAirHopFlight =
-      state === "playing" &&
-      !isTutorialStage() &&
-      window.SlimePerks?.isActiveForRun?.("air_hop") === true &&
-      airHopFlightActive &&
-      !player.onGround &&
-      !hasValidAimSupport();
-    if (!targetsActiveAirHopFlight) return false;
-
-    useAirHop(trigger);
-    return true;
+    // Ground- und bestehender Rescue-Aim haben für denselben Down-Input Vorrang.
+    if (canAim()) return false;
+    return useAirHop(trigger);
   }
 
   function getActiveLastBubbleSupportPlatforms() {
@@ -904,6 +927,12 @@
       face.distance < nearest.distance ? face : nearest
     );
     return {x: nearestFace.x, y: nearestFace.y};
+  }
+
+  function hasSolidAirHopBlockingContact() {
+    return getPlatforms().some(platform =>
+      getStuckAimContactNormal(platform) !== null
+    );
   }
 
   function hasPlausibleStuckAimContact() {
