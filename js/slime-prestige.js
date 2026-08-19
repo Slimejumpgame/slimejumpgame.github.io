@@ -80,11 +80,11 @@
       Object.freeze({type: "title", id: "prestige-title-p4", displayName: "SKY HOPPER"})
     ]),
     p5: Object.freeze([
-      Object.freeze({type: "trail", id: "prestige-trail-p5", displayName: "Star Slime Trail"}),
-      Object.freeze({type: "trail", id: "prestige-trail-slime-p5", displayName: "Slime Trail"}),
-      Object.freeze({type: "trail", id: "prestige-trail-bubble-p5", displayName: "Bubble Trail"}),
-      Object.freeze({type: "trail", id: "prestige-trail-spark-p5", displayName: "Spark Trail"}),
-      Object.freeze({type: "trail", id: "prestige-trail-mist-p5", displayName: "Mist Trail"}),
+      Object.freeze({type: "trail", id: "prestige-trail-p5", displayName: "Star Slime Schweif"}),
+      Object.freeze({type: "trail", id: "prestige-trail-slime-p5", displayName: "Slime Schweif"}),
+      Object.freeze({type: "trail", id: "prestige-trail-bubble-p5", displayName: "Bubble Schweif"}),
+      Object.freeze({type: "trail", id: "prestige-trail-spark-p5", displayName: "Spark Schweif"}),
+      Object.freeze({type: "trail", id: "prestige-trail-mist-p5", displayName: "Mist Schweif"}),
       Object.freeze({type: "title", id: "prestige-title-p5", displayName: "VETERAN"})
     ]),
     p6: Object.freeze([
@@ -102,11 +102,11 @@
       Object.freeze({type: "title", id: "prestige-title-p8", displayName: "ASCENDANT"})
     ]),
     p9: Object.freeze([
-      Object.freeze({type: "trail", id: "prestige-trail-p9", displayName: "Cosmic Slime Trail"}),
-      Object.freeze({type: "trail", id: "prestige-trail-flame-p9", displayName: "Flame Trail"}),
-      Object.freeze({type: "trail", id: "prestige-trail-royal-p9", displayName: "Royal Trail"}),
-      Object.freeze({type: "trail", id: "prestige-trail-neon-p9", displayName: "Neon Trail"}),
-      Object.freeze({type: "trail", id: "prestige-trail-prism-p9", displayName: "Master Prism Trail"}),
+      Object.freeze({type: "trail", id: "prestige-trail-p9", displayName: "Cosmic Slime Schweif"}),
+      Object.freeze({type: "trail", id: "prestige-trail-flame-p9", displayName: "Flame Schweif"}),
+      Object.freeze({type: "trail", id: "prestige-trail-royal-p9", displayName: "Royal Schweif"}),
+      Object.freeze({type: "trail", id: "prestige-trail-neon-p9", displayName: "Neon Schweif"}),
+      Object.freeze({type: "trail", id: "prestige-trail-prism-p9", displayName: "Master Prism Schweif"}),
       Object.freeze({type: "title", id: "prestige-title-p9", displayName: "LEGEND"})
     ]),
     p10: Object.freeze([

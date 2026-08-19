@@ -2,7 +2,7 @@ apply plugin: 'com.android.application'
 
 def releaseKeystoreFile = new File(
         System.getenv('USERPROFILE'),
-        'Documents/SlimeJumperKeys/slime-jumper-upload-key.jks'
+        'Documents/SlimeJumperKeys/slime-jumper-upload-key-v2.jks'
 )
 
 def releaseKeystorePassword = System.getenv('SLIME_KEYSTORE_PASS')
@@ -15,8 +15,8 @@ android {
         applicationId "com.slimejumpgame.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 8
+        versionName "2.63"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         aaptOptions {
@@ -72,3 +72,4 @@ try {
 } catch (Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
+

@@ -779,10 +779,10 @@
     if (!pendingChoice || !ui.prestigeWardrobeChoiceCategories) return false;
 
     ui.prestigeWardrobeChoiceText.textContent =
-      `P${pendingChoice.prestigeLevel}: Wähle genau ein normales Wardrobe-Item, das alle künftigen Prestige-Resets übersteht.`;
+      `P${pendingChoice.prestigeLevel}: Wähle genau ein normales Garderoben-Item, das alle künftigen Prestige-Resets übersteht.`;
     const categories = [
       {id: "color", label: "🎨 FARBE"},
-      {id: "cosmetic", label: "🎩 COSMETIC"},
+      {id: "cosmetic", label: "🎩 HÜTE"},
       {id: "beard", label: "🧔 BART"}
     ];
     ui.prestigeWardrobeChoiceCategories.replaceChildren(...categories.map(category => {
@@ -960,7 +960,7 @@
     freeUnlockButton.textContent = "GRATIS FREISCHALTEN";
     freeUnlockButton.setAttribute(
       "aria-label",
-      `${itemName} mit einer freien Wardrobe-Auswahl freischalten`
+      `${itemName} mit einer freien Garderoben-Auswahl freischalten`
     );
     freeUnlockButton.addEventListener("click", event => {
       event.stopPropagation();
@@ -1050,7 +1050,7 @@
         : devPreviewAvailable
           ? `${SLIME_COLOR_NAMES[color]} temporär im Dev Mode ansehen`
           : unlockMode
-            ? `${SLIME_COLOR_NAMES[color]} als Wardrobe-Item freischalten`
+            ? `${SLIME_COLOR_NAMES[color]} als Garderoben-Item freischalten`
             : `${SLIME_COLOR_NAMES[color]} ist gesperrt`
     );
 
@@ -1111,10 +1111,10 @@
     const pendingChoices = getPendingWardrobeUnlockChoiceCount();
     if (ui.slimeColorRequirement) {
       const pendingText = pendingChoices > 0
-        ? `${pendingChoices} freie Wardrobe-Auswahl${pendingChoices === 1 ? "" : "en"} verfügbar`
+        ? `${pendingChoices} freie Garderoben-Auswahl${pendingChoices === 1 ? "" : "en"} verfügbar`
         : "";
       ui.slimeColorRequirement.textContent = requiredStars === null
-        ? pendingText || "Wardrobe komplett!"
+        ? pendingText || "Garderobe komplett!"
         : pendingText
           ? `${pendingText} · Nächster Unlock bei ${requiredStars} ⭐ in einem Run`
           : `Nächster Unlock bei ${requiredStars} ⭐ in einem Run`;
@@ -1173,7 +1173,7 @@
         : devPreviewAvailable
           ? `${definition.name} temporär im Dev Mode ansehen`
           : unlockMode
-            ? `${definition.name} als Wardrobe-Item freischalten`
+            ? `${definition.name} als Garderoben-Item freischalten`
             : `${definition.name} ist gesperrt`
     );
 
@@ -1272,7 +1272,7 @@
         : devPreviewAvailable
           ? `${definition.name} temporär im Dev Mode ansehen`
           : unlockMode
-            ? `${definition.name} als Wardrobe-Item freischalten`
+            ? `${definition.name} als Garderoben-Item freischalten`
             : `${definition.name} ist gesperrt`
     );
 
@@ -1405,7 +1405,7 @@
         "Was möchtest du freischalten?";
       ui.wardrobeUnlockCategories.replaceChildren(
         createWardrobeCategoryButton("color", "🎨 FARBE", lockedColors.length === 0),
-        createWardrobeCategoryButton("cosmetic", "🎩 COSMETIC", lockedCosmetics.length === 0),
+        createWardrobeCategoryButton("cosmetic", "🎩 HÜTE", lockedCosmetics.length === 0),
         createWardrobeCategoryButton("beard", "🧔 BART", lockedBeards.length === 0)
       );
       ui.wardrobeUnlockOptions.replaceChildren();
@@ -1417,7 +1417,7 @@
     ui.wardrobeUnlockText.textContent = unlocksColor
       ? "Wähle eine noch gesperrte Farbe."
       : unlocksCosmetic
-        ? "Wähle ein noch gesperrtes Cosmetic."
+        ? "Wähle einen noch gesperrten Hut."
         : "Wähle einen noch gesperrten Bart.";
     ui.wardrobeUnlockOptions.replaceChildren(
       ...(unlocksColor
@@ -1431,7 +1431,7 @@
   function requirePendingWardrobeUnlockSelection() {
     if (DEV_MODE || getPendingWardrobeUnlockChoiceCount() <= 0) return true;
     renderWardrobeUnlockPanel();
-    showGameToast("🎁 Wähle zuerst deine freien Wardrobe-Items.");
+    showGameToast("🎁 Wähle zuerst deine freien Garderoben-Items.");
     return false;
   }
 

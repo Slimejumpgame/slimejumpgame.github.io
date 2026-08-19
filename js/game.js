@@ -973,8 +973,8 @@
 
     wardrobeUnlockCategory = null;
     showGameToast(earnedChoices === 1
-      ? "🎁 Freie Wardrobe-Auswahl verdient!"
-      : `🎁 ${earnedChoices} freie Wardrobe-Auswahlen verdient!`);
+      ? "🎁 Freie Garderoben-Auswahl verdient!"
+      : `🎁 ${earnedChoices} freie Garderoben-Auswahlen verdient!`);
   }
 
   function showMessage(title, text, buttonText, action) {

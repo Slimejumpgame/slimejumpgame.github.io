@@ -12,7 +12,7 @@
   const PERK_BALANCE = Object.freeze({
     PERK_UNLOCK_COST: 500,
     EXTRA_LIFE_BONUS: 1,
-    POWER_SHOT_MULTIPLIER: 1.10,
+    POWER_SHOT_MULTIPLIER: 1.09,
     STAR_MAGNET_PULL_RADIUS: 200,
     STAR_MAGNET_PULL_SPEED: 500,
     ANCHOR_STEP_STABILITY_DURATION: 5.0,
@@ -403,3 +403,4 @@
     getLastLuckyCharmRollResult: () => lastLuckyCharmRollResult
   });
 })();
+

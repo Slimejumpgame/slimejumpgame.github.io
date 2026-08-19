@@ -105,7 +105,7 @@
                   <path d="M18.5 4.5v2.25M17.375 5.625h2.25" stroke-width="1.5"></path>
                 </svg>
               </span>
-              <span>Play</span>
+              <span>SPIELEN</span>
             </button>
             <button id="achievementsBtn" class="menuHotspot uiButton uiButton--secondary" type="button">
               <span class="buttonIcon" aria-hidden="true">
@@ -114,7 +114,7 @@
                   <path d="M8 6H5v2a4 4 0 0 0 4 4M16 6h3v2a4 4 0 0 1-4 4M12 12.75V17M8.5 19.5h7M10 17h4"></path>
                 </svg>
               </span>
-              <span>Achievements</span>
+              <span>ERFOLGE</span>
             </button>
             <button id="wardrobeBtn" class="menuHotspot uiButton uiButton--secondary" type="button">
               <span class="buttonIcon" aria-hidden="true">
@@ -123,7 +123,7 @@
                   <path d="M8.5 5.2c.55 1.5 1.75 2.4 3.5 2.4s2.95-.9 3.5-2.4"></path>
                 </svg>
               </span>
-              <span>Wardrobe</span>
+              <span>GARDEROBE</span>
             </button>
             <button id="perksBtn" class="menuHotspot uiButton uiButton--secondary" type="button">
               <span class="buttonIcon" aria-hidden="true">
@@ -151,17 +151,17 @@
         <a class="privacyLink" href="https://slimejumpgame.github.io/datenschutz.html" target="_blank" rel="noopener noreferrer external">Datenschutz</a>
       </section>
 
-      <section id="wardrobeScreen" class="menuScreen menuScreen--detail hidden" aria-label="Wardrobe">
+      <section id="wardrobeScreen" class="menuScreen menuScreen--detail hidden" aria-label="Garderobe">
         <header class="screenHeader">
           <div class="screenTitleGroup">
             <span class="screenKicker">Dein Slime, dein Style</span>
-            <h2>Wardrobe</h2>
+            <h2>GARDEROBE</h2>
           </div>
           <div class="wardrobeHeaderActions">
-            <button id="wardrobeColorBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn backButton hidden" type="button">← Wardrobe</button>
-            <button id="wardrobeCosmeticsBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn backButton hidden" type="button">← Wardrobe</button>
-            <button id="wardrobeBeardsBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn backButton hidden" type="button">← Wardrobe</button>
-            <button id="wardrobePrestigeBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn backButton hidden" type="button">← Wardrobe</button>
+            <button id="wardrobeColorBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn backButton hidden" type="button">← GARDEROBE</button>
+            <button id="wardrobeCosmeticsBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn backButton hidden" type="button">← GARDEROBE</button>
+            <button id="wardrobeBeardsBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn backButton hidden" type="button">← GARDEROBE</button>
+            <button id="wardrobePrestigeBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn backButton hidden" type="button">← GARDEROBE</button>
             <button id="wardrobeBackBtn" class="menuHotspot uiButton uiButton--secondary backButton" type="button" aria-label="Zurück zum Hauptmenü">
               <span class="buttonIcon" aria-hidden="true">
                 <svg class="menuButtonIconSvg" viewBox="0 0 24 24" focusable="false">
@@ -169,21 +169,21 @@
                   <path d="M4 12h9.5a6.5 6.5 0 0 1 6.5 6.5"></path>
                 </svg>
               </span>
-              <span>Back</span>
+              <span>ZURÜCK</span>
             </button>
           </div>
         </header>
         <div class="wardrobeScreenBody">
-          <div class="wardrobeProgressPanel uiPanel" aria-label="Wardrobe-Fortschritt">
+          <div class="wardrobeProgressPanel uiPanel" aria-label="Garderoben-Fortschritt">
             <span class="wardrobeProgressLabel">Unlock Progress</span>
             <div id="slimeColorRequirement" class="slimeColorRequirement"></div>
           </div>
 
-          <nav id="wardrobeHome" class="wardrobeCategoryMenu" aria-label="Wardrobe-Kategorien">
+          <nav id="wardrobeHome" class="wardrobeCategoryMenu" aria-label="Garderoben-Kategorien">
             <button id="wardrobeColorMenuBtn" class="wardrobeMenuButton uiButton uiButton--secondary" type="button">Slime-Farbe</button>
-            <button id="wardrobeCosmeticsMenuBtn" class="wardrobeMenuButton uiButton uiButton--secondary" type="button">Cosmetics</button>
+            <button id="wardrobeCosmeticsMenuBtn" class="wardrobeMenuButton uiButton uiButton--secondary" type="button">HÜTE</button>
             <button id="wardrobeBeardsMenuBtn" class="wardrobeMenuButton uiButton uiButton--secondary" type="button">Bärte</button>
-            <button id="wardrobePrestigeMenuBtn" class="wardrobeMenuButton wardrobePrestigeMenuButton uiButton uiButton--secondary" type="button">Prestige Customizables</button>
+            <button id="wardrobePrestigeMenuBtn" class="wardrobeMenuButton wardrobePrestigeMenuButton uiButton uiButton--secondary" type="button">PRESTIGE-GARDEROBE</button>
           </nav>
 
           <section id="wardrobeColorView" class="wardrobeSubmenu hidden" aria-label="Slime-Farbe">
@@ -192,8 +192,8 @@
             </aside>
           </section>
 
-          <section id="wardrobeCosmeticsView" class="wardrobeSubmenu hidden" aria-label="Cosmetics">
-            <aside id="slimeCosmeticPicker" class="uiPanel wardrobePanel slimeCosmeticPicker" aria-label="Slime-Cosmetic auswählen">
+          <section id="wardrobeCosmeticsView" class="wardrobeSubmenu hidden" aria-label="Hüte">
+            <aside id="slimeCosmeticPicker" class="uiPanel wardrobePanel slimeCosmeticPicker" aria-label="Slime-Hut auswählen">
               <div id="slimeCosmeticOptions" class="slimeCosmeticOptions"></div>
             </aside>
           </section>
@@ -204,7 +204,7 @@
             </aside>
           </section>
 
-          <section id="wardrobePrestigeView" class="wardrobeSubmenu wardrobePrestigeView hidden" aria-label="Prestige Customizables">
+          <section id="wardrobePrestigeView" class="wardrobeSubmenu wardrobePrestigeView hidden" aria-label="Prestige-Garderobe">
             <aside class="uiPanel wardrobePanel wardrobePrestigePanel">
               <header class="wardrobePrestigeSummary">
                 <span id="wardrobePrestigeEmblem" class="wardrobePrestigeEmblem" aria-hidden="true"></span>
@@ -217,7 +217,7 @@
                 <button class="wardrobePrestigeCategoryButton active" data-prestige-category="frame" type="button">Frame</button>
                 <button class="wardrobePrestigeCategoryButton" data-prestige-category="title" type="button">Title</button>
                 <button class="wardrobePrestigeCategoryButton" data-prestige-category="aura" type="button">Aura</button>
-                <button class="wardrobePrestigeCategoryButton" data-prestige-category="trail" type="button">Trail</button>
+                <button class="wardrobePrestigeCategoryButton" data-prestige-category="trail" type="button">SCHWEIF</button>
               </nav>
               <div id="wardrobePrestigeOptions" class="wardrobePrestigeOptions"></div>
             </aside>
@@ -225,11 +225,11 @@
         </div>
       </section>
 
-      <section id="achievementScreen" class="menuScreen menuScreen--detail hidden" aria-label="Achievements">
+      <section id="achievementScreen" class="menuScreen menuScreen--detail hidden" aria-label="Erfolge">
         <header class="screenHeader">
           <div class="screenTitleGroup">
             <span class="screenKicker">Deine Erfolge</span>
-            <h2>Achievements</h2>
+            <h2>ERFOLGE</h2>
           </div>
           <button id="achievementsBackBtn" class="menuHotspot uiButton uiButton--secondary backButton" type="button" aria-label="Zurück zum Hauptmenü">
             <span class="buttonIcon" aria-hidden="true">
@@ -238,7 +238,7 @@
                 <path d="M4 12h9.5a6.5 6.5 0 0 1 6.5 6.5"></path>
               </svg>
             </span>
-            <span>Back</span>
+            <span>ZURÜCK</span>
           </button>
         </header>
         <div class="achievementPanel uiPanel">
@@ -268,7 +268,7 @@
                 <path d="M4 12h9.5a6.5 6.5 0 0 1 6.5 6.5"></path>
               </svg>
             </span>
-            <span>Back</span>
+            <span>ZURÜCK</span>
           </button>
         </header>
         <div class="perksPanel uiPanel">
@@ -294,7 +294,7 @@
                 <path d="M4 12h9.5a6.5 6.5 0 0 1 6.5 6.5"></path>
               </svg>
             </span>
-            <span>Back</span>
+            <span>ZURÜCK</span>
           </button>
         </header>
         <div id="howToTopPanel" class="howToScrollFrame uiPanel">
@@ -320,7 +320,7 @@
                 <path d="M4 12h9.5a6.5 6.5 0 0 1 6.5 6.5"></path>
               </svg>
             </span>
-            <span>Back</span>
+            <span>ZURÜCK</span>
           </button>
         </header>
         <div class="highscoreLivePanel uiPanel" aria-label="Top 10 Highscores">
@@ -405,7 +405,7 @@
       <ul class="prestigeResetList">
         <li>Player-Level und XP</li>
         <li>Checkpoints und Stern-Guthaben</li>
-        <li>Farben, Cosmetics und Bärte</li>
+        <li>Farben, Hüte und Bärte</li>
         <li>Achievements und Calling Card</li>
         <li>spätere Fähigkeiten und Mastery-Progress</li>
       </ul>
@@ -420,7 +420,7 @@
   <section id="prestigeCustomizationOverlay" class="prestigeConfirmOverlay hidden" role="dialog" aria-modal="true" aria-labelledby="prestigeCustomizationTitle">
     <div class="prestigeConfirmPanel prestigeCustomizationPanel uiPanel">
       <div class="dialogAccent prestigeConfirmAccent" aria-hidden="true"></div>
-      <h2 id="prestigeCustomizationTitle">PRESTIGE CUSTOMIZATION</h2>
+      <h2 id="prestigeCustomizationTitle">PRESTIGE-GARDEROBE</h2>
       <div class="prestigeCustomizationSummary">
         <span id="prestigeCustomizationEmblem" class="prestigeCustomizationEmblem" aria-hidden="true"></span>
         <span>
@@ -432,7 +432,7 @@
         <label for="prestigeFrameSelect">Calling Card Frame<select id="prestigeFrameSelect"></select></label>
         <label for="prestigeTitleSelect">Prestige Title<select id="prestigeTitleSelect"></select></label>
         <label for="prestigeAuraSelect">Aura<select id="prestigeAuraSelect"></select></label>
-        <label for="prestigeTrailSelect">Trail<select id="prestigeTrailSelect"></select></label>
+        <label for="prestigeTrailSelect">SCHWEIF<select id="prestigeTrailSelect"></select></label>
       </div>
       <div class="prestigeConfirmActions">
         <button id="prestigeCustomizationCloseBtn" class="uiButton uiButton--secondary" type="button">Schließen</button>
@@ -445,7 +445,7 @@
     <div class="prestigeConfirmPanel prestigeWardrobeChoicePanel uiPanel">
       <div class="dialogAccent prestigeConfirmAccent" aria-hidden="true"></div>
       <h2 id="prestigeWardrobeChoiceTitle">PERMANENT UNLOCK WÄHLEN</h2>
-      <p id="prestigeWardrobeChoiceText">Wähle genau ein Wardrobe-Item, das alle Prestige-Resets übersteht.</p>
+      <p id="prestigeWardrobeChoiceText">Wähle genau ein Garderoben-Item, das alle Prestige-Resets übersteht.</p>
       <div id="prestigeWardrobeChoiceCategories" class="prestigeWardrobeChoiceCategories"></div>
       <div id="prestigeWardrobeChoiceOptions" class="prestigeWardrobeChoiceOptions hidden"></div>
       <div id="prestigeWardrobeChoiceConfirmation" class="prestigeWardrobeChoiceConfirmation hidden">
@@ -508,8 +508,8 @@
             </div>
             <span id="gameOverXPProgress" class="gameOverXPProgress">0 / 100 XP</span>
           </section>
-          <section id="wardrobeUnlockPanel" class="slimeColorUnlockPanel hidden" aria-label="Neues Wardrobe-Item freischalten">
-            <h3>🎁 Neuer Wardrobe-Unlock</h3>
+          <section id="wardrobeUnlockPanel" class="slimeColorUnlockPanel hidden" aria-label="Neues Garderoben-Item freischalten">
+            <h3>🎁 Neuer Garderoben-Unlock</h3>
             <p id="wardrobeUnlockText"></p>
             <div id="wardrobeUnlockCategories" class="wardrobeUnlockCategories"></div>
             <div id="wardrobeUnlockOptions" class="slimeColorUnlockOptions wardrobeUnlockOptions hidden"></div>
