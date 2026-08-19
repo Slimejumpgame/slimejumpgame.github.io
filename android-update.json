@@ -1,7 +1,7 @@
 {
   "android": {
-    "versionCode": 8,
-    "versionName": "2.63",
+    "versionCode": 9,
+    "versionName": "2.64",
     "notes": [
       "Bugfixes und Stabilitätsverbesserungen"
     ]

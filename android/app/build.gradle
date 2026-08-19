@@ -15,8 +15,8 @@ android {
         applicationId "com.slimejumpgame.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 8
-        versionName "2.63"
+        versionCode 9
+        versionName "2.64"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         aaptOptions {
@@ -72,4 +72,5 @@ try {
 } catch (Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
+
 
