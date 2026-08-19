@@ -119,6 +119,7 @@
   let airHopUsedThisFlight = false;
   let airHopFlightActive = false;
   let airHopDetachmentStartedAt = null;
+  let airHopBlockedUntilExplicitLaunch = false;
   let lastAirHopTrigger = "NONE";
   let lastBubbleUsedThisLevel = false;
   let lastBubbleProtectionTimer = 0;
@@ -311,6 +312,7 @@
     airHopUsedThisFlight = false;
     airHopFlightActive = false;
     airHopDetachmentStartedAt = null;
+    airHopBlockedUntilExplicitLaunch = false;
     lastAirHopTrigger = "NONE";
     resetLastBubbleForNewLevel();
     secondChanceUsedThisRun = false;
@@ -362,6 +364,7 @@
     airHopUsedThisFlight = false;
     airHopFlightActive = false;
     airHopDetachmentStartedAt = null;
+    airHopBlockedUntilExplicitLaunch = false;
     lastBubbleProtectionTimer = 0;
   }
 
@@ -370,8 +373,13 @@
     lastBubbleProtectionTimer = 0;
   }
 
+  function blockAirHopUntilExplicitLaunch() {
+    airHopBlockedUntilExplicitLaunch = true;
+  }
+
   function updateAirHopFlightState(wasOnGround, isOnGround, bouncedOnPad) {
     if (bouncedOnPad) {
+      airHopBlockedUntilExplicitLaunch = false;
       airHopFlightActive = true;
       airHopDetachmentStartedAt = null;
       return;
@@ -407,6 +415,13 @@
   }
 
   function beginAirHopFlight() {
+    if (
+      airHopBlockedUntilExplicitLaunch &&
+      window.SlimePerks?.isActiveForRun?.("air_hop") === true
+    ) {
+      airHopUsedThisFlight = false;
+    }
+    airHopBlockedUntilExplicitLaunch = false;
     airHopFlightActive = true;
     airHopDetachmentStartedAt = null;
   }
@@ -424,7 +439,7 @@
   }
 
   function canUseAirHop() {
-    return canUseFlightAction("air_hop");
+    return !airHopBlockedUntilExplicitLaunch && canUseFlightAction("air_hop");
   }
 
   function useAirHop(trigger) {

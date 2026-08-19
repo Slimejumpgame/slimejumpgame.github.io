@@ -99,6 +99,7 @@
       player.vy -= (1 + restitution) * normalVelocity * hit.ny;
 
       if (isTopLanding) {
+        if (!landingOnBouncePad) blockAirHopUntilExplicitLaunch();
         player.onGround = true;
         if (rect.ice) {
           player.onIce = true;

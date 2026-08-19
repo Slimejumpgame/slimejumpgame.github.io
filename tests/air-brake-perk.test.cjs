@@ -67,7 +67,7 @@ function assertPerkSelectionExclusivity() {
 
 function assertAirBrakeVelocityBehavior() {
   const playerSource = read("js/player.js");
-  const functionStart = playerSource.indexOf("  function updateAirHopFlightState");
+  const functionStart = playerSource.indexOf("  function blockAirHopUntilExplicitLaunch");
   const functionEnd = playerSource.indexOf("  function getActiveLastBubbleSupportPlatforms", functionStart);
   assert.ok(functionStart >= 0 && functionEnd > functionStart);
 
@@ -90,6 +90,7 @@ function assertAirBrakeVelocityBehavior() {
       let airHopUsedThisFlight = false;
       let airHopFlightActive = true;
       let airHopDetachmentStartedAt = null;
+      let airHopBlockedUntilExplicitLaunch = false;
       let lastAirHopTrigger = "NONE";
       let worldTime = 1;
       const AIR_HOP_DETACHMENT_GRACE = 0.05;
@@ -104,12 +105,14 @@ function assertAirBrakeVelocityBehavior() {
         useAirBrake,
         useAirHop,
         consumeAirHopCanvasInput,
+        blockAirHopUntilExplicitLaunch,
         updateAirHopFlightState,
         beginAirHopFlight,
         player,
         setActivePerk(id) { activePerkId = id; },
         setAimReady(value) { aimReady = value; },
         setSolidContact(value) { solidContact = value; },
+        setWorldTime(value) { worldTime = value; },
         startNextFlight() {
           player.onGround = true;
           updateAirHopFlightState(false, true, false);
@@ -158,6 +161,45 @@ function assertAirBrakeVelocityBehavior() {
   assert.equal(context.airBrakeTestApi.useAirHop("MOUSE"), true);
   assert.equal(context.airBrakeTestApi.player.vx, 700);
   assert.equal(context.airBrakeTestApi.player.vy, -650);
+
+  context.airBrakeTestApi.startNextFlight();
+  context.airBrakeTestApi.blockAirHopUntilExplicitLaunch();
+  context.airBrakeTestApi.updateAirHopFlightState(false, false, false);
+  assert.equal(context.airBrakeTestApi.useAirHop("MOUSE"), false);
+  assert.equal(context.airBrakeTestApi.consumeAirHopCanvasInput("MOUSE"), false);
+
+  context.airBrakeTestApi.beginAirHopFlight();
+  assert.equal(context.airBrakeTestApi.useAirHop("MOUSE"), true);
+
+  context.airBrakeTestApi.blockAirHopUntilExplicitLaunch();
+  context.airBrakeTestApi.player.onGround = true;
+  context.airBrakeTestApi.updateAirHopFlightState(false, true, false);
+  context.airBrakeTestApi.player.onGround = false;
+  context.airBrakeTestApi.setWorldTime(2);
+  context.airBrakeTestApi.updateAirHopFlightState(true, false, false);
+  context.airBrakeTestApi.setWorldTime(2.06);
+  context.airBrakeTestApi.updateAirHopFlightState(false, false, false);
+  assert.equal(context.airBrakeTestApi.useAirHop("TOUCH"), false);
+  assert.equal(context.airBrakeTestApi.consumeAirHopCanvasInput("TOUCH"), false);
+
+  context.airBrakeTestApi.beginAirHopFlight();
+  assert.equal(context.airBrakeTestApi.useAirHop("TOUCH"), true);
+  context.airBrakeTestApi.blockAirHopUntilExplicitLaunch();
+  context.airBrakeTestApi.updateAirHopFlightState(false, false, true);
+  assert.equal(context.airBrakeTestApi.useAirHop("TOUCH"), false);
+
+  context.airBrakeTestApi.player.onGround = true;
+  context.airBrakeTestApi.updateAirHopFlightState(false, true, false);
+  context.airBrakeTestApi.player.onGround = false;
+  context.airBrakeTestApi.updateAirHopFlightState(true, false, true);
+  assert.equal(context.airBrakeTestApi.useAirHop("TOUCH"), true);
+
+  context.airBrakeTestApi.startNextFlight();
+  context.airBrakeTestApi.setActivePerk("quick_recovery");
+  context.airBrakeTestApi.blockAirHopUntilExplicitLaunch();
+  context.airBrakeTestApi.player.vx = 400;
+  assert.equal(context.airBrakeTestApi.useAirBrake(), true);
+  assert.equal(context.airBrakeTestApi.player.vx, 100);
 }
 
 function assertInputAndRecoveryIntegration() {
@@ -169,6 +211,14 @@ function assertInputAndRecoveryIntegration() {
 
   assert.match(inputSource, /if \(canAim\(\)\) return false;/);
   assert.match(inputSource, /return useAirHop\(trigger\) \|\| useAirBrake\(\);/);
+  assert.match(
+    physicsSource,
+    /if \(!landingOnBouncePad\) blockAirHopUntilExplicitLaunch\(\);/
+  );
+  assert.match(
+    playerSource,
+    /function canUseAirHop\(\) \{\s*return !airHopBlockedUntilExplicitLaunch && canUseFlightAction\("air_hop"\);/
+  );
   assert.match(
     playerSource,
     /if \(isOnGround\) \{\s*if \(!wasOnGround\) airHopUsedThisFlight = false;/
