@@ -1195,6 +1195,65 @@
     }
   }
 
+  function canPurchaseDevShopTestUnlock(request) {
+    if (!devShopTestActive || !isDevModeEnabled()) return false;
+    const normalized = normalizeStarUnlockRequest(request);
+    if (!normalized || readStarUnlockState(normalized)) return false;
+    return !activeWardrobePurchases.has(normalized.purchaseKey) &&
+      devShopTestBalance >= normalized.price;
+  }
+
+  function purchaseDevShopTestUnlock(request) {
+    if (!devShopTestActive || !isDevModeEnabled()) {
+      return {ok: false, reason: "dev-shop-inactive", balance: devShopTestBalance};
+    }
+    const normalized = normalizeStarUnlockRequest(request);
+    if (!normalized) {
+      return {ok: false, reason: "invalid-purchase", balance: devShopTestBalance};
+    }
+    if (readStarUnlockState(normalized)) {
+      return {ok: false, reason: "already-unlocked", balance: devShopTestBalance};
+    }
+    if (devShopTestBalance < normalized.price) {
+      return {ok: false, reason: "insufficient-stars", balance: devShopTestBalance};
+    }
+    if (activeWardrobePurchases.has(normalized.purchaseKey)) {
+      return {ok: false, reason: "purchase-in-progress", balance: devShopTestBalance};
+    }
+
+    activeWardrobePurchases.add(normalized.purchaseKey);
+    const previousBalance = devShopTestBalance;
+    try {
+      devShopTestBalance -= normalized.price;
+      let unlocked = false;
+      try {
+        unlocked = normalized.unlock() === true;
+      } catch (_) {
+        unlocked = false;
+      }
+      if (!unlocked || !readStarUnlockState(normalized)) {
+        try { normalized.rollback?.(); } catch (_) {}
+        devShopTestBalance = previousBalance;
+        return {ok: false, reason: "unlock-failed", balance: devShopTestBalance};
+      }
+      return {
+        ok: true,
+        test: true,
+        purchaseKey: normalized.purchaseKey,
+        price: normalized.price,
+        balance: devShopTestBalance
+      };
+    } finally {
+      activeWardrobePurchases.delete(normalized.purchaseKey);
+    }
+  }
+
+  function refillDevShopTestBalance() {
+    if (!devShopTestActive || !isDevModeEnabled()) return false;
+    devShopTestBalance = DEV_SHOP_TEST_INITIAL_BALANCE;
+    return true;
+  }
+
   function normalizeStarUnlockRequest(request) {
     if (!request || typeof request !== "object") return null;
     const purchaseKey = typeof request.purchaseKey === "string"
@@ -1796,8 +1855,11 @@
     setActive: setDevShopTestActive,
     getBalance: () => devShopTestBalance,
     isItemUnlocked: isDevShopTestItemUnlocked,
+    canPurchaseUnlock: canPurchaseDevShopTestUnlock,
+    purchaseUnlock: purchaseDevShopTestUnlock,
     canPurchaseWardrobeItem: canPurchaseDevShopTestItem,
-    purchaseWardrobeItem: purchaseDevShopTestItem
+    purchaseWardrobeItem: purchaseDevShopTestItem,
+    refillBalance: refillDevShopTestBalance
   });
 
   window.SlimeRunRecovery?.recoverInterruptedRun?.({

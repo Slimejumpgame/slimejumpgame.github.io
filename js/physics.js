@@ -91,7 +91,6 @@
         isTopLanding &&
         !landingOnBouncePad &&
         window.SlimePerks?.isActiveForRun?.("mud_shoes") === true;
-      const hardLanding = isTopLanding && Math.abs(normalVelocity) > 360;
       let restitution = Math.abs(normalVelocity) > 360 ? 0.34 : 0.06;
       if (mudShoesActive) {
         restitution *= window.SlimePerks.balance.MUD_SHOES_REBOUND_MULTIPLIER;
@@ -132,10 +131,6 @@
         if (Math.abs(normalVelocity) > 220) {
           player.squish = Math.min(1, Math.abs(normalVelocity) / 750);
           playBounce();
-        }
-
-        if (hardLanding && !landingOnBouncePad) {
-          registerQuickRecoveryHardLanding(rect);
         }
 
         // Ein deutlich zurückprallender Slime löst sich bereits wieder von
@@ -304,8 +299,6 @@
     if (state !== "playing") return;
     const wasOnGround = player.onGround;
     updateLastBubbleProtection(dt);
-    updateQuickRecovery(dt);
-    applyQuickRecoveryHorizontalDamping(dt);
     carryGroundedPlayerWithVerticalMovingPlatform(dt);
     worldTime += dt;
     rememberPlayerHorizontalDirection();

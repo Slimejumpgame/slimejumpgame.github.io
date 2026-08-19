@@ -97,7 +97,6 @@
   const AIM_MAX_ROLL_SPEED = 240;
   const AIM_SUPPORT_TOLERANCE = 4;
   const AIR_HOP_DETACHMENT_GRACE = 0.05;
-  const QUICK_RECOVERY_DAMPING_REFERENCE_FPS = 60;
   const NORMAL_SAFE_GROUND_DAMPING = 0.90;
   const NORMAL_SAFE_GROUND_DAMPING_REFERENCE_FPS = 60;
   const SECOND_CHANCE_RESCUE_REASONS = Object.freeze([
@@ -124,9 +123,6 @@
   let lastBubbleUsedThisLevel = false;
   let lastBubbleProtectionTimer = 0;
   const lastBubbleBottomOutSupportSource = Object.freeze({type: "last_bubble_bottom_out"});
-  let quickRecoveryTimer = 0;
-  let quickRecoveryElapsed = 0;
-  let quickRecoverySupportSource = null;
   let secondChanceUsedThisRun = false;
   let secondChanceSafeAnchor = null;
   let lastSecondChanceRescueReason = "none";
@@ -305,27 +301,10 @@
     };
   }
 
-  function getQuickRecoverySupportPlatform() {
-    if (!quickRecoverySupportSource) return null;
-    return getPlatforms().find(platform =>
-      getPlatformSource(platform) === quickRecoverySupportSource &&
-      isValidAimSupportPlatform(platform)
-    ) || null;
-  }
-
-  function isQuickRecoveryAimReady() {
-    return window.SlimePerks?.isActiveForRun?.("quick_recovery") === true &&
-      quickRecoveryTimer > 0 &&
-      quickRecoveryElapsed >= window.SlimePerks.balance.QUICK_RECOVERY_AIM_DELAY &&
-      Boolean(getQuickRecoverySupportPlatform()) &&
-      Math.abs(player.vx) <= window.SlimePerks.balance.QUICK_RECOVERY_AIM_SPEED_LIMIT;
-  }
-
   function canUseNormalAim() {
-    const normalAimReady = player.onGround &&
+    return player.onGround &&
       hasValidAimSupport() &&
       Math.abs(player.vx) <= AIM_MAX_ROLL_SPEED;
-    return normalAimReady || isQuickRecoveryAimReady();
   }
 
   function resetRunPerkConsumables() {
@@ -334,9 +313,6 @@
     airHopDetachmentStartedAt = null;
     lastAirHopTrigger = "NONE";
     resetLastBubbleForNewLevel();
-    quickRecoveryTimer = 0;
-    quickRecoveryElapsed = 0;
-    quickRecoverySupportSource = null;
     secondChanceUsedThisRun = false;
     secondChanceSafeAnchor = null;
     lastSecondChanceRescueReason = "none";
@@ -386,9 +362,6 @@
     airHopUsedThisFlight = false;
     airHopFlightActive = false;
     airHopDetachmentStartedAt = null;
-    quickRecoveryTimer = 0;
-    quickRecoveryElapsed = 0;
-    quickRecoverySupportSource = null;
     lastBubbleProtectionTimer = 0;
   }
 
@@ -438,16 +411,20 @@
     airHopDetachmentStartedAt = null;
   }
 
-  function canUseAirHop() {
+  function canUseFlightAction(perkId) {
     return state === "playing" &&
       !isTutorialStage() &&
       !aiming &&
-      window.SlimePerks?.isActiveForRun?.("air_hop") === true &&
+      window.SlimePerks?.isActiveForRun?.(perkId) === true &&
       airHopFlightActive &&
       !player.onGround &&
       !hasValidAimSupport() &&
       !hasSolidAirHopBlockingContact() &&
       !airHopUsedThisFlight;
+  }
+
+  function canUseAirHop() {
+    return canUseFlightAction("air_hop");
   }
 
   function useAirHop(trigger) {
@@ -462,10 +439,18 @@
     return true;
   }
 
+  function useAirBrake() {
+    if (!canUseFlightAction("quick_recovery")) return false;
+
+    airHopUsedThisFlight = true;
+    player.vx *= window.SlimePerks.balance.AIR_BRAKE_HORIZONTAL_MULTIPLIER;
+    return true;
+  }
+
   function consumeAirHopCanvasInput(trigger) {
     // Ground- und bestehender Rescue-Aim haben für denselben Down-Input Vorrang.
     if (canAim()) return false;
-    return useAirHop(trigger);
+    return useAirHop(trigger) || useAirBrake();
   }
 
   function getActiveLastBubbleSupportPlatforms() {
@@ -515,7 +500,6 @@
     player.conveyorSpeed = 0;
     player.squish = Math.max(player.squish, 0.72);
     updateAirHopFlightState(false, true, false);
-    clearQuickRecovery();
     return true;
   }
 
@@ -552,65 +536,6 @@
       spawnBurst(player.x, player.y, 12, "#d9f8ff");
       tone(390, 0.08, "sine", 0.025, 260);
     }
-  }
-
-  function clearQuickRecovery() {
-    quickRecoveryTimer = 0;
-    quickRecoveryElapsed = 0;
-    quickRecoverySupportSource = null;
-  }
-
-  function registerQuickRecoveryHardLanding(supportPlatform) {
-    if (window.SlimePerks?.isActiveForRun?.("quick_recovery") !== true) return;
-    quickRecoveryTimer = window.SlimePerks.balance.QUICK_RECOVERY_WINDOW;
-    quickRecoveryElapsed = 0;
-    quickRecoverySupportSource = getPlatformSource(supportPlatform);
-  }
-
-  function updateQuickRecovery(dt) {
-    if (quickRecoveryTimer <= 0) return;
-    const elapsedStep = Math.max(0, dt);
-    quickRecoveryElapsed = Math.min(
-      window.SlimePerks.balance.QUICK_RECOVERY_WINDOW,
-      quickRecoveryElapsed + elapsedStep
-    );
-    quickRecoveryTimer = Math.max(0, quickRecoveryTimer - elapsedStep);
-    if (quickRecoveryTimer === 0) quickRecoverySupportSource = null;
-  }
-
-  function getQuickRecoveryHorizontalDampingFactor(dt) {
-    return Math.pow(
-      window.SlimePerks.balance.QUICK_RECOVERY_HORIZONTAL_DAMPING,
-      Math.max(0, dt) * QUICK_RECOVERY_DAMPING_REFERENCE_FPS
-    );
-  }
-
-  function applyQuickRecoveryHorizontalDamping(dt) {
-    if (
-      window.SlimePerks?.isActiveForRun?.("quick_recovery") !== true ||
-      quickRecoveryTimer <= 0 ||
-      aiming
-    ) return false;
-    const support = getQuickRecoverySupportPlatform();
-    if (!support || support.moving || support.conveyor) return false;
-    player.vx *= getQuickRecoveryHorizontalDampingFactor(dt);
-    return true;
-  }
-
-  function isQuickRecoveryRecovering() {
-    return quickRecoveryTimer > 0;
-  }
-
-  function getQuickRecoveryElapsed() {
-    return quickRecoveryElapsed;
-  }
-
-  function getQuickRecoveryTimeRemaining() {
-    return quickRecoveryTimer;
-  }
-
-  function hasQuickRecoveryValidSupport() {
-    return Boolean(getQuickRecoverySupportPlatform());
   }
 
   function isAirHopAvailableThisFlight() {

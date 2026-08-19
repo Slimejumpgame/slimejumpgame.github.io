@@ -272,9 +272,10 @@
           </button>
         </header>
         <div class="perksPanel uiPanel">
-          <div class="perksSummary">
-            <span>Aktive Fähigkeiten</span>
+          <div id="perksSummary" class="perksSummary">
+            <span id="perksSummaryLabel">Aktive Fähigkeiten</span>
             <strong id="activePerkCount" aria-live="polite">0 / 3</strong>
+            <button id="devPerkPurchaseResetBtn" class="devPerkPurchaseResetBtn uiButton uiButton--danger hidden" type="button">PERK-KAUFTEST ZURÜCKSETZEN</button>
           </div>
           <div id="perkGrid" class="perkGrid" aria-label="Fähigkeiten-Auswahl"></div>
         </div>
@@ -380,6 +381,17 @@
           <span id="checkpointLevelValue" class="checkpointStartChoiceLevel">Level 10</span>
           <span id="checkpointLevelMultiplier" class="checkpointStartChoiceMultiplier">Score x1.05</span>
         </button>
+      </div>
+    </div>
+  </section>
+
+  <section id="perkConflictPurchaseInfoOverlay" class="overlay checkpointOverlay hidden" role="dialog" aria-modal="true" aria-labelledby="perkConflictPurchaseInfoTitle" aria-describedby="perkConflictPurchaseInfoText" aria-hidden="true">
+    <div class="card checkpointDialog uiPanel">
+      <div class="dialogAccent" aria-hidden="true"></div>
+      <h2 id="perkConflictPurchaseInfoTitle">AIR HOP</h2>
+      <p id="perkConflictPurchaseInfoText"></p>
+      <div class="menuButtons checkpointDialogActions">
+        <button id="perkConflictPurchaseInfoConfirmBtn" class="uiButton uiButton--primary" type="button">OK</button>
       </div>
     </div>
   </section>

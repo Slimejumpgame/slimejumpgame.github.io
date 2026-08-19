@@ -18,6 +18,18 @@
   const ANDROID_UPDATE_TIMEOUT_MS = 2500;
   const MAX_ANDROID_UPDATE_NOTES = 12;
   const MAX_ANDROID_UPDATE_NOTE_LENGTH = 240;
+  const PERK_CONFLICT_PURCHASE_INFO = Object.freeze({
+    air_hop: Object.freeze({
+      seenStorageKey: "slimejumperAirHopConflictPurchaseInfoSeen",
+      title: "AIR HOP",
+      text: "Air Hop kann nicht gleichzeitig mit Air Brake in einem Run verwendet werden. Wähle immer nur eine der beiden Fähigkeiten aus."
+    }),
+    quick_recovery: Object.freeze({
+      seenStorageKey: "slimejumperAirBrakeConflictPurchaseInfoSeen",
+      title: "AIR BRAKE",
+      text: "Air Brake kann nicht gleichzeitig mit Air Hop in einem Run verwendet werden. Wähle immer nur eine der beiden Fähigkeiten aus."
+    })
+  });
   const MAX_ANDROID_VERSION_NAME_LENGTH = 64;
   const TEST_UPDATE_DATA = Object.freeze({
     installedVersion: "2.61",
@@ -30,6 +42,54 @@
   });
   let perkPurchaseGuardUntil = 0;
   let updateScreenPreviousFocus = null;
+  let perkConflictPurchaseInfoPreviousFocus = null;
+
+  function hasSeenPerkConflictPurchaseInfo(storageKey) {
+    try {
+      return localStorage.getItem(storageKey) === "true";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function markPerkConflictPurchaseInfoSeen(storageKey) {
+    try {
+      localStorage.setItem(storageKey, "true");
+      return localStorage.getItem(storageKey) === "true";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function showPerkConflictPurchaseInfo(perkId) {
+    const info = PERK_CONFLICT_PURCHASE_INFO[perkId];
+    if (
+      !info ||
+      !ui.perkConflictPurchaseInfoOverlay ||
+      !ui.perkConflictPurchaseInfoTitle ||
+      !ui.perkConflictPurchaseInfoText ||
+      hasSeenPerkConflictPurchaseInfo(info.seenStorageKey)
+    ) return false;
+
+    ui.perkConflictPurchaseInfoTitle.textContent = info.title;
+    ui.perkConflictPurchaseInfoText.textContent = info.text;
+    perkConflictPurchaseInfoPreviousFocus = document.activeElement;
+    markPerkConflictPurchaseInfoSeen(info.seenStorageKey);
+    ui.perkConflictPurchaseInfoOverlay.classList.remove("hidden");
+    ui.perkConflictPurchaseInfoOverlay.setAttribute("aria-hidden", "false");
+    window.requestAnimationFrame(() =>
+      ui.perkConflictPurchaseInfoConfirmBtn?.focus()
+    );
+    return true;
+  }
+
+  function closePerkConflictPurchaseInfo() {
+    if (!ui.perkConflictPurchaseInfoOverlay) return;
+    ui.perkConflictPurchaseInfoOverlay.classList.add("hidden");
+    ui.perkConflictPurchaseInfoOverlay.setAttribute("aria-hidden", "true");
+    perkConflictPurchaseInfoPreviousFocus?.focus?.();
+    perkConflictPurchaseInfoPreviousFocus = null;
+  }
 
   function showUpdateScreen(updateData) {
     if (
@@ -251,7 +311,45 @@
     renderSlimeColorPicker();
     renderSlimeCosmeticPicker();
     renderSlimeBeardPicker();
+    renderPerksScreen();
     renderMenuMascot();
+  }
+
+  function resetDevPerkPurchaseTest() {
+    if (!isDevShopTestActive()) return false;
+    const perks = window.SlimePerks;
+    if (perks?.resetDevPerkPurchaseTestState?.() !== true) {
+      showGameToast("DEV-Perk-Kauftest konnte nicht zurückgesetzt werden.");
+      return false;
+    }
+
+    let infoFlagsReset = true;
+    try {
+      Object.values(PERK_CONFLICT_PURCHASE_INFO).forEach(info => {
+        localStorage.removeItem(info.seenStorageKey);
+        if (localStorage.getItem(info.seenStorageKey) !== null) {
+          infoFlagsReset = false;
+        }
+      });
+    } catch (_) {
+      infoFlagsReset = false;
+    }
+    if (!infoFlagsReset) {
+      showGameToast("DEV-Kaufhinweise konnten nicht zurückgesetzt werden.");
+      return false;
+    }
+
+    window.SlimeDevShopTest?.refillBalance?.();
+    closePerkConflictPurchaseInfo();
+    if (ui.devUnlockPerksBtn) {
+      ui.devUnlockPerksBtn.setAttribute("aria-pressed", "false");
+      ui.devUnlockPerksBtn.textContent = "DEV FÄHIGKEITEN FREISCHALTEN";
+    }
+    renderDevShopTestControl();
+    renderPerksScreen();
+    window.dispatchEvent(new CustomEvent("slimeperkschange"));
+    showGameToast("DEV-Perk-Kauftest zurückgesetzt.");
+    return true;
   }
 
   function initializeMenuBiomeBackground() {
@@ -2023,6 +2121,19 @@
     const perks = window.SlimePerks;
     if (!perks || !ui.perkGrid || !ui.activePerkCount) return;
 
+    const devShopTestActive = isDevShopTestActive();
+    if (ui.perksSummary) {
+      ui.perksSummary.classList.toggle("devPerkShopTestActive", devShopTestActive);
+    }
+    if (ui.perksSummaryLabel) {
+      ui.perksSummaryLabel.textContent = devShopTestActive
+        ? "FÄHIGKEITEN / PERKS"
+        : "Aktive Fähigkeiten";
+    }
+    if (ui.devPerkPurchaseResetBtn) {
+      ui.devPerkPurchaseResetBtn.classList.toggle("hidden", !devShopTestActive);
+    }
+
     const unlocked = new Set(perks.getUnlockedPerkIds());
     const selected = new Set(perks.getSelectedPerkIds());
     ui.activePerkCount.textContent = `${selected.size} / ${perks.maxSelected}`;
@@ -2103,8 +2214,10 @@
           perkPurchaseGuardUntil = performance.now() + PERK_POST_PURCHASE_GUARD_MS;
           showGameToast(`⭐ ${perk.name} für ${unlockCost} Sterne freigeschaltet!`);
           renderMainMenuStats();
+          if (purchase.test) renderDevShopTestControl();
           renderPerksScreen();
           window.dispatchEvent(new CustomEvent("slimeperkschange"));
+          showPerkConflictPurchaseInfo(perk.id);
           return;
         }
         const result = perks.toggleSelectedPerk(perk.id);
@@ -2188,6 +2301,10 @@
 
   if (DEV_MODE && ui.devShopTestBtn) {
     ui.devShopTestBtn.addEventListener("click", toggleDevShopTest);
+    ui.devPerkPurchaseResetBtn?.addEventListener(
+      "click",
+      resetDevPerkPurchaseTest
+    );
     renderDevShopTestControl();
   }
 
@@ -2200,6 +2317,10 @@
 
   ui.updateOpenStoreBtn?.addEventListener("click", openUpdateStorePage);
   ui.updateLaterBtn?.addEventListener("click", closeUpdateScreen);
+  ui.perkConflictPurchaseInfoConfirmBtn?.addEventListener(
+    "click",
+    closePerkConflictPurchaseInfo
+  );
 
   if (shouldShowUpdateScreenFromLocalTestUrl()) {
     showUpdateScreen(TEST_UPDATE_DATA);

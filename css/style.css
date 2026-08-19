@@ -3517,6 +3517,18 @@ p {
   font-size: 1.12em;
 }
 
+.perksSummary.devPerkShopTestActive {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.devPerkPurchaseResetBtn {
+  min-height: 34px;
+  margin-left: auto;
+  padding-inline: 12px;
+  font-size: clamp(9px, 0.9vw, 12px);
+}
+
 .perkGrid {
   min-height: 0;
   display: grid;
@@ -4680,6 +4692,12 @@ p {
     min-height: 27px;
     padding: 2px 7px;
     font-size: clamp(7px, 2vh, 10px);
+  }
+
+  .devPerkPurchaseResetBtn {
+    min-height: 25px;
+    padding-inline: 7px;
+    font-size: clamp(6px, 1.7vh, 8px);
   }
 
   .perkGrid {

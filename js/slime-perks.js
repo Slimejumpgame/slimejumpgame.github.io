@@ -4,6 +4,10 @@
   const UNLOCKED_PERKS_STORAGE_KEY = "slimejumperUnlockedPerks";
   const SELECTED_PERKS_STORAGE_KEY = "slimejumperSelectedPerks";
   const MAX_SELECTED_PERKS = 3;
+  const EXCLUSIVE_FLIGHT_ACTION_PERK_IDS = Object.freeze([
+    "air_hop",
+    "quick_recovery"
+  ]);
 
   const PERK_BALANCE = Object.freeze({
     PERK_UNLOCK_COST: 500,
@@ -20,10 +24,7 @@
     LAST_BUBBLE_DURATION: 2.5,
     MUD_SHOES_HORIZONTAL_DAMPING: 0.75,
     MUD_SHOES_REBOUND_MULTIPLIER: 0.55,
-    QUICK_RECOVERY_WINDOW: 1.20,
-    QUICK_RECOVERY_AIM_DELAY: 0.18,
-    QUICK_RECOVERY_AIM_SPEED_LIMIT: 700,
-    QUICK_RECOVERY_HORIZONTAL_DAMPING: 0.82,
+    AIR_BRAKE_HORIZONTAL_MULTIPLIER: 0.25,
     STAR_SHIELD_DURATION: 1.0
   });
 
@@ -77,8 +78,8 @@
     }),
     Object.freeze({
       id: "quick_recovery",
-      name: "QUICK RECOVERY",
-      description: "Macht den Slime nach harten Landungen schneller schussbereit.",
+      name: "AIR BRAKE",
+      description: "Bremst dich einmal pro Flugphase in der Luft stark ab.",
       icon: createIcon([{d: "M20 8a8 8 0 1 0 1 6"}, {d: "M20 3v5h-5", accent: true}]),
       implemented: true,
       category: "control"
@@ -161,10 +162,23 @@
     return normalizeKnownIds(value);
   }
 
+  function enforceFlightActionExclusivity(ids, preferredId = null) {
+    if (!EXCLUSIVE_FLIGHT_ACTION_PERK_IDS.every(id => ids.includes(id))) {
+      return ids.slice();
+    }
+    const retainedId = EXCLUSIVE_FLIGHT_ACTION_PERK_IDS.includes(preferredId)
+      ? preferredId
+      : EXCLUSIVE_FLIGHT_ACTION_PERK_IDS[0];
+    return ids.filter(id =>
+      !EXCLUSIVE_FLIGHT_ACTION_PERK_IDS.includes(id) || id === retainedId
+    );
+  }
+
   function normalizeSelectedIds(value, unlockedIds) {
     const unlocked = new Set(normalizeUnlockedIds(unlockedIds));
-    return normalizeKnownIds(value)
-      .filter(id => unlocked.has(id) && perkById.get(id).implemented)
+    const selectableIds = normalizeKnownIds(value)
+      .filter(id => unlocked.has(id) && perkById.get(id).implemented);
+    return enforceFlightActionExclusivity(selectableIds)
       .slice(0, MAX_SELECTED_PERKS);
   }
 
@@ -211,9 +225,17 @@
     return !getStoredUnlockedPerkIds().includes(id);
   }
 
+  function getPerkPurchaseEconomy() {
+    const devShopTest = window.SlimeDevShopTest;
+    return devShopTest?.isActive?.() === true &&
+      typeof devShopTest.purchaseUnlock === "function"
+      ? devShopTest
+      : window.SlimeStarEconomy;
+  }
+
   function purchasePerk(id) {
     const perk = perkById.get(id);
-    const economy = window.SlimeStarEconomy;
+    const economy = getPerkPurchaseEconomy();
     const balance = economy?.getBalance?.() ?? 0;
     if (!perk) return {ok: false, reason: "unknown-perk", balance};
     if (!perk.implemented) return {ok: false, reason: "coming-soon", balance};
@@ -263,9 +285,17 @@
     const selectedIndex = selected.indexOf(id);
     if (selectedIndex >= 0) {
       selected.splice(selectedIndex, 1);
-    } else if (selected.length >= MAX_SELECTED_PERKS) {
-      return {ok: false, reason: "max-selected", selected};
     } else {
+      const incompatibleId = EXCLUSIVE_FLIGHT_ACTION_PERK_IDS.includes(id)
+        ? EXCLUSIVE_FLIGHT_ACTION_PERK_IDS.find(perkId => perkId !== id)
+        : null;
+      if (incompatibleId) {
+        const incompatibleIndex = selected.indexOf(incompatibleId);
+        if (incompatibleIndex >= 0) selected.splice(incompatibleIndex, 1);
+      }
+      if (selected.length >= MAX_SELECTED_PERKS) {
+        return {ok: false, reason: "max-selected", selected};
+      }
       selected.push(id);
     }
 
@@ -286,8 +316,26 @@
     return devUnlockOverride;
   }
 
+  function resetDevPerkPurchaseTestState() {
+    if (
+      typeof DEV_MODE === "undefined" ||
+      !DEV_MODE ||
+      window.SlimeDevShopTest?.isActive?.() !== true
+    ) return false;
+
+    const selectedReset = persistCanonicalArray(SELECTED_PERKS_STORAGE_KEY, []);
+    const unlockedReset = persistCanonicalArray(UNLOCKED_PERKS_STORAGE_KEY, []);
+    if (!selectedReset || !unlockedReset) return false;
+
+    devUnlockOverride = false;
+    devSelectedPerkIds = null;
+    clearRunPerkSnapshot();
+    return true;
+  }
+
   function captureRunPerkSnapshot() {
-    activeRunPerkIds = Object.freeze(getSelectedPerkIds().slice(0, MAX_SELECTED_PERKS));
+    const selectedForRun = enforceFlightActionExclusivity(getSelectedPerkIds());
+    activeRunPerkIds = Object.freeze(selectedForRun.slice(0, MAX_SELECTED_PERKS));
     return activeRunPerkIds.slice();
   }
 
@@ -346,6 +394,7 @@
     toggleSelectedPerk,
     setDevUnlockOverride,
     isDevUnlockOverrideActive: () => devUnlockOverride,
+    resetDevPerkPurchaseTestState,
     captureRunPerkSnapshot,
     clearRunPerkSnapshot,
     getActiveRunPerkIds,
