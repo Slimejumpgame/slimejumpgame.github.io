@@ -75,7 +75,7 @@
   }
 
   function resolvePlatform(rect) {
-    if (rect.fade && !rect.fadeData.solid) return;
+    if (!isFadePlatformSolidForPlayer(rect)) return;
     const hit = circleRectCollision(player, rect);
     if (!hit) return;
     player.x += hit.nx * hit.penetration;
@@ -119,7 +119,12 @@
 
         if (rect.fallingPlatform && !rect.fallingPlatform.triggered) {
           rect.fallingPlatform.triggered = true;
-          rect.fallingPlatform.timer = rect.fallingPlatform.delay;
+          rect.fallingPlatform.timer = getFallingPlatformActivationDelay(
+            rect.fallingPlatform
+          );
+          if (isAnchorStepActive()) {
+            rect.fallingPlatform.anchorStepWarningStartedAt = worldTime;
+          }
           tone(115, 0.15, "square", 0.04, 70);
           spawnBurst(
             rect.x + rect.w / 2,
@@ -287,15 +292,6 @@
     return true;
   }
 
-  function applySlowFallDrag(verticalSpeed, dt) {
-    const triggerSpeed = window.SlimePerks.balance.SLOW_FALL_TRIGGER_SPEED;
-    if (verticalSpeed <= triggerSpeed) return verticalSpeed;
-
-    const drag = window.SlimePerks.balance.SLOW_FALL_DRAG;
-    const dragFactor = Math.exp(-Math.max(0, drag) * Math.max(0, dt));
-    return triggerSpeed + (verticalSpeed - triggerSpeed) * dragFactor;
-  }
-
   function update(dt) {
     if (state !== "playing") return;
     const wasOnGround = player.onGround;
@@ -335,12 +331,6 @@
       player.vy += 1570 * dt;
       player.vx *= Math.pow(player.onIce ? 0.9998 : 0.998, dt * 60);
       player.vy *= Math.pow(0.999, dt * 60);
-      if (
-        window.SlimePerks?.isActiveForRun?.("slow_fall") === true &&
-        player.vy > window.SlimePerks.balance.SLOW_FALL_TRIGGER_SPEED
-      ) {
-        player.vy = applySlowFallDrag(player.vy, dt);
-      }
       player.x += player.vx * dt;
       player.y += player.vy * dt;
     }
@@ -401,7 +391,6 @@
     applyNormalSafeGroundDamping(dt);
     applyHorizontalMovingGroundDamping(dt);
     applyVerticalMovingGroundDamping(dt);
-    updateSecondChanceSafeAnchor();
 
     updateAirHopFlightState(wasOnGround, player.onGround, bouncedOnPad);
 
@@ -448,8 +437,8 @@
         Math.hypot(player.x - enemy.x, player.y - enemy.y) <
         player.r * 0.74 + enemy.r * 0.82
       ) {
-        const secondChanceReason = enemy.type === "fast" ? "fast_ghost" : "ghost";
-        const protection = tryHandleProtectedDeadlyContact(secondChanceReason);
+        const ghostProtectionReason = enemy.type === "fast" ? "fast_ghost" : "ghost";
+        const protection = tryHandleProtectedDeadlyContact(ghostProtectionReason);
         if (tracksRunProgress && protection !== "star_shield") {
           window.SlimeAchievements?.onGhostHit?.();
         }

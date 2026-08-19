@@ -382,6 +382,71 @@
     ctx.restore();
   }
 
+  const ANCHOR_STEP_WARNING_BLINK_COUNT = 5;
+  const ANCHOR_STEP_WARNING_BLINK_DURATION = 0.18;
+
+  function getAnchorStepWarningGlow(platform) {
+    if (
+      !isAnchorStepActive() ||
+      !platform?.triggered ||
+      !Number.isFinite(platform.anchorStepWarningStartedAt)
+    ) return 0;
+
+    const totalDuration = window.SlimePerks.balance.ANCHOR_STEP_STABILITY_DURATION;
+    const blinkInterval = totalDuration / (ANCHOR_STEP_WARNING_BLINK_COUNT - 1);
+    const elapsed = worldTime - platform.anchorStepWarningStartedAt;
+    if (elapsed < 0) return 0;
+
+    const blinkIndex = Math.floor((elapsed + 1e-9) / blinkInterval);
+    if (blinkIndex >= ANCHOR_STEP_WARNING_BLINK_COUNT) return 0;
+
+    const blinkElapsed = elapsed - blinkIndex * blinkInterval;
+    if (
+      blinkElapsed < 0 ||
+      blinkElapsed > ANCHOR_STEP_WARNING_BLINK_DURATION
+    ) return 0;
+
+    return 1 - clamp(
+      blinkElapsed / ANCHOR_STEP_WARNING_BLINK_DURATION,
+      0,
+      1
+    );
+  }
+
+  function drawAnchorStepWarningBorder(platform, x) {
+    const glow = getAnchorStepWarningGlow(platform);
+    if (glow <= 0) return;
+
+    ctx.save();
+    ctx.strokeStyle = `rgba(255,236,154,${0.68 + glow * 0.32})`;
+    ctx.lineWidth = 3 + glow * 1.5;
+    ctx.shadowColor = "#ffe58a";
+    ctx.shadowBlur = 8 + glow * 12;
+    roundedRect(
+      x - 1,
+      platform.currentY - 1,
+      platform.w + 2,
+      platform.h + 2,
+      11
+    );
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawGhostStepFadeOutline(platform, x) {
+    if (!platform?.fade || !isGhostStepActive()) return;
+
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = "rgba(221,205,255,0.92)";
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = "rgba(190,158,255,0.72)";
+    ctx.shadowBlur = 6;
+    roundedRect(x - 1, platform.y - 1, platform.w + 2, platform.h + 2, 11);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function drawPlatforms(biome) {
     const level = currentLevel();
     const platforms = getPlatforms();
@@ -394,7 +459,14 @@
         p.fallingPlatform.triggered &&
         !p.fallingPlatform.falling
       ) {
-        const urgency = 1 - p.fallingPlatform.timer / p.fallingPlatform.delay;
+        const activationDelay = getFallingPlatformActivationDelay(
+          p.fallingPlatform
+        );
+        const urgency = clamp(
+          1 - p.fallingPlatform.timer / activationDelay,
+          0,
+          1
+        );
         drawX += Math.sin(worldTime * 42) * (1.2 + urgency * 3.4);
       }
 
@@ -566,7 +638,10 @@
         ctx.lineTo(drawX + p.w * 0.58, p.y + 12);
         ctx.lineTo(drawX + p.w * 0.64, p.y + 23);
         ctx.stroke();
+        drawAnchorStepWarningBorder(p.fallingPlatform, drawX);
       }
+
+      drawGhostStepFadeOutline(p, drawX);
 
       ctx.restore();
     }

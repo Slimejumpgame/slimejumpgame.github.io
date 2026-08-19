@@ -99,12 +99,6 @@
   const AIR_HOP_DETACHMENT_GRACE = 0.05;
   const NORMAL_SAFE_GROUND_DAMPING = 0.90;
   const NORMAL_SAFE_GROUND_DAMPING_REFERENCE_FPS = 60;
-  const SECOND_CHANCE_RESCUE_REASONS = Object.freeze([
-    "spike_platform",
-    "ghost",
-    "fast_ghost",
-    "side_out"
-  ]);
   const STAR_SHIELD_PROTECTION_REASONS = Object.freeze([
     "spike_platform",
     "ghost",
@@ -124,9 +118,6 @@
   let lastBubbleUsedThisLevel = false;
   let lastBubbleProtectionTimer = 0;
   const lastBubbleBottomOutSupportSource = Object.freeze({type: "last_bubble_bottom_out"});
-  let secondChanceUsedThisRun = false;
-  let secondChanceSafeAnchor = null;
-  let lastSecondChanceRescueReason = "none";
   let starShieldConsumedThisLife = false;
   let starShieldProtectionUntil = 0;
   let stuckAimStillTime = 0;
@@ -154,9 +145,17 @@
       platform;
   }
 
+  function isGhostStepActive() {
+    return window.SlimePerks?.isActiveForRun?.("safe_return") === true;
+  }
+
+  function isFadePlatformSolidForPlayer(platform) {
+    return !platform?.fade || platform.fadeData?.solid === true || isGhostStepActive();
+  }
+
   function isValidAimSupportPlatform(platform) {
     return Boolean(platform) &&
-      (!platform.fade || platform.fadeData.solid) &&
+      isFadePlatformSolidForPlayer(platform) &&
       player.x + player.r > platform.x + 2 &&
       player.x - player.r < platform.x + platform.w - 2 &&
       Math.abs(player.y + player.r - platform.y) <= AIM_SUPPORT_TOLERANCE;
@@ -175,7 +174,7 @@
       !platform.moving &&
       !platform.conveyor &&
       !platform.fallingPlatform &&
-      !platform.fade &&
+      (!platform.fade || isGhostStepActive()) &&
       !platform.ice &&
       !platform.spikePlatform &&
       !platform.lastBubbleSupport;
@@ -263,45 +262,6 @@
     return true;
   }
 
-  function updateSecondChanceSafeAnchor() {
-    const support = getValidNormalSafeSupportPlatform();
-    if (!support) return false;
-    const edgeMargin = player.r + 12;
-    const safeLeft = support.x + edgeMargin;
-    const safeRight = support.x + support.w - edgeMargin;
-    const anchorX = safeLeft <= safeRight
-      ? clamp(player.x, safeLeft, safeRight)
-      : support.x + support.w / 2;
-    secondChanceSafeAnchor = {
-      x: anchorX,
-      y: support.y - player.r,
-      platformSource: getPlatformSource(support)
-    };
-    return true;
-  }
-
-  function resetSecondChanceAnchorForNewLevel() {
-    secondChanceSafeAnchor = null;
-  }
-
-  function getValidatedSecondChanceAnchor() {
-    if (!secondChanceSafeAnchor) return null;
-    const support = getPlatforms().find(platform =>
-      isNormalSafeStaticPlatform(platform) &&
-      getPlatformSource(platform) === secondChanceSafeAnchor.platformSource
-    );
-    if (!support) return null;
-    const edgeMargin = player.r + 12;
-    const safeLeft = support.x + edgeMargin;
-    const safeRight = support.x + support.w - edgeMargin;
-    return {
-      x: safeLeft <= safeRight
-        ? clamp(secondChanceSafeAnchor.x, safeLeft, safeRight)
-        : support.x + support.w / 2,
-      y: support.y - player.r
-    };
-  }
-
   function canUseNormalAim() {
     return player.onGround &&
       hasValidAimSupport() &&
@@ -315,9 +275,6 @@
     airHopBlockedUntilExplicitLaunch = false;
     lastAirHopTrigger = "NONE";
     resetLastBubbleForNewLevel();
-    secondChanceUsedThisRun = false;
-    secondChanceSafeAnchor = null;
-    lastSecondChanceRescueReason = "none";
     resetStarShieldForNewLife();
   }
 
@@ -585,65 +542,12 @@
     return lastBubbleProtectionTimer;
   }
 
-  function tryUseSecondChance(reason) {
-    if (
-      !SECOND_CHANCE_RESCUE_REASONS.includes(reason) ||
-      isTutorialStage() ||
-      secondChanceUsedThisRun ||
-      window.SlimePerks?.isActiveForRun?.("safe_return") !== true
-    ) return false;
-
-    const level = currentLevel();
-    const anchor = getValidatedSecondChanceAnchor() || {
-      x: level.spawn.x,
-      y: level.spawn.y
-    };
-    secondChanceUsedThisRun = true;
-    lastSecondChanceRescueReason = reason;
-    stopAiming();
-    activeTouchId = null;
-    stuckAimFallbackActive = false;
-    resetStuckAimTimer();
-    resetFlightPerkState();
-    drag.x = 0;
-    drag.y = 0;
-    player.x = anchor.x;
-    player.y = anchor.y;
-    player.vx = 0;
-    player.vy = 0;
-    player.onGround = false;
-    player.onIce = false;
-    player.conveyorSpeed = 0;
-    player.squish = 0.86;
-    player.trail = [];
-    tone(690, 0.12, "sine", 0.045, 980);
-    spawnBurst(player.x, player.y, 20, "#fff0a8");
-    return true;
-  }
-
   function tryHandleProtectedDeadlyContact(reason) {
     if (
       STAR_SHIELD_PROTECTION_REASONS.includes(reason) &&
       isStarShieldProtectionActive()
     ) return "star_shield";
-    return tryUseSecondChance(reason) ? "second_chance" : "";
-  }
-
-  function isSecondChanceAvailableThisRun() {
-    return !secondChanceUsedThisRun;
-  }
-
-  function isSecondChanceUsedThisRun() {
-    return secondChanceUsedThisRun;
-  }
-
-  function getSecondChanceSafeAnchor() {
-    const anchor = getValidatedSecondChanceAnchor();
-    return anchor ? {x: anchor.x, y: anchor.y} : null;
-  }
-
-  function getLastSecondChanceRescueReason() {
-    return lastSecondChanceRescueReason;
+    return "";
   }
 
   function getVerticalMoverY(mover) {
@@ -702,7 +606,7 @@
           platform.conveyor ||
           platform.moving ||
           platform.fallingPlatform ||
-          (platform.fade && !platform.fadeData.solid)
+          !isFadePlatformSolidForPlayer(platform)
         ) {
           return false;
         }
@@ -764,7 +668,7 @@
           platform.moving ||
           platform.conveyor ||
           platform.fallingPlatform ||
-          (platform.fade && !platform.fadeData.solid)
+          !isFadePlatformSolidForPlayer(platform)
         ) {
           return false;
         }
@@ -826,7 +730,7 @@
 
   function getStuckAimContactNormal(platform) {
     if (
-      (platform.fade && !platform.fadeData.solid) ||
+      !isFadePlatformSolidForPlayer(platform) ||
       platform.fallingPlatform?.falling
     ) {
       return null;

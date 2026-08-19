@@ -658,14 +658,14 @@
     const powerShotActive = active.includes("power_shot");
     const starMagnetActive = active.includes("star_magnet");
     const bounceMasterActive = active.includes("bounce_master");
-    const slowFallActive = active.includes("slow_fall");
+    const anchorStepActive = active.includes("slow_fall");
     const luckyCharmActive = active.includes("lucky_charm");
     const airHopActive = active.includes("air_hop");
     const lastBubbleActive = active.includes("last_bubble");
     const mudShoesActive = active.includes("mud_shoes");
     const quickRecoveryActive = active.includes("quick_recovery");
     const starShieldActive = active.includes("sticky_slime");
-    const secondChanceActive = active.includes("safe_return");
+    const ghostStepActive = active.includes("safe_return");
     const runIsActive = !isTutorialStage() &&
       ["playing", "paused", "gamePaused"].includes(state);
     const luckyBonusStarThisLevel = runIsActive &&
@@ -680,8 +680,6 @@
       : selected.includes("extra_life"))
       ? perks.balance.EXTRA_LIFE_BONUS
       : 0;
-    const secondChanceAnchor = getSecondChanceSafeAnchor();
-
     ui.devPerkInspector.textContent = [
       `Gespeicherte freigeschaltete Fähigkeiten: ${JSON.stringify(storedUnlocked)}`,
       `Gespeicherte ausgewählte Fähigkeiten: ${JSON.stringify(storedSelected)}`,
@@ -702,11 +700,8 @@
       `Bounce Master: ${bounceMasterActive ? "ACTIVE" : "inactive"}`,
       "Bounce Preview: AVAILABLE",
       `Current Aim Bounce Hit: ${currentAimBounceHit ? "YES" : "NO"}`,
-      `Slow Fall: ${slowFallActive ? "ACTIVE" : "inactive"}`,
-      `Trigger Speed: ${perks.balance.SLOW_FALL_TRIGGER_SPEED}`,
-      `Terminal Speed: ${perks.balance.SLOW_FALL_TERMINAL_SPEED}`,
-      `Drag: ${perks.balance.SLOW_FALL_DRAG.toFixed(2)} / s`,
-      `Current Vertical Speed: ${runIsActive ? formatSignedVerticalSpeed(player.vy) : "-"}`,
+      `Anchor Step: ${anchorStepActive ? "ACTIVE" : "inactive"}`,
+      `Falling Platform Stability: ${perks.balance.ANCHOR_STEP_STABILITY_DURATION.toFixed(1)} s`,
       `Lucky Charm: ${luckyCharmActive ? "ACTIVE" : "inactive"}`,
       `Chance: ${Math.round(perks.balance.LUCKY_CHARM_EXTRA_STAR_CHANCE * 100)} %`,
       `Force Next Lucky Star: ${forceNextLuckyStar ? "YES" : "NO"}`,
@@ -745,18 +740,9 @@
       `Normal Ground Damping Active: ${isNormalSafeGroundDampingActive() ? "YES" : "NO"}`,
       `Normal Ground Current |vx|: ${Math.round(Math.abs(player.vx))} px/s`,
       `Normal Ground Damping: ${NORMAL_SAFE_GROUND_DAMPING.toFixed(2)} @ 60 Hz reference`,
-      `Second Chance: ${secondChanceActive ? "ACTIVE" : "inactive"}`,
-      `Available This Run: ${secondChanceActive && isSecondChanceAvailableThisRun() ? "YES" : "NO"}`,
-      `Used This Run: ${secondChanceActive && isSecondChanceUsedThisRun() ? "YES" : "NO"}`,
-      `Safe Anchor: ${secondChanceAnchor ? "VALID" : "NONE"}`,
-      `Anchor X/Y: ${secondChanceAnchor ? `${Math.round(secondChanceAnchor.x)} / ${Math.round(secondChanceAnchor.y)}` : "- / -"}`,
-      `Last Rescue Reason: ${getLastSecondChanceRescueReason()}`
+      `Ghost Step: ${ghostStepActive ? "ACTIVE" : "inactive"}`,
+      `Fade Platforms Solid For Player: ${ghostStepActive ? "YES" : "normal phase state"}`
     ].join("\n");
-  }
-
-  function formatSignedVerticalSpeed(verticalSpeed) {
-    const roundedSpeed = Math.round(verticalSpeed);
-    return `${roundedSpeed > 0 ? "+" : ""}${roundedSpeed} px/s`;
   }
 
   let lastDevPerkTelemetryUpdate = 0;
@@ -1217,7 +1203,6 @@
       setMusicForLevel(levelIndex + 1);
       generatedLevel = generateProceduralLevel(levelIndex + 1);
       resetLastBubbleForNewLevel();
-      resetSecondChanceAnchorForNewLevel();
       resetStarShieldForNewLife();
       state = "playing";
       resetLevel(true);

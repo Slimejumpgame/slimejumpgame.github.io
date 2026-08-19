@@ -15,9 +15,7 @@
     POWER_SHOT_MULTIPLIER: 1.10,
     STAR_MAGNET_PULL_RADIUS: 200,
     STAR_MAGNET_PULL_SPEED: 500,
-    SLOW_FALL_TRIGGER_SPEED: 150,
-    SLOW_FALL_TERMINAL_SPEED: 675,
-    SLOW_FALL_DRAG: 2.85,
+    ANCHOR_STEP_STABILITY_DURATION: 5.0,
     LUCKY_CHARM_EXTRA_STAR_CHANCE: 0.15,
     AIR_HOP_HORIZONTAL_SPEED: 420,
     AIR_HOP_VERTICAL_SPEED: 650,
@@ -110,16 +108,16 @@
     }),
     Object.freeze({
       id: "slow_fall",
-      name: "SLOW FALL",
-      description: "Begrenzt starke Abwärtsgeschwindigkeit leicht.",
+      name: "ANCHOR STEP",
+      description: "Fallende Plattformen bleiben nach dem Betreten 5 Sekunden stabil.",
       icon: createIcon([{d: "M12 3v14"}, {d: "m7 12 5 5 5-5M5 21h14", accent: true}]),
       implemented: true,
       category: "mobility"
     }),
     Object.freeze({
       id: "safe_return",
-      name: "SECOND CHANCE",
-      description: "Rettet einmal pro Run vor Spike-Plattformen, Geistern oder Side-Out.",
+      name: "GHOST STEP",
+      description: "Fade-Plattformen bleiben für dich dauerhaft begehbar.",
       icon: createIcon([{d: "M20 11a8 8 0 1 1-3-6"}, {d: "M20 4v7h-7", accent: true}]),
       implemented: true,
       category: "survival"

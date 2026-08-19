@@ -104,6 +104,16 @@
     }
   }
 
+  function isAnchorStepActive() {
+    return window.SlimePerks?.isActiveForRun?.("slow_fall") === true;
+  }
+
+  function getFallingPlatformActivationDelay(platform) {
+    return isAnchorStepActive()
+      ? window.SlimePerks.balance.ANCHOR_STEP_STABILITY_DURATION
+      : platform.delay;
+  }
+
   function updateFadePlatforms() {
     for (const platform of currentLevel().fadePlatforms) {
       const elapsed = Math.max(0, worldTime - platform.startTime);
@@ -119,7 +129,7 @@
 
       // Verschwindet die Plattform unter einem zielenden Slime, wird das Zielen
       // gelöst, damit die Schwerkraft ihn sofort wieder übernimmt.
-      if (wasSolid && !platform.solid) {
+      if (wasSolid && !platform.solid && !isGhostStepActive()) {
         const standingOnPlatform =
           player.x + player.r > platform.x &&
           player.x - player.r < platform.x + platform.w &&
