@@ -452,15 +452,9 @@
 
   function useAirHop(trigger) {
     if (!canUseAirHop()) return false;
-    const minimumDirectionalSpeed = 60;
-    const direction = Math.abs(player.vx) >= minimumDirectionalSpeed
-      ? Math.sign(player.vx)
-      : player.lastHorizontalDirection || 1;
 
     airHopUsedThisFlight = true;
     lastAirHopTrigger = trigger;
-    player.lastHorizontalDirection = direction;
-    player.vx = direction * window.SlimePerks.balance.AIR_HOP_HORIZONTAL_SPEED;
     player.vy = -window.SlimePerks.balance.AIR_HOP_VERTICAL_SPEED;
     player.squish = 0.8;
     tone(390, 0.1, "sine", 0.04, 680);
