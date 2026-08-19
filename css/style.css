@@ -5084,6 +5084,396 @@ p {
 
 }
 
+/* Mobile game-over uses the complete game viewport without a scrolling card. */
+@media (hover: none) and (pointer: coarse) {
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) {
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 0;
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) > .card {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: clamp(2px, 0.75dvh, 5px);
+    padding:
+      max(6px, env(safe-area-inset-top))
+      max(8px, env(safe-area-inset-right))
+      max(6px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .dialogAccent {
+    flex: 0 0 auto;
+    width: min(140px, 34%);
+    height: 4px;
+    margin: 0 auto;
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .card h2 {
+    flex: 0 0 auto;
+    margin: 0;
+    font-size: clamp(23px, 7dvh, 36px);
+    line-height: 0.94;
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) #messageText {
+    flex: 0 0 auto;
+    margin: 0;
+    font-size: clamp(10px, 2.8dvh, 14px);
+    line-height: 1.15;
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .gameOverXPPanel {
+    flex: 0 0 auto;
+    width: min(100%, 430px);
+    margin: 0 auto;
+    padding: clamp(4px, 1.2dvh, 7px) clamp(9px, 1.8vw, 14px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .gameOverXPSummary {
+    gap: 7px;
+    margin-bottom: 2px;
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) #gameOverXPEarned {
+    font-size: clamp(17px, 5dvh, 24px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .gameOverLevelUp {
+    padding: 2px 5px;
+    font-size: clamp(8px, 2.4dvh, 11px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .gameOverPlayerLevel {
+    margin-bottom: 2px;
+    font-size: clamp(11px, 3dvh, 15px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .xpProgressBar {
+    height: clamp(7px, 2.2dvh, 10px);
+    border-width: 1px;
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .gameOverXPProgress {
+    margin-top: 2px;
+    font-size: clamp(8px, 2.25dvh, 11px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .nicknameEntry {
+    flex: 0 0 auto;
+    width: min(100%, 560px);
+    margin: 0 auto;
+    padding: 4px 9px;
+    display: grid;
+    grid-template-columns: minmax(90px, auto) minmax(86px, 118px) minmax(110px, auto);
+    align-items: center;
+    justify-content: center;
+    gap: clamp(5px, 1.5vw, 10px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .nicknameLabel,
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .nicknameHint {
+    margin: 0;
+    font-size: clamp(8px, 2.25dvh, 11px);
+    line-height: 1.1;
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) #nicknameInput {
+    width: 100%;
+    max-width: none;
+    height: clamp(38px, 10dvh, 44px);
+    border-width: 2px;
+    font-size: clamp(20px, 6dvh, 27px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .menuButtons {
+    flex: 0 0 auto;
+    width: min(100%, 680px);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(5px, 1.4vw, 9px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .menuButtons .uiButton {
+    min-height: clamp(38px, 10dvh, 44px);
+    padding: 3px 10px;
+    font-size: clamp(10px, 2.8dvh, 14px);
+    line-height: 1.05;
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .slimeColorUnlockPanel {
+    flex: 0 1 auto;
+    width: min(100%, 720px);
+    min-height: 0;
+    margin: 0 auto;
+    padding: 4px 7px;
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .slimeColorUnlockPanel h3 {
+    font-size: clamp(13px, 3.6dvh, 18px);
+    line-height: 1;
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .slimeColorUnlockPanel p {
+    margin: 2px 0 4px;
+    font-size: clamp(8px, 2.2dvh, 11px);
+    line-height: 1.1;
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .wardrobeUnlockCategories {
+    gap: 4px;
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .wardrobeCategoryButton,
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .wardrobeUnlockBackBtn {
+    min-height: clamp(30px, 8dvh, 36px);
+    padding: 2px 7px;
+    font-size: clamp(8px, 2.3dvh, 11px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .wardrobeUnlockBackBtn {
+    margin-top: 3px;
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .wardrobeUnlockOptions {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 2px;
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .wardrobeUnlockOptions .slimeColorOption {
+    min-height: clamp(28px, 7dvh, 34px);
+    padding: 1px 2px;
+    border-radius: 6px;
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .wardrobeUnlockOptions .slimeColorPreview {
+    width: clamp(16px, 4.5dvh, 21px);
+    height: clamp(14px, 3.9dvh, 18px);
+    margin-bottom: 0;
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .wardrobeUnlockOptions .slimeCosmeticPreview {
+    width: clamp(19px, 5.5dvh, 25px);
+    height: auto;
+    margin-bottom: 0;
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .wardrobeUnlockOptions .slimeColorLabel {
+    font-size: clamp(5px, 1.45dvh, 7px);
+    line-height: 1;
+  }
+}
+
+/* Short landscape phones keep one compact vertical Game Over flow. */
+@media (orientation: landscape) and (hover: none) and (pointer: coarse) {
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) {
+    align-items: center;
+    justify-content: center;
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) > .card {
+    --game-over-content-width: min(94%, 1100px);
+    width: 98%;
+    height: 98%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-evenly;
+    gap: clamp(2px, 1dvh, 7px);
+    padding:
+      max(clamp(6px, 1.4dvh, 12px), env(safe-area-inset-top))
+      max(clamp(9px, 1.4vw, 18px), env(safe-area-inset-right))
+      max(clamp(6px, 1.4dvh, 12px), env(safe-area-inset-bottom))
+      max(clamp(9px, 1.4vw, 18px), env(safe-area-inset-left));
+    border: var(--ui-border) solid var(--ui-line);
+    border-radius: clamp(12px, 3dvh, 22px);
+    box-shadow: var(--ui-shadow-panel);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .dialogAccent {
+    height: clamp(3px, 0.9dvh, 6px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .card h2 {
+    width: var(--game-over-content-width);
+    font-size: clamp(26px, 7.5dvh, 42px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) #messageText {
+    width: var(--game-over-content-width);
+    font-size: clamp(11px, 3dvh, 17px);
+    line-height: 1.12;
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .gameOverXPPanel {
+    width: var(--game-over-content-width);
+    padding: clamp(4px, 1.2dvh, 8px) clamp(10px, 1.7vw, 18px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) #gameOverXPEarned {
+    font-size: clamp(19px, 5.5dvh, 30px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .gameOverPlayerLevel {
+    font-size: clamp(12px, 3.3dvh, 18px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .xpProgressBar {
+    height: clamp(8px, 2.5dvh, 13px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .gameOverXPProgress {
+    font-size: clamp(9px, 2.5dvh, 13px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .slimeColorUnlockPanel {
+    width: var(--game-over-content-width);
+    padding: clamp(4px, 1dvh, 7px) clamp(8px, 1.4vw, 15px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .slimeColorUnlockPanel h3 {
+    font-size: clamp(15px, 4.2dvh, 22px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .slimeColorUnlockPanel p {
+    font-size: clamp(9px, 2.5dvh, 13px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .wardrobeCategoryButton,
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .wardrobeUnlockBackBtn {
+    min-height: clamp(34px, 9.5dvh, 44px);
+    font-size: clamp(10px, 2.8dvh, 14px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .nicknameEntry {
+    width: var(--game-over-content-width);
+    grid-template-columns: minmax(120px, 1fr) minmax(110px, 150px) minmax(140px, 1fr);
+    padding: clamp(3px, 0.9dvh, 6px) clamp(9px, 1.5vw, 16px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .nicknameLabel,
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .nicknameHint {
+    font-size: clamp(9px, 2.5dvh, 13px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) #nicknameInput {
+    height: clamp(40px, 11dvh, 48px);
+    font-size: clamp(22px, 6.5dvh, 30px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .menuButtons .uiButton {
+    min-height: clamp(42px, 11.5dvh, 52px);
+    font-size: clamp(11px, 3.1dvh, 16px);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .menuButtons {
+    width: var(--game-over-content-width);
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .wardrobeUnlockOptions {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+
+  #messageOverlay:has(:is(#nicknameEntry, #gameOverXPPanel, #wardrobeUnlockPanel):not(.hidden)) .wardrobeUnlockOptions .slimeColorOption {
+    min-height: clamp(27px, 7.2dvh, 34px);
+  }
+}
+
+/* Mobile Game Over opens the existing free-unlock grid as a large item picker. */
+@media (hover: none) and (pointer: coarse) {
+  #messageOverlay:has(#wardrobeUnlockOptions:not(.hidden)) .slimeColorUnlockPanel {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    width: auto;
+    height: auto;
+    min-height: 0;
+    margin: 0;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    gap: clamp(4px, 1.2dvh, 9px);
+    padding:
+      max(clamp(8px, 2dvh, 14px), env(safe-area-inset-top))
+      max(clamp(10px, 2vw, 20px), env(safe-area-inset-right))
+      max(clamp(8px, 2dvh, 14px), env(safe-area-inset-bottom))
+      max(clamp(10px, 2vw, 20px), env(safe-area-inset-left));
+    border-radius: inherit;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(121, 57, 190, 0.3), transparent 42%),
+      var(--ui-panel-strong);
+    box-shadow: none;
+  }
+
+  #messageOverlay:has(#wardrobeUnlockOptions:not(.hidden)) .slimeColorUnlockPanel h3 {
+    font-size: clamp(20px, 5.8dvh, 32px);
+    line-height: 1;
+  }
+
+  #messageOverlay:has(#wardrobeUnlockOptions:not(.hidden)) .slimeColorUnlockPanel p {
+    margin: 0;
+    font-size: clamp(11px, 3dvh, 16px);
+    line-height: 1.15;
+  }
+
+  #messageOverlay:has(#wardrobeUnlockOptions:not(.hidden)) .wardrobeUnlockOptions {
+    min-height: 0;
+    grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+    align-content: start;
+    align-items: start;
+    gap: clamp(5px, 1.4dvh, 8px);
+    padding: 3px 5px 6px 3px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-color: var(--ui-green) rgba(19, 10, 48, 0.72);
+    scrollbar-width: thin;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #messageOverlay:has(#wardrobeUnlockOptions:not(.hidden)) .wardrobeUnlockOptions .slimeColorOption {
+    min-height: clamp(70px, 20dvh, 84px);
+    padding: 5px 4px;
+    border-radius: 9px;
+  }
+
+  #messageOverlay:has(#wardrobeUnlockOptions:not(.hidden)) .wardrobeUnlockOptions .slimeColorPreview {
+    width: clamp(40px, 12dvh, 50px);
+    height: clamp(34px, 10dvh, 43px);
+    margin-bottom: 3px;
+  }
+
+  #messageOverlay:has(#wardrobeUnlockOptions:not(.hidden)) .wardrobeUnlockOptions .slimeCosmeticPreview {
+    width: clamp(54px, 16dvh, 68px);
+    height: auto;
+    margin-bottom: 2px;
+  }
+
+  #messageOverlay:has(#wardrobeUnlockOptions:not(.hidden)) .wardrobeUnlockOptions .slimeColorLabel {
+    font-size: clamp(8px, 2.3dvh, 11px);
+  }
+
+  #messageOverlay:has(#wardrobeUnlockOptions:not(.hidden)) .wardrobeUnlockBackBtn {
+    width: min(100%, 420px);
+    min-height: clamp(40px, 10dvh, 48px);
+    margin: 0 auto;
+    padding: 4px 14px;
+    font-size: clamp(11px, 3dvh, 15px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
