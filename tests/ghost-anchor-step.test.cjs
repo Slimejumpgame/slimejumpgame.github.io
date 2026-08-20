@@ -125,6 +125,7 @@ function assertGhostStepCollisionAndOneShotFallingActivation() {
       }
     },
     isNormalSafeStaticPlatform: platform => !platform.fallingPlatform,
+    usesNormalGroundDamping: platform => !platform.ice && !platform.lastBubbleSupport,
     blockAirHopUntilExplicitLaunch() {},
     isAnchorStepActive: () => context.anchorStepActive,
     getFallingPlatformActivationDelay: () => context.anchorStepActive ? 5 : 1.15,

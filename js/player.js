@@ -180,6 +180,13 @@
       !platform.lastBubbleSupport;
   }
 
+  function usesNormalGroundDamping(platform) {
+    return Boolean(platform) &&
+      isFadePlatformSolidForPlayer(platform) &&
+      !platform.ice &&
+      !platform.lastBubbleSupport;
+  }
+
   function isPlayerTouchingBouncePad() {
     return currentLevel().pads.some(pad =>
       intersectsRect(player.x, player.y, player.r, pad)
@@ -189,29 +196,9 @@
   function getValidNormalSafeSupportPlatform() {
     if (!player.onGround || isPlayerTouchingBouncePad()) return null;
     return getPlatforms().find(platform =>
-      isNormalSafeStaticPlatform(platform) &&
+      usesNormalGroundDamping(platform) &&
       isValidAimSupportPlatform(platform)
     ) || null;
-  }
-
-  function getValidHorizontalMovingTopSupportPlatform() {
-    if (!player.onGround || isPlayerTouchingBouncePad()) return null;
-    const topSupports = getPlatforms().filter(isValidAimSupportPlatform);
-    if (topSupports.length !== 1) return null;
-    const support = topSupports[0];
-    return support.moving && support.movingData?.axis === "x"
-      ? support
-      : null;
-  }
-
-  function getValidVerticalMovingTopSupportPlatform() {
-    if (!player.onGround || isPlayerTouchingBouncePad()) return null;
-    const topSupports = getPlatforms().filter(isValidAimSupportPlatform);
-    if (topSupports.length !== 1) return null;
-    const support = topSupports[0];
-    return support.moving && support.movingData?.axis === "y"
-      ? support
-      : null;
   }
 
   function isNormalSafeGroundDampingActive() {
@@ -225,36 +212,6 @@
 
   function applyNormalSafeGroundDamping(dt) {
     if (!isNormalSafeGroundDampingActive()) return false;
-    player.vx *= Math.pow(
-      NORMAL_SAFE_GROUND_DAMPING,
-      Math.max(0, dt) * NORMAL_SAFE_GROUND_DAMPING_REFERENCE_FPS
-    );
-    return true;
-  }
-
-  function applyHorizontalMovingGroundDamping(dt) {
-    if (
-      state !== "playing" ||
-      aiming ||
-      isLastBubbleProtectionActive() ||
-      Math.abs(player.vx) <= 0.5 ||
-      !getValidHorizontalMovingTopSupportPlatform()
-    ) return false;
-    player.vx *= Math.pow(
-      NORMAL_SAFE_GROUND_DAMPING,
-      Math.max(0, dt) * NORMAL_SAFE_GROUND_DAMPING_REFERENCE_FPS
-    );
-    return true;
-  }
-
-  function applyVerticalMovingGroundDamping(dt) {
-    if (
-      state !== "playing" ||
-      aiming ||
-      isLastBubbleProtectionActive() ||
-      Math.abs(player.vx) <= 0.5 ||
-      !getValidVerticalMovingTopSupportPlatform()
-    ) return false;
     player.vx *= Math.pow(
       NORMAL_SAFE_GROUND_DAMPING,
       Math.max(0, dt) * NORMAL_SAFE_GROUND_DAMPING_REFERENCE_FPS
