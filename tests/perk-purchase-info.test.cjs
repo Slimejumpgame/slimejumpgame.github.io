@@ -75,7 +75,7 @@ function assertOneTimePersistence() {
   const localStorage = createStorage();
   const firstPage = loadPurchaseInfoApi(localStorage);
 
-  assert.equal(firstPage.api.showPerkConflictPurchaseInfo("quick_recovery"), true);
+  assert.equal(firstPage.api.showPerkConflictPurchaseInfo("air_brake"), true);
   assert.equal(firstPage.ui.perkConflictPurchaseInfoTitle.textContent, "AIR BRAKE");
   assert.equal(
     firstPage.ui.perkConflictPurchaseInfoText.textContent,
@@ -91,7 +91,7 @@ function assertOneTimePersistence() {
   firstPage.api.closePerkConflictPurchaseInfo();
   assert.equal(firstPage.ui.perkConflictPurchaseInfoOverlay.classList.contains("hidden"), true);
   assert.equal(firstPage.previousFocus.focusCount, 1);
-  assert.equal(firstPage.api.showPerkConflictPurchaseInfo("quick_recovery"), false);
+  assert.equal(firstPage.api.showPerkConflictPurchaseInfo("air_brake"), false);
 
   assert.equal(firstPage.api.showPerkConflictPurchaseInfo("air_hop"), true);
   assert.equal(firstPage.ui.perkConflictPurchaseInfoTitle.textContent, "AIR HOP");
@@ -101,7 +101,7 @@ function assertOneTimePersistence() {
   );
 
   const reloadedPage = loadPurchaseInfoApi(localStorage);
-  assert.equal(reloadedPage.api.showPerkConflictPurchaseInfo("quick_recovery"), false);
+  assert.equal(reloadedPage.api.showPerkConflictPurchaseInfo("air_brake"), false);
   assert.equal(reloadedPage.api.showPerkConflictPurchaseInfo("air_hop"), false);
 }
 

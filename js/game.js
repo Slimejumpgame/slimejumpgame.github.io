@@ -658,14 +658,14 @@
     const powerShotActive = active.includes("power_shot");
     const starMagnetActive = active.includes("star_magnet");
     const bounceMasterActive = active.includes("bounce_master");
-    const anchorStepActive = active.includes("slow_fall");
+    const anchorStepActive = active.includes("anchor_step");
     const luckyCharmActive = active.includes("lucky_charm");
     const airHopActive = active.includes("air_hop");
     const lastBubbleActive = active.includes("last_bubble");
     const mudShoesActive = active.includes("mud_shoes");
-    const quickRecoveryActive = active.includes("quick_recovery");
-    const starShieldActive = active.includes("sticky_slime");
-    const ghostStepActive = active.includes("safe_return");
+    const airBrakeActive = active.includes("air_brake");
+    const starShieldActive = active.includes("star_shield");
+    const ghostStepActive = active.includes("ghost_step");
     const runIsActive = !isTutorialStage() &&
       ["playing", "paused", "gamePaused"].includes(state);
     const luckyBonusStarThisLevel = runIsActive &&
@@ -724,11 +724,11 @@
       `Mud Shoes: ${mudShoesActive ? "ACTIVE" : "inactive"}`,
       `Horizontal Damping: ${perks.balance.MUD_SHOES_HORIZONTAL_DAMPING.toFixed(2)}`,
       `Rebound Multiplier: ${perks.balance.MUD_SHOES_REBOUND_MULTIPLIER.toFixed(2)}`,
-      `Quick Recovery: ${quickRecoveryActive ? "ACTIVE" : "inactive"}`,
+      `Air Brake: ${airBrakeActive ? "ACTIVE" : "inactive"}`,
       "Function: AIR BRAKE",
-      `Flight Active: ${quickRecoveryActive && isAirHopFlightActive() ? "YES" : "NO"}`,
-      `Available This Flight: ${quickRecoveryActive && isAirHopAvailableThisFlight() ? "YES" : "NO"}`,
-      `Used This Flight: ${quickRecoveryActive && isAirHopUsedThisFlight() ? "YES" : "NO"}`,
+      `Flight Active: ${airBrakeActive && isAirHopFlightActive() ? "YES" : "NO"}`,
+      `Available This Flight: ${airBrakeActive && isAirHopAvailableThisFlight() ? "YES" : "NO"}`,
+      `Used This Flight: ${airBrakeActive && isAirHopUsedThisFlight() ? "YES" : "NO"}`,
       `Horizontal Multiplier: x${perks.balance.AIR_BRAKE_HORIZONTAL_MULTIPLIER.toFixed(2)}`,
       `Current |vx|: ${Math.round(Math.abs(player.vx))} px/s`,
       `Star Shield: ${starShieldActive ? "ACTIVE" : "inactive"}`,

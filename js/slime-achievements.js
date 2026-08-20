@@ -289,6 +289,19 @@
     }
   }
 
+  function applyPerkMigrationBalance(targetBalance) {
+    const normalizedTarget = Math.floor(Number(targetBalance));
+    if (!Number.isSafeInteger(normalizedTarget) || normalizedTarget < 0) return false;
+
+    const previousBalance = starBalance;
+    starBalance = normalizedTarget;
+    if (saveStarBalanceVerified()) return true;
+
+    starBalance = previousBalance;
+    saveStarBalance();
+    return false;
+  }
+
   function cloneAchievementProgress() {
     return {
       discoveredBiomeIds: achievementProgress.discoveredBiomeIds.slice(),
@@ -1841,6 +1854,7 @@
     itemPrice: WARDROBE_ITEM_STAR_PRICE,
     getBalance: () => starBalance,
     getLifetimeStars: () => achievementProgress.lifetimeStars,
+    applyPerkMigrationBalance,
     isPurchaseInProgress: () => activeWardrobePurchases.size > 0,
     canPurchaseUnlock,
     purchaseUnlock,

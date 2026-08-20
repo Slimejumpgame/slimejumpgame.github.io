@@ -22,7 +22,7 @@ function createStorage(initialValues = {}) {
 }
 
 function loadPerksApi() {
-  const unlocked = ["air_hop", "quick_recovery", "extra_life"];
+  const unlocked = ["air_hop", "air_brake", "extra_life"];
   const localStorage = createStorage({
     slimejumperUnlockedPerks: JSON.stringify(unlocked),
     slimejumperSelectedPerks: JSON.stringify(unlocked)
@@ -40,7 +40,7 @@ function assertPerkSelectionExclusivity() {
   const {api, localStorage, unlocked} = loadPerksApi();
 
   assert.equal(api.balance.AIR_BRAKE_HORIZONTAL_MULTIPLIER, 0.25);
-  assert.equal(api.definitions.find(perk => perk.id === "quick_recovery").name, "AIR BRAKE");
+  assert.equal(api.definitions.find(perk => perk.id === "air_brake").name, "AIR BRAKE");
 
   const legacySelection = Array.from(api.getStoredSelectedPerkIds());
   assert.deepEqual(legacySelection, ["air_hop", "extra_life"]);
@@ -50,19 +50,19 @@ function assertPerkSelectionExclusivity() {
     "legacy conflict handling must not change unlocks"
   );
 
-  const selectAirBrake = api.toggleSelectedPerk("quick_recovery");
+  const selectAirBrake = api.toggleSelectedPerk("air_brake");
   assert.equal(selectAirBrake.ok, true);
-  assert.deepEqual(Array.from(selectAirBrake.selected), ["extra_life", "quick_recovery"]);
+  assert.deepEqual(Array.from(selectAirBrake.selected), ["extra_life", "air_brake"]);
   assert.equal(selectAirBrake.selected.includes("air_hop"), false);
 
   const airBrakeRunSnapshot = Array.from(api.captureRunPerkSnapshot());
-  assert.equal(airBrakeRunSnapshot.includes("quick_recovery"), true);
+  assert.equal(airBrakeRunSnapshot.includes("air_brake"), true);
   assert.equal(airBrakeRunSnapshot.includes("air_hop"), false);
 
   const selectAirHop = api.toggleSelectedPerk("air_hop");
   assert.equal(selectAirHop.ok, true);
   assert.equal(selectAirHop.selected.includes("air_hop"), true);
-  assert.equal(selectAirHop.selected.includes("quick_recovery"), false);
+  assert.equal(selectAirHop.selected.includes("air_brake"), false);
 }
 
 function assertAirBrakeVelocityBehavior() {
@@ -74,7 +74,7 @@ function assertAirBrakeVelocityBehavior() {
   const context = vm.createContext({});
   vm.runInContext(
     `
-      let activePerkId = "quick_recovery";
+      let activePerkId = "air_brake";
       let aimReady = false;
       let solidContact = false;
       const player = {x: 0, y: 0, r: 20, vx: 800, vy: -321, onGround: false, squish: 0};
@@ -195,7 +195,7 @@ function assertAirBrakeVelocityBehavior() {
   assert.equal(context.airBrakeTestApi.useAirHop("TOUCH"), true);
 
   context.airBrakeTestApi.startNextFlight();
-  context.airBrakeTestApi.setActivePerk("quick_recovery");
+  context.airBrakeTestApi.setActivePerk("air_brake");
   context.airBrakeTestApi.blockAirHopUntilExplicitLaunch();
   context.airBrakeTestApi.player.vx = 400;
   assert.equal(context.airBrakeTestApi.useAirBrake(), true);

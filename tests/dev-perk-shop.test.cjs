@@ -97,11 +97,11 @@ function assertRealPurchasePerkPathUsesDevEconomy() {
   assert.equal(window.SlimeDevShopTest.getBalance(), 500);
   assert.equal(api.getStoredUnlockedPerkIds().includes("air_hop"), true);
 
-  const airBrakePurchase = api.purchasePerk("quick_recovery");
+  const airBrakePurchase = api.purchasePerk("air_brake");
   assert.equal(airBrakePurchase.ok, true);
   assert.equal(airBrakePurchase.test, true);
   assert.equal(window.SlimeDevShopTest.getBalance(), 0);
-  assert.equal(api.getStoredUnlockedPerkIds().includes("quick_recovery"), true);
+  assert.equal(api.getStoredUnlockedPerkIds().includes("air_brake"), true);
   assert.equal(localStorage.snapshot().slimejumperStarBalance, "777");
 
   return fixture;
@@ -117,7 +117,7 @@ function runUiReset(fixture) {
 
   context.PERK_CONFLICT_PURCHASE_INFO = {
     air_hop: {seenStorageKey: "slimejumperAirHopConflictPurchaseInfoSeen"},
-    quick_recovery: {seenStorageKey: "slimejumperAirBrakeConflictPurchaseInfoSeen"}
+    air_brake: {seenStorageKey: "slimejumperAirBrakeConflictPurchaseInfoSeen"}
   };
   context.isDevShopTestActive = () => window.SlimeDevShopTest.isActive();
   context.showGameToast = () => {};

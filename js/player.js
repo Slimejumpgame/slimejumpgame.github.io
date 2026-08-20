@@ -146,7 +146,7 @@
   }
 
   function isGhostStepActive() {
-    return window.SlimePerks?.isActiveForRun?.("safe_return") === true;
+    return window.SlimePerks?.isActiveForRun?.("ghost_step") === true;
   }
 
   function isFadePlatformSolidForPlayer(platform) {
@@ -244,7 +244,7 @@
     if (
       isTutorialStage() ||
       starShieldConsumedThisLife ||
-      window.SlimePerks?.isActiveForRun?.("sticky_slime") !== true
+      window.SlimePerks?.isActiveForRun?.("star_shield") !== true
     ) return false;
 
     starShieldConsumedThisLife = true;
@@ -259,7 +259,7 @@
 
   function isStarShieldProtectionActive() {
     return getStarShieldProtectionTimeRemaining() > 0 &&
-      window.SlimePerks?.isActiveForRun?.("sticky_slime") === true;
+      window.SlimePerks?.isActiveForRun?.("star_shield") === true;
   }
 
   function isStarShieldReadyThisLife() {
@@ -369,7 +369,7 @@
   }
 
   function useAirBrake() {
-    if (!canUseFlightAction("quick_recovery")) return false;
+    if (!canUseFlightAction("air_brake")) return false;
 
     airHopUsedThisFlight = true;
     player.vx *= window.SlimePerks.balance.AIR_BRAKE_HORIZONTAL_MULTIPLIER;

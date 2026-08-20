@@ -105,7 +105,7 @@
   }
 
   function isAnchorStepActive() {
-    return window.SlimePerks?.isActiveForRun?.("slow_fall") === true;
+    return window.SlimePerks?.isActiveForRun?.("anchor_step") === true;
   }
 
   function getFallingPlatformActivationDelay(platform) {

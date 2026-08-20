@@ -24,7 +24,7 @@
       title: "AIR HOP",
       text: "Air Hop kann nicht gleichzeitig mit Air Brake in einem Run verwendet werden. Wähle immer nur eine der beiden Fähigkeiten aus."
     }),
-    quick_recovery: Object.freeze({
+    air_brake: Object.freeze({
       seenStorageKey: "slimejumperAirBrakeConflictPurchaseInfoSeen",
       title: "AIR BRAKE",
       text: "Air Brake kann nicht gleichzeitig mit Air Hop in einem Run verwendet werden. Wähle immer nur eine der beiden Fähigkeiten aus."

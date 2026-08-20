@@ -94,7 +94,7 @@ assertNormalDamping(
   api,
   support({fade: true, fadeData: {solid: false}}),
   "Ghost Step-supported fade platform uses confirmed damping",
-  "safe_return"
+  "ghost_step"
 );
 assertNormalDamping(
   api,

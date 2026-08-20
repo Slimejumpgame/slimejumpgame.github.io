@@ -22,8 +22,8 @@ function createStorage(initialValues = {}) {
 
 function assertPerkIdentityAndPersistence() {
   const localStorage = createStorage({
-    slimejumperUnlockedPerks: '["slow_fall","safe_return"]',
-    slimejumperSelectedPerks: '["slow_fall","safe_return"]'
+    slimejumperUnlockedPerks: '["anchor_step","ghost_step"]',
+    slimejumperSelectedPerks: '["anchor_step","ghost_step"]'
   });
   const window = {};
   vm.runInNewContext(read("js/slime-perks.js"), {
@@ -33,18 +33,18 @@ function assertPerkIdentityAndPersistence() {
     console
   });
 
-  const anchorStep = window.SlimePerks.definitions.find(perk => perk.id === "slow_fall");
-  const ghostStep = window.SlimePerks.definitions.find(perk => perk.id === "safe_return");
+  const anchorStep = window.SlimePerks.definitions.find(perk => perk.id === "anchor_step");
+  const ghostStep = window.SlimePerks.definitions.find(perk => perk.id === "ghost_step");
   assert.equal(anchorStep.name, "ANCHOR STEP");
   assert.equal(ghostStep.name, "GHOST STEP");
   assert.equal(window.SlimePerks.balance.ANCHOR_STEP_STABILITY_DURATION, 5);
   assert.deepEqual(
     Array.from(window.SlimePerks.getStoredUnlockedPerkIds()),
-    ["slow_fall", "safe_return"]
+    ["anchor_step", "ghost_step"]
   );
   assert.deepEqual(
     Array.from(window.SlimePerks.getStoredSelectedPerkIds()),
-    ["slow_fall", "safe_return"]
+    ["anchor_step", "ghost_step"]
   );
 }
 
@@ -58,7 +58,7 @@ function assertGhostStepSupportRules() {
     window: {
       SlimePerks: {
         isActiveForRun(id) {
-          return id === "safe_return" && context.ghostStepActive;
+          return id === "ghost_step" && context.ghostStepActive;
         }
       }
     },
@@ -257,7 +257,7 @@ function assertAnchorStepTimer() {
       SlimePerks: {
         balance: {ANCHOR_STEP_STABILITY_DURATION: 5},
         isActiveForRun(id) {
-          return id === "slow_fall" && context.anchorStepActive;
+          return id === "anchor_step" && context.anchorStepActive;
         }
       }
     },

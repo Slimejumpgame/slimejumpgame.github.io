@@ -6,7 +6,7 @@
   const MAX_SELECTED_PERKS = 3;
   const EXCLUSIVE_FLIGHT_ACTION_PERK_IDS = Object.freeze([
     "air_hop",
-    "quick_recovery"
+    "air_brake"
   ]);
 
   const PERK_BALANCE = Object.freeze({
@@ -75,7 +75,7 @@
       category: "power"
     }),
     Object.freeze({
-      id: "quick_recovery",
+      id: "air_brake",
       name: "AIR BRAKE",
       description: "Bremst dich einmal pro Flugphase in der Luft stark ab.",
       icon: createIcon([{d: "M20 8a8 8 0 1 0 1 6"}, {d: "M20 3v5h-5", accent: true}]),
@@ -83,7 +83,7 @@
       category: "control"
     }),
     Object.freeze({
-      id: "sticky_slime",
+      id: "star_shield",
       name: "STAR SHIELD",
       description: "Der erste Stern eines Lebens gewährt einmalig 1 Sekunde Unverwundbarkeit.",
       icon: createIcon([{d: "M12 2.5 20 5v6c0 5-3.4 8.6-8 10.5C7.4 19.6 4 16 4 11V5Z"}, {d: "m12 7 1.2 2.5 2.8.4-2 2 .5 2.8-2.5-1.3-2.5 1.3.5-2.8-2-2 2.8-.4Z", accent: true}]),
@@ -107,7 +107,7 @@
       category: "utility"
     }),
     Object.freeze({
-      id: "slow_fall",
+      id: "anchor_step",
       name: "ANCHOR STEP",
       description: "Fallende Plattformen bleiben nach dem Betreten 5 Sekunden stabil.",
       icon: createIcon([{d: "M12 3v14"}, {d: "m7 12 5 5 5-5M5 21h14", accent: true}]),
@@ -115,7 +115,7 @@
       category: "mobility"
     }),
     Object.freeze({
-      id: "safe_return",
+      id: "ghost_step",
       name: "GHOST STEP",
       description: "Fade-Plattformen bleiben für dich dauerhaft begehbar.",
       icon: createIcon([{d: "M20 11a8 8 0 1 1-3-6"}, {d: "M20 4v7h-7", accent: true}]),
@@ -331,6 +331,14 @@
     return true;
   }
 
+  function resetTemporaryStateForMigration() {
+    devUnlockOverride = false;
+    devSelectedPerkIds = null;
+    devForceNextLuckyStar = false;
+    clearRunPerkSnapshot();
+    return activeRunPerkIds.length === 0;
+  }
+
   function captureRunPerkSnapshot() {
     const selectedForRun = enforceFlightActionExclusivity(getSelectedPerkIds());
     activeRunPerkIds = Object.freeze(selectedForRun.slice(0, MAX_SELECTED_PERKS));
@@ -393,6 +401,7 @@
     setDevUnlockOverride,
     isDevUnlockOverrideActive: () => devUnlockOverride,
     resetDevPerkPurchaseTestState,
+    resetTemporaryStateForMigration,
     captureRunPerkSnapshot,
     clearRunPerkSnapshot,
     getActiveRunPerkIds,
