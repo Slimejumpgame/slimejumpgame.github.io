@@ -1,9 +1,9 @@
 {
   "android": {
-    "versionCode": 9,
-    "versionName": "2.64",
+    "versionCode": 10,
+    "versionName": "2.65",
     "notes": [
-      "Bugfixes und Stabilitätsverbesserungen"
+      "Fähigkeiten wurden überarbeitet und zurückgesetzt. Als Ausgleich erhältst du 1.500 Bonus-Sterne. Außerdem: verbesserte Plattform-Physik sowie diverse UI- und Stabilitätsverbesserungen."
     ]
   }
 }
