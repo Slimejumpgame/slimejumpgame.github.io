@@ -220,7 +220,7 @@ function assertReleaseUILayout() {
   assert.equal(ids.length, new Set(ids).size, "index.html contains duplicate IDs");
   assert.match(
     html,
-    /class="menuBestProgressGroup"[\s\S]*?id="personalBestValue"[\s\S]*?id="menuXPProgress"/
+    /class="menuBestProgressGroup"[\s\S]*?id="personalBestValue"[\s\S]*?id="menuXPProgress"[\s\S]*?id="menuXPPlayerLevel"[\s\S]*?id="menuXPProgressText"[\s\S]*?id="menuXPProgressBar"/
   );
   assert.match(
     html,
@@ -232,6 +232,7 @@ function assertReleaseUILayout() {
   assert.match(coreSource, /runXPBonusMultiplier: document\.getElementById\("runXPBonusMultiplier"\)/);
   assert.match(coreSource, /prestigeXPBonusHud: document\.getElementById\("prestigeXPBonusHud"\)/);
   assert.match(coreSource, /prestigeXPBonusMultiplier: document\.getElementById\("prestigeXPBonusMultiplier"\)/);
+  assert.match(coreSource, /menuXPPlayerLevel: document\.getElementById\("menuXPPlayerLevel"\)/);
 
   const css = read("css/style.css");
   assert.match(css, /\.menuBestProgressGroup\s*\{[\s\S]*?display: flex;[\s\S]*?align-items: center;/);
@@ -239,13 +240,18 @@ function assertReleaseUILayout() {
   assert.match(css, /\.menuMascot\s*\{[\s\S]*?align-self: center;/);
   assert.match(css, /\.menuPrestigeButton\s*\{[\s\S]*?align-self: center;/);
   assert.match(css, /\.menuPlayerLevel\s*\{[\s\S]*?align-self: center;/);
+  assert.match(css, /\.menuXPPlayerLevel\s*\{[\s\S]*?display: none;/);
+  assert.match(
+    css,
+    /@media \(orientation: landscape\) and \(hover: none\) and \(pointer: coarse\) \{[\s\S]*?#mainMenuScreen \.menuBestProgressGroup\s*\{[\s\S]*?width: clamp\(124px, 18vw, 152px\);[\s\S]*?flex-direction: column;[\s\S]*?align-items: stretch;[\s\S]*?#mainMenuScreen \.menuStatusBadge\s*\{[\s\S]*?min-height: clamp\(34px, 10dvh, 46px\);[\s\S]*?#mainMenuScreen \.menuStatusBadge--stars\s*\{[\s\S]*?width: clamp\(124px, 18vw, 152px\);[\s\S]*?#mainMenuScreen \.menuXPProgress\s*\{[\s\S]*?width: 100%;[\s\S]*?#mainMenuScreen \.menuXPProgressBar\s*\{[\s\S]*?height: clamp\(8px, 2\.5dvh, 12px\);/
+  );
   assert.match(css, /\.hudMultiplierGroup\s*\{[\s\S]*?display: flex;[\s\S]*?align-items: center;/);
   assert.match(
     css,
     /\.prestigeXPBonusHud\s*\{[\s\S]*?var\(--ui-purple-light\)[\s\S]*?var\(--ui-purple\)[\s\S]*?var\(--ui-purple-dark\)/
   );
-  assert.match(css, /\.runXPBonusHud\s*\{[\s\S]*?border-color: #9beaff;/);
-  assert.match(css, /\.checkpointBonusHud\s*\{[\s\S]*?border: 2px solid #baff72;/);
+  assert.match(css, /\.runXPBonusHud\s*\{[\s\S]*?border-color: #baff72;/);
+  assert.match(css, /\.checkpointBonusHud\s*\{[\s\S]*?border: 2px solid #9beaff;/);
   assert.match(css, /@media \(max-height: 520px\)[\s\S]*?\.prestigeXPBonusHud/);
 }
 
@@ -261,7 +267,7 @@ function assertReleaseGuards() {
   assert.doesNotMatch(progressSource, /slimejumperBest|slimejumperStars|Supabase|calling_card/);
 
   assert.match(read("js/slime-prestige.js"), /const PRESTIGE_BALANCE = Object\.freeze\(\{xpBonusPerPrestige: 0\.00\}\);/);
-  assert.match(read("js/slime-jump-highscores.js"), /GAME_VERSION = "2\.62"/);
+  assert.match(read("js/slime-jump-highscores.js"), /GAME_VERSION = "2\.64"/);
   assert.match(read("js/slime-progress-reset.js"), /RESET_VERSION = "progress-reset-2\.43"/);
   assert.match(
     read("js/slime-progress-reset.js"),

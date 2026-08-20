@@ -572,10 +572,11 @@
     const progress = window.SlimePlayerProgress?.getPlayerProgress?.();
     if (!progress) return;
 
-    if (ui.menuPlayerLevel) {
-      ui.menuPlayerLevel.textContent = `#${progress.level}`;
-      ui.menuPlayerLevel.setAttribute("aria-label", `Spielerlevel ${progress.level}`);
-    }
+    [ui.menuPlayerLevel, ui.menuXPPlayerLevel].forEach(levelDisplay => {
+      if (!levelDisplay) return;
+      levelDisplay.textContent = `#${progress.level}`;
+      levelDisplay.setAttribute("aria-label", `Spielerlevel ${progress.level}`);
+    });
 
     if (
       !ui.menuXPProgress ||
@@ -1898,7 +1899,8 @@
     if (entry.hasPlayerLevelSnapshot) {
       snapshotIdentityParts.push(`Level ${entry.playerLevel}`);
     }
-    if (entry.hasPrestigeLevelSnapshot) {
+    const hasVisiblePrestige = entry.hasPrestigeLevelSnapshot && entry.prestigeLevel > 0;
+    if (hasVisiblePrestige) {
       snapshotIdentityParts.push(`Prestige P${entry.prestigeLevel}`);
     }
     const snapshotIdentity = snapshotIdentityParts.length > 0
@@ -1939,24 +1941,23 @@
       playerLevelBlock.append(playerLevelLabel, unavailablePlayerLevel);
     }
 
-    const prestigeBlock = document.createElement("span");
-    prestigeBlock.className = "highscoreCallingCardPrestigeBlock";
-    if (entry.hasPrestigeLevelSnapshot) {
-      if (entry.prestigeLevel > 0) {
-        const emblem = document.createElement("span");
-        emblem.className = "highscorePrestigeEmblem";
-        emblem.dataset.prestigeEmblem = entry.prestigeEmblemId ?? "none";
-        emblem.innerHTML = window.SlimePrestige?.getEmblemMarkup?.(
-          entry.prestigeLevel
-        ) ?? "";
-        prestigeBlock.appendChild(emblem);
-      }
+    let prestigeBlock = null;
+    if (hasVisiblePrestige) {
+      prestigeBlock = document.createElement("span");
+      prestigeBlock.className = "highscoreCallingCardPrestigeBlock";
+      const emblem = document.createElement("span");
+      emblem.className = "highscorePrestigeEmblem";
+      emblem.dataset.prestigeEmblem = entry.prestigeEmblemId ?? "none";
+      emblem.innerHTML = window.SlimePrestige?.getEmblemMarkup?.(
+        entry.prestigeLevel
+      ) ?? "";
+      prestigeBlock.appendChild(emblem);
       const prestige = document.createElement("strong");
       prestige.className = "highscoreCallingCardPrestige";
       prestige.textContent = `P${entry.prestigeLevel}`;
       prestigeBlock.appendChild(prestige);
     } else {
-      prestigeBlock.setAttribute("aria-hidden", "true");
+      card.className += " highscoreCallingCard--noPrestige";
     }
 
     const callingCard = document.createElement("span");
@@ -2007,14 +2008,9 @@
     scoreValue.textContent = Number(entry.score).toLocaleString("de-DE");
     score.append(scoreLabel, scoreValue);
 
-    card.append(
-      identity,
-      playerLevelBlock,
-      prestigeBlock,
-      callingCard,
-      runLevel,
-      score
-    );
+    card.append(identity, playerLevelBlock);
+    if (prestigeBlock) card.appendChild(prestigeBlock);
+    card.append(callingCard, runLevel, score);
     return card;
   }
 

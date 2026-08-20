@@ -324,6 +324,7 @@ function assertLocalPersistenceAndRendering(prestigeApi, snapshot) {
         saveHighScore,
         sanitizeScoreEntries,
         renderHighScoreRows,
+        createHighScoreCallingCard,
         createDevCallingCardTestEntry,
         showDevCallingCardTest
       };
@@ -379,6 +380,67 @@ function assertLocalPersistenceAndRendering(prestigeApi, snapshot) {
     prestigeAura: "none",
     prestigeTrail: "none"
   });
+
+  const [prestigeZeroEntry] = context.highscoreTestApi.sanitizeScoreEntries([{
+    name: "ZER",
+    score: 250,
+    level: 4,
+    callingCardSnapshot: {
+      playerLevel: 7,
+      prestigeLevel: 0,
+      prestigeFrame: "none",
+      prestigeTitle: "none",
+      prestigeAura: "none",
+      prestigeTrail: "none",
+      slimeAchievements: []
+    }
+  }]);
+  const prestigeZeroCard = context.highscoreTestApi.createHighScoreCallingCard(
+    prestigeZeroEntry
+  );
+  assert.equal(
+    prestigeZeroCard.className,
+    "highscoreCallingCard highscoreCallingCard--noPrestige"
+  );
+  assert.equal(prestigeZeroCard.children.length, 5);
+  assert.equal(prestigeZeroCard.children[2].className, "highscoreCallingCardCore");
+  assert.equal(
+    prestigeZeroCard.children.some(child =>
+      child.className === "highscoreCallingCardPrestigeBlock"
+    ),
+    false
+  );
+  assert.doesNotMatch(collectText(prestigeZeroCard), /\bP0\b/);
+  assert.doesNotMatch(prestigeZeroCard.attributes["aria-label"], /Prestige P0/);
+
+  const [prestigeOneEntry] = context.highscoreTestApi.sanitizeScoreEntries([{
+    name: "ONE",
+    score: 275,
+    level: 5,
+    callingCardSnapshot: {
+      playerLevel: 8,
+      prestigeLevel: 1,
+      prestigeFrame: "prestige-frame-p1",
+      prestigeTitle: "prestige-title-p1",
+      prestigeAura: "none",
+      prestigeTrail: "none",
+      slimeAchievements: []
+    }
+  }]);
+  const prestigeOneCard = context.highscoreTestApi.createHighScoreCallingCard(
+    prestigeOneEntry
+  );
+  assert.equal(prestigeOneCard.className, "highscoreCallingCard");
+  assert.equal(prestigeOneCard.children.length, 6);
+  assert.equal(
+    prestigeOneCard.children[2].className,
+    "highscoreCallingCardPrestigeBlock"
+  );
+  assert.equal(
+    prestigeOneCard.children[2].children[0].className,
+    "highscorePrestigeEmblem"
+  );
+  assert.equal(prestigeOneCard.children[2].children[1].textContent, "P1");
 
   const storageBeforeDevTest = localStorage.snapshot();
   const devEntry = context.highscoreTestApi.createDevCallingCardTestEntry();
@@ -557,6 +619,7 @@ function assertStaticReleaseGuards() {
 
   const css = read("css/style.css");
   assert.match(css, /\.highscoreCallingCard\s*\{/);
+  assert.match(css, /\.highscoreCallingCard--noPrestige\s*\{/);
   assert.match(css, /\.highscoreCallingCardCore\s*\{/);
   assert.match(css, /grid-template-columns:[\s\S]*?minmax\(150px, 2fr\)/);
   assert.match(css, /\.highscoreCallingCardCore\[data-prestige-frame="prestige-frame-p10"\] \.highscoreCallingCardTitle/);
@@ -588,7 +651,7 @@ function assertStaticReleaseGuards() {
   assert.match(migrationWithoutComments, /add column if not exists calling_card_snapshot jsonb/i);
 
   assert.match(read("js/slime-progress-reset.js"), /progress-reset-2\.43/);
-  assert.match(read("js/slime-jump-highscores.js"), /GAME_VERSION = "2\.58"/);
+  assert.match(read("js/slime-jump-highscores.js"), /GAME_VERSION = "2\.64"/);
 }
 
 (async () => {
