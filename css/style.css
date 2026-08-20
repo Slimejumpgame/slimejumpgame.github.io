@@ -5590,9 +5590,6 @@ p {
     height: clamp(8px, 2.5dvh, 12px);
   }
 
-  #mainMenuScreen .menuMascotRow .menuPlayerLevel {
-    visibility: hidden;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -121,6 +121,7 @@ function assertLegitimateGameOverIntegration() {
 
 class FakeClassList {
   constructor() { this.values = new Set(["hidden"]); }
+  remove(...names) { names.forEach(name => this.values.delete(name)); }
   toggle(name, force) {
     if (force) this.values.add(name);
     else this.values.delete(name);
@@ -131,7 +132,9 @@ class FakeClassList {
 class FakeHudElement {
   constructor() {
     this.textContent = "";
+    this.innerHTML = "";
     this.attributes = {};
+    this.style = {};
     this.classList = new FakeClassList();
   }
   setAttribute(name, value) { this.attributes[name] = String(value); }
@@ -214,6 +217,74 @@ function assertPrestigeXPDisplay(api) {
   assert.equal(ui.prestigeXPBonusMultiplier.textContent, "x2,00");
 }
 
+function assertMainMenuPlayerLevelDisplay() {
+  const uiSource = read("js/ui.js");
+  const displayStart = uiSource.indexOf("  function renderMainMenuPrestige(");
+  const displayEnd = uiSource.indexOf("  function renderMainMenuStats(");
+  assert.ok(displayStart >= 0 && displayEnd > displayStart);
+
+  let prestigeLevel = 0;
+  const progress = {
+    level: 1,
+    levelXP: 0,
+    requiredXP: 200,
+    isPrestigeReady: false
+  };
+  const ui = {
+    menuPlayerLevel: new FakeHudElement(),
+    menuXPPlayerLevel: new FakeHudElement(),
+    menuXPProgress: new FakeHudElement(),
+    menuXPProgressText: new FakeHudElement(),
+    menuXPProgressBar: new FakeHudElement(),
+    menuXPProgressBarFill: new FakeHudElement(),
+    menuPrestigeBtn: new FakeHudElement(),
+    menuPrestigeEmblem: new FakeHudElement(),
+    menuPrestigeLabel: new FakeHudElement()
+  };
+  const prestige = {
+    getLevel: () => prestigeLevel,
+    maxAvailablePrestige: 10,
+    isTransactionPending: () => false,
+    getPendingPermanentWardrobeChoice: () => null,
+    getDisplayDefinition: level => ({displayLabel: `P${level}`}),
+    getEmblemMarkup: level => `<svg>P${level}</svg>`
+  };
+  const context = vm.createContext({
+    window: {
+      SlimePlayerProgress: {getPlayerProgress: () => ({...progress})},
+      SlimePrestige: prestige
+    },
+    ui
+  });
+  vm.runInContext(
+    uiSource.slice(displayStart, displayEnd) + `
+      globalThis.mainMenuLevelTestApi = {renderMainMenuPlayerProgress};
+    `,
+    context,
+    {filename: "js/ui-main-menu-level-test-slice.js"}
+  );
+
+  for (const level of [1, 7]) {
+    progress.level = level;
+    context.mainMenuLevelTestApi.renderMainMenuPlayerProgress();
+    assert.equal(ui.menuPlayerLevel.textContent, `#${level}`);
+    assert.equal(ui.menuXPPlayerLevel.textContent, `#${level}`);
+    assert.equal(ui.menuPrestigeBtn.classList.contains("hidden"), false);
+    assert.equal(ui.menuPrestigeBtn.classList.contains("prestigeInvisible"), true);
+    assert.equal(ui.menuPrestigeEmblem.innerHTML, "");
+  }
+
+  prestigeLevel = 1;
+  for (const level of [20, 50]) {
+    progress.level = level;
+    context.mainMenuLevelTestApi.renderMainMenuPlayerProgress();
+    assert.equal(ui.menuPlayerLevel.textContent, `#${level}`);
+    assert.equal(ui.menuXPPlayerLevel.textContent, `#${level}`);
+    assert.equal(ui.menuPrestigeBtn.classList.contains("prestigeInvisible"), false);
+    assert.equal(ui.menuPrestigeEmblem.innerHTML, "<svg>P1</svg>");
+  }
+}
+
 function assertReleaseUILayout() {
   const html = read("index.html");
   const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
@@ -221,6 +292,10 @@ function assertReleaseUILayout() {
   assert.match(
     html,
     /class="menuBestProgressGroup"[\s\S]*?id="personalBestValue"[\s\S]*?id="menuXPProgress"[\s\S]*?id="menuXPPlayerLevel"[\s\S]*?id="menuXPProgressText"[\s\S]*?id="menuXPProgressBar"/
+  );
+  assert.match(
+    html,
+    /class="menuMascotRow"[\s\S]*?id="menuPrestigeBtn"[\s\S]*?id="menuMascot"[\s\S]*?id="menuPlayerLevel"/
   );
   assert.match(
     html,
@@ -236,10 +311,18 @@ function assertReleaseUILayout() {
 
   const css = read("css/style.css");
   assert.match(css, /\.menuBestProgressGroup\s*\{[\s\S]*?display: flex;[\s\S]*?align-items: center;/);
+  assert.match(
+    css,
+    /\.menuMascotRow\s*\{[\s\S]*?display: grid;[\s\S]*?grid-template-columns: minmax\(64px, 1fr\) auto minmax\(64px, 1fr\);[\s\S]*?align-items: center;/
+  );
   assert.match(css, /\.menuXPProgress\s*\{[\s\S]*?width: clamp\(120px, 17vw, 165px\)/);
   assert.match(css, /\.menuMascot\s*\{[\s\S]*?align-self: center;/);
   assert.match(css, /\.menuPrestigeButton\s*\{[\s\S]*?align-self: center;/);
   assert.match(css, /\.menuPlayerLevel\s*\{[\s\S]*?align-self: center;/);
+  assert.doesNotMatch(
+    css,
+    /#mainMenuScreen \.menuMascotRow \.menuPlayerLevel\s*\{[\s\S]*?visibility: hidden;/
+  );
   assert.match(css, /\.menuXPPlayerLevel\s*\{[\s\S]*?display: none;/);
   assert.match(
     css,
@@ -267,7 +350,7 @@ function assertReleaseGuards() {
   assert.doesNotMatch(progressSource, /slimejumperBest|slimejumperStars|Supabase|calling_card/);
 
   assert.match(read("js/slime-prestige.js"), /const PRESTIGE_BALANCE = Object\.freeze\(\{xpBonusPerPrestige: 0\.00\}\);/);
-  assert.match(read("js/slime-jump-highscores.js"), /GAME_VERSION = "2\.64"/);
+  assert.match(read("js/slime-jump-highscores.js"), /GAME_VERSION = "2\.65"/);
   assert.match(read("js/slime-progress-reset.js"), /RESET_VERSION = "progress-reset-2\.43"/);
   assert.match(
     read("js/slime-progress-reset.js"),
@@ -280,6 +363,7 @@ assertMultiplierBalance(fixture.api);
 assertRunXPCalculation(fixture);
 assertLegitimateGameOverIntegration();
 assertPrestigeXPDisplay(fixture.api);
+assertMainMenuPlayerLevelDisplay();
 assertReleaseUILayout();
 assertReleaseGuards();
 console.log("Player XP multiplier tests passed.");
