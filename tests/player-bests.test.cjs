@@ -16,7 +16,6 @@ function createStorage(initial = {}) {
   return {
     getItem: key => values.has(key) ? values.get(key) : null,
     setItem: (key, value) => values.set(key, String(value)),
-    removeItem: key => values.delete(key),
     snapshot: () => Object.fromEntries(values)
   };
 }
@@ -30,19 +29,33 @@ function response({ok = true, status = 200, json = [], text = ""} = {}) {
   };
 }
 
-function loadApi({storage = {}, fetchImplementation, randomUUID, cryptoImplementation} = {}) {
+function loadApi({
+  storage = {},
+  rankResponse = [{best_score: null, rank: null}],
+  submitFails = false,
+  randomUUID,
+  cryptoImplementation
+} = {}) {
   const localStorage = createStorage(storage);
-  const calls = [];
+  const rankCalls = [];
+  const submissions = [];
   let randomUuidCalls = 0;
-  const window = {};
+  const window = {
+    SlimeJumpHighscores: {
+      isConfigured: () => true,
+      async submitScore(payload) {
+        submissions.push(plain(payload));
+        if (submitFails) throw new Error("offline");
+        return {bestScore: payload.score, improved: true};
+      }
+    }
+  };
   const context = vm.createContext({
     window,
     localStorage,
     fetch: async (url, options) => {
-      calls.push({url, options});
-      return fetchImplementation
-        ? fetchImplementation(url, options)
-        : response();
+      rankCalls.push({url, options});
+      return response({json: rankResponse});
     },
     crypto: cryptoImplementation ?? {
       randomUUID: () => {
@@ -62,8 +75,31 @@ function loadApi({storage = {}, fetchImplementation, randomUUID, cryptoImplement
   return {
     api: window.SlimeJumpPlayerBests,
     localStorage,
-    calls,
+    rankCalls,
+    submissions,
     getRandomUuidCalls: () => randomUuidCalls
+  };
+}
+
+function globalPayload(score, overrides = {}) {
+  return {
+    name: "ABC",
+    score,
+    level: 7,
+    slimeColor: "green",
+    slimeCosmetic: "none",
+    slimeBeard: "none",
+    slimeAchievements: [],
+    callingCardSnapshot: {
+      playerLevel: 9,
+      prestigeLevel: 0,
+      prestigeFrame: "none",
+      prestigeTitle: "none",
+      prestigeAura: "none",
+      prestigeTrail: "none",
+      slimeAchievements: []
+    },
+    ...overrides
   };
 }
 
@@ -74,111 +110,77 @@ function assertInstallationIdLifecycle() {
   assert.equal(fresh.api.getOrCreateInstallationId(), GENERATED_ID);
   assert.equal(fresh.getRandomUuidCalls(), 1);
 
-  const existing = loadApi({
-    storage: {slimejumperInstallationId: EXISTING_ID}
-  });
+  const existing = loadApi({storage: {slimejumperInstallationId: EXISTING_ID}});
   assert.equal(existing.api.getOrCreateInstallationId(), EXISTING_ID);
   assert.equal(existing.getRandomUuidCalls(), 0);
 
   const fallback = loadApi({
-    cryptoImplementation: {
-      getRandomValues: bytes => bytes.fill(0)
-    }
+    cryptoImplementation: {getRandomValues: bytes => bytes.fill(0)}
   });
-  const fallbackId = fallback.api.getOrCreateInstallationId();
-  assert.equal(fallbackId, "00000000-0000-4000-8000-000000000000");
-  assert.equal(fallback.localStorage.snapshot().slimejumperInstallationId, fallbackId);
+  assert.equal(
+    fallback.api.getOrCreateInstallationId(),
+    "00000000-0000-4000-8000-000000000000"
+  );
 }
 
-async function assertInvalidLocalScoresAreSkipped() {
-  for (const invalidValue of [null, "", "NaN", "-1", "0"]) {
-    const storage = invalidValue === null
-      ? {}
-      : {slimejumperBest: invalidValue};
-    const fixture = loadApi({storage});
-    assert.equal(await fixture.api.syncLocalPersonalBest(), null);
-    assert.equal(fixture.calls.length, 0, `unexpected submit for ${invalidValue}`);
-  }
+async function assertHistoricalLifetimeBestIsNeverBootstrapped() {
+  const fixture = loadApi({storage: {slimejumperBest: "85000"}});
+  assert.equal(await fixture.api.syncLocalGlobalBest(), null);
+  assert.equal(fixture.submissions.length, 0);
+  assert.equal(fixture.localStorage.snapshot().slimejumperBest, "85000");
 }
 
-async function assertValidLocalScoreIsSubmitted() {
-  const fixture = loadApi({
-    storage: {slimejumperBest: "85000"},
-    fetchImplementation: async () => response({
-      json: [{best_score: 85000, improved: true}]
-    })
-  });
-
+async function assertPostResetBestAndPayloadAreRetried() {
+  const fixture = loadApi();
   assert.deepEqual(
-    plain(await fixture.api.syncLocalPersonalBest()),
+    plain(await fixture.api.recordGlobalBestCandidate(globalPayload(85000))),
     {bestScore: 85000, improved: true}
   );
-  assert.equal(fixture.calls.length, 1);
-  assert.match(
-    fixture.calls[0].url,
-    /\/rest\/v1\/rpc\/submit_slime_jump_personal_best$/
-  );
-  assert.deepEqual(
-    JSON.parse(fixture.calls[0].options.body),
-    {p_player_id: GENERATED_ID, p_best_score: 85000}
-  );
+  const stored = fixture.localStorage.snapshot();
+  assert.equal(stored.slimejumperGlobalRankBestV1, "85000");
+  assert.equal(JSON.parse(stored.slimejumperGlobalRankBestPayloadV1).score, 85000);
+  assert.equal(fixture.submissions[0].playerId, GENERATED_ID);
+
+  await fixture.api.recordGlobalBestCandidate(globalPayload(70000, {name: "LOW"}));
+  assert.equal(fixture.localStorage.snapshot().slimejumperGlobalRankBestV1, "85000");
+  assert.equal(fixture.submissions.at(-1).score, 85000);
 }
 
 async function assertRankNormalizationAndErrorHandling() {
-  const ranked = loadApi({
-    fetchImplementation: async () => response({
-      json: [{best_score: "85000", rank: "47"}]
-    })
-  });
+  const ranked = loadApi({rankResponse: [{best_score: "85000", rank: "47"}]});
   assert.deepEqual(
     plain(await ranked.api.getPersonalGlobalRank()),
     {bestScore: 85000, rank: 47}
   );
 
-  const missing = loadApi({
-    fetchImplementation: async () => response({
-      json: [{best_score: null, rank: null}]
-    })
-  });
+  const missing = loadApi();
   assert.deepEqual(
     plain(await missing.api.getPersonalGlobalRank()),
     {bestScore: null, rank: null}
   );
 
-  const offline = loadApi({
-    fetchImplementation: async () => {
-      throw new Error("offline");
-    }
-  });
-  assert.equal(await offline.api.submitPersonalBest(90000), null);
-  assert.deepEqual(
-    plain(await offline.api.getPersonalGlobalRank()),
-    {bestScore: null, rank: null}
-  );
+  const offline = loadApi({submitFails: true});
+  assert.equal(await offline.api.recordGlobalBestCandidate(globalPayload(90000)), null);
+  assert.equal(offline.localStorage.snapshot().slimejumperGlobalRankBestV1, "90000");
 }
 
-function assertSqlSafetyAndIsolation() {
-  const sql = read("supabase/slime-jump-player-bests.sql");
-  const executableSql = sql.replace(/^--.*$/gm, "");
-  assert.match(sql, /create table if not exists public\.slime_jump_player_bests/i);
-  assert.match(sql, /on conflict \(player_id\) do update[\s\S]*?where excluded\.best_score > player_best\.best_score/i);
-  assert.match(sql, /where player_best\.best_score > stored_best_score/i);
-  assert.match(sql, /enable row level security/i);
-  assert.match(sql, /set search_path = ''/i);
-  assert.doesNotMatch(executableSql, /\bdelete\b|\btruncate\b/i);
-  assert.doesNotMatch(executableSql, /\bslime_jump_highscores\b/i);
+function assertFreshRankingConfiguration() {
+  const source = read("js/slime-jump-player-bests.js");
+  assert.match(source, /slimejumperGlobalRankBestV1/);
+  assert.match(source, /slimejumperGlobalRankBestPayloadV1/);
+  assert.doesNotMatch(source, /["']slimejumperBest["']/);
+  assert.doesNotMatch(source, /submit_slime_jump_personal_best/);
 
   const index = read("index.html");
-  assert.match(index, /<script src="\.\/js\/slime-jump-player-bests\.js"><\/script>/);
-  assert.doesNotMatch(index, /syncLocalPersonalBest\s*\(/);
+  assert.match(index, /<script src="\.\/js\/slime-jump-highscores\.js"><\/script>[\s\S]*?<script src="\.\/js\/slime-jump-player-bests\.js"><\/script>/);
 }
 
 (async () => {
   assertInstallationIdLifecycle();
-  await assertInvalidLocalScoresAreSkipped();
-  await assertValidLocalScoreIsSubmitted();
+  await assertHistoricalLifetimeBestIsNeverBootstrapped();
+  await assertPostResetBestAndPayloadAreRetried();
   await assertRankNormalizationAndErrorHandling();
-  assertSqlSafetyAndIsolation();
+  assertFreshRankingConfiguration();
   console.log("Player bests tests passed.");
 })().catch(error => {
   console.error(error);

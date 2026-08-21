@@ -11,6 +11,7 @@
     "sb_publishable_DDpbowG2-g6ZVios1OTrfA_DkUyh2TC";
 
   const TABLE = "slime_jump_highscores";
+  const SUBMIT_GLOBAL_BEST_RPC = "submit_slime_jump_global_best";
   const GAME_VERSION = "2.66";
   // Nach der unten dokumentierten Supabase-Migration auf true setzen.
   const SLIME_COLOR_COLUMN_ENABLED = true;
@@ -23,6 +24,8 @@
   const SLIME_ACHIEVEMENTS_COLUMN_ENABLED = true;
   const CALLING_CARD_SNAPSHOT_COLUMN = "calling_card_snapshot";
   const CALLING_CARD_SNAPSHOT_FORMAT_VERSION = 1;
+  const UUID_V4_PATTERN =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   let callingCardSnapshotColumnAvailable = null;
 
   function isConfigured() {
@@ -66,6 +69,14 @@
     }
 
     return Math.min(number, 1000000);
+  }
+
+  function normalizePlayerId(value) {
+    const playerId = String(value ?? "").trim();
+    if (!UUID_V4_PATTERN.test(playerId)) {
+      throw new Error("Ungueltige Spieler-ID.");
+    }
+    return playerId;
   }
 
   function normalizeSlimeAchievementIds(value) {
@@ -137,6 +148,11 @@
     return status === 400 &&
       /calling_card_snapshot/i.test(errorDetails) &&
       /(column|schema cache|does not exist|could not find)/i.test(errorDetails);
+  }
+
+  function getRpcRow(value) {
+    if (Array.isArray(value)) return value[0] ?? null;
+    return value && typeof value === "object" ? value : null;
   }
 
   async function readResponseError(response) {
@@ -258,6 +274,7 @@
   }
 
   async function submitScore({
+    playerId,
     name,
     score,
     level,
@@ -277,12 +294,8 @@
       throw new Error("Online-Highscores sind noch nicht konfiguriert.");
     }
 
-    const payload = {
-      name: normalizeNickname(name),
-      score: normalizeScore(score),
-      level: normalizeLevel(level),
-      game_version: GAME_VERSION
-    };
+    const normalizedScore = normalizeScore(score);
+    if (normalizedScore <= 0) throw new Error("Ungueltiger Highscore.");
     const normalizedCallingCardSnapshot = normalizeCallingCardSnapshot(
       callingCardSnapshot ?? {
         playerLevel,
@@ -295,70 +308,62 @@
       }
     );
 
-    if (SLIME_COLOR_COLUMN_ENABLED) {
-      payload.slime_color = normalizeSlimeColor(slimeColor);
-    }
-    if (SLIME_COSMETIC_COLUMN_ENABLED) {
-      payload.slime_cosmetic = normalizeSlimeCosmetic(slimeCosmetic);
-    }
-    if (SLIME_BEARD_COLUMN_ENABLED) {
-      payload.slime_beard = normalizeSlimeBeard(slimeBeard);
-    }
-    if (SLIME_ACHIEVEMENTS_COLUMN_ENABLED) {
-      payload.slime_achievements = normalizeSlimeAchievementIds(slimeAchievements);
-    }
-    if (normalizedCallingCardSnapshot && callingCardSnapshotColumnAvailable !== false) {
-      payload[CALLING_CARD_SNAPSHOT_COLUMN] = normalizedCallingCardSnapshot;
-    }
+    const payload = {
+      p_player_id: normalizePlayerId(playerId),
+      p_name: normalizeNickname(name),
+      p_score: normalizedScore,
+      p_level: normalizeLevel(level),
+      p_game_version: GAME_VERSION,
+      p_slime_color: SLIME_COLOR_COLUMN_ENABLED
+        ? normalizeSlimeColor(slimeColor)
+        : null,
+      p_slime_cosmetic: SLIME_COSMETIC_COLUMN_ENABLED
+        ? normalizeSlimeCosmetic(slimeCosmetic)
+        : null,
+      p_slime_beard: SLIME_BEARD_COLUMN_ENABLED
+        ? normalizeSlimeBeard(slimeBeard)
+        : null,
+      p_slime_achievements: SLIME_ACHIEVEMENTS_COLUMN_ENABLED
+        ? normalizeSlimeAchievementIds(slimeAchievements)
+        : [],
+      p_calling_card_snapshot: normalizedCallingCardSnapshot
+    };
 
-    console.info("[Highscore] INSERT START");
+    console.info("[Highscore] GLOBAL BEST UPSERT START");
 
-    const postPayload = body => fetch(
-      `${SUPABASE_URL}/rest/v1/${TABLE}`,
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/${SUBMIT_GLOBAL_BEST_RPC}`,
       {
         method: "POST",
         headers: headers({
+          Accept: "application/json",
           "Content-Type": "application/json",
-          Prefer: "return=minimal"
         }),
-        body: JSON.stringify(body)
+        body: JSON.stringify(payload),
+        cache: "no-store"
       }
     );
-    let submittedCallingCardSnapshot = Object.prototype.hasOwnProperty.call(
-      payload,
-      CALLING_CARD_SNAPSHOT_COLUMN
-    );
-    let response = await postPayload(payload);
-    let errorDetails = "";
-
-    if (!response.ok && Object.prototype.hasOwnProperty.call(
-      payload,
-      CALLING_CARD_SNAPSHOT_COLUMN
-    )) {
-      errorDetails = await readResponseError(response);
-      if (isMissingCallingCardSnapshotColumn(response.status, errorDetails)) {
-        callingCardSnapshotColumnAvailable = false;
-        const legacyPayload = {...payload};
-        delete legacyPayload[CALLING_CARD_SNAPSHOT_COLUMN];
-        submittedCallingCardSnapshot = false;
-        response = await postPayload(legacyPayload);
-        errorDetails = "";
-      }
-    }
 
     if (!response.ok) {
-      if (!errorDetails) errorDetails = await readResponseError(response);
+      const errorDetails = await readResponseError(response);
       throw new Error(
         `Highscore konnte nicht gespeichert werden (${response.status})` +
         `${errorDetails ? `: ${errorDetails}` : "."}`
       );
     }
-    if (submittedCallingCardSnapshot) {
-      callingCardSnapshotColumnAvailable = true;
+
+    const row = getRpcRow(await response.json());
+    const storedBestScore = normalizeScore(row?.best_score ?? row?.bestScore);
+    if (storedBestScore <= 0) {
+      throw new Error("Highscore-RPC lieferte keinen gueltigen Bestscore.");
     }
 
-    console.info("[Highscore] INSERT SUCCESS");
-    return true;
+    if (normalizedCallingCardSnapshot) callingCardSnapshotColumnAvailable = true;
+    console.info("[Highscore] GLOBAL BEST UPSERT SUCCESS");
+    return {
+      bestScore: storedBestScore,
+      improved: row?.improved === true
+    };
   }
 
   window.SlimeJumpHighscores = Object.freeze({
@@ -368,6 +373,7 @@
     slimeBeardColumnEnabled: SLIME_BEARD_COLUMN_ENABLED,
     slimeAchievementsColumnEnabled: SLIME_ACHIEVEMENTS_COLUMN_ENABLED,
     callingCardSnapshotColumn: CALLING_CARD_SNAPSHOT_COLUMN,
+    submitGlobalBestRpc: SUBMIT_GLOBAL_BEST_RPC,
     getTopScores,
     submitScore
   });

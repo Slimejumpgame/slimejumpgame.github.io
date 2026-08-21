@@ -1,6 +1,6 @@
 /*
-  Slime Soar – separates Online-Modul fuer persoenliche Bestscores und Rang.
-  Dieses Modul ist bewusst nicht mit dem bestehenden Top-10-System gekoppelt.
+  Slime Soar – Installations-ID, Post-Reset-Retry und persoenlicher Rang.
+  Sichtbare Top 10 und persoenlicher Rang verwenden dieselbe Highscore-Tabelle.
 */
 
 (() => {
@@ -11,15 +11,15 @@
     "sb_publishable_DDpbowG2-g6ZVios1OTrfA_DkUyh2TC";
 
   const INSTALLATION_ID_STORAGE_KEY = "slimejumperInstallationId";
-  const LOCAL_PERSONAL_BEST_STORAGE_KEY = "slimejumperBest";
-  const SUBMIT_PERSONAL_BEST_RPC = "submit_slime_jump_personal_best";
+  const GLOBAL_RANK_BEST_STORAGE_KEY = "slimejumperGlobalRankBestV1";
+  const GLOBAL_RANK_PAYLOAD_STORAGE_KEY = "slimejumperGlobalRankBestPayloadV1";
   const GET_PERSONAL_RANK_RPC = "get_slime_jump_personal_rank";
   const MAX_PERSONAL_BEST_SCORE = 1000000000;
   const UUID_V4_PATTERN =
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
   let volatileInstallationId = null;
-  let pendingPersonalBestSubmit = Promise.resolve(null);
+  let pendingGlobalBestSubmit = Promise.resolve(null);
 
   function isConfigured() {
     return (
@@ -144,35 +144,92 @@
     }
   }
 
-  function submitPersonalBest(bestScore) {
-    const normalizedScore = normalizePositiveScore(bestScore);
-    if (normalizedScore === null) return Promise.resolve(null);
+  function normalizeGlobalBestPayload(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const score = normalizePositiveScore(value.score);
+    if (score === null) return null;
+    return {...value, score};
+  }
 
-    pendingPersonalBestSubmit = (async () => {
-      const result = await callRpc(SUBMIT_PERSONAL_BEST_RPC, {
-        p_player_id: getOrCreateInstallationId(),
-        p_best_score: normalizedScore
-      });
-      const row = getRpcRow(result);
-      const storedBestScore = normalizePositiveScore(
-        row?.best_score ?? row?.bestScore
+  function readLocalGlobalBestScore() {
+    try {
+      return normalizePositiveScore(
+        localStorage.getItem(GLOBAL_RANK_BEST_STORAGE_KEY)
       );
-      if (storedBestScore === null) return null;
-
-      return {
-        bestScore: storedBestScore,
-        improved: row?.improved === true
-      };
-    })().catch(error => {
-      console.warn("[PlayerBests] Persoenlicher Bestscore konnte nicht synchronisiert werden:", error);
+    } catch (_) {
       return null;
-    });
+    }
+  }
 
-    return pendingPersonalBestSubmit;
+  function readLocalGlobalBestPayload() {
+    try {
+      return normalizeGlobalBestPayload(JSON.parse(
+        localStorage.getItem(GLOBAL_RANK_PAYLOAD_STORAGE_KEY) || "null"
+      ));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function storeLocalGlobalBest(payload) {
+    try {
+      localStorage.setItem(
+        GLOBAL_RANK_PAYLOAD_STORAGE_KEY,
+        JSON.stringify(payload)
+      );
+      localStorage.setItem(GLOBAL_RANK_BEST_STORAGE_KEY, String(payload.score));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function submitGlobalBestPayload(payload) {
+    const online = window.SlimeJumpHighscores;
+    if (
+      typeof online?.submitScore !== "function" ||
+      online.isConfigured?.() === false
+    ) return Promise.resolve(null);
+
+    pendingGlobalBestSubmit = pendingGlobalBestSubmit
+      .catch(() => null)
+      .then(() => online.submitScore({
+        ...payload,
+        playerId: getOrCreateInstallationId()
+      }))
+      .catch(error => {
+        console.warn("[PlayerBests] Globaler Bestscore konnte nicht synchronisiert werden:", error);
+        return null;
+      });
+
+    return pendingGlobalBestSubmit;
+  }
+
+  function recordGlobalBestCandidate(value) {
+    const candidate = normalizeGlobalBestPayload(value);
+    if (!candidate) return Promise.resolve(null);
+
+    const storedScore = readLocalGlobalBestScore();
+    const storedPayload = readLocalGlobalBestPayload();
+    const shouldReplaceStoredBest =
+      storedScore === null ||
+      candidate.score > storedScore ||
+      (candidate.score === storedScore && storedPayload?.score !== storedScore);
+
+    if (shouldReplaceStoredBest) {
+      storeLocalGlobalBest(candidate);
+      return submitGlobalBestPayload(candidate);
+    }
+
+    if (!storedPayload || storedPayload.score !== storedScore) {
+      return Promise.resolve(null);
+    }
+
+    return submitGlobalBestPayload(storedPayload);
   }
 
   async function getPersonalGlobalRank() {
-    await pendingPersonalBestSubmit;
+    await pendingGlobalBestSubmit;
     const result = await callRpc(GET_PERSONAL_RANK_RPC, {
       p_player_id: getOrCreateInstallationId()
     });
@@ -186,28 +243,27 @@
     return {bestScore, rank};
   }
 
-  async function syncLocalPersonalBest() {
-    let localBest = null;
-    try {
-      localBest = localStorage.getItem(LOCAL_PERSONAL_BEST_STORAGE_KEY);
-    } catch (_) {
-      return null;
-    }
+  function syncLocalGlobalBest() {
+    const storedScore = readLocalGlobalBestScore();
+    const storedPayload = readLocalGlobalBestPayload();
+    if (
+      storedScore === null ||
+      !storedPayload ||
+      storedPayload.score !== storedScore
+    ) return Promise.resolve(null);
 
-    const normalizedScore = normalizePositiveScore(localBest);
-    return normalizedScore === null
-      ? null
-      : submitPersonalBest(normalizedScore);
+    return submitGlobalBestPayload(storedPayload);
   }
 
   window.SlimeJumpPlayerBests = Object.freeze({
     installationIdStorageKey: INSTALLATION_ID_STORAGE_KEY,
-    submitPersonalBestRpc: SUBMIT_PERSONAL_BEST_RPC,
+    globalRankBestStorageKey: GLOBAL_RANK_BEST_STORAGE_KEY,
+    globalRankPayloadStorageKey: GLOBAL_RANK_PAYLOAD_STORAGE_KEY,
     getPersonalRankRpc: GET_PERSONAL_RANK_RPC,
     isConfigured,
     getOrCreateInstallationId,
-    submitPersonalBest,
     getPersonalGlobalRank,
-    syncLocalPersonalBest
+    recordGlobalBestCandidate,
+    syncLocalGlobalBest
   });
 })();

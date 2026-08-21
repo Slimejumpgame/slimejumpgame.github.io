@@ -3,7 +3,7 @@
   const recentScoresStorageKey = "slimejumperRecentScores";
   const highScoresStorageKey = "slimejumperHighscoresV14";
   let lastOnlineScoreSubmit = Promise.resolve(null);
-  let personalBestBootstrapPromise = null;
+  let globalBestBootstrapPromise = null;
   let personalGlobalRankRequestId = 0;
   let gameToastTimer = null;
   let devPreviewSlimeColor = null;
@@ -644,30 +644,30 @@
         : "—";
   }
 
-  function bootstrapLocalPersonalBest() {
-    if (personalBestBootstrapPromise) return personalBestBootstrapPromise;
+  function bootstrapLocalGlobalBest() {
+    if (globalBestBootstrapPromise) return globalBestBootstrapPromise;
     const playerBests = window.SlimeJumpPlayerBests;
 
-    if (typeof playerBests?.syncLocalPersonalBest !== "function") {
-      personalBestBootstrapPromise = Promise.resolve(null);
-      return personalBestBootstrapPromise;
+    if (typeof playerBests?.syncLocalGlobalBest !== "function") {
+      globalBestBootstrapPromise = Promise.resolve(null);
+      return globalBestBootstrapPromise;
     }
 
     try {
-      personalBestBootstrapPromise = Promise.resolve(
-        playerBests.syncLocalPersonalBest()
+      globalBestBootstrapPromise = Promise.resolve(
+        playerBests.syncLocalGlobalBest()
       ).catch(() => null);
     } catch (_) {
-      personalBestBootstrapPromise = Promise.resolve(null);
+      globalBestBootstrapPromise = Promise.resolve(null);
     }
 
-    return personalBestBootstrapPromise;
+    return globalBestBootstrapPromise;
   }
 
   async function updatePersonalGlobalRank() {
     const requestId = ++personalGlobalRankRequestId;
     renderPersonalGlobalRank(null);
-    await bootstrapLocalPersonalBest();
+    await bootstrapLocalGlobalBest();
     if (requestId !== personalGlobalRankRequestId) return;
 
     const playerBests = window.SlimeJumpPlayerBests;
@@ -1696,20 +1696,10 @@
     } catch (_) {}
   }
 
-  function qualifiesForOnlineTopTen(finalScore, onlineScores) {
-    const validOnlineScores = (Array.isArray(onlineScores) ? onlineScores : [])
-      .map(entry => Number(entry?.score))
-      .filter(scoreValue => Number.isFinite(scoreValue) && scoreValue >= 0);
-
-    if (validOnlineScores.length < 10) return true;
-    const lowestTopTenScore = Math.min(...validOnlineScores.slice(0, 10));
-    return Math.max(0, Math.floor(Number(finalScore) || 0)) > lowestTopTenScore;
-  }
-
   function submitOnlineHighScore(name, finalScore, reachedLevel, identitySnapshot) {
-    const online = window.SlimeJumpHighscores;
-    if (!online?.isConfigured?.()) {
-      console.info("[Highscore] COMMIT SKIPPED reason=online-not-configured");
+    const playerBests = window.SlimeJumpPlayerBests;
+    if (typeof playerBests?.recordGlobalBestCandidate !== "function") {
+      console.info("[Highscore] COMMIT SKIPPED reason=global-ranking-unavailable");
       lastOnlineScoreSubmit = Promise.resolve(null);
       return lastOnlineScoreSubmit;
     }
@@ -1733,24 +1723,11 @@
       callingCardSnapshot: identity
     };
 
-    lastOnlineScoreSubmit = (async () => {
-      const onlineScores = await online.getTopScores(10);
-      const validEntryCount = (Array.isArray(onlineScores) ? onlineScores : [])
-        .filter(entry => Number.isFinite(Number(entry?.score)) && Number(entry.score) >= 0)
-        .length;
-      const qualifies = qualifiesForOnlineTopTen(submittedScore.score, onlineScores);
-
-      console.info(`[Highscore] ONLINE ENTRIES=${validEntryCount}`);
-      console.info(`[Highscore] QUALIFIES=${qualifies}`);
-      if (!qualifies) {
-        console.info("[Highscore] COMMIT SKIPPED reason=not-qualified");
-        return null;
-      }
-
-      console.info(`[Highscore] NAME CONFIRMED=${submittedScore.name}`);
-      await online.submitScore(submittedScore);
-      return submittedScore;
-    })()
+    console.info(`[Highscore] NAME CONFIRMED=${submittedScore.name}`);
+    lastOnlineScoreSubmit = Promise.resolve(
+      playerBests.recordGlobalBestCandidate(submittedScore)
+    )
+      .then(result => result ? submittedScore : null)
       .catch(error => {
         console.error("[Highscore] Online submit failed:", error);
         throw error;
@@ -1792,20 +1769,6 @@
     } catch (_) {}
 
     saveHighScore(name, finalScore, reachedLevel, identity);
-  }
-
-  function syncPersonalBestForCommittedHighScore() {
-    const playerBests = window.SlimeJumpPlayerBests;
-    if (typeof playerBests?.syncLocalPersonalBest !== "function") return;
-
-    try {
-      void Promise.resolve(playerBests.syncLocalPersonalBest())
-        .catch(error => {
-          console.warn("[PlayerBests] Hintergrund-Sync fehlgeschlagen:", error);
-        });
-    } catch (error) {
-      console.warn("[PlayerBests] Hintergrund-Sync konnte nicht gestartet werden:", error);
-    }
   }
 
   function showNicknameEntry() {
@@ -1855,8 +1818,6 @@
     );
 
     pendingScore.commitPromise = (async () => {
-      syncPersonalBestForCommittedHighScore();
-
       try {
         await submitOnlineHighScore(
           nickname,

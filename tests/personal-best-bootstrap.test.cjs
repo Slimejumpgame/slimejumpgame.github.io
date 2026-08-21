@@ -26,11 +26,51 @@ function response(json) {
   };
 }
 
-function createBootstrapFixture({localBest, networkFails = false} = {}) {
-  const storage = new Map([["slimejumperBest", String(localBest ?? 0)]]);
+function retryPayload(score) {
+  return {
+    name: "ABC",
+    score,
+    level: 7,
+    slimeColor: "green",
+    slimeCosmetic: "none",
+    slimeBeard: "none",
+    slimeAchievements: [],
+    callingCardSnapshot: {
+      playerLevel: 9,
+      prestigeLevel: 0,
+      prestigeFrame: "none",
+      prestigeTitle: "none",
+      prestigeAura: "none",
+      prestigeTrail: "none",
+      slimeAchievements: []
+    }
+  };
+}
+
+function createBootstrapFixture({
+  lifetimeBest = 50000,
+  globalBest = null,
+  networkFails = false
+} = {}) {
+  const storage = new Map([
+    ["slimejumperInstallationId", INSTALLATION_ID],
+    ["slimejumperBest", String(lifetimeBest)]
+  ]);
+  if (globalBest !== null) {
+    storage.set("slimejumperGlobalRankBestV1", String(globalBest));
+    storage.set(
+      "slimejumperGlobalRankBestPayloadV1",
+      JSON.stringify(retryPayload(globalBest))
+    );
+  }
   const calls = [];
   const ui = {personalGlobalRankValue: {textContent: "initial"}};
-  const window = {};
+  const window = {
+    SlimeAchievements: {registry: []},
+    SlimePrestige: {
+      normalizeIdentitySnapshot: value => ({...value, prestigeEmblemId: "none"})
+    }
+  };
   const context = vm.createContext({
     window,
     testUi: ui,
@@ -41,16 +81,13 @@ function createBootstrapFixture({localBest, networkFails = false} = {}) {
     fetch: async (url, options) => {
       calls.push({url, options});
       if (networkFails) throw new Error("offline");
-      if (url.endsWith("/submit_slime_jump_personal_best")) {
+      if (url.endsWith("/submit_slime_jump_global_best")) {
         const payload = JSON.parse(options.body);
-        return response([{
-          best_score: payload.p_best_score,
-          improved: true
-        }]);
+        return response([{best_score: payload.p_score, improved: true}]);
       }
       if (url.endsWith("/get_slime_jump_personal_rank")) {
-        return localBest > 0
-          ? response([{best_score: localBest, rank: 37}])
+        return globalBest !== null
+          ? response([{best_score: globalBest, rank: 37}])
           : response([{best_score: null, rank: null}]);
       }
       throw new Error(`unexpected URL: ${url}`);
@@ -58,9 +95,16 @@ function createBootstrapFixture({localBest, networkFails = false} = {}) {
     crypto: {randomUUID: () => INSTALLATION_ID},
     Uint8Array,
     Math,
-    console: {warn() {}}
+    URLSearchParams,
+    normalizeSlimeColor: value => value,
+    normalizeSlimeCosmetic: value => value,
+    normalizeSlimeBeard: value => value,
+    console: {info() {}, warn() {}}
   });
 
+  vm.runInContext(read("js/slime-jump-highscores.js"), context, {
+    filename: "js/slime-jump-highscores.js"
+  });
   vm.runInContext(read("js/slime-jump-player-bests.js"), context, {
     filename: "js/slime-jump-player-bests.js"
   });
@@ -73,89 +117,66 @@ function createBootstrapFixture({localBest, networkFails = false} = {}) {
   );
   vm.runInContext(`
     const ui = testUi;
-    let personalBestBootstrapPromise = null;
+    let globalBestBootstrapPromise = null;
     let personalGlobalRankRequestId = 0;
     ${rankFunctions}
     globalThis.bootstrapTestApi = {updatePersonalGlobalRank};
-  `, context, {filename: "js/ui-personal-best-bootstrap-slice.js"});
+  `, context, {filename: "js/ui-global-best-bootstrap-slice.js"});
 
   return {
     update: context.bootstrapTestApi.updatePersonalGlobalRank,
     calls,
-    rankValue: ui.personalGlobalRankValue
+    rankValue: ui.personalGlobalRankValue,
+    storage
   };
 }
 
-async function assertExistingPlayerIsBootstrappedBeforeRank() {
-  const fixture = createBootstrapFixture({localBest: 50000});
+async function assertHistoricalLifetimeBestIsIgnored() {
+  const fixture = createBootstrapFixture({lifetimeBest: 50000});
+  await fixture.update();
+
+  assert.equal(
+    fixture.calls.filter(call => /submit_slime_jump_global_best$/.test(call.url)).length,
+    0
+  );
+  assert.equal(fixture.storage.get("slimejumperBest"), "50000");
+  assert.equal(fixture.storage.has("slimejumperGlobalRankBestV1"), false);
+  assert.equal(fixture.rankValue.textContent, "—");
+}
+
+async function assertPostResetBestIsSubmittedBeforeRank() {
+  const fixture = createBootstrapFixture({globalBest: 6000});
   await fixture.update();
 
   assert.equal(fixture.calls.length, 2);
-  assert.match(fixture.calls[0].url, /\/submit_slime_jump_personal_best$/);
-  assert.deepEqual(
-    JSON.parse(fixture.calls[0].options.body),
-    {p_player_id: INSTALLATION_ID, p_best_score: 50000}
-  );
+  assert.match(fixture.calls[0].url, /\/submit_slime_jump_global_best$/);
+  assert.equal(JSON.parse(fixture.calls[0].options.body).p_score, 6000);
   assert.match(fixture.calls[1].url, /\/get_slime_jump_personal_rank$/);
   assert.equal(fixture.rankValue.textContent, "37");
 }
 
-async function assertZeroBestDoesNotSubmit() {
-  const fixture = createBootstrapFixture({localBest: 0});
-  await fixture.update();
+async function assertFailureIsIsolatedAndBootstrapRunsOnce() {
+  const offline = createBootstrapFixture({globalBest: 6000, networkFails: true});
+  await assert.doesNotReject(() => offline.update());
+  assert.equal(offline.rankValue.textContent, "—");
 
+  const online = createBootstrapFixture({globalBest: 6000});
+  await online.update();
+  await online.update();
   assert.equal(
-    fixture.calls.filter(call => /submit_slime_jump_personal_best$/.test(call.url)).length,
-    0
-  );
-  assert.equal(fixture.rankValue.textContent, "—");
-}
-
-async function assertNetworkFailureIsIsolated() {
-  const fixture = createBootstrapFixture({localBest: 50000, networkFails: true});
-  await assert.doesNotReject(() => fixture.update());
-  assert.equal(fixture.rankValue.textContent, "—");
-}
-
-async function assertBootstrapRunsOnlyOncePerSession() {
-  const fixture = createBootstrapFixture({localBest: 50000});
-  await fixture.update();
-  await fixture.update();
-
-  assert.equal(
-    fixture.calls.filter(call => /submit_slime_jump_personal_best$/.test(call.url)).length,
+    online.calls.filter(call => /submit_slime_jump_global_best$/.test(call.url)).length,
     1
   );
   assert.equal(
-    fixture.calls.filter(call => /get_slime_jump_personal_rank$/.test(call.url)).length,
+    online.calls.filter(call => /get_slime_jump_personal_rank$/.test(call.url)).length,
     2
   );
 }
 
-function assertMainMenuAndTopTenIsolation() {
-  const uiSource = read("js/ui.js");
-  assert.match(
-    uiSource,
-    /if \(screenName === "main"\)[\s\S]*?void updatePersonalGlobalRank\(\);/
-  );
-  assert.match(
-    uiSource,
-    /function syncPersonalBestForCommittedHighScore\(\)[\s\S]*?syncLocalPersonalBest/
-  );
-
-  const topTenSource = read("js/slime-jump-highscores.js");
-  assert.doesNotMatch(
-    topTenSource,
-    /personalBestBootstrap|syncLocalPersonalBest|SlimeJumpPlayerBests/
-  );
-}
-
 (async () => {
-  await assertExistingPlayerIsBootstrappedBeforeRank();
-  await assertZeroBestDoesNotSubmit();
-  await assertNetworkFailureIsIsolated();
-  await assertBootstrapRunsOnlyOncePerSession();
-  assertMainMenuAndTopTenIsolation();
+  await assertHistoricalLifetimeBestIsIgnored();
+  await assertPostResetBestIsSubmittedBeforeRank();
+  await assertFailureIsIsolatedAndBootstrapRunsOnce();
   console.log("Personal best bootstrap tests passed.");
 })().catch(error => {
   console.error(error);

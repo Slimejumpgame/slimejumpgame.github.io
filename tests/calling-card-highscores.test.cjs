@@ -154,7 +154,7 @@ async function assertGlobalSnapshotRoundTrip(prestigeApi, snapshot) {
     calls.push({url, options});
     return options.method === "GET"
       ? response({json: globalRows})
-      : response();
+      : response({json: [{best_score: 9000, improved: true}]});
   });
 
   const rows = await api.getTopScores(10);
@@ -173,6 +173,7 @@ async function assertGlobalSnapshotRoundTrip(prestigeApi, snapshot) {
   assert.deepEqual(Array.from(rows[1].slimeAchievements), ["badge-2"]);
 
   await api.submitScore({
+    playerId: "11111111-2222-4333-8444-555555555555",
     name: "NEW",
     score: 9000,
     level: 12,
@@ -180,14 +181,15 @@ async function assertGlobalSnapshotRoundTrip(prestigeApi, snapshot) {
     callingCardSnapshot: snapshot
   });
   const submitted = JSON.parse(calls.at(-1).options.body);
-  assert.equal(submitted.calling_card_snapshot.playerLevel, 42);
-  assert.equal(submitted.calling_card_snapshot.prestigeLevel, 10);
-  assert.equal(submitted.calling_card_snapshot.prestigeEmblemId, "prestige-final-crest");
-  assert.equal(submitted.calling_card_snapshot.prestigeTitle, "prestige-title-p10");
-  assert.equal(submitted.calling_card_snapshot.prestigeFrame, "prestige-frame-p10");
-  assert.equal(submitted.calling_card_snapshot.prestigeAura, "prestige-aura-p8");
-  assert.equal(submitted.calling_card_snapshot.prestigeTrail, "prestige-trail-p9");
-  assert.equal(submitted.calling_card_snapshot.slimeAchievements.length, 5);
+  assert.match(calls.at(-1).url, /\/rpc\/submit_slime_jump_global_best$/);
+  assert.equal(submitted.p_calling_card_snapshot.playerLevel, 42);
+  assert.equal(submitted.p_calling_card_snapshot.prestigeLevel, 10);
+  assert.equal(submitted.p_calling_card_snapshot.prestigeEmblemId, "prestige-final-crest");
+  assert.equal(submitted.p_calling_card_snapshot.prestigeTitle, "prestige-title-p10");
+  assert.equal(submitted.p_calling_card_snapshot.prestigeFrame, "prestige-frame-p10");
+  assert.equal(submitted.p_calling_card_snapshot.prestigeAura, "prestige-aura-p8");
+  assert.equal(submitted.p_calling_card_snapshot.prestigeTrail, "prestige-trail-p9");
+  assert.equal(submitted.p_calling_card_snapshot.slimeAchievements.length, 5);
 }
 
 async function assertMissingColumnFallback(prestigeApi, snapshot) {
@@ -217,7 +219,7 @@ async function assertMissingColumnFallback(prestigeApi, snapshot) {
         slime_achievements: ["badge-1"]
       }]});
     }
-    return response();
+    return response({json: [{best_score: 7100, improved: true}]});
   });
 
   const rows = await api.getTopScores(10);
@@ -226,6 +228,7 @@ async function assertMissingColumnFallback(prestigeApi, snapshot) {
   assert.equal(rows[0].hasIdentitySnapshot, false);
 
   await api.submitScore({
+    playerId: "11111111-2222-4333-8444-555555555555",
     name: "NEW",
     score: 7100,
     level: 9,
@@ -233,7 +236,7 @@ async function assertMissingColumnFallback(prestigeApi, snapshot) {
     callingCardSnapshot: snapshot
   });
   const fallbackPayload = JSON.parse(calls.at(-1).options.body);
-  assert.equal(Object.hasOwn(fallbackPayload, "calling_card_snapshot"), false);
+  assert.equal(fallbackPayload.p_calling_card_snapshot.playerLevel, 42);
 }
 
 class FakeElement {
@@ -353,7 +356,7 @@ function assertLocalPersistenceAndRendering(prestigeApi, snapshot) {
   const renderedLegacyCard = highscoreRows.children[1].children[1];
   assert.match(collectText(renderedNewCard), /NEW/);
   assert.match(collectText(renderedNewCard), /LEVEL 42/);
-  assert.match(collectText(renderedNewCard), /P10/);
+  assert.doesNotMatch(collectText(renderedNewCard), /P10/);
   assert.match(collectText(renderedNewCard), /PRESTIGE MASTER/);
   assert.match(collectText(renderedNewCard), /500/);
   assert.match(collectText(renderedLegacyCard), /LEGACY/);
@@ -400,15 +403,17 @@ function assertLocalPersistenceAndRendering(prestigeApi, snapshot) {
   );
   assert.equal(
     prestigeZeroCard.className,
-    "highscoreCallingCard highscoreCallingCard--noPrestige"
+    "highscoreCallingCard"
   );
-  assert.equal(prestigeZeroCard.children.length, 5);
-  assert.equal(prestigeZeroCard.children[2].className, "highscoreCallingCardCore");
+  assert.equal(prestigeZeroCard.children.length, 6);
+  assert.equal(prestigeZeroCard.children[2].className, "highscoreCallingCardPrestigeBlock");
+  assert.equal(prestigeZeroCard.children[2].children.length, 0);
+  assert.equal(prestigeZeroCard.children[3].className, "highscoreCallingCardCore");
   assert.equal(
     prestigeZeroCard.children.some(child =>
       child.className === "highscoreCallingCardPrestigeBlock"
     ),
-    false
+    true
   );
   assert.doesNotMatch(collectText(prestigeZeroCard), /\bP0\b/);
   assert.doesNotMatch(prestigeZeroCard.attributes["aria-label"], /Prestige P0/);
@@ -440,7 +445,8 @@ function assertLocalPersistenceAndRendering(prestigeApi, snapshot) {
     prestigeOneCard.children[2].children[0].className,
     "highscorePrestigeEmblem"
   );
-  assert.equal(prestigeOneCard.children[2].children[1].textContent, "P1");
+  assert.equal(prestigeOneCard.children[2].children.length, 1);
+  assert.doesNotMatch(collectText(prestigeOneCard), /\bP1\b/);
 
   const storageBeforeDevTest = localStorage.snapshot();
   const devEntry = context.highscoreTestApi.createDevCallingCardTestEntry();
@@ -477,13 +483,13 @@ function assertLocalPersistenceAndRendering(prestigeApi, snapshot) {
   assert.match(collectText(previewRow), /DEV TEST/);
   assert.match(collectText(previewRow), /LEVEL 100/);
   assert.match(collectText(previewRow), /RUN LEVEL 100/);
-  assert.match(collectText(previewRow), /P10/);
+  assert.doesNotMatch(collectText(previewRow), /P10/);
   assert.match(collectText(previewRow), /PRESTIGE MASTER/);
   const previewCard = previewRow.children[1];
   const previewPrestige = previewCard.children[2];
   const previewCallingCard = previewCard.children[3];
   assert.equal(previewPrestige.children[0].className, "highscorePrestigeEmblem");
-  assert.equal(previewPrestige.children[1].textContent, "P10");
+  assert.equal(previewPrestige.children.length, 1);
   assert.equal(previewCallingCard.dataset.prestigeFrame, "prestige-frame-p10");
   assert.equal(Object.hasOwn(previewCallingCard.dataset, "prestigeAura"), false);
   assert.equal(Object.hasOwn(previewCallingCard.dataset, "prestigeTrail"), false);
@@ -619,7 +625,7 @@ function assertStaticReleaseGuards() {
 
   const css = read("css/style.css");
   assert.match(css, /\.highscoreCallingCard\s*\{/);
-  assert.match(css, /\.highscoreCallingCard--noPrestige\s*\{/);
+  assert.doesNotMatch(css, /\.highscoreCallingCard--noPrestige\s*\{/);
   assert.match(css, /\.highscoreCallingCardCore\s*\{/);
   assert.match(css, /grid-template-columns:[\s\S]*?minmax\(150px, 2fr\)/);
   assert.match(css, /\.highscoreCallingCardCore\[data-prestige-frame="prestige-frame-p10"\] \.highscoreCallingCardTitle/);
@@ -651,7 +657,7 @@ function assertStaticReleaseGuards() {
   assert.match(migrationWithoutComments, /add column if not exists calling_card_snapshot jsonb/i);
 
   assert.match(read("js/slime-progress-reset.js"), /progress-reset-2\.43/);
-  assert.match(read("js/slime-jump-highscores.js"), /GAME_VERSION = "2\.64"/);
+  assert.match(read("js/slime-jump-highscores.js"), /GAME_VERSION = "2\.66"/);
 }
 
 (async () => {
