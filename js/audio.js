@@ -101,6 +101,25 @@
     }
   };
 
+  // Die neuen Biome verwenden bewusst vorhandene Themes. Eigene Schlüssel
+  // verhindern, dass beim Biomwechsel versehentlich die vorige Musik weiterläuft.
+  const BIOME_MUSIC_ALIASES = Object.freeze({
+    stormNight: "night",
+    neonCity: "crystalCave",
+    mushroomCave: "crystalCave",
+    abandonedMine: "swamp",
+    bambooNight: "night",
+    pirateHarbor: "coast",
+    alienJungle: "crystalCave",
+    enchantedGarden: "night",
+    redMoon: "volcano",
+    undergroundTemple: "desert"
+  });
+
+  for (const [biomeId, themeId] of Object.entries(BIOME_MUSIC_ALIASES)) {
+    MUSIC_THEMES[biomeId] = MUSIC_THEMES[themeId];
+  }
+
   const activeMusicVoices = new Set();
 
   function getMusicBus() {
