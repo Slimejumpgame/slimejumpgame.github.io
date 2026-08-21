@@ -14,7 +14,20 @@
     "wizard_beard",
     "braided_beard",
     "lumberjack_beard",
-    "imperial_beard"
+    "imperial_beard",
+    "walrus_mustache",
+    "horseshoe_mustache",
+    "soul_patch",
+    "chinstrap_beard",
+    "mutton_chops",
+    "ducktail_beard",
+    "forked_beard",
+    "curly_beard",
+    "box_beard",
+    "pharaoh_beard",
+    "fan_beard",
+    "pencil_mustache",
+    "circle_beard"
   ]);
 
   const UNLOCKABLE_SLIME_BEARDS = Object.freeze(
@@ -98,6 +111,97 @@
       anchorY: 0.18,
       scale: 0.94,
       palette: Object.freeze({main: "#56352d", dark: "#241516", light: "#9d6551"})
+    }),
+    walrus_mustache: Object.freeze({
+      name: "Walrossbart",
+      anchorX: 0,
+      anchorY: 0.17,
+      scale: 0.86,
+      palette: Object.freeze({main: "#7a5137", dark: "#38241c", light: "#b17d55"})
+    }),
+    horseshoe_mustache: Object.freeze({
+      name: "Hufeisenbart",
+      anchorX: 0,
+      anchorY: 0.15,
+      scale: 0.84,
+      palette: Object.freeze({main: "#3f302b", dark: "#1c1514", light: "#786057"})
+    }),
+    soul_patch: Object.freeze({
+      name: "Soul Patch",
+      anchorX: 0,
+      anchorY: 0.20,
+      scale: 0.95,
+      palette: Object.freeze({main: "#5c3b2e", dark: "#281916", light: "#9b6850"})
+    }),
+    chinstrap_beard: Object.freeze({
+      name: "Kinnriemenbart",
+      anchorX: 0,
+      anchorY: 0.08,
+      scale: 0.78,
+      palette: Object.freeze({main: "#47312a", dark: "#211713", light: "#765348"})
+    }),
+    mutton_chops: Object.freeze({
+      name: "Koteletten",
+      anchorX: 0,
+      anchorY: 0.10,
+      scale: 0.86,
+      palette: Object.freeze({main: "#8b4d2d", dark: "#422417", light: "#c77a4a"})
+    }),
+    ducktail_beard: Object.freeze({
+      name: "Entenschwanzbart",
+      anchorX: 0,
+      anchorY: 0.10,
+      scale: 0.74,
+      palette: Object.freeze({main: "#66412f", dark: "#2d1c18", light: "#a36f50"})
+    }),
+    forked_beard: Object.freeze({
+      name: "Gabelbart",
+      anchorX: 0,
+      anchorY: 0.10,
+      scale: 0.74,
+      palette: Object.freeze({main: "#b45f2f", dark: "#572a1c", light: "#e49555"})
+    }),
+    curly_beard: Object.freeze({
+      name: "Lockenbart",
+      anchorX: 0,
+      anchorY: 0.11,
+      scale: 0.76,
+      palette: Object.freeze({main: "#d4c5ac", dark: "#766c61", light: "#fff4df"})
+    }),
+    box_beard: Object.freeze({
+      name: "Kastenbart",
+      anchorX: 0,
+      anchorY: 0.13,
+      scale: 0.80,
+      palette: Object.freeze({main: "#5d3825", dark: "#2b1913", light: "#936044"})
+    }),
+    pharaoh_beard: Object.freeze({
+      name: "Pharaonenbart",
+      anchorX: 0,
+      anchorY: 0.11,
+      scale: 0.75,
+      palette: Object.freeze({main: "#315c78", dark: "#182d3d", light: "#5f91ad", band: "#e0b84f"})
+    }),
+    fan_beard: Object.freeze({
+      name: "Fächerbart",
+      anchorX: 0,
+      anchorY: 0.13,
+      scale: 0.82,
+      palette: Object.freeze({main: "#7c4a2e", dark: "#392117", light: "#bc7950"})
+    }),
+    pencil_mustache: Object.freeze({
+      name: "Bleistiftbart",
+      anchorX: 0,
+      anchorY: 0.17,
+      scale: 0.96,
+      palette: Object.freeze({main: "#342522", dark: "#160f0f", light: "#725149"})
+    }),
+    circle_beard: Object.freeze({
+      name: "Rundbart",
+      anchorX: 0,
+      anchorY: 0.18,
+      scale: 0.78,
+      palette: Object.freeze({main: "#75503b", dark: "#33231c", light: "#ad795a"})
     })
   });
 

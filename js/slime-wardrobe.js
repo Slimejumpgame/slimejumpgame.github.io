@@ -1,63 +1,17 @@
 "use strict";
 
-  const WARDROBE_UNLOCK_REQUIREMENTS = Object.freeze([
-    25,
-    30,
-    35,
-    40,
-    50,
-    60,
-    70,
-    80,
-    90,
-    100,
-    110,
-    120,
-    130,
-    140,
-    150,
-    160,
-    170,
-    180,
-    190,
-    200,
-    210,
-    220,
-    230,
-    240,
-    250,
-    260,
-    270,
-    280,
-    290,
-    300,
-    310,
-    320,
-    330,
-    340,
-    350,
-    360,
-    370,
-    380,
-    390,
-    400,
-    410,
-    420,
-    430,
-    440,
-    450,
-    460,
-    470,
-    480,
-    490,
-    500,
-    510,
-    520,
-    530,
-    540,
-    550,
-    560
-  ]);
+  const WARDROBE_UNLOCK_START = 15;
+  const WARDROBE_UNLOCK_STEP = 5;
+  const WARDROBE_UNLOCK_ITEM_COUNT =
+    (SLIME_COLOR_ORDER.length - 1) +
+    UNLOCKABLE_SLIME_COSMETICS.length +
+    UNLOCKABLE_SLIME_BEARDS.length;
+  const WARDROBE_UNLOCK_REQUIREMENTS = Object.freeze(
+    Array.from(
+      {length: WARDROBE_UNLOCK_ITEM_COUNT},
+      (_, index) => WARDROBE_UNLOCK_START + index * WARDROBE_UNLOCK_STEP
+    )
+  );
 
   const WARDROBE_PROGRESS_VERSION_STORAGE_KEY = "slimejumperWardrobeProgressVersion";
   const WARDROBE_PROGRESS_VERSION = "unified-wardrobe-v1";
