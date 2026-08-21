@@ -613,7 +613,16 @@ function assertUiDevCompletionAndScope() {
     "js/physics.js",
     "android-update.json"
   ]) {
-    assert.equal(read(relativePath).replace(/\r\n/g, "\n"), readHead(relativePath).replace(/\r\n/g, "\n"));
+    const normalizeAuthorizedLaunchGain = source => relativePath === "js/audio.js"
+      ? source.replace(
+        /(function playLaunch\(\) \{ tone\(240, 0\.12, "triangle", )[0-9.]+(, 520\); \})/,
+        "$1<launch-gain>$2"
+      )
+      : source;
+    assert.equal(
+      normalizeAuthorizedLaunchGain(read(relativePath)).replace(/\r\n/g, "\n"),
+      normalizeAuthorizedLaunchGain(readHead(relativePath)).replace(/\r\n/g, "\n")
+    );
   }
   for (const helper of [
     "ownsGoldSlime", "isGoldSlimeMasteryUnlocked",

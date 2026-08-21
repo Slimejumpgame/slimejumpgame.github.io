@@ -310,7 +310,7 @@
     ui.pauseSfxBtn.setAttribute("aria-pressed", String(!sfxMuted));
   }
 
-  function playLaunch() { tone(240, 0.12, "triangle", 0.084, 520); }
+  function playLaunch() { tone(240, 0.12, "triangle", 0.0924, 520); }
   function playBounce() { tone(150, 0.07, "sine", 0.035, 105); }
   function playStar() {
     tone(660, 0.08, "sine", 0.05, 920);
