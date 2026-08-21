@@ -12,7 +12,7 @@
 
   const TABLE = "slime_jump_highscores";
   const SUBMIT_GLOBAL_BEST_RPC = "submit_slime_jump_global_best";
-  const GAME_VERSION = "2.67";
+  const GAME_VERSION = "2.68";
   // Nach der unten dokumentierten Supabase-Migration auf true setzen.
   const SLIME_COLOR_COLUMN_ENABLED = true;
   // Erst nach 

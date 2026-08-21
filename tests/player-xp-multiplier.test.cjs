@@ -355,7 +355,7 @@ function assertReleaseGuards() {
   assert.doesNotMatch(progressSource, /slimejumperBest|slimejumperStars|Supabase|calling_card/);
 
   assert.match(read("js/slime-prestige.js"), /const PRESTIGE_BALANCE = Object\.freeze\(\{xpBonusPerPrestige: 0\.00\}\);/);
-  assert.match(read("js/slime-jump-highscores.js"), /GAME_VERSION = "2\.67"/);
+  assert.match(read("js/slime-jump-highscores.js"), /GAME_VERSION = "2\.68"/);
   assert.match(read("js/slime-progress-reset.js"), /RESET_VERSION = "progress-reset-2\.43"/);
   assert.match(
     read("js/slime-progress-reset.js"),
