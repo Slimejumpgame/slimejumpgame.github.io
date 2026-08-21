@@ -1941,10 +1941,9 @@
       playerLevelBlock.append(playerLevelLabel, unavailablePlayerLevel);
     }
 
-    let prestigeBlock = null;
+    const prestigeBlock = document.createElement("span");
+    prestigeBlock.className = "highscoreCallingCardPrestigeBlock";
     if (hasVisiblePrestige) {
-      prestigeBlock = document.createElement("span");
-      prestigeBlock.className = "highscoreCallingCardPrestigeBlock";
       const emblem = document.createElement("span");
       emblem.className = "highscorePrestigeEmblem";
       emblem.dataset.prestigeEmblem = entry.prestigeEmblemId ?? "none";
@@ -1952,12 +1951,6 @@
         entry.prestigeLevel
       ) ?? "";
       prestigeBlock.appendChild(emblem);
-      const prestige = document.createElement("strong");
-      prestige.className = "highscoreCallingCardPrestige";
-      prestige.textContent = `P${entry.prestigeLevel}`;
-      prestigeBlock.appendChild(prestige);
-    } else {
-      card.className += " highscoreCallingCard--noPrestige";
     }
 
     const callingCard = document.createElement("span");
@@ -2008,8 +2001,7 @@
     scoreValue.textContent = Number(entry.score).toLocaleString("de-DE");
     score.append(scoreLabel, scoreValue);
 
-    card.append(identity, playerLevelBlock);
-    if (prestigeBlock) card.appendChild(prestigeBlock);
+    card.append(identity, playerLevelBlock, prestigeBlock);
     card.append(callingCard, runLevel, score);
     return card;
   }

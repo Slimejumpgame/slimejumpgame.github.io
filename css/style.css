@@ -3890,15 +3890,6 @@ p {
   text-align: left;
 }
 
-.highscoreCallingCard--noPrestige {
-  grid-template-columns:
-    minmax(86px, 1.3fr)
-    minmax(58px, 0.72fr)
-    minmax(150px, 2fr)
-    minmax(58px, 0.72fr)
-    minmax(76px, 0.9fr);
-}
-
 .highscoreCallingCard--empty {
   display: grid;
   grid-template-columns: 1fr;
@@ -4074,15 +4065,6 @@ p {
     padding-inline: 4px;
   }
 
-  .highscoreCallingCard--noPrestige {
-    grid-template-columns:
-      minmax(0, 1.25fr)
-      minmax(0, 0.72fr)
-      minmax(0, 1.8fr)
-      minmax(0, 0.72fr)
-      minmax(0, 0.9fr);
-  }
-
   .highscoreCallingCardIdentity {
     gap: 1px;
   }
@@ -4108,13 +4090,6 @@ p {
   .highscoreCallingCardCore { grid-area: calling; }
   .highscoreCallingCardRunLevel { grid-area: run; }
   .highscoreCallingCardScore { grid-area: score; }
-
-  .highscoreCallingCard--noPrestige {
-    grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.82fr) minmax(0, 1fr);
-    grid-template-areas:
-      "identity player score"
-      "calling run score";
-  }
 
   .highscoreCallingCardCore {
     min-height: 20px;
