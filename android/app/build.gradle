@@ -15,8 +15,8 @@ android {
         applicationId "com.slimejumpgame.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 14
-        versionName "2.69"
+        versionCode 15
+        versionName "2.70"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         aaptOptions {
