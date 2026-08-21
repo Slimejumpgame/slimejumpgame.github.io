@@ -14,6 +14,8 @@
   const GLOBAL_RANK_BEST_STORAGE_KEY = "slimejumperGlobalRankBestV1";
   const GLOBAL_RANK_PAYLOAD_STORAGE_KEY = "slimejumperGlobalRankBestPayloadV1";
   const GET_PERSONAL_RANK_RPC = "get_slime_jump_personal_rank";
+  const GLOBAL_BEST_SUBMIT_SETTLED_EVENT = "slimeglobalbestsubmitsettled";
+  const RPC_TIMEOUT_MS = 5000;
   const MAX_PERSONAL_BEST_SCORE = 1000000000;
   const UUID_V4_PATTERN =
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -110,8 +112,66 @@
     return value && typeof value === "object" ? value : null;
   }
 
+  function createAbortTimeout() {
+    const AbortControllerConstructor = globalThis.AbortController;
+    if (
+      typeof AbortControllerConstructor !== "function" ||
+      typeof globalThis.setTimeout !== "function"
+    ) return null;
+
+    const controller = new AbortControllerConstructor();
+    const timeoutId = globalThis.setTimeout(
+      () => controller.abort(),
+      RPC_TIMEOUT_MS
+    );
+    return {
+      signal: controller.signal,
+      clear() {
+        if (typeof globalThis.clearTimeout === "function") {
+          globalThis.clearTimeout(timeoutId);
+        }
+      }
+    };
+  }
+
+  function createTimeoutError(label) {
+    const error = new Error(`${label} hat das Zeitlimit ueberschritten.`);
+    error.name = "AbortError";
+    return error;
+  }
+
+  function settleWithinTimeout(promise, label, timeout = createAbortTimeout()) {
+    if (!timeout) return Promise.resolve(promise);
+
+    const timeoutResult = new Promise((_, reject) => {
+      timeout.signal.addEventListener(
+        "abort",
+        () => reject(createTimeoutError(label)),
+        {once: true}
+      );
+    });
+    return Promise.race([Promise.resolve(promise), timeoutResult])
+      .finally(() => timeout.clear());
+  }
+
+  function notifyGlobalBestSubmitSettled() {
+    const CustomEventConstructor = globalThis.CustomEvent;
+    if (
+      typeof window.dispatchEvent !== "function" ||
+      typeof CustomEventConstructor !== "function"
+    ) return;
+
+    try {
+      window.dispatchEvent(new CustomEventConstructor(
+        GLOBAL_BEST_SUBMIT_SETTLED_EVENT
+      ));
+    } catch (_) {}
+  }
+
   async function callRpc(rpcName, payload) {
     if (!isConfigured()) return null;
+
+    const timeout = createAbortTimeout();
 
     try {
       const response = await fetch(
@@ -124,7 +184,8 @@
             "Content-Type": "application/json"
           },
           body: JSON.stringify(payload),
-          cache: "no-store"
+          cache: "no-store",
+          ...(timeout ? {signal: timeout.signal} : {})
         }
       );
 
@@ -139,8 +200,13 @@
 
       return await response.json();
     } catch (error) {
-      console.warn(`[PlayerBests] RPC ${rpcName} nicht erreichbar:`, error);
+      const reason = error?.name === "AbortError"
+        ? "Zeitlimit ueberschritten"
+        : "nicht erreichbar";
+      console.warn(`[PlayerBests] RPC ${rpcName} ${reason}:`, error);
       return null;
+    } finally {
+      timeout?.clear();
     }
   }
 
@@ -193,10 +259,21 @@
 
     pendingGlobalBestSubmit = pendingGlobalBestSubmit
       .catch(() => null)
-      .then(() => online.submitScore({
-        ...payload,
-        playerId: getOrCreateInstallationId()
-      }))
+      .then(() => {
+        const timeout = createAbortTimeout();
+        const submitAttempt = Promise.resolve().then(() => online.submitScore(
+          {
+            ...payload,
+            playerId: getOrCreateInstallationId()
+          },
+          timeout ? {signal: timeout.signal} : undefined
+        ));
+        void submitAttempt.then(
+          notifyGlobalBestSubmitSettled,
+          notifyGlobalBestSubmitSettled
+        );
+        return settleWithinTimeout(submitAttempt, "Global-Best-Submit", timeout);
+      })
       .catch(error => {
         console.warn("[PlayerBests] Globaler Bestscore konnte nicht synchronisiert werden:", error);
         return null;
@@ -229,7 +306,6 @@
   }
 
   async function getPersonalGlobalRank() {
-    await pendingGlobalBestSubmit;
     const result = await callRpc(GET_PERSONAL_RANK_RPC, {
       p_player_id: getOrCreateInstallationId()
     });
@@ -260,6 +336,8 @@
     globalRankBestStorageKey: GLOBAL_RANK_BEST_STORAGE_KEY,
     globalRankPayloadStorageKey: GLOBAL_RANK_PAYLOAD_STORAGE_KEY,
     getPersonalRankRpc: GET_PERSONAL_RANK_RPC,
+    globalBestSubmitSettledEvent: GLOBAL_BEST_SUBMIT_SETTLED_EVENT,
+    rpcTimeoutMs: RPC_TIMEOUT_MS,
     isConfigured,
     getOrCreateInstallationId,
     getPersonalGlobalRank,

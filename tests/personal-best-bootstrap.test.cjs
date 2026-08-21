@@ -144,21 +144,29 @@ async function assertHistoricalLifetimeBestIsIgnored() {
   assert.equal(fixture.rankValue.textContent, "—");
 }
 
-async function assertPostResetBestIsSubmittedBeforeRank() {
+async function assertPostResetBestSyncRunsInBackground() {
   const fixture = createBootstrapFixture({globalBest: 6000});
   await fixture.update();
 
   assert.equal(fixture.calls.length, 2);
-  assert.match(fixture.calls[0].url, /\/submit_slime_jump_global_best$/);
-  assert.equal(JSON.parse(fixture.calls[0].options.body).p_score, 6000);
-  assert.match(fixture.calls[1].url, /\/get_slime_jump_personal_rank$/);
+  assert.match(fixture.calls[0].url, /\/get_slime_jump_personal_rank$/);
+  assert.match(fixture.calls[1].url, /\/submit_slime_jump_global_best$/);
+  assert.equal(JSON.parse(fixture.calls[1].options.body).p_score, 6000);
   assert.equal(fixture.rankValue.textContent, "37");
 }
 
-async function assertFailureIsIsolatedAndBootstrapRunsOnce() {
+async function assertFailureIsIsolatedAndBootstrapCanRetry() {
   const offline = createBootstrapFixture({globalBest: 6000, networkFails: true});
   await assert.doesNotReject(() => offline.update());
+  await Promise.resolve();
+  await Promise.resolve();
+  await assert.doesNotReject(() => offline.update());
   assert.equal(offline.rankValue.textContent, "—");
+
+  assert.equal(
+    offline.calls.filter(call => /submit_slime_jump_global_best$/.test(call.url)).length,
+    2
+  );
 
   const online = createBootstrapFixture({globalBest: 6000});
   await online.update();
@@ -175,8 +183,8 @@ async function assertFailureIsIsolatedAndBootstrapRunsOnce() {
 
 (async () => {
   await assertHistoricalLifetimeBestIsIgnored();
-  await assertPostResetBestIsSubmittedBeforeRank();
-  await assertFailureIsIsolatedAndBootstrapRunsOnce();
+  await assertPostResetBestSyncRunsInBackground();
+  await assertFailureIsIsolatedAndBootstrapCanRetry();
   console.log("Personal best bootstrap tests passed.");
 })().catch(error => {
   console.error(error);

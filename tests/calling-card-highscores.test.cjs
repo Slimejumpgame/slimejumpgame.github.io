@@ -172,6 +172,7 @@ async function assertGlobalSnapshotRoundTrip(prestigeApi, snapshot) {
   assert.equal(rows[1].hasIdentitySnapshot, false);
   assert.deepEqual(Array.from(rows[1].slimeAchievements), ["badge-2"]);
 
+  const requestSignal = {aborted: false};
   await api.submitScore({
     playerId: "11111111-2222-4333-8444-555555555555",
     name: "NEW",
@@ -179,8 +180,9 @@ async function assertGlobalSnapshotRoundTrip(prestigeApi, snapshot) {
     level: 12,
     slimeAchievements: snapshot.slimeAchievements,
     callingCardSnapshot: snapshot
-  });
+  }, {signal: requestSignal});
   const submitted = JSON.parse(calls.at(-1).options.body);
+  assert.equal(calls.at(-1).options.signal, requestSignal);
   assert.match(calls.at(-1).url, /\/rpc\/submit_slime_jump_global_best$/);
   assert.equal(submitted.p_calling_card_snapshot.playerLevel, 42);
   assert.equal(submitted.p_calling_card_snapshot.prestigeLevel, 10);

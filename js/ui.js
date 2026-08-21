@@ -661,14 +661,19 @@
       globalBestBootstrapPromise = Promise.resolve(null);
     }
 
-    return globalBestBootstrapPromise;
+    const activeBootstrapPromise = globalBestBootstrapPromise;
+    void activeBootstrapPromise.then(result => {
+      if (result === null && globalBestBootstrapPromise === activeBootstrapPromise) {
+        globalBestBootstrapPromise = null;
+      }
+    });
+    return activeBootstrapPromise;
   }
 
-  async function updatePersonalGlobalRank() {
+  async function updatePersonalGlobalRank({syncGlobalBest = true} = {}) {
     const requestId = ++personalGlobalRankRequestId;
     renderPersonalGlobalRank(null);
-    await bootstrapLocalGlobalBest();
-    if (requestId !== personalGlobalRankRequestId) return;
+    if (syncGlobalBest) void bootstrapLocalGlobalBest();
 
     const playerBests = window.SlimeJumpPlayerBests;
     if (typeof playerBests?.getPersonalGlobalRank !== "function") return;
@@ -683,6 +688,30 @@
       }
     }
   }
+
+  function isMainMenuVisible() {
+    return Boolean(
+      ui.menu &&
+      ui.mainMenuScreen &&
+      !ui.menu.classList.contains("hidden") &&
+      !ui.mainMenuScreen.classList.contains("hidden")
+    );
+  }
+
+  function refreshPersonalGlobalRankIfMainMenuVisible(options) {
+    if (!isMainMenuVisible()) return false;
+    void updatePersonalGlobalRank(options);
+    return true;
+  }
+
+  window.addEventListener?.("slimeglobalbestsubmitsettled", () => {
+    refreshPersonalGlobalRankIfMainMenuVisible({syncGlobalBest: false});
+  });
+
+  globalThis.document?.addEventListener?.("visibilitychange", () => {
+    if (globalThis.document?.visibilityState !== "visible") return;
+    refreshPersonalGlobalRankIfMainMenuVisible();
+  });
 
   function populatePrestigeRewardSelect(select, type) {
     if (!select) return;

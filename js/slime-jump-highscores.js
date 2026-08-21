@@ -289,7 +289,7 @@
     prestigeTitle,
     prestigeAura,
     prestigeTrail
-  }) {
+  }, {signal = null} = {}) {
     if (!isConfigured()) {
       throw new Error("Online-Highscores sind noch nicht konfiguriert.");
     }
@@ -340,7 +340,8 @@
           "Content-Type": "application/json",
         }),
         body: JSON.stringify(payload),
-        cache: "no-store"
+        cache: "no-store",
+        ...(signal ? {signal} : {})
       }
     );
 
