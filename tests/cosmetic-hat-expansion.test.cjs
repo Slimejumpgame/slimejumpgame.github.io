@@ -36,7 +36,7 @@ const NEW_HATS = Object.freeze([
   Object.freeze({id: "construction_helmet", name: "Bauhelm"}),
   Object.freeze({id: "mushroom_hat", name: "Pilzhut"}),
   Object.freeze({id: "jester_hat", name: "Narrenmütze"}),
-  Object.freeze({id: "ufo_hat", name: "UFO-Hut"})
+  Object.freeze({id: "chinese_straw_hat", name: "Chinesischer Strohhut"})
 ]);
 
 function createStorage(initial = {}) {
@@ -393,7 +393,7 @@ function assertRendererCoverageAndVisualBounds() {
 async function assertLeaderboardRoundTrip() {
   const fixture = loadCosmetics();
   const submittedBodies = [];
-  const leaderboardNames = ["HAT", "CAP", "UFO", "FUN", "MUS"];
+  const leaderboardNames = ["HAT", "CAP", "ZEN", "FUN", "MUS"];
   const leaderboardRows = NEW_HATS.map(({id}, index) => ({
     name: leaderboardNames[index],
     score: 5000 - index,

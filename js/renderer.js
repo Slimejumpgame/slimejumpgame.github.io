@@ -1825,60 +1825,54 @@
         context.arc(x, -1, 2.2, 0, Math.PI * 2);
         context.fill();
       }
-    } else if (cosmetic === "ufo_hat") {
-      context.save();
-      context.globalAlpha = 0.82;
-      const glassGradient = context.createLinearGradient(0, -29, 0, -4);
-      glassGradient.addColorStop(0, palette.light);
-      glassGradient.addColorStop(0.35, palette.glass);
-      glassGradient.addColorStop(1, "rgba(48,126,166,0.38)");
-      context.fillStyle = glassGradient;
+    } else if (cosmetic === "chinese_straw_hat") {
+      const strawGradient = context.createLinearGradient(-34, -35, 34, 7);
+      strawGradient.addColorStop(0, palette.light);
+      strawGradient.addColorStop(0.48, palette.main);
+      strawGradient.addColorStop(1, palette.underside);
+      context.fillStyle = strawGradient;
       context.strokeStyle = palette.dark;
       context.beginPath();
-      context.ellipse(0, -11, 16, 17, 0, Math.PI, Math.PI * 2);
-      context.lineTo(16, -8);
-      context.lineTo(-16, -8);
+      context.moveTo(0, -36);
+      context.quadraticCurveTo(3, -36, 6, -31);
+      context.lineTo(38, -3);
+      context.quadraticCurveTo(0, 8, -38, -3);
+      context.lineTo(-6, -31);
+      context.quadraticCurveTo(-3, -36, 0, -36);
       context.closePath();
       context.fill();
       context.stroke();
-      context.restore();
 
-      context.fillStyle = palette.glow;
-      context.beginPath();
-      context.arc(0, -13, 6, 0, Math.PI * 2);
-      context.fill();
-      context.fillStyle = palette.dark;
-      context.beginPath();
-      context.arc(-2, -14, 1.2, 0, Math.PI * 2);
-      context.arc(2, -14, 1.2, 0, Math.PI * 2);
-      context.fill();
-
-      const saucerGradient = context.createLinearGradient(-36, -8, 36, 8);
-      saucerGradient.addColorStop(0, palette.dark);
-      saucerGradient.addColorStop(0.35, palette.light);
-      saucerGradient.addColorStop(0.62, palette.main);
-      saucerGradient.addColorStop(1, palette.dark);
-      context.fillStyle = saucerGradient;
-      context.strokeStyle = palette.dark;
-      context.beginPath();
-      context.moveTo(-38, -6);
-      context.quadraticCurveTo(0, -17, 38, -6);
-      context.quadraticCurveTo(29, 9, 0, 10);
-      context.quadraticCurveTo(-29, 9, -38, -6);
-      context.closePath();
-      context.fill();
-      context.stroke();
-      context.fillStyle = palette.glow;
-      for (const x of [-24, -8, 8, 24]) {
+      context.strokeStyle = palette.weave;
+      context.lineWidth = 1.6;
+      for (const brimX of [-29, -15, 0, 15, 29]) {
         context.beginPath();
-        context.arc(x, 1, 2.5, 0, Math.PI * 2);
-        context.fill();
+        context.moveTo(0, -33);
+        context.lineTo(brimX, -2);
+        context.stroke();
       }
-      context.strokeStyle = palette.light;
-      context.lineWidth = 2;
       context.beginPath();
-      context.moveTo(-23, -7);
-      context.quadraticCurveTo(0, -13, 23, -7);
+      context.moveTo(-15, -20);
+      context.quadraticCurveTo(0, -15, 15, -20);
+      context.moveTo(-27, -10);
+      context.quadraticCurveTo(0, -2, 27, -10);
+      context.stroke();
+
+      context.fillStyle = palette.underside;
+      context.strokeStyle = palette.dark;
+      context.lineWidth = 2.5;
+      context.beginPath();
+      context.moveTo(-38, -3);
+      context.quadraticCurveTo(0, 8, 38, -3);
+      context.quadraticCurveTo(0, 13, -38, -3);
+      context.closePath();
+      context.fill();
+      context.stroke();
+
+      context.fillStyle = palette.light;
+      context.beginPath();
+      context.arc(0, -35, 2.5, 0, Math.PI * 2);
+      context.fill();
       context.stroke();
     }
 

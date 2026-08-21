@@ -27,7 +27,7 @@
     "construction_helmet",
     "mushroom_hat",
     "jester_hat",
-    "ufo_hat"
+    "chinese_straw_hat"
   ]);
 
   const UNLOCKABLE_SLIME_COSMETICS = Object.freeze(
@@ -219,13 +219,13 @@
       scale: 0.90,
       palette: Object.freeze({main: "#8d4ed8", dark: "#402169", light: "#e38cff", accent: "#2fc6a4", bell: "#ffd95c"})
     }),
-    ufo_hat: Object.freeze({
-      name: "UFO-Hut",
+    chinese_straw_hat: Object.freeze({
+      name: "Chinesischer Strohhut",
       type: "hat",
       anchorX: 0,
-      anchorY: -1,
-      scale: 0.86,
-      palette: Object.freeze({main: "#8fa9bd", dark: "#344b60", light: "#e2f4ff", glass: "#78e6ff", glow: "#8dffba"})
+      anchorY: -0.87,
+      scale: 0.90,
+      palette: Object.freeze({main: "#d9aa4e", dark: "#75491f", light: "#ffe7a0", weave: "#ae712d", underside: "#bd833c"})
     })
   });
 
