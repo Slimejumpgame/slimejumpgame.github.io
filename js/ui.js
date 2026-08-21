@@ -3,6 +3,7 @@
   const recentScoresStorageKey = "slimejumperRecentScores";
   const highScoresStorageKey = "slimejumperHighscoresV14";
   let lastOnlineScoreSubmit = Promise.resolve(null);
+  let personalGlobalRankRequestId = 0;
   let gameToastTimer = null;
   let devPreviewSlimeColor = null;
   let devPreviewSlimeCosmetic = null;
@@ -631,6 +632,32 @@
       ui.starBalanceValue.textContent = Math.max(0, balance).toLocaleString("de-DE");
     }
     renderMainMenuPlayerProgress();
+  }
+
+  function renderPersonalGlobalRank(rank) {
+    if (!ui.personalGlobalRankValue) return;
+    const numericRank = Number(rank);
+    ui.personalGlobalRankValue.textContent =
+      Number.isSafeInteger(numericRank) && numericRank > 0
+        ? numericRank.toLocaleString("de-DE")
+        : "—";
+  }
+
+  async function updatePersonalGlobalRank() {
+    const requestId = ++personalGlobalRankRequestId;
+    renderPersonalGlobalRank(null);
+    const playerBests = window.SlimeJumpPlayerBests;
+    if (typeof playerBests?.getPersonalGlobalRank !== "function") return;
+
+    try {
+      const result = await playerBests.getPersonalGlobalRank();
+      if (requestId !== personalGlobalRankRequestId) return;
+      renderPersonalGlobalRank(result?.rank);
+    } catch (_) {
+      if (requestId === personalGlobalRankRequestId) {
+        renderPersonalGlobalRank(null);
+      }
+    }
   }
 
   function populatePrestigeRewardSelect(select, type) {
@@ -2250,6 +2277,7 @@
     if (screenName === "main") {
       renderMenuMascot();
       renderMainMenuStats();
+      void updatePersonalGlobalRank();
       window.SlimeAchievements?.renderRecent?.();
     }
     if (screenName === "wardrobe") {

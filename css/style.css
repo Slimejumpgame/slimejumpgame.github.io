@@ -1800,6 +1800,14 @@ p {
   gap: clamp(5px, 0.75vw, 10px);
 }
 
+.menuRankStarsGroup {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: clamp(5px, 0.75vw, 10px);
+}
+
 .menuStatusBadge {
   min-width: 0;
   max-width: min(31vw, 190px);
@@ -1825,6 +1833,12 @@ p {
 .menuStatusBadge--stars {
   border-color: rgba(255, 233, 119, 0.46);
   color: #fff4a8;
+}
+
+.menuStatusBadge--rank {
+  width: clamp(90px, 11vw, 128px);
+  border-color: rgba(159, 248, 93, 0.55);
+  color: var(--ui-green-light);
 }
 
 .menuStatusBadge strong {
@@ -5487,7 +5501,7 @@ p {
   }
 }
 
-/* Phone landscape keeps the three main-menu counters compact and clear of the title. */
+/* Phone landscape keeps the four main-menu counters compact and clear of the title. */
 @media (orientation: landscape) and (hover: none) and (pointer: coarse) {
   #mainMenuScreen .menuStatusBar {
     top: max(6px, env(safe-area-inset-top));
@@ -5497,6 +5511,13 @@ p {
   }
 
   #mainMenuScreen .menuBestProgressGroup {
+    width: clamp(124px, 18vw, 152px);
+    flex-direction: column;
+    align-items: stretch;
+    gap: clamp(4px, 1dvh, 6px);
+  }
+
+  #mainMenuScreen .menuRankStarsGroup {
     width: clamp(124px, 18vw, 152px);
     flex-direction: column;
     align-items: stretch;
@@ -5519,10 +5540,15 @@ p {
     font-size: 1.2em;
   }
 
+  #mainMenuScreen .menuStatusBadge--rank,
   #mainMenuScreen .menuStatusBadge--stars {
-    flex: 0 0 clamp(124px, 18vw, 152px);
-    width: clamp(124px, 18vw, 152px);
+    flex: 0 0 auto;
+    width: 100%;
     max-width: none;
+  }
+
+  #mainMenuScreen .menuStatusBadge--stars {
+    order: -1;
   }
 
   #mainMenuScreen .menuStatusBadge--stars > span:first-child {

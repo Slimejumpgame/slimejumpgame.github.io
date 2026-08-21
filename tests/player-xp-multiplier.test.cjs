@@ -295,6 +295,10 @@ function assertReleaseUILayout() {
   );
   assert.match(
     html,
+    /class="menuRankStarsGroup"[\s\S]*?id="personalGlobalRank"[\s\S]*?id="personalGlobalRankValue"[\s\S]*?id="starBalanceValue"/
+  );
+  assert.match(
+    html,
     /class="menuMascotRow"[\s\S]*?id="menuPrestigeBtn"[\s\S]*?id="menuMascot"[\s\S]*?id="menuPlayerLevel"/
   );
   assert.match(
@@ -308,6 +312,7 @@ function assertReleaseUILayout() {
   assert.match(coreSource, /prestigeXPBonusHud: document\.getElementById\("prestigeXPBonusHud"\)/);
   assert.match(coreSource, /prestigeXPBonusMultiplier: document\.getElementById\("prestigeXPBonusMultiplier"\)/);
   assert.match(coreSource, /menuXPPlayerLevel: document\.getElementById\("menuXPPlayerLevel"\)/);
+  assert.match(coreSource, /personalGlobalRankValue: document\.getElementById\("personalGlobalRankValue"\)/);
 
   const css = read("css/style.css");
   assert.match(css, /\.menuBestProgressGroup\s*\{[\s\S]*?display: flex;[\s\S]*?align-items: center;/);
@@ -326,7 +331,7 @@ function assertReleaseUILayout() {
   assert.match(css, /\.menuXPPlayerLevel\s*\{[\s\S]*?display: none;/);
   assert.match(
     css,
-    /@media \(orientation: landscape\) and \(hover: none\) and \(pointer: coarse\) \{[\s\S]*?#mainMenuScreen \.menuBestProgressGroup\s*\{[\s\S]*?width: clamp\(124px, 18vw, 152px\);[\s\S]*?flex-direction: column;[\s\S]*?align-items: stretch;[\s\S]*?#mainMenuScreen \.menuStatusBadge\s*\{[\s\S]*?min-height: clamp\(34px, 10dvh, 46px\);[\s\S]*?#mainMenuScreen \.menuStatusBadge--stars\s*\{[\s\S]*?width: clamp\(124px, 18vw, 152px\);[\s\S]*?#mainMenuScreen \.menuXPProgress\s*\{[\s\S]*?width: 100%;[\s\S]*?#mainMenuScreen \.menuXPProgressBar\s*\{[\s\S]*?height: clamp\(8px, 2\.5dvh, 12px\);/
+    /@media \(orientation: landscape\) and \(hover: none\) and \(pointer: coarse\) \{[\s\S]*?#mainMenuScreen \.menuBestProgressGroup\s*\{[\s\S]*?width: clamp\(124px, 18vw, 152px\);[\s\S]*?flex-direction: column;[\s\S]*?align-items: stretch;[\s\S]*?#mainMenuScreen \.menuRankStarsGroup\s*\{[\s\S]*?width: clamp\(124px, 18vw, 152px\);[\s\S]*?flex-direction: column;[\s\S]*?#mainMenuScreen \.menuStatusBadge\s*\{[\s\S]*?min-height: clamp\(34px, 10dvh, 46px\);[\s\S]*?#mainMenuScreen \.menuStatusBadge--stars\s*\{[\s\S]*?order: -1;[\s\S]*?#mainMenuScreen \.menuXPProgress\s*\{[\s\S]*?width: 100%;[\s\S]*?#mainMenuScreen \.menuXPProgressBar\s*\{[\s\S]*?height: clamp\(8px, 2\.5dvh, 12px\);/
   );
   assert.match(css, /\.hudMultiplierGroup\s*\{[\s\S]*?display: flex;[\s\S]*?align-items: center;/);
   assert.match(
@@ -350,7 +355,7 @@ function assertReleaseGuards() {
   assert.doesNotMatch(progressSource, /slimejumperBest|slimejumperStars|Supabase|calling_card/);
 
   assert.match(read("js/slime-prestige.js"), /const PRESTIGE_BALANCE = Object\.freeze\(\{xpBonusPerPrestige: 0\.00\}\);/);
-  assert.match(read("js/slime-jump-highscores.js"), /GAME_VERSION = "2\.65"/);
+  assert.match(read("js/slime-jump-highscores.js"), /GAME_VERSION = "2\.66"/);
   assert.match(read("js/slime-progress-reset.js"), /RESET_VERSION = "progress-reset-2\.43"/);
   assert.match(
     read("js/slime-progress-reset.js"),

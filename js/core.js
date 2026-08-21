@@ -78,6 +78,7 @@
     menuXPProgressBar: document.getElementById("menuXPProgressBar"),
     menuXPProgressBarFill: document.getElementById("menuXPProgressBarFill"),
     menuXPPlayerLevel: document.getElementById("menuXPPlayerLevel"),
+    personalGlobalRankValue: document.getElementById("personalGlobalRankValue"),
     starBalanceValue: document.getElementById("starBalanceValue"),
     wardrobeScreen: document.getElementById("wardrobeScreen"),
     achievementScreen: document.getElementById("achievementScreen"),
