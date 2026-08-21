@@ -98,27 +98,68 @@
       bass: [174.61, 196.00, 146.83, 164.81],
       stepMs: 315, noteDuration: 0.47, noteVolume: 0.040, noteType: "triangle",
       bassDuration: 0.96, bassVolume: 0.030, filterFrequency: 2700
+    },
+    stormNight: {
+      notes: [493.88, 587.33, 659.25, 739.99, 659.25, 587.33, 523.25, 493.88, 440.00, 523.25, 659.25, 783.99, 739.99, 659.25, 587.33, 493.88],
+      bass: [82.41, 98.00, 110.00, 123.47],
+      stepMs: 410, noteDuration: 0.55, noteVolume: 0.038, noteType: "sine",
+      bassDuration: 1.28, bassVolume: 0.031, filterFrequency: 1500
+    },
+    neonCity: {
+      notes: [659.25, 880.00, 987.77, 1318.51, 1174.66, 987.77, 830.61, 987.77, 739.99, 932.33, 1108.73, 1396.91, 1108.73, 932.33, 830.61, 739.99],
+      bass: [110.00, 138.59, 123.47, 146.83],
+      stepMs: 275, noteDuration: 0.24, noteVolume: 0.030, noteType: "square",
+      bassDuration: 0.84, bassVolume: 0.030, filterFrequency: 1900
+    },
+    mushroomCave: {
+      notes: [622.25, 783.99, 932.33, 1046.50, 830.61, 698.46, 783.99, 622.25, 698.46, 880.00, 1046.50, 1244.51, 1046.50, 880.00, 698.46, 622.25],
+      bass: [103.83, 130.81, 116.54, 138.59],
+      stepMs: 385, noteDuration: 0.58, noteVolume: 0.038, noteType: "sine",
+      bassDuration: 1.18, bassVolume: 0.030, filterFrequency: 3000
+    },
+    abandonedMine: {
+      notes: [392.00, 466.16, 523.25, 587.33, 523.25, 466.16, 392.00, 349.23, 440.00, 523.25, 587.33, 698.46, 587.33, 523.25, 440.00, 392.00],
+      bass: [98.00, 116.54, 130.81, 110.00],
+      stepMs: 350, noteDuration: 0.28, noteVolume: 0.039, noteType: "triangle",
+      bassDuration: 0.90, bassVolume: 0.034, filterFrequency: 1100
+    },
+    bambooNight: {
+      notes: [587.33, 659.25, 783.99, 880.00, 783.99, 659.25, 587.33, 493.88, 523.25, 659.25, 739.99, 880.00, 739.99, 659.25, 523.25, 493.88],
+      bass: [146.83, 123.47, 164.81, 138.59],
+      stepMs: 420, noteDuration: 0.56, noteVolume: 0.037, noteType: "sine",
+      bassDuration: 1.25, bassVolume: 0.029, filterFrequency: 2300
+    },
+    pirateHarbor: {
+      notes: [392.00, 523.25, 587.33, 659.25, 587.33, 523.25, 440.00, 523.25, 392.00, 493.88, 587.33, 698.46, 659.25, 587.33, 493.88, 392.00],
+      bass: [98.00, 130.81, 110.00, 123.47],
+      stepMs: 360, noteDuration: 0.40, noteVolume: 0.041, noteType: "triangle",
+      bassDuration: 0.98, bassVolume: 0.033, filterFrequency: 1700
+    },
+    alienJungle: {
+      notes: [554.37, 698.46, 830.61, 739.99, 622.25, 783.99, 932.33, 659.25, 587.33, 739.99, 880.00, 698.46, 523.25, 659.25, 783.99, 554.37],
+      bass: [92.50, 116.54, 103.83, 138.59],
+      stepMs: 310, noteDuration: 0.30, noteVolume: 0.032, noteType: "sawtooth",
+      bassDuration: 0.86, bassVolume: 0.031, filterFrequency: 1450
+    },
+    enchantedGarden: {
+      notes: [659.25, 783.99, 987.77, 1174.66, 1046.50, 880.00, 783.99, 698.46, 739.99, 880.00, 1046.50, 1318.51, 1174.66, 987.77, 880.00, 659.25],
+      bass: [130.81, 155.56, 174.61, 146.83],
+      stepMs: 430, noteDuration: 0.60, noteVolume: 0.038, noteType: "sine",
+      bassDuration: 1.30, bassVolume: 0.029, filterFrequency: 2850
+    },
+    redMoon: {
+      notes: [415.30, 493.88, 587.33, 622.25, 554.37, 466.16, 415.30, 369.99, 440.00, 523.25, 622.25, 739.99, 698.46, 622.25, 523.25, 440.00],
+      bass: [110.00, 130.81, 103.83, 123.47],
+      stepMs: 405, noteDuration: 0.50, noteVolume: 0.037, noteType: "triangle",
+      bassDuration: 1.20, bassVolume: 0.031, filterFrequency: 1300
+    },
+    undergroundTemple: {
+      notes: [587.33, 698.46, 783.99, 880.00, 783.99, 698.46, 622.25, 587.33, 523.25, 622.25, 739.99, 830.61, 783.99, 698.46, 622.25, 523.25],
+      bass: [98.00, 116.54, 130.81, 103.83],
+      stepMs: 375, noteDuration: 0.48, noteVolume: 0.038, noteType: "sine",
+      bassDuration: 1.05, bassVolume: 0.032, filterFrequency: 1250
     }
   };
-
-  // Die neuen Biome verwenden bewusst vorhandene Themes. Eigene Schlüssel
-  // verhindern, dass beim Biomwechsel versehentlich die vorige Musik weiterläuft.
-  const BIOME_MUSIC_ALIASES = Object.freeze({
-    stormNight: "night",
-    neonCity: "crystalCave",
-    mushroomCave: "crystalCave",
-    abandonedMine: "swamp",
-    bambooNight: "night",
-    pirateHarbor: "coast",
-    alienJungle: "crystalCave",
-    enchantedGarden: "night",
-    redMoon: "volcano",
-    undergroundTemple: "desert"
-  });
-
-  for (const [biomeId, themeId] of Object.entries(BIOME_MUSIC_ALIASES)) {
-    MUSIC_THEMES[biomeId] = MUSIC_THEMES[themeId];
-  }
 
   const activeMusicVoices = new Set();
 

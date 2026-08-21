@@ -340,7 +340,10 @@
 
   function drawMeadowBackground(biome) {
     for (let i = 0; i < 4; i++) {
-      const x = ((120 + i * 355 + levelIndex * 19) % (W + 260)) - 130;
+      const travelRange = W + 260;
+      const baseX = 120 + i * 355 + levelIndex * 19;
+      const driftSpeed = 3.2 + i * 0.25;
+      const x = ((baseX + worldTime * driftSpeed) % travelRange + travelRange) % travelRange - 130;
       drawCloud(x, 105 + (i % 2) * 75, 0.72 + (i % 3) * 0.13, biome.decor.cloud);
     }
     drawRollingLayer(585, 105, 360, biome.decor.far, levelIndex * 17);
@@ -547,14 +550,34 @@
       const ceilingY = 56 + (i % 3) * 14;
       const height = 48 + (i % 4) * 16;
       const color = i % 2 ? biome.decor.crystalA : biome.decor.crystalB;
+      const hasStaticGlow = i % 3 === 0;
       drawHangingCrystalShape(
         x,
         ceilingY,
         20 + (i % 3) * 5,
         height,
         color,
-        i % 3 === 0
+        hasStaticGlow
       );
+      if (hasStaticGlow) {
+        const glowWave = Math.sin(worldTime * 0.38 + i * 1.7);
+        const glowPulse = Math.max(0, (glowWave - 0.72) / 0.28);
+        if (glowPulse > 0) {
+          ctx.save();
+          ctx.globalAlpha = glowPulse * 0.09;
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 14 + glowPulse * 4;
+          drawHangingCrystalShape(
+            x,
+            ceilingY,
+            20 + (i % 3) * 5,
+            height,
+            color,
+            false
+          );
+          ctx.restore();
+        }
+      }
     }
   }
 
@@ -563,7 +586,10 @@
     for (let i = 0; i < 42; i++) {
       const x = (i * 173 + levelIndex * 47) % W;
       const y = 32 + (i * 91) % 410;
-      ctx.globalAlpha = 0.34 + ((i * 7) % 5) * 0.13;
+      const baseAlpha = 0.34 + ((i * 7) % 5) * 0.13;
+      const twinkleWave = Math.sin(worldTime * 0.28 + i * 2.37);
+      const twinkle = Math.max(0, (twinkleWave - 0.96) / 0.04);
+      ctx.globalAlpha = Math.min(0.94, baseAlpha + twinkle * 0.06);
       ctx.beginPath();
       ctx.arc(x, y, 1.2 + (i % 3), 0, Math.PI * 2);
       ctx.fill();
@@ -627,7 +653,10 @@
     ctx.fillStyle = "rgba(255,255,255,0.16)";
     ctx.fillRect(0, 250, W, 220);
     for (let i = 0; i < 8; i++) {
-      const x = ((i * 210 + levelIndex * 15) % (W + 300)) - 150;
+      const travelRange = W + 300;
+      const baseX = i * 210 + levelIndex * 15;
+      const driftSpeed = 2.4 + (i % 3) * 0.25;
+      const x = ((baseX + worldTime * driftSpeed) % travelRange + travelRange) % travelRange - 150;
       const y = 90 + (i % 4) * 130;
       drawCloud(x, y, 0.85 + (i % 3) * 0.23, biome.decor.cloud);
     }

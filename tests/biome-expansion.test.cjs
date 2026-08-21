@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const {execFileSync} = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
@@ -23,23 +24,24 @@ const EXISTING_BIOME_IDS = Object.freeze([
 ]);
 
 const NEW_BIOMES = Object.freeze([
-  Object.freeze({id: "stormNight", name: "Gewitternacht", hazard: "abyss", detail: "nightStone", motionElements: 11, music: "night"}),
-  Object.freeze({id: "neonCity", name: "Neon City", hazard: "abyss", detail: "nightStone", motionElements: 8, music: "crystalCave"}),
-  Object.freeze({id: "mushroomCave", name: "Pilzh\u00f6hle", hazard: "toxic", detail: "moss", motionElements: 12, music: "crystalCave"}),
-  Object.freeze({id: "abandonedMine", name: "Verlassene Mine", hazard: "quicksand", detail: "earth", motionElements: 10, music: "swamp"}),
-  Object.freeze({id: "bambooNight", name: "Bambusnacht", hazard: "cloudAbyss", detail: "moss", motionElements: 9, music: "night"}),
-  Object.freeze({id: "pirateHarbor", name: "Piratenhafen bei Nacht", hazard: "water", detail: "earth", motionElements: 8, music: "coast"}),
-  Object.freeze({id: "alienJungle", name: "Alien-Dschungel", hazard: "toxic", detail: "moss", motionElements: 12, music: "crystalCave"}),
-  Object.freeze({id: "enchantedGarden", name: "Verzauberter Nachtgarten", hazard: "cloudAbyss", detail: "autumnEarth", motionElements: 13, music: "night"}),
-  Object.freeze({id: "redMoon", name: "Rote Mondnacht", hazard: "abyss", detail: "nightStone", motionElements: 5, music: "volcano"}),
-  Object.freeze({id: "undergroundTemple", name: "Unterirdische Tempelruinen", hazard: "abyss", detail: "sandstone", motionElements: 11, music: "desert"})
+  Object.freeze({id: "stormNight", name: "Gewitternacht", hazard: "abyss", detail: "nightStone", motionElements: 11, music: "stormNight"}),
+  Object.freeze({id: "neonCity", name: "Neon City", hazard: "abyss", detail: "nightStone", motionElements: 8, music: "neonCity"}),
+  Object.freeze({id: "mushroomCave", name: "Pilzh\u00f6hle", hazard: "toxic", detail: "moss", motionElements: 12, music: "mushroomCave"}),
+  Object.freeze({id: "abandonedMine", name: "Verlassene Mine", hazard: "quicksand", detail: "earth", motionElements: 10, music: "abandonedMine"}),
+  Object.freeze({id: "bambooNight", name: "Bambusnacht", hazard: "cloudAbyss", detail: "moss", motionElements: 9, music: "bambooNight"}),
+  Object.freeze({id: "pirateHarbor", name: "Piratenhafen bei Nacht", hazard: "water", detail: "earth", motionElements: 8, music: "pirateHarbor"}),
+  Object.freeze({id: "alienJungle", name: "Alien-Dschungel", hazard: "toxic", detail: "moss", motionElements: 12, music: "alienJungle"}),
+  Object.freeze({id: "enchantedGarden", name: "Verzauberter Nachtgarten", hazard: "cloudAbyss", detail: "autumnEarth", motionElements: 13, music: "enchantedGarden"}),
+  Object.freeze({id: "redMoon", name: "Rote Mondnacht", hazard: "abyss", detail: "nightStone", motionElements: 5, music: "redMoon"}),
+  Object.freeze({id: "undergroundTemple", name: "Unterirdische Tempelruinen", hazard: "abyss", detail: "sandstone", motionElements: 11, music: "undergroundTemple"})
 ]);
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
 function createRecordingContext() {
   const calls = [];
-  const context = {
+  const context = {};
+  const styleValues = {
     fillStyle: "#000000",
     strokeStyle: "#000000",
     globalAlpha: 1,
@@ -48,6 +50,16 @@ function createRecordingContext() {
     shadowColor: "transparent",
     shadowBlur: 0
   };
+  for (const property of Object.keys(styleValues)) {
+    Object.defineProperty(context, property, {
+      enumerable: true,
+      get: () => styleValues[property],
+      set: value => {
+        styleValues[property] = value;
+        calls.push(["set", property, value]);
+      }
+    });
+  }
   const methods = [
     "save", "restore", "beginPath", "closePath", "moveTo", "lineTo",
     "quadraticCurveTo", "bezierCurveTo", "arc", "ellipse", "arcTo",
@@ -97,7 +109,7 @@ function loadAudioFixture() {
   const context = vm.createContext({console, window: {}});
   vm.runInContext(`
     ${read("js/audio.js")}
-    globalThis.audioTestApi = {themes: MUSIC_THEMES, aliases: BIOME_MUSIC_ALIASES};
+    globalThis.audioTestApi = {themes: MUSIC_THEMES};
   `, context, {filename: "audio-biome-alias-fixture.js"});
   return context.audioTestApi;
 }
@@ -107,6 +119,38 @@ function extract(source, startMarker, endMarker) {
   const end = source.indexOf(endMarker, start);
   assert.ok(start >= 0 && end > start, `source markers missing: ${startMarker}`);
   return source.slice(start, end);
+}
+
+function normalizeLineEndings(value) {
+  return value.replace(/\r\n/g, "\n");
+}
+
+function readHead(relativePath) {
+  const repositoryPath = relativePath.replace(/\\/g, "/");
+  return execFileSync("git", ["show", `HEAD:${repositoryPath}`], {
+    cwd: root,
+    encoding: "utf8"
+  });
+}
+
+function recordBackground(fixture, biomeId, worldTime, levelIndex = 0) {
+  const biome = fixture.api.biomes.find(candidate => candidate.id === biomeId);
+  assert.ok(biome, `missing biome: ${biomeId}`);
+  fixture.context.worldTime = worldTime;
+  fixture.context.levelIndex = levelIndex;
+  fixture.recording.calls.length = 0;
+  fixture.api.backgroundRenderers[biomeId](biome);
+  return fixture.recording.calls.map(call => [...call]);
+}
+
+function collectArcsWithAlpha(calls) {
+  let globalAlpha = 1;
+  const arcs = [];
+  for (const call of calls) {
+    if (call[0] === "set" && call[1] === "globalAlpha") globalAlpha = call[2];
+    if (call[0] === "arc") arcs.push({args: call.slice(1), globalAlpha});
+  }
+  return arcs;
 }
 
 function relativeLuminance(hex) {
@@ -185,9 +229,8 @@ function assertVisualBindingsAndBudgets() {
     assert.ok(biome.background.motionElements >= 5);
     assert.ok(biome.background.motionElements <= 14);
 
-    assert.equal(audio.aliases[expected.id], expected.music);
     assert.ok(audio.themes[expected.id]);
-    assert.equal(audio.themes[expected.id], audio.themes[expected.music]);
+    assert.equal(expected.music, expected.id);
 
     for (const time of [0, 5.25]) {
       fixture.context.levelIndex = 100 + index * 10;
@@ -207,6 +250,85 @@ function assertVisualBindingsAndBudgets() {
       );
     }
   }
+}
+
+function assertLegacyBiomeAnimationPolish() {
+  const fixture = loadBiomeFixture();
+
+  const meadowAtZero = recordBackground(fixture, "meadow", 0, 0);
+  const meadowAtTen = recordBackground(fixture, "meadow", 10, 0);
+  const meadowEllipsesAtZero = meadowAtZero.filter(call => call[0] === "ellipse");
+  const meadowEllipsesAtTen = meadowAtTen.filter(call => call[0] === "ellipse");
+  assert.equal(meadowEllipsesAtZero.length, 16);
+  assert.equal(meadowEllipsesAtTen.length, 16);
+  for (let cloudIndex = 0; cloudIndex < 4; cloudIndex++) {
+    const zero = meadowEllipsesAtZero[cloudIndex * 4];
+    const ten = meadowEllipsesAtTen[cloudIndex * 4];
+    assert.equal(ten[1] - zero[1], (3.2 + cloudIndex * 0.25) * 10);
+    assert.deepEqual(ten.slice(2), zero.slice(2));
+  }
+
+  const crystalAtZero = recordBackground(fixture, "crystalCave", 0, 60);
+  const crystalAtFive = recordBackground(fixture, "crystalCave", 5, 60);
+  const getCrystalPositions = calls => calls
+    .filter(call => call[0] === "translate")
+    .map(call => `${call[1]},${call[2]}`);
+  const crystalPositionsAtZero = [...new Set(getCrystalPositions(crystalAtZero))];
+  const crystalPositionsAtFive = [...new Set(getCrystalPositions(crystalAtFive))];
+  assert.equal(crystalPositionsAtZero.length, 12);
+  assert.deepEqual(crystalPositionsAtFive, crystalPositionsAtZero);
+  const strongerCrystalGlows = crystalAtFive.filter(call =>
+    call[0] === "set" && call[1] === "shadowBlur" && call[2] > 14
+  );
+  assert.ok(strongerCrystalGlows.length >= 1);
+  assert.ok(strongerCrystalGlows.length <= 2);
+  assert.equal(strongerCrystalGlows.every(call => call[2] <= 18), true);
+  assert.match(
+    fixture.api.backgroundRenderers.crystalCave.toString(),
+    /Math\.sin\(worldTime \* 0\.38 \+ i \* 1\.7\)/
+  );
+
+  const nightAtZero = collectArcsWithAlpha(recordBackground(fixture, "night", 0, 70));
+  const nightAtTen = collectArcsWithAlpha(recordBackground(fixture, "night", 10, 70));
+  assert.deepEqual(nightAtZero[42].args.slice(0, 3), [1040, 145, 76]);
+  assert.deepEqual(nightAtTen[42].args.slice(0, 3), [1040, 145, 76]);
+  assert.equal(nightAtZero.length, 47);
+  assert.equal(nightAtTen.length, 47);
+  for (let starIndex = 0; starIndex < 42; starIndex++) {
+    assert.deepEqual(nightAtTen[starIndex].args, nightAtZero[starIndex].args);
+    const baseAlpha = 0.34 + ((starIndex * 7) % 5) * 0.13;
+    assert.ok(nightAtZero[starIndex].globalAlpha <= baseAlpha + 0.060001);
+    assert.ok(nightAtTen[starIndex].globalAlpha <= baseAlpha + 0.060001);
+  }
+  const countTwinklingStars = arcs => arcs.slice(0, 42).filter((arc, starIndex) => {
+    const baseAlpha = 0.34 + ((starIndex * 7) % 5) * 0.13;
+    return arc.globalAlpha > baseAlpha + 0.000001;
+  }).length;
+  assert.ok(countTwinklingStars(nightAtZero) >= 1 && countTwinklingStars(nightAtZero) <= 7);
+  assert.ok(countTwinklingStars(nightAtTen) >= 1 && countTwinklingStars(nightAtTen) <= 7);
+  assert.notDeepEqual(
+    nightAtTen.slice(0, 42).map(arc => arc.globalAlpha),
+    nightAtZero.slice(0, 42).map(arc => arc.globalAlpha)
+  );
+  assert.deepEqual(nightAtTen.slice(42), nightAtZero.slice(42));
+
+  const skyAtZero = recordBackground(fixture, "sky", 0, 0);
+  const skyAtTen = recordBackground(fixture, "sky", 10, 0);
+  const skyEllipsesAtZero = skyAtZero.filter(call => call[0] === "ellipse");
+  const skyEllipsesAtTen = skyAtTen.filter(call => call[0] === "ellipse");
+  assert.equal(skyEllipsesAtZero.length, 36);
+  assert.equal(skyEllipsesAtTen.length, 36);
+  for (let cloudIndex = 0; cloudIndex < 8; cloudIndex++) {
+    const zero = skyEllipsesAtZero[cloudIndex * 4];
+    const ten = skyEllipsesAtTen[cloudIndex * 4];
+    assert.equal(ten[1] - zero[1], (2.4 + (cloudIndex % 3) * 0.25) * 10);
+    assert.deepEqual(ten.slice(2), zero.slice(2));
+  }
+  assert.deepEqual(skyEllipsesAtTen.slice(32), skyEllipsesAtZero.slice(32));
+  assert.deepEqual(
+    skyAtTen.filter(call => call[0] === "set" && call[1] === "fillStyle").map(call => call[2]),
+    skyAtZero.filter(call => call[0] === "set" && call[1] === "fillStyle").map(call => call[2])
+  );
 }
 
 function assertAimContrast() {
@@ -325,10 +447,44 @@ function assertScopeBoundaries() {
   );
   assert.doesNotMatch(biomeSource, /new\s+(Worker|WebGLRenderingContext)\b/);
   assert.doesNotMatch(biomeSource, /requestAnimationFrame\s*\(/);
+
+  const headBiomeSource = readHead("js/biomes.js");
+  const unchangedBiomeSections = [
+    ["biome registry", "  const BIOMES = [", "  function getBiomeForLevel("],
+    ["shared biome helpers", "  function getBiomeForLevel(", "  function drawMeadowBackground("],
+    ["coast through swamp", "  function drawCoastBackground(", "  function drawCrystalCaveBackground("],
+    ["autumn", "  function drawAutumnBackground(", "  function drawSkyBackground("],
+    ["biomes 11 through 20", "  function wrapBiomeMotion(", "  const BACKGROUND_RENDERERS = {"],
+    ["renderer registry", "  const BACKGROUND_RENDERERS = {", "  function drawBackground("]
+  ];
+  for (const [label, startMarker, endMarker] of unchangedBiomeSections) {
+    assert.equal(
+      normalizeLineEndings(extract(biomeSource, startMarker, endMarker)),
+      normalizeLineEndings(extract(headBiomeSource, startMarker, endMarker)),
+      `${label} changed outside the animation-polish scope`
+    );
+  }
+
+  for (const relativePath of [
+    "js/hazards.js",
+    "js/level-generator.js",
+    "js/physics.js",
+    "js/game.js",
+    "js/ui.js",
+    "js/renderer.js",
+    "js/slime-achievements.js"
+  ]) {
+    assert.equal(
+      normalizeLineEndings(read(relativePath)),
+      normalizeLineEndings(readHead(relativePath)),
+      `${relativePath} changed outside the animation-polish scope`
+    );
+  }
 }
 
 assertRegistryAndRotation();
 assertVisualBindingsAndBudgets();
+assertLegacyBiomeAnimationPolish();
 assertAimContrast();
 assertDynamicMenuAndDevAccess();
 assertDynamicAchievements();
