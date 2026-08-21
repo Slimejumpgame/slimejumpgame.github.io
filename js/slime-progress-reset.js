@@ -86,7 +86,8 @@
   const PREFERENCE_STORAGE_KEYS = Object.freeze([
     "slimejumperSkipTutorial",
     "slimejumperSkipEndRunWarning",
-    "slimejumperSkipCheckpointIntro"
+    "slimejumperSkipCheckpointIntro",
+    "slimejumperSkipGoldShopIntro"
   ]);
 
   try {

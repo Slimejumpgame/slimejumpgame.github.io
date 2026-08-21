@@ -25,6 +25,15 @@
       <button id="devModeToggleBtn" type="button" aria-pressed="true">DEV MODE: ON</button>
       <button id="devTutorialToggleBtn" data-dev-mode-only type="button" aria-pressed="true">Einführung: AN</button>
       <button id="devShopTestBtn" data-dev-mode-only type="button" aria-pressed="false">SHOP TEST</button>
+      <button id="devGoldSlimeTestBtn" data-dev-mode-only type="button" aria-pressed="false">GOLD-SLIME TEST</button>
+      <button id="devGoldHatsTestBtn" data-dev-mode-only type="button" aria-pressed="false">GOLD-HÜTE TEST</button>
+      <button id="devGoldBeardsTestBtn" data-dev-mode-only type="button" aria-pressed="false">GOLD-BÄRTE TEST</button>
+      <button id="devGoldAllTestBtn" data-dev-mode-only type="button" aria-pressed="false">ALLES GOLD TESTEN</button>
+      <button id="devGoldShopTestBtn" data-dev-mode-only type="button" aria-pressed="false">GOLD-SHOP TEST</button>
+      <button id="devGoldSlimeBoundaryBtn" data-dev-mode-only type="button">GOLD-SLIME 499/500</button>
+      <button id="devGoldHatBoundaryBtn" data-dev-mode-only type="button">GOLD-HUT 499/500</button>
+      <button id="devGoldBeardBoundaryBtn" data-dev-mode-only type="button">GOLD-BART 499/500</button>
+      <button id="devGoldResetBtn" data-dev-mode-only type="button">RESET GOLD TEST</button>
       <button id="devPlayerLevel100Btn" data-dev-mode-only type="button">DEV LEVEL 100</button>
       <button id="devPlayerLevel99NearBtn" data-dev-mode-only type="button">DEV LEVEL 99 NEAR</button>
       <button id="devPlayerLevel100NearBtn" data-dev-mode-only type="button">DEV LEVEL 100 -1 XP</button>
@@ -170,6 +179,7 @@
             <button id="wardrobeColorBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn backButton hidden" type="button">← GARDEROBE</button>
             <button id="wardrobeCosmeticsBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn backButton hidden" type="button">← GARDEROBE</button>
             <button id="wardrobeBeardsBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn backButton hidden" type="button">← GARDEROBE</button>
+            <button id="wardrobeGoldBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn backButton hidden" type="button">← GARDEROBE</button>
             <button id="wardrobePrestigeBackBtn" class="uiButton uiButton--secondary wardrobeSubmenuBackBtn backButton hidden" type="button">← GARDEROBE</button>
             <button id="wardrobeBackBtn" class="menuHotspot uiButton uiButton--secondary backButton" type="button" aria-label="Zurück zum Hauptmenü">
               <span class="buttonIcon" aria-hidden="true">
@@ -183,15 +193,11 @@
           </div>
         </header>
         <div class="wardrobeScreenBody">
-          <div class="wardrobeProgressPanel uiPanel" aria-label="Garderoben-Fortschritt">
-            <span class="wardrobeProgressLabel">Unlock Progress</span>
-            <div id="slimeColorRequirement" class="slimeColorRequirement"></div>
-          </div>
-
           <nav id="wardrobeHome" class="wardrobeCategoryMenu" aria-label="Garderoben-Kategorien">
             <button id="wardrobeColorMenuBtn" class="wardrobeMenuButton uiButton uiButton--secondary" type="button">Slime-Farbe</button>
             <button id="wardrobeCosmeticsMenuBtn" class="wardrobeMenuButton uiButton uiButton--secondary" type="button">HÜTE</button>
             <button id="wardrobeBeardsMenuBtn" class="wardrobeMenuButton uiButton uiButton--secondary" type="button">Bärte</button>
+            <button id="wardrobeGoldMenuBtn" class="wardrobeMenuButton wardrobeGoldMenuButton uiButton uiButton--secondary" type="button">GOLD-GARDEROBE</button>
             <button id="wardrobePrestigeMenuBtn" class="wardrobeMenuButton wardrobePrestigeMenuButton uiButton uiButton--secondary" type="button">PRESTIGE-GARDEROBE</button>
           </nav>
 
@@ -210,6 +216,29 @@
           <section id="wardrobeBeardsView" class="wardrobeSubmenu hidden" aria-label="Bärte">
             <aside id="slimeBeardPicker" class="uiPanel wardrobePanel slimeBeardPicker" aria-label="Slime-Bart auswählen">
               <div id="slimeBeardOptions" class="slimeBeardOptions"></div>
+            </aside>
+          </section>
+
+          <section id="wardrobeGoldView" class="wardrobeSubmenu wardrobeGoldView hidden" aria-label="Gold-Garderobe">
+            <aside class="uiPanel wardrobePanel goldWardrobePanel">
+              <header class="goldWardrobeStatus">
+                <span class="goldWardrobeMark" aria-hidden="true">◆</span>
+                <span>
+                  <strong>GOLD-GARDEROBE</strong>
+                  <small id="goldShopStatusText">GOLD-SHOP GESPERRT</small>
+                </span>
+                <span id="goldShopStatusHint" class="goldShopStatusHint">Schalte den Gold-Slime mit 500 Leveln + 5 Farben oder für 5.000 Sterne frei.</span>
+              </header>
+              <div class="goldMasteryProgress" aria-label="Gold-Mastery-Fortschritt">
+                <article id="goldHatProgress" class="goldProgressCard"></article>
+                <article id="goldBeardProgress" class="goldProgressCard"></article>
+              </div>
+              <nav id="goldWardrobeCategories" class="goldWardrobeCategories" aria-label="Gold-Kategorien">
+                <button class="goldWardrobeCategoryButton active" data-gold-category="hats" type="button">GOLD-HÜTE</button>
+                <button class="goldWardrobeCategoryButton" data-gold-category="beards" type="button">GOLD-BÄRTE</button>
+              </nav>
+              <div id="goldCategoryUnlockInfo" class="goldCategoryUnlockInfo"></div>
+              <div id="goldWardrobeOptions" class="slimeColorOptions goldWardrobeOptions"></div>
             </aside>
           </section>
 
@@ -401,6 +430,21 @@
       <p id="perkConflictPurchaseInfoText"></p>
       <div class="menuButtons checkpointDialogActions">
         <button id="perkConflictPurchaseInfoConfirmBtn" class="uiButton uiButton--primary" type="button">OK</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="goldShopIntroOverlay" class="overlay checkpointOverlay hidden" role="dialog" aria-modal="true" aria-labelledby="goldShopIntroTitle" aria-describedby="goldShopIntroText" aria-hidden="true">
+    <div class="card checkpointDialog uiPanel">
+      <div class="dialogAccent" aria-hidden="true"></div>
+      <h2 id="goldShopIntroTitle">GOLD-SHOP</h2>
+      <p id="goldShopIntroText">Der Gold-Slime ist deine Eintrittskarte für den Gold-Shop. Schalte ihn mit 500 abgeschlossenen Leveln und 5 normalen Slime-Farben frei – oder kaufe ihn für 5.000 Sterne. Sobald du ihn besitzt, öffnet sich der Gold-Shop.</p>
+      <label class="endRunWarningPreference checkpointIntroPreference" for="goldShopIntroSkipCheckbox">
+        <input id="goldShopIntroSkipCheckbox" type="checkbox">
+        <span>Nicht mehr anzeigen</span>
+      </label>
+      <div class="menuButtons checkpointDialogActions">
+        <button id="goldShopIntroConfirmBtn" class="uiButton uiButton--primary" type="button">VERSTANDEN</button>
       </div>
     </div>
   </section>
@@ -606,6 +650,7 @@
   <script src="./js/core.js"></script>
   <script src="./js/biomes.js"></script>
   <script src="./js/slime-achievements.js"></script>
+  <script src="./js/slime-gold.js"></script>
   <script src="./js/slime-perk-migration.js"></script>
   <script src="./js/level-generator.js"></script>
   <script src="./js/player.js"></script>

@@ -56,7 +56,28 @@
     slimejumperAchievementProgress: JSON.stringify(ACHIEVEMENT_PROGRESS_DEFAULT),
     slimejumperSelectedAchievementBadges: JSON.stringify([]),
     slimejumperUnlockedPerks: JSON.stringify([]),
-    slimejumperSelectedPerks: JSON.stringify([])
+    slimejumperSelectedPerks: JSON.stringify([]),
+    slimejumperGoldProgressV1: JSON.stringify({
+      slime: {
+        completedLevels: 0,
+        distinctColorIds: [],
+        masteryUnlocked: false,
+        purchased: false
+      },
+      hats: {
+        completedLevels: 0,
+        distinctHatIds: [],
+        masteryUnlocked: false,
+        purchasedGoldHatIds: []
+      },
+      beards: {
+        completedLevels: 0,
+        distinctBeardIds: [],
+        masteryUnlocked: false,
+        purchasedGoldBeardIds: []
+      },
+      equipped: {slime: false, hatId: null, beardId: null}
+    })
     // Future cycle-bound perk and mastery keys belong in this explicit allowlist.
   });
 

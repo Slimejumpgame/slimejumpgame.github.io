@@ -12,6 +12,8 @@
   let prestigeWardrobeChoiceCategory = null;
   let prestigeWardrobeChoiceCandidate = null;
   let prestigeWardrobeCategory = "frame";
+  let goldWardrobeCategory = "hats";
+  const GOLD_SHOP_INTRO_SKIP_STORAGE_KEY = "slimejumperSkipGoldShopIntro";
   const PERK_POST_PURCHASE_GUARD_MS = 450;
   const UPDATE_STORE_URL =
     "https://play.google.com/store/apps/details?id=com.slimejumpgame.app";
@@ -45,6 +47,7 @@
   let perkPurchaseGuardUntil = 0;
   let updateScreenPreviousFocus = null;
   let perkConflictPurchaseInfoPreviousFocus = null;
+  let goldShopIntroPreviousFocus = null;
 
   function hasSeenPerkConflictPurchaseInfo(storageKey) {
     try {
@@ -91,6 +94,65 @@
     ui.perkConflictPurchaseInfoOverlay.setAttribute("aria-hidden", "true");
     perkConflictPurchaseInfoPreviousFocus?.focus?.();
     perkConflictPurchaseInfoPreviousFocus = null;
+  }
+
+  function shouldSkipGoldShopIntro() {
+    try {
+      return localStorage.getItem(GOLD_SHOP_INTRO_SKIP_STORAGE_KEY) === "true";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function persistGoldShopIntroSkipPreference() {
+    try {
+      localStorage.setItem(GOLD_SHOP_INTRO_SKIP_STORAGE_KEY, "true");
+      return localStorage.getItem(GOLD_SHOP_INTRO_SKIP_STORAGE_KEY) === "true";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function showGoldShopIntro() {
+    if (
+      !ui.goldShopIntroOverlay ||
+      !ui.goldShopIntroSkipCheckbox ||
+      !ui.goldShopIntroConfirmBtn
+    ) return false;
+
+    ui.goldShopIntroSkipCheckbox.checked = false;
+    goldShopIntroPreviousFocus = document.activeElement;
+    ui.goldShopIntroOverlay.classList.remove("hidden");
+    ui.goldShopIntroOverlay.setAttribute("aria-hidden", "false");
+    window.requestAnimationFrame(() => ui.goldShopIntroConfirmBtn.focus());
+    return true;
+  }
+
+  function closeGoldShopIntro() {
+    if (!ui.goldShopIntroOverlay) return;
+    ui.goldShopIntroOverlay.classList.add("hidden");
+    ui.goldShopIntroOverlay.setAttribute("aria-hidden", "true");
+    ui.goldShopIntroSkipCheckbox.checked = false;
+    goldShopIntroPreviousFocus?.focus?.();
+    goldShopIntroPreviousFocus = null;
+  }
+
+  function requestGoldWardrobeOpen() {
+    const shopUnlocked = window.SlimeGold?.isGoldShopUnlocked?.() === true;
+    if (!shopUnlocked && !shouldSkipGoldShopIntro()) {
+      return showGoldShopIntro();
+    }
+    showWardrobeView("gold");
+    return true;
+  }
+
+  function confirmGoldShopIntro() {
+    if (ui.goldShopIntroSkipCheckbox?.checked) {
+      persistGoldShopIntroSkipPreference();
+    }
+    closeGoldShopIntro();
+    showWardrobeView("gold");
+    return true;
   }
 
   function showUpdateScreen(updateData) {
@@ -398,15 +460,17 @@
   }
 
   function getActiveSlimeCosmetic() {
-    return DEV_MODE && devPreviewSlimeCosmetic
-      ? normalizeSlimeCosmetic(devPreviewSlimeCosmetic)
-      : selectedSlimeCosmetic;
+    if (DEV_MODE && devPreviewSlimeCosmetic) {
+      return normalizeSlimeCosmetic(devPreviewSlimeCosmetic);
+    }
+    return window.SlimeGold?.getEquippedAppearance?.().hatId ?? selectedSlimeCosmetic;
   }
 
   function getActiveSlimeBeard() {
-    return DEV_MODE && devPreviewSlimeBeard
-      ? normalizeSlimeBeard(devPreviewSlimeBeard)
-      : selectedSlimeBeard;
+    if (DEV_MODE && devPreviewSlimeBeard) {
+      return normalizeSlimeBeard(devPreviewSlimeBeard);
+    }
+    return window.SlimeGold?.getEquippedAppearance?.().beardId ?? selectedSlimeBeard;
   }
 
   function getSelectedPrestigeSlimePreviewOptions() {
@@ -481,6 +545,12 @@
   function renderMenuMascot() {
     if (!ui.menuMascot) return;
     const cosmetic = getActiveSlimeCosmetic();
+    const beard = getActiveSlimeBeard();
+    const goldAppearance = window.SlimeGold?.getEquippedAppearance?.() ?? {
+      slime: false,
+      hatId: null,
+      beardId: null
+    };
     const definition = getSlimeCosmeticDefinition(cosmetic);
     const isHat = definition?.type === "hat";
     const isBow = cosmetic === "bow";
@@ -492,11 +562,14 @@
     drawSlimeCharacterPreview(
       ui.menuMascot,
       cosmetic,
-      getActiveSlimeBeard(),
+      beard,
       getActiveSlimeColor(),
       {
         ...previewLayout,
-        ...getSelectedPrestigeSlimePreviewOptions()
+        ...getSelectedPrestigeSlimePreviewOptions(),
+        goldSlime: goldAppearance.slime,
+        goldCosmetic: goldAppearance.hatId === cosmetic,
+        goldBeard: goldAppearance.beardId === beard
       }
     );
   }
@@ -1161,6 +1234,7 @@
         devPreviewSlimeColor = null;
         selectSlimeColor(color);
       } else if (devPreviewAvailable) {
+        window.SlimeGold?.useNormalAppearance?.("slime");
         devPreviewSlimeColor = normalizeSlimeColor(color);
       } else {
         if (!canUnlock) return;
@@ -1187,27 +1261,11 @@
       : button;
   }
 
-  function renderWardrobeProgress() {
-    const requiredStars = getNextWardrobeUnlockRequirement();
-    const pendingChoices = getPendingWardrobeUnlockChoiceCount();
-    if (ui.slimeColorRequirement) {
-      const pendingText = pendingChoices > 0
-        ? `${pendingChoices} freie Garderoben-Auswahl${pendingChoices === 1 ? "" : "en"} verfügbar`
-        : "";
-      ui.slimeColorRequirement.textContent = requiredStars === null
-        ? pendingText || "Garderobe komplett!"
-        : pendingText
-          ? `${pendingText} · Nächster Unlock bei ${requiredStars} ⭐ in einem Run`
-          : `Nächster Unlock bei ${requiredStars} ⭐ in einem Run`;
-    }
-  }
-
   function renderSlimeColorPicker() {
     if (!ui.slimeColorOptions) return;
-    renderWardrobeProgress();
-    ui.slimeColorOptions.replaceChildren(
-      ...SLIME_COLOR_ORDER.map(color => createSlimeColorOption(color))
-    );
+    const options = SLIME_COLOR_ORDER.map(color => createSlimeColorOption(color));
+    if (window.SlimeGold) options.unshift(createGoldSlimeColorOption());
+    ui.slimeColorOptions.replaceChildren(...options);
   }
 
   function createSlimeCosmeticPreview(cosmetic) {
@@ -1221,7 +1279,12 @@
       cosmetic,
       getActiveSlimeBeard(),
       getActiveSlimeColor(),
-      getSelectedPrestigeSlimePreviewOptions()
+      {
+        ...getSelectedPrestigeSlimePreviewOptions(),
+        goldSlime: window.SlimeGold?.getEquippedAppearance?.().slime === true,
+        goldBeard:
+          window.SlimeGold?.getEquippedAppearance?.().beardId === getActiveSlimeBeard()
+      }
     );
     return preview;
   }
@@ -1280,6 +1343,7 @@
         devPreviewSlimeCosmetic = null;
         selectSlimeCosmetic(cosmetic);
       } else if (devPreviewAvailable) {
+        window.SlimeGold?.useNormalAppearance?.("hat");
         devPreviewSlimeCosmetic = normalizeSlimeCosmetic(cosmetic);
       } else {
         if (!canUnlock) return;
@@ -1303,7 +1367,6 @@
 
   function renderSlimeCosmeticPicker() {
     if (!ui.slimeCosmeticOptions) return;
-    renderWardrobeProgress();
     ui.slimeCosmeticOptions.replaceChildren(
       ...SLIME_COSMETIC_ORDER.map(cosmetic => createSlimeCosmeticOption(cosmetic))
     );
@@ -1320,7 +1383,12 @@
       getActiveSlimeCosmetic(),
       beard,
       getActiveSlimeColor(),
-      getSelectedPrestigeSlimePreviewOptions()
+      {
+        ...getSelectedPrestigeSlimePreviewOptions(),
+        goldSlime: window.SlimeGold?.getEquippedAppearance?.().slime === true,
+        goldCosmetic:
+          window.SlimeGold?.getEquippedAppearance?.().hatId === getActiveSlimeCosmetic()
+      }
     );
     return preview;
   }
@@ -1379,6 +1447,7 @@
         devPreviewSlimeBeard = null;
         selectSlimeBeard(beard);
       } else if (devPreviewAvailable) {
+        window.SlimeGold?.useNormalAppearance?.("beard");
         devPreviewSlimeBeard = normalizeSlimeBeard(beard);
       } else {
         if (!canUnlock) return;
@@ -1402,10 +1471,352 @@
 
   function renderSlimeBeardPicker() {
     if (!ui.slimeBeardOptions) return;
-    renderWardrobeProgress();
     ui.slimeBeardOptions.replaceChildren(
       ...SLIME_BEARD_ORDER.map(beard => createSlimeBeardOption(beard))
     );
+  }
+
+  function applyGoldPaletteCss(element) {
+    const palette = window.SlimeGold?.getSlimePalette?.();
+    if (!palette) return;
+    element.style.setProperty("--slime-light", palette.light);
+    element.style.setProperty("--slime-main", palette.main);
+    element.style.setProperty("--slime-dark", palette.dark);
+    element.style.setProperty("--slime-outline", palette.outline);
+    element.style.setProperty("--slime-glow", palette.glow);
+    element.style.setProperty("--slime-face", palette.face);
+  }
+
+  function renderGoldProgressCard(element, title, completedLevels, distinctCount, distinctLabel, mastery) {
+    if (!element) return;
+    const heading = document.createElement("strong");
+    heading.textContent = title;
+    const levels = document.createElement("span");
+    levels.textContent = `Level: ${Math.min(500, completedLevels)} / 500`;
+    const distinct = document.createElement("span");
+    distinct.textContent = `${distinctLabel}: ${Math.min(5, distinctCount)} / 5`;
+    const status = document.createElement("small");
+    status.textContent = mastery ? "MASTERY FREIGESCHALTET" : "MASTERY GESPERRT";
+    element.classList.toggle("mastered", mastery);
+    element.replaceChildren(heading, levels, distinct, status);
+  }
+
+  function renderGoldWardrobeStatus() {
+    const gold = window.SlimeGold;
+    if (!gold) return;
+    const progress = gold.getProgress();
+    const realShopUnlocked = gold.isGoldShopUnlocked();
+    const shopAccessible = gold.isGoldShopAccessible();
+    const devShop = DEV_MODE && gold.getDevState().shopUnlocked;
+
+    ui.goldShopStatusText.textContent = realShopUnlocked
+      ? "GOLD-SHOP FREIGESCHALTET"
+      : devShop
+        ? "GOLD-SHOP TEST FREIGESCHALTET"
+        : "GOLD-SHOP GESPERRT";
+    ui.goldShopStatusText.classList.toggle("unlocked", shopAccessible);
+    ui.goldShopStatusHint.textContent = shopAccessible
+      ? "Gold-Hüte und Gold-Bärte: einzeln kaufen ODER per Herausforderung kostenlos freischalten."
+      : "Schalte den Gold-Slime frei: 500 Level + 5 Farben ODER 5.000 Sterne.";
+
+    renderGoldProgressCard(
+      ui.goldHatProgress,
+      "GOLD-HÜTE",
+      progress.hats.completedLevels,
+      progress.hats.distinctHatIds.length,
+      "Hüte",
+      progress.hats.masteryUnlocked
+    );
+    renderGoldProgressCard(
+      ui.goldBeardProgress,
+      "GOLD-BÄRTE",
+      progress.beards.completedLevels,
+      progress.beards.distinctBeardIds.length,
+      "Bärte",
+      progress.beards.masteryUnlocked
+    );
+  }
+
+  function renderGoldCategoryUnlockInfo() {
+    if (!ui.goldCategoryUnlockInfo || !window.SlimeGold) return;
+    const progress = window.SlimeGold.getProgress();
+    const hats = goldWardrobeCategory === "hats";
+    const categoryProgress = hats ? progress.hats : progress.beards;
+    const distinctCount = hats
+      ? categoryProgress.distinctHatIds.length
+      : categoryProgress.distinctBeardIds.length;
+    const itemLabel = hats ? "HUT" : "BART";
+    const categoryName = hats ? "Gold-Hüte" : "Gold-Bärte";
+
+    const paths = document.createElement("strong");
+    paths.textContent = `KAUF: 1.000 ⭐ PRO ${itemLabel} · ODER HERAUSFORDERUNG`;
+    const criteria = document.createElement("span");
+    criteria.textContent = hats
+      ? `Level mit Hut: ${categoryProgress.completedLevels} / 500 · Verschiedene Hüte: ${Math.min(5, distinctCount)} / 5`
+      : `Level mit Bart: ${categoryProgress.completedLevels} / 500 · Verschiedene Bärte: ${Math.min(5, distinctCount)} / 5`;
+    const reward = document.createElement("small");
+    reward.textContent = `Bei Abschluss werden alle ${categoryName} kostenlos freigeschaltet.`;
+    ui.goldCategoryUnlockInfo.classList.toggle(
+      "mastered",
+      categoryProgress.masteryUnlocked
+    );
+    ui.goldCategoryUnlockInfo.replaceChildren(paths, criteria, reward);
+  }
+
+  function getGoldItemName(category, itemId) {
+    if (category === "slime") return "Gold-Slime";
+    if (category === "hat") {
+      return `Gold-${getSlimeCosmeticDefinition(itemId)?.name ?? itemId}`;
+    }
+    return `Gold-${getSlimeBeardDefinition(itemId)?.name ?? itemId}`;
+  }
+
+  function isGoldItemAvailable(category, itemId) {
+    const gold = window.SlimeGold;
+    if (category === "slime") return gold?.canUseGoldSlime?.() === true;
+    if (category === "hat") return gold?.canUseGoldHat?.(itemId) === true;
+    return gold?.canUseGoldBeard?.(itemId) === true;
+  }
+
+  function isGoldItemSelected(category, itemId) {
+    const appearance = window.SlimeGold?.getEquippedAppearance?.() ?? {};
+    if (category === "slime") return appearance.slime === true;
+    if (category === "hat") return appearance.hatId === itemId;
+    return appearance.beardId === itemId;
+  }
+
+  function createGoldItemPreview(category, itemId) {
+    const preview = document.createElement("canvas");
+    preview.className = "slimeCosmeticPreview goldItemPreview";
+    preview.width = 88;
+    preview.height = 70;
+    preview.setAttribute("aria-hidden", "true");
+    const appearance = window.SlimeGold?.getEquippedAppearance?.() ?? {
+      slime: false,
+      hatId: null,
+      beardId: null
+    };
+    const cosmetic = category === "hat" ? itemId : getActiveSlimeCosmetic();
+    const beard = category === "beard" ? itemId : getActiveSlimeBeard();
+    drawSlimeCharacterPreview(
+      preview,
+      cosmetic,
+      beard,
+      getActiveSlimeColor(),
+      {
+        ...getSelectedPrestigeSlimePreviewOptions(),
+        goldSlime: category === "slime" || appearance.slime,
+        goldCosmetic: category === "hat" || appearance.hatId === cosmetic,
+        goldBeard: category === "beard" || appearance.beardId === beard
+      }
+    );
+    return preview;
+  }
+
+  function createGoldSlimeColorOption() {
+    const gold = window.SlimeGold;
+    const progress = gold.getProgress().slime;
+    const owned = gold.ownsGoldSlime();
+    const available = gold.canUseGoldSlime();
+    const selected = gold.getEquippedAppearance().slime === true;
+    const price = gold.slimePrice ?? 5000;
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "slimeColorOption goldItemOption goldSlimeColorOption";
+    button.dataset.goldCategory = "slime";
+    applyGoldPaletteCss(button);
+    button.classList.toggle("selected", selected);
+    button.classList.toggle("locked", !available);
+    button.disabled = !available;
+    button.setAttribute(
+      "aria-label",
+      available ? "Gold-Slime auswählen" : "Gold-Slime ist gesperrt"
+    );
+    button.appendChild(createGoldItemPreview("slime", null));
+
+    const label = document.createElement("span");
+    label.className = "slimeColorLabel";
+    label.textContent = "GOLD-SLIME";
+    button.appendChild(label);
+    if (!available) {
+      const lock = document.createElement("span");
+      lock.className = "slimeColorLock goldItemLock";
+      lock.textContent = "🔒";
+      lock.setAttribute("aria-hidden", "true");
+      button.appendChild(lock);
+    }
+
+    button.addEventListener("click", () => {
+      if (!available) return;
+      devPreviewSlimeColor = null;
+      if (selected) gold.useNormalAppearance("slime");
+      else gold.equipGoldSlime();
+      refreshGoldWardrobeViews();
+    });
+
+    const slot = document.createElement("div");
+    slot.className = "wardrobePurchaseSlot goldPurchaseSlot goldSlimeColorSlot";
+    const unlockPaths = document.createElement("strong");
+    unlockPaths.className = "goldSlimeUnlockPaths";
+    unlockPaths.textContent = owned
+      ? progress.masteryUnlocked
+        ? "IM BESITZ · MASTERY FREIGESCHALTET"
+        : "IM BESITZ · MASTERY LÄUFT WEITER"
+      : `KAUF: ${price.toLocaleString("de-DE")} ⭐ · ODER HERAUSFORDERUNG`;
+    const criteria = document.createElement("span");
+    criteria.className = "goldSlimeCriteria";
+    criteria.textContent =
+      `Level: ${progress.completedLevels} / 500 · Farben: ${Math.min(5, progress.distinctColorIds.length)} / 5`;
+    const reward = document.createElement("small");
+    reward.className = "goldSlimeReward";
+    reward.textContent = "Gold-Slime-Besitz öffnet den Gold-Shop.";
+    slot.append(button, unlockPaths, criteria, reward);
+
+    if (!owned) {
+      const buyButton = document.createElement("button");
+      buyButton.type = "button";
+      buyButton.className = "wardrobeBuyButton goldBuyButton goldSlimeBuyButton";
+      buyButton.textContent = `KAUFEN · ${price.toLocaleString("de-DE")} ⭐`;
+      buyButton.disabled = !gold.canPurchaseGoldSlime();
+      buyButton.setAttribute(
+        "aria-label",
+        `Gold-Slime für ${price.toLocaleString("de-DE")} Sterne kaufen`
+      );
+      buyButton.addEventListener("click", event => {
+        event.stopPropagation();
+        const result = gold.purchaseGoldSlime();
+        if (!result?.ok) return;
+        showGameToast(result.test
+          ? `🧪 Gold-Slime testweise für ${price.toLocaleString("de-DE")} Sterne gekauft!`
+          : `⭐ Gold-Slime für ${price.toLocaleString("de-DE")} Sterne gekauft!`);
+        refreshGoldWardrobeViews();
+      });
+      slot.appendChild(buyButton);
+    }
+    return slot;
+  }
+
+  function refreshGoldWardrobeViews() {
+    renderGoldWardrobe();
+    renderSlimeColorPicker();
+    renderSlimeCosmeticPicker();
+    renderSlimeBeardPicker();
+    renderMenuMascot();
+    renderMainMenuStats();
+    updateDevGoldControls();
+  }
+
+  function createGoldPurchaseSlot(category, itemId, itemName, optionButton) {
+    const gold = window.SlimeGold;
+    const price = gold?.itemPrice ?? 1000;
+    const slot = document.createElement("div");
+    slot.className = "wardrobePurchaseSlot goldPurchaseSlot";
+    const requirement = document.createElement("span");
+    requirement.className = "wardrobePurchaseRequirement";
+    requirement.textContent = gold?.isGoldShopAccessible?.()
+      ? "Einzelkauf · oder Mastery"
+      : "Gold-Slime öffnet den Shop";
+
+    const buyButton = document.createElement("button");
+    buyButton.type = "button";
+    buyButton.className = "wardrobeBuyButton goldBuyButton";
+    buyButton.textContent = `KAUFEN · ${price.toLocaleString("de-DE")} ⭐`;
+    buyButton.disabled = !gold?.canPurchaseGoldItem?.(category, itemId);
+    buyButton.setAttribute(
+      "aria-label",
+      `${itemName} für ${price.toLocaleString("de-DE")} Sterne kaufen`
+    );
+    buyButton.addEventListener("click", event => {
+      event.stopPropagation();
+      const result = gold?.purchaseGoldItem?.(category, itemId);
+      if (!result?.ok) return;
+      showGameToast(result.test
+        ? `🧪 ${itemName} testweise für ${price.toLocaleString("de-DE")} Sterne gekauft!`
+        : `⭐ ${itemName} für ${price.toLocaleString("de-DE")} Sterne gekauft!`);
+      refreshGoldWardrobeViews();
+    });
+
+    slot.append(optionButton, requirement, buyButton);
+    return slot;
+  }
+
+  function createGoldItemOption(category, itemId = null) {
+    const gold = window.SlimeGold;
+    const itemName = getGoldItemName(category, itemId);
+    const available = isGoldItemAvailable(category, itemId);
+    const selected = isGoldItemSelected(category, itemId);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "slimeColorOption goldItemOption";
+    button.dataset.goldCategory = category;
+    if (itemId) button.dataset.goldItemId = itemId;
+    applyGoldPaletteCss(button);
+    button.classList.toggle("selected", selected);
+    button.classList.toggle("locked", !available);
+    button.disabled = !available;
+    button.setAttribute(
+      "aria-label",
+      available ? `${itemName} auswählen` : `${itemName} ist gesperrt`
+    );
+    button.appendChild(createGoldItemPreview(category, itemId));
+
+    const label = document.createElement("span");
+    label.className = "slimeColorLabel";
+    label.textContent = itemName;
+    button.appendChild(label);
+
+    if (!available) {
+      const lock = document.createElement("span");
+      lock.className = "slimeColorLock goldItemLock";
+      lock.textContent = "🔒";
+      lock.setAttribute("aria-hidden", "true");
+      button.appendChild(lock);
+    }
+
+    button.addEventListener("click", () => {
+      if (!available) return;
+      devPreviewSlimeColor = null;
+      devPreviewSlimeCosmetic = null;
+      devPreviewSlimeBeard = null;
+      if (selected) {
+        window.SlimeGold?.useNormalAppearance?.(category);
+      } else if (category === "slime") {
+        window.SlimeGold?.equipGoldSlime?.();
+      } else if (category === "hat") {
+        window.SlimeGold?.equipGoldHat?.(itemId);
+      } else {
+        window.SlimeGold?.equipGoldBeard?.(itemId);
+      }
+      refreshGoldWardrobeViews();
+    });
+
+    return available
+      ? button
+      : createGoldPurchaseSlot(category, itemId, itemName, button);
+  }
+
+  function renderGoldWardrobeOptions() {
+    if (!ui.goldWardrobeOptions || !window.SlimeGold) return;
+    const options = goldWardrobeCategory === "hats"
+      ? window.SlimeGold.getGoldHatIds().map(id => createGoldItemOption("hat", id))
+      : window.SlimeGold.getGoldBeardIds().map(id => createGoldItemOption("beard", id));
+    ui.goldWardrobeOptions.replaceChildren(...options);
+  }
+
+  function renderGoldWardrobe() {
+    if (!window.SlimeGold || !ui.goldWardrobeOptions) return;
+    renderGoldWardrobeStatus();
+    renderGoldCategoryUnlockInfo();
+    ui.goldWardrobeCategories
+      ?.querySelectorAll("[data-gold-category]")
+      .forEach(button => {
+        button.classList.toggle(
+          "active",
+          button.dataset.goldCategory === goldWardrobeCategory
+        );
+      });
+    renderGoldWardrobeOptions();
   }
 
   function showWardrobeView(viewName = "home") {
@@ -1413,15 +1824,17 @@
     ui.wardrobeColorView.classList.toggle("hidden", viewName !== "color");
     ui.wardrobeCosmeticsView.classList.toggle("hidden", viewName !== "cosmetics");
     ui.wardrobeBeardsView.classList.toggle("hidden", viewName !== "beards");
+    ui.wardrobeGoldView.classList.toggle("hidden", viewName !== "gold");
     ui.wardrobePrestigeView.classList.toggle("hidden", viewName !== "prestige");
     ui.wardrobeColorBackBtn.classList.toggle("hidden", viewName !== "color");
     ui.wardrobeCosmeticsBackBtn.classList.toggle("hidden", viewName !== "cosmetics");
     ui.wardrobeBeardsBackBtn.classList.toggle("hidden", viewName !== "beards");
+    ui.wardrobeGoldBackBtn.classList.toggle("hidden", viewName !== "gold");
     ui.wardrobePrestigeBackBtn.classList.toggle("hidden", viewName !== "prestige");
-    renderWardrobeProgress();
     if (viewName === "color") renderSlimeColorPicker();
     if (viewName === "cosmetics") renderSlimeCosmeticPicker();
     if (viewName === "beards") renderSlimeBeardPicker();
+    if (viewName === "gold") renderGoldWardrobe();
     if (viewName === "prestige") renderWardrobePrestigePicker();
   }
 
@@ -2345,6 +2758,81 @@
     window.addEventListener("resize", updateHowToScrollbar);
   }
 
+  function updateDevGoldControls() {
+    if (!DEV_MODE || !window.SlimeGold) return;
+    const dev = window.SlimeGold.getDevState();
+    const controls = [
+      [ui.devGoldSlimeTestBtn, dev.visualSlime],
+      [ui.devGoldHatsTestBtn, dev.visualHats],
+      [ui.devGoldBeardsTestBtn, dev.visualBeards],
+      [ui.devGoldAllTestBtn, dev.visualSlime && dev.visualHats && dev.visualBeards],
+      [ui.devGoldShopTestBtn, dev.shopUnlocked]
+    ];
+    controls.forEach(([button, active]) => {
+      button?.setAttribute("aria-pressed", String(active));
+    });
+    if (ui.devGoldShopTestBtn) {
+      ui.devGoldShopTestBtn.textContent = dev.shopUnlocked
+        ? `GOLD-SHOP TEST · ${dev.balance.toLocaleString("de-DE")} ⭐`
+        : "GOLD-SHOP TEST";
+    }
+  }
+
+  function toggleDevGoldVisual(category) {
+    if (!DEV_MODE || !window.SlimeGold) return;
+    const dev = window.SlimeGold.getDevState();
+    const active = category === "slime"
+      ? dev.visualSlime
+      : category === "hats"
+        ? dev.visualHats
+        : dev.visualBeards;
+    window.SlimeGold.setDevVisualCategory(category, !active);
+    refreshGoldWardrobeViews();
+  }
+
+  function toggleDevAllGoldVisuals() {
+    if (!DEV_MODE || !window.SlimeGold) return;
+    const dev = window.SlimeGold.getDevState();
+    window.SlimeGold.setDevVisualAll(
+      !(dev.visualSlime && dev.visualHats && dev.visualBeards)
+    );
+    refreshGoldWardrobeViews();
+  }
+
+  function toggleDevGoldShop() {
+    if (!DEV_MODE || !window.SlimeGold) return;
+    const dev = window.SlimeGold.getDevState();
+    window.SlimeGold.setDevShopUnlocked(!dev.shopUnlocked);
+    refreshGoldWardrobeViews();
+  }
+
+  function prepareDevGoldMastery(category, label) {
+    if (!DEV_MODE || !window.SlimeGold?.prepareDevMasteryBoundary?.(category)) return;
+    showGameToast(
+      `🧪 ${label}: 499/500 und 5/5 vorbereitet. Jetzt ein passendes normales Item tragen und ein echtes Level abschließen.`,
+      4200
+    );
+    refreshGoldWardrobeViews();
+  }
+
+  function resetDevGoldTest() {
+    if (!DEV_MODE || !window.SlimeGold?.resetGoldProgressForDev?.()) return;
+    devPreviewSlimeColor = null;
+    devPreviewSlimeCosmetic = null;
+    devPreviewSlimeBeard = null;
+    showGameToast("🧪 Ausschließlich Gold-Testdaten wurden zurückgesetzt.");
+    refreshGoldWardrobeViews();
+  }
+
+  ui.goldWardrobeCategories
+    ?.querySelectorAll("[data-gold-category]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        goldWardrobeCategory = button.dataset.goldCategory;
+        renderGoldWardrobe();
+      });
+    });
+
   if (DEV_MODE && ui.devShopTestBtn) {
     ui.devShopTestBtn.addEventListener("click", toggleDevShopTest);
     ui.devPerkPurchaseResetBtn?.addEventListener(
@@ -2355,6 +2843,25 @@
   }
 
   if (DEV_MODE) {
+    ui.devGoldSlimeTestBtn?.addEventListener("click", () => toggleDevGoldVisual("slime"));
+    ui.devGoldHatsTestBtn?.addEventListener("click", () => toggleDevGoldVisual("hats"));
+    ui.devGoldBeardsTestBtn?.addEventListener("click", () => toggleDevGoldVisual("beards"));
+    ui.devGoldAllTestBtn?.addEventListener("click", toggleDevAllGoldVisuals);
+    ui.devGoldShopTestBtn?.addEventListener("click", toggleDevGoldShop);
+    ui.devGoldSlimeBoundaryBtn?.addEventListener(
+      "click",
+      () => prepareDevGoldMastery("slime", "Gold-Slime")
+    );
+    ui.devGoldHatBoundaryBtn?.addEventListener(
+      "click",
+      () => prepareDevGoldMastery("hats", "Gold-Hüte")
+    );
+    ui.devGoldBeardBoundaryBtn?.addEventListener(
+      "click",
+      () => prepareDevGoldMastery("beards", "Gold-Bärte")
+    );
+    ui.devGoldResetBtn?.addEventListener("click", resetDevGoldTest);
+    updateDevGoldControls();
     document.getElementById("devCallingCardTestBtn")
       ?.addEventListener("click", showDevCallingCardTest);
     ui.devUpdateScreenTestBtn
@@ -2367,6 +2874,7 @@
     "click",
     closePerkConflictPurchaseInfo
   );
+  ui.goldShopIntroConfirmBtn?.addEventListener("click", confirmGoldShopIntro);
 
   if (shouldShowUpdateScreenFromLocalTestUrl()) {
     showUpdateScreen(TEST_UPDATE_DATA);

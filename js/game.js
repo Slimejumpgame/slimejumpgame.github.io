@@ -1079,6 +1079,20 @@
       totalStars: starProgress.requiredTotal
     });
 
+    const goldAppearance = window.SlimeGold?.getEquippedAppearance?.() ?? {
+      slime: false,
+      hatId: null,
+      beardId: null
+    };
+    const goldProgressResult = window.SlimeGold?.recordCompletedLevel?.({
+      colorId: getActiveSlimeColor(),
+      cosmeticId: getActiveSlimeCosmetic(),
+      beardId: getActiveSlimeBeard(),
+      usesGoldSlime: goldAppearance.slime,
+      usesGoldHat: Boolean(goldAppearance.hatId),
+      usesGoldBeard: Boolean(goldAppearance.beardId)
+    });
+
     const awardedBonus =
       awardRunScore(levelScoreBase, {deduction: shotPenalty}) +
       awardRunScore(starScoreBonus);
@@ -1094,10 +1108,20 @@
     const collectedStarSummary = starProgress.bonusTotal > 0
       ? `${starProgress.requiredCollected}/${starProgress.requiredTotal} Pflichtsterne · Bonusstern ${starProgress.bonusCollected}/${starProgress.bonusTotal}`
       : `${starProgress.requiredCollected}/${starProgress.requiredTotal} Sterne gesammelt`;
+    const goldMasteryLabels = {
+      slime: "Gold-Slime",
+      hats: "Gold-Hüte",
+      beards: "Gold-Bärte"
+    };
+    const goldMasterySummary = goldProgressResult?.newlyUnlocked?.length > 0
+      ? ` Gold-Mastery: ${goldProgressResult.newlyUnlocked
+          .map(category => goldMasteryLabels[category])
+          .join(", ")} freigeschaltet!`
+      : "";
 
     showMessage(
       `Level ${completedLevel} geschafft!`,
-      `${collectedStarSummary}. Levelbonus: ${awardedBonus} Punkte.`,
+      `${collectedStarSummary}. Levelbonus: ${awardedBonus} Punkte.${goldMasterySummary}`,
       "Nächstes Zufallslevel",
       "next"
     );
@@ -1436,10 +1460,12 @@
   ui.wardrobeColorMenuBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeColorMenuBtn, () => showWardrobeView("color")));
   ui.wardrobeCosmeticsMenuBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeCosmeticsMenuBtn, () => showWardrobeView("cosmetics")));
   ui.wardrobeBeardsMenuBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeBeardsMenuBtn, () => showWardrobeView("beards")));
+  ui.wardrobeGoldMenuBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeGoldMenuBtn, requestGoldWardrobeOpen));
   ui.wardrobePrestigeMenuBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobePrestigeMenuBtn, () => showWardrobeView("prestige")));
   ui.wardrobeColorBackBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeColorBackBtn, () => showWardrobeView("home")));
   ui.wardrobeCosmeticsBackBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeCosmeticsBackBtn, () => showWardrobeView("home")));
   ui.wardrobeBeardsBackBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeBeardsBackBtn, () => showWardrobeView("home")));
+  ui.wardrobeGoldBackBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeGoldBackBtn, () => showWardrobeView("home")));
   ui.wardrobePrestigeBackBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobePrestigeBackBtn, () => showWardrobeView("home")));
   ui.wardrobePrestigeCategories.querySelectorAll("[data-prestige-category]").forEach(button => {
     button.addEventListener("click", () => {

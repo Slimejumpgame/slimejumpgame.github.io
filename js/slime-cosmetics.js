@@ -296,6 +296,9 @@
   function selectSlimeCosmetic(cosmetic) {
     const normalized = normalizeSlimeCosmetic(cosmetic);
     if (!isSlimeCosmeticUnlocked(normalized)) return false;
+    if (typeof window !== "undefined") {
+      window.SlimeGold?.useNormalAppearance?.("hat");
+    }
     selectedSlimeCosmetic = normalized;
     saveSlimeCosmeticProgress();
     return true;
@@ -307,6 +310,9 @@
       return false;
     }
     if (!ensureSlimeCosmeticUnlocked(normalized)) return false;
+    if (typeof window !== "undefined") {
+      window.SlimeGold?.useNormalAppearance?.("hat");
+    }
     selectedSlimeCosmetic = normalized;
     saveSlimeCosmeticProgress();
     return true;

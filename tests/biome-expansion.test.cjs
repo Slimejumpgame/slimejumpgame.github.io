@@ -469,9 +469,6 @@ function assertScopeBoundaries() {
     "js/hazards.js",
     "js/level-generator.js",
     "js/physics.js",
-    "js/game.js",
-    "js/ui.js",
-    "js/renderer.js",
     "js/slime-achievements.js"
   ]) {
     assert.equal(

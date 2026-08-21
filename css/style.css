@@ -1542,7 +1542,12 @@ p {
 }
 
 #devModeToggleBtn[aria-pressed="true"],
-#devShopTestBtn[aria-pressed="true"] {
+#devShopTestBtn[aria-pressed="true"],
+#devGoldSlimeTestBtn[aria-pressed="true"],
+#devGoldHatsTestBtn[aria-pressed="true"],
+#devGoldBeardsTestBtn[aria-pressed="true"],
+#devGoldAllTestBtn[aria-pressed="true"],
+#devGoldShopTestBtn[aria-pressed="true"] {
   border-color: rgba(255, 233, 119, 0.86);
   background: linear-gradient(180deg, #8cce32, #417d1c);
   color: #ffffff;
@@ -1963,7 +1968,7 @@ p {
   min-height: 0;
   margin: 0 auto;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: var(--ui-gap-md);
   overflow: hidden;
 }
@@ -2019,6 +2024,283 @@ p {
     linear-gradient(155deg, rgba(124, 51, 171, 0.96), rgba(47, 24, 91, 0.98));
   color: #fff2a3;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 15px rgba(208, 111, 255, 0.2);
+}
+
+.wardrobeGoldMenuButton {
+  border-color: rgba(255, 226, 126, 0.82);
+  background:
+    radial-gradient(circle at 50% 6%, rgba(255, 241, 176, 0.28), transparent 44%),
+    linear-gradient(155deg, rgba(169, 111, 0, 0.98), rgba(83, 49, 0, 0.98));
+  color: #fff1b0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 3px 0 rgba(50, 28, 0, 0.92),
+    0 0 16px rgba(223, 175, 36, 0.22);
+}
+
+.goldWardrobePanel {
+  display: grid !important;
+  grid-template-rows: auto auto auto auto minmax(0, 1fr) !important;
+  gap: clamp(7px, 1dvh, 11px);
+  border-color: rgba(245, 215, 110, 0.5);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(245, 215, 110, 0.13), transparent 36%),
+    linear-gradient(155deg, rgba(42, 22, 66, 0.98), rgba(17, 12, 42, 0.99));
+}
+
+.goldWardrobeStatus {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(150px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(7px, 1vw, 12px);
+  padding: clamp(6px, 0.8vw, 10px);
+  border: 1px solid rgba(245, 215, 110, 0.34);
+  border-radius: var(--ui-radius-control);
+  background: rgba(54, 31, 4, 0.5);
+}
+
+.goldWardrobeMark {
+  display: grid;
+  width: clamp(30px, 3vw, 42px);
+  aspect-ratio: 1;
+  place-items: center;
+  border: 2px solid #f5d76e;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, #fff1b0, #dfaf24 46%, #6a4300);
+  box-shadow: 0 0 12px rgba(245, 215, 110, 0.45);
+  color: #6a4300;
+  font-size: clamp(13px, 1.4vw, 20px);
+}
+
+.goldWardrobeStatus > span:nth-child(2) {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.goldWardrobeStatus strong {
+  color: #fff1b0;
+  font-size: clamp(11px, 1.15vw, 16px);
+  letter-spacing: 0.06em;
+}
+
+#goldShopStatusText {
+  color: #d5b7df;
+  font-size: clamp(8px, 0.78vw, 11px);
+  font-weight: 1000;
+  letter-spacing: 0.05em;
+}
+
+#goldShopStatusText.unlocked {
+  color: #ffe078;
+}
+
+.goldShopStatusHint {
+  min-width: 0;
+  color: #f2e7fa;
+  font-size: clamp(8px, 0.8vw, 11px);
+  font-weight: 750;
+  line-height: 1.15;
+  text-align: right;
+}
+
+.goldMasteryProgress {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(5px, 0.7vw, 9px);
+}
+
+.goldProgressCard {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 6px;
+  padding: clamp(5px, 0.65vw, 8px);
+  border: 1px solid rgba(226, 211, 246, 0.24);
+  border-radius: clamp(8px, 0.9vw, 12px);
+  background: rgba(24, 15, 52, 0.72);
+  color: #f4effa;
+  font-size: clamp(7px, 0.7vw, 10px);
+  line-height: 1.1;
+}
+
+.goldProgressCard strong,
+.goldProgressCard small {
+  grid-column: 1 / -1;
+}
+
+.goldProgressCard strong {
+  color: #f5d76e;
+  font-size: clamp(8px, 0.8vw, 11px);
+}
+
+.goldProgressCard small {
+  color: #bcaacb;
+  font-weight: 900;
+  letter-spacing: 0.035em;
+}
+
+.goldProgressCard.mastered {
+  border-color: rgba(245, 215, 110, 0.64);
+  background: rgba(99, 63, 0, 0.38);
+}
+
+.goldProgressCard.mastered small {
+  color: #fff1b0;
+}
+
+.goldWardrobeCategories {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(5px, 0.7vw, 9px);
+}
+
+.goldWardrobeCategoryButton {
+  min-width: 0;
+  min-height: clamp(34px, 5.5vh, 42px);
+  padding: 4px 8px;
+  border: 1px solid rgba(245, 215, 110, 0.42);
+  border-radius: var(--ui-radius-control);
+  background: linear-gradient(180deg, rgba(100, 63, 0, 0.82), rgba(49, 29, 0, 0.94));
+  color: #f5d76e;
+  font-family: var(--ui-title-font);
+  font-size: clamp(8px, 0.82vw, 11px);
+  font-weight: 1000;
+}
+
+.goldWardrobeCategoryButton.active {
+  border-color: #fff1b0;
+  background: linear-gradient(180deg, #dfaf24, #8d5900);
+  color: #2c1900;
+  box-shadow: inset 0 0 0 1px #f5d76e, 0 0 10px rgba(245, 215, 110, 0.34);
+}
+
+.goldCategoryUnlockInfo {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 2px clamp(7px, 1vw, 12px);
+  padding: clamp(5px, 0.65vw, 8px) clamp(7px, 0.9vw, 11px);
+  border: 1px solid rgba(245, 215, 110, 0.34);
+  border-radius: clamp(8px, 0.9vw, 12px);
+  background: rgba(58, 36, 4, 0.42);
+  color: #f4effa;
+  font-size: clamp(7px, 0.72vw, 10px);
+  line-height: 1.12;
+}
+
+.goldCategoryUnlockInfo strong {
+  grid-row: 1 / span 2;
+  color: #ffe078;
+  font-size: clamp(8px, 0.78vw, 11px);
+}
+
+.goldCategoryUnlockInfo small {
+  color: #d9cde3;
+  font-weight: 800;
+}
+
+.goldCategoryUnlockInfo.mastered {
+  border-color: rgba(245, 215, 110, 0.68);
+  background: rgba(99, 63, 0, 0.42);
+}
+
+.goldWardrobeOptions {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important;
+}
+
+.goldItemOption {
+  --slime-light: #f5d76e;
+  --slime-main: #dfaf24;
+  --slime-dark: #a96f00;
+  --slime-outline: #6a4300;
+  --slime-glow: #ffe28a;
+  --slime-face: #3b2600;
+  border-color: rgba(245, 215, 110, 0.42);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 241, 176, 0.16), transparent 48%),
+    linear-gradient(180deg, rgba(106, 67, 0, 0.32), rgba(255, 255, 255, 0.025));
+}
+
+.goldItemOption.selected {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 241, 176, 0.28), transparent 50%),
+    linear-gradient(180deg, rgba(223, 175, 36, 0.34), rgba(106, 67, 0, 0.25));
+}
+
+.goldSlimeColorSlot {
+  grid-column: span 2;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.25fr);
+  grid-template-rows: repeat(4, auto);
+  align-items: center;
+  gap: 3px clamp(6px, 0.8vw, 10px);
+  padding: 4px;
+  border: 1px solid rgba(245, 215, 110, 0.38);
+  border-radius: clamp(9px, 1vw, 13px);
+  background: rgba(69, 42, 0, 0.28);
+}
+
+.goldSlimeColorSlot .goldSlimeColorOption {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  align-self: stretch;
+}
+
+.goldSlimeUnlockPaths,
+.goldSlimeCriteria,
+.goldSlimeReward,
+.goldSlimeColorSlot .goldSlimeBuyButton {
+  grid-column: 2;
+  min-width: 0;
+  text-align: center;
+}
+
+.goldSlimeUnlockPaths {
+  color: #ffe078;
+  font-size: clamp(7px, 0.72vw, 10px);
+  line-height: 1.1;
+}
+
+.goldSlimeCriteria {
+  color: #ffffff;
+  font-size: clamp(8px, 0.78vw, 11px);
+  font-weight: 900;
+}
+
+.goldSlimeReward {
+  color: #d9cde3;
+  font-size: clamp(6px, 0.64vw, 9px);
+  font-weight: 800;
+}
+
+.goldBuyButton {
+  border-color: rgba(255, 241, 176, 0.82);
+  background: linear-gradient(180deg, #dfaf24, #8a5900);
+  box-shadow: inset 0 1px 0 #fff1b0, 0 2px 0 #4a2d00;
+  color: #211300;
+}
+
+.goldBuyButton:disabled {
+  background: linear-gradient(180deg, #66593f, #353128);
+  color: #c8c0ae;
+}
+
+@media (orientation: portrait) and (max-width: 760px) {
+  .goldMasteryProgress {
+    grid-template-columns: 1fr;
+  }
+
+  .goldWardrobeStatus {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .goldShopStatusHint {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
 }
 
 .wardrobePrestigePanel {
@@ -2366,32 +2648,6 @@ p {
   padding: 0 clamp(10px, 1.25vw, 18px);
 }
 
-.wardrobeProgressPanel {
-  min-height: clamp(38px, 6vh, 52px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(8px, 1.3vw, 18px);
-  padding: clamp(7px, 1vw, 12px) clamp(12px, 1.6vw, 20px);
-  text-align: center;
-}
-
-.wardrobeProgressLabel {
-  color: var(--ui-green-light);
-  font-size: clamp(9px, 0.9vw, 13px);
-  font-weight: 1000;
-  letter-spacing: 0.12em;
-  line-height: 1;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.wardrobeProgressPanel .slimeColorRequirement {
-  min-height: 0;
-  margin: 0;
-  font-size: clamp(10px, 1vw, 14px);
-}
-
 .wardrobeCollections {
   min-height: 0;
   display: grid;
@@ -2512,16 +2768,6 @@ p {
   line-height: 1;
   text-transform: uppercase;
   text-shadow: 0 2px 0 #381259;
-}
-
-.slimeColorRequirement {
-  min-height: 1.1em;
-  margin: 0 0 var(--ui-gap-sm);
-  color: #ffe977;
-  font-size: clamp(9px, 0.82vw, 12px);
-  font-weight: 900;
-  line-height: 1.15;
-  text-align: center;
 }
 
 .slimeColorOptions,
@@ -4465,17 +4711,75 @@ p {
     font-size: clamp(11px, 3.3vh, 16px);
   }
 
-  .wardrobeProgressPanel {
-    min-height: 28px;
-    padding: 4px 9px;
+  .goldWardrobePanel {
+    gap: 3px;
   }
 
-  .wardrobeProgressLabel {
-    font-size: clamp(7px, 2vh, 9px);
+  .goldWardrobeStatus {
+    grid-template-columns: auto minmax(110px, auto) minmax(0, 1fr);
+    gap: 4px;
+    padding: 3px 5px;
   }
 
-  .wardrobeProgressPanel .slimeColorRequirement {
-    font-size: clamp(7px, 2.2vh, 10px);
+  .goldWardrobeMark {
+    width: clamp(22px, 7vh, 30px);
+    font-size: clamp(9px, 2.8vh, 13px);
+  }
+
+  .goldWardrobeStatus strong {
+    font-size: clamp(8px, 2.4vh, 11px);
+  }
+
+  #goldShopStatusText,
+  .goldShopStatusHint {
+    font-size: clamp(6px, 1.75vh, 8px);
+  }
+
+  .goldProgressCard {
+    gap: 1px 3px;
+    padding: 3px 4px;
+    font-size: clamp(5px, 1.55vh, 7px);
+  }
+
+  .goldProgressCard strong,
+  .goldWardrobeCategoryButton {
+    font-size: clamp(6px, 1.8vh, 8px);
+  }
+
+  .goldWardrobeCategoryButton {
+    min-height: clamp(24px, 7vh, 30px);
+    padding: 2px 4px;
+  }
+
+  .goldCategoryUnlockInfo {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px 4px;
+    padding: 3px 5px;
+    font-size: clamp(6px, 1.65vh, 7px);
+  }
+
+  .goldCategoryUnlockInfo strong {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    font-size: clamp(6px, 1.9vh, 8px);
+  }
+
+  .goldCategoryUnlockInfo small {
+    font-size: clamp(6px, 1.55vh, 7px);
+  }
+
+  .goldSlimeColorSlot {
+    gap: 1px 4px;
+    padding: 2px;
+  }
+
+  .goldSlimeUnlockPaths,
+  .goldSlimeCriteria {
+    font-size: clamp(6px, 1.8vh, 8px);
+  }
+
+  .goldSlimeReward {
+    font-size: clamp(6px, 1.55vh, 8px);
   }
 
   .panelHeading {
@@ -4493,11 +4797,6 @@ p {
 
   .slimeColorPickerTitle {
     font-size: clamp(11px, 3.4vh, 16px);
-  }
-
-  .slimeColorRequirement {
-    margin-bottom: 4px;
-    font-size: clamp(7px, 2.2vh, 10px);
   }
 
   .slimeColorOption {

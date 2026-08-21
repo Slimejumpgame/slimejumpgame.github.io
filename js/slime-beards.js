@@ -267,6 +267,9 @@
   function selectSlimeBeard(beard) {
     const normalized = normalizeSlimeBeard(beard);
     if (!isSlimeBeardUnlocked(normalized)) return false;
+    if (typeof window !== "undefined") {
+      window.SlimeGold?.useNormalAppearance?.("beard");
+    }
     selectedSlimeBeard = normalized;
     saveSlimeBeardProgress();
     return true;
@@ -278,6 +281,9 @@
       return false;
     }
     if (!ensureSlimeBeardUnlocked(normalized)) return false;
+    if (typeof window !== "undefined") {
+      window.SlimeGold?.useNormalAppearance?.("beard");
+    }
     selectedSlimeBeard = normalized;
     saveSlimeBeardProgress();
     return true;

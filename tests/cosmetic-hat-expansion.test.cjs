@@ -385,11 +385,11 @@ function assertRendererCoverageAndVisualBounds() {
 
   assert.match(
     rendererSource,
-    /drawSlimeCharacterPreview[\s\S]*?drawSlimeCosmetic\(previewContext, cosmetic, 30\)/
+    /drawSlimeCharacterPreview[\s\S]*?drawSlimeCosmetic\(\s*previewContext,\s*cosmetic,\s*30,\s*\{gold: options\.goldCosmetic === true\}\s*\)/
   );
   assert.match(
     rendererSource,
-    /drawSlimeCosmetic\(ctx, getActiveSlimeCosmetic\(\), player\.r\)/
+    /drawSlimeCosmetic\(ctx, activeCosmetic, player\.r, \{[\s\S]*?gold: goldAppearance\.hatId === activeCosmetic/
   );
 }
 

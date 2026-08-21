@@ -311,6 +311,9 @@
   function selectSlimeColor(color) {
     const normalized = normalizeSlimeColor(color);
     if (!unlockedSlimeColors.includes(normalized)) return false;
+    if (typeof window !== "undefined") {
+      window.SlimeGold?.useNormalAppearance?.("slime");
+    }
     selectedSlimeColor = normalized;
     saveSlimeColorProgress();
     return true;
@@ -320,6 +323,9 @@
     const normalized = normalizeSlimeColor(color);
     if (unlockedSlimeColors.includes(normalized)) return false;
     if (!ensureSlimeColorUnlocked(normalized)) return false;
+    if (typeof window !== "undefined") {
+      window.SlimeGold?.useNormalAppearance?.("slime");
+    }
     selectedSlimeColor = normalized;
     saveSlimeColorProgress();
     return true;

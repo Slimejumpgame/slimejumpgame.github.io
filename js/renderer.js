@@ -1061,11 +1061,13 @@
     context.closePath();
   }
 
-  function drawSlimeCosmetic(context, cosmetic, radius = 30) {
+  function drawSlimeCosmetic(context, cosmetic, radius = 30, options = {}) {
     const definition = getSlimeCosmeticDefinition(cosmetic);
     if (!definition || definition.type === "none") return;
 
-    const palette = definition.palette;
+    const palette = options.gold === true
+      ? window.SlimeGold?.getMaterialPalette?.() ?? definition.palette
+      : definition.palette;
     context.save();
     context.translate(
       definition.anchorX * radius,
@@ -1879,11 +1881,13 @@
     context.restore();
   }
 
-  function drawSlimeBeard(context, beard, radius = 30) {
+  function drawSlimeBeard(context, beard, radius = 30, options = {}) {
     const definition = getSlimeBeardDefinition(beard);
     if (!definition || beard === "none") return;
 
-    const palette = definition.palette;
+    const palette = options.gold === true
+      ? window.SlimeGold?.getMaterialPalette?.() ?? definition.palette
+      : definition.palette;
     context.save();
     context.translate(
       definition.anchorX * radius,
@@ -2448,7 +2452,9 @@
     options = {}
   ) {
     const previewContext = canvasElement.getContext("2d");
-    const palette = getSlimeColorPalette(color);
+    const palette = options.goldSlime === true
+      ? window.SlimeGold?.getSlimePalette?.() ?? getSlimeColorPalette(color)
+      : getSlimeColorPalette(color);
     const prestigeAura = PRESTIGE_AURA_STYLES[options.prestigeAura] ?? null;
     const prestigeTrail = PRESTIGE_TRAIL_STYLES[options.prestigeTrail] ?? null;
     const prestigeEffectRadius = Number.isFinite(options.prestigeEffectRadius)
@@ -2479,13 +2485,32 @@
     previewContext.fill();
     previewContext.stroke();
 
+    if (options.goldSlime === true) {
+      previewContext.fillStyle = palette.specular ?? "#fff1b0";
+      previewContext.globalAlpha = 0.82;
+      previewContext.beginPath();
+      previewContext.ellipse(-11, -13, 7, 4, -0.5, 0, Math.PI * 2);
+      previewContext.fill();
+      previewContext.globalAlpha = 1;
+    }
+
     previewContext.fillStyle = palette.face ?? "#0b2c1a";
     previewContext.beginPath();
     previewContext.arc(-10, -2, 4, 0, Math.PI * 2);
     previewContext.arc(10, -2, 4, 0, Math.PI * 2);
     previewContext.fill();
-    drawSlimeBeard(previewContext, normalizeSlimeBeard(beard), 30);
-    drawSlimeCosmetic(previewContext, cosmetic, 30);
+    drawSlimeBeard(
+      previewContext,
+      normalizeSlimeBeard(beard),
+      30,
+      {gold: options.goldBeard === true}
+    );
+    drawSlimeCosmetic(
+      previewContext,
+      cosmetic,
+      30,
+      {gold: options.goldCosmetic === true}
+    );
     previewContext.restore();
   }
 
@@ -2585,7 +2610,14 @@
   }
 
   function drawPlayer() {
-    const palette = getSlimeColorPalette(getActiveSlimeColor());
+    const goldAppearance = window.SlimeGold?.getEquippedAppearance?.() ?? {
+      slime: false,
+      hatId: null,
+      beardId: null
+    };
+    const palette = goldAppearance.slime
+      ? window.SlimeGold?.getSlimePalette?.() ?? getSlimeColorPalette(getActiveSlimeColor())
+      : getSlimeColorPalette(getActiveSlimeColor());
     const selectedTrail = window.SlimePrestige?.getSelectedReward?.("trail") ?? "none";
     const prestigeTrail = PRESTIGE_TRAIL_STYLES[selectedTrail] ?? null;
 
@@ -2662,10 +2694,14 @@
     ctx.stroke();
 
     ctx.shadowBlur = 0;
-    ctx.fillStyle = "rgba(255,255,255,0.65)";
+    ctx.fillStyle = goldAppearance.slime
+      ? palette.specular ?? "#fff1b0"
+      : "rgba(255,255,255,0.65)";
+    ctx.globalAlpha = goldAppearance.slime ? 0.82 : 1;
     ctx.beginPath();
     ctx.ellipse(-10, -12, 8, 5, -0.5, 0, Math.PI * 2);
     ctx.fill();
+    ctx.globalAlpha = 1;
 
     ctx.fillStyle = palette.face ?? "#0b2c1a";
     ctx.beginPath();
@@ -2683,8 +2719,14 @@
       ctx.arc(0, 5, 11, 0.15, Math.PI - 0.15);
     }
     ctx.stroke();
-    drawSlimeBeard(ctx, getActiveSlimeBeard(), player.r);
-    drawSlimeCosmetic(ctx, getActiveSlimeCosmetic(), player.r);
+    const activeBeard = getActiveSlimeBeard();
+    const activeCosmetic = getActiveSlimeCosmetic();
+    drawSlimeBeard(ctx, activeBeard, player.r, {
+      gold: goldAppearance.beardId === activeBeard
+    });
+    drawSlimeCosmetic(ctx, activeCosmetic, player.r, {
+      gold: goldAppearance.hatId === activeCosmetic
+    });
     ctx.restore();
   }
 

@@ -453,11 +453,11 @@ function assertRendererCoverageAndVisualBounds() {
 
   assert.match(
     rendererSource,
-    /drawSlimeCharacterPreview[\s\S]*?drawSlimeBeard\(previewContext, normalizeSlimeBeard\(beard\), 30\)/
+    /drawSlimeCharacterPreview[\s\S]*?drawSlimeBeard\(\s*previewContext,\s*normalizeSlimeBeard\(beard\),\s*30,\s*\{gold: options\.goldBeard === true\}\s*\)/
   );
   assert.match(
     rendererSource,
-    /drawSlimeBeard\(ctx, getActiveSlimeBeard\(\), player\.r\)/
+    /drawSlimeBeard\(ctx, activeBeard, player\.r, \{[\s\S]*?gold: goldAppearance\.beardId === activeBeard/
   );
 }
 
