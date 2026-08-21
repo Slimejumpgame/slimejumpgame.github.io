@@ -19,6 +19,7 @@
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
   let volatileInstallationId = null;
+  let pendingPersonalBestSubmit = Promise.resolve(null);
 
   function isConfigured() {
     return (
@@ -143,27 +144,35 @@
     }
   }
 
-  async function submitPersonalBest(bestScore) {
+  function submitPersonalBest(bestScore) {
     const normalizedScore = normalizePositiveScore(bestScore);
-    if (normalizedScore === null) return null;
+    if (normalizedScore === null) return Promise.resolve(null);
 
-    const result = await callRpc(SUBMIT_PERSONAL_BEST_RPC, {
-      p_player_id: getOrCreateInstallationId(),
-      p_best_score: normalizedScore
+    pendingPersonalBestSubmit = (async () => {
+      const result = await callRpc(SUBMIT_PERSONAL_BEST_RPC, {
+        p_player_id: getOrCreateInstallationId(),
+        p_best_score: normalizedScore
+      });
+      const row = getRpcRow(result);
+      const storedBestScore = normalizePositiveScore(
+        row?.best_score ?? row?.bestScore
+      );
+      if (storedBestScore === null) return null;
+
+      return {
+        bestScore: storedBestScore,
+        improved: row?.improved === true
+      };
+    })().catch(error => {
+      console.warn("[PlayerBests] Persoenlicher Bestscore konnte nicht synchronisiert werden:", error);
+      return null;
     });
-    const row = getRpcRow(result);
-    const storedBestScore = normalizePositiveScore(
-      row?.best_score ?? row?.bestScore
-    );
-    if (storedBestScore === null) return null;
 
-    return {
-      bestScore: storedBestScore,
-      improved: row?.improved === true
-    };
+    return pendingPersonalBestSubmit;
   }
 
   async function getPersonalGlobalRank() {
+    await pendingPersonalBestSubmit;
     const result = await callRpc(GET_PERSONAL_RANK_RPC, {
       p_player_id: getOrCreateInstallationId()
     });

@@ -1743,6 +1743,20 @@
     saveHighScore(name, finalScore, reachedLevel, identity);
   }
 
+  function syncPersonalBestForCommittedHighScore() {
+    const playerBests = window.SlimeJumpPlayerBests;
+    if (typeof playerBests?.syncLocalPersonalBest !== "function") return;
+
+    try {
+      void Promise.resolve(playerBests.syncLocalPersonalBest())
+        .catch(error => {
+          console.warn("[PlayerBests] Hintergrund-Sync fehlgeschlagen:", error);
+        });
+    } catch (error) {
+      console.warn("[PlayerBests] Hintergrund-Sync konnte nicht gestartet werden:", error);
+    }
+  }
+
   function showNicknameEntry() {
     const remembered = normalizeNickname(localStorage.getItem("slimejumperLastNickname"), "");
     ui.nicknameInput.value = remembered;
@@ -1790,6 +1804,8 @@
     );
 
     pendingScore.commitPromise = (async () => {
+      syncPersonalBestForCommittedHighScore();
+
       try {
         await submitOnlineHighScore(
           nickname,
