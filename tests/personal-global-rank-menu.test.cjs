@@ -39,6 +39,7 @@ function createRankFixture({result, error, moduleAvailable = true} = {}) {
 
   const context = vm.createContext({ui, window});
   vm.runInContext(`
+    let personalBestBootstrapPromise = null;
     let personalGlobalRankRequestId = 0;
     ${rankFunctions}
     globalThis.rankMenuTestApi = {updatePersonalGlobalRank};

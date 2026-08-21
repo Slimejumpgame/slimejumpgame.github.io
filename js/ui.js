@@ -3,6 +3,7 @@
   const recentScoresStorageKey = "slimejumperRecentScores";
   const highScoresStorageKey = "slimejumperHighscoresV14";
   let lastOnlineScoreSubmit = Promise.resolve(null);
+  let personalBestBootstrapPromise = null;
   let personalGlobalRankRequestId = 0;
   let gameToastTimer = null;
   let devPreviewSlimeColor = null;
@@ -643,9 +644,32 @@
         : "—";
   }
 
+  function bootstrapLocalPersonalBest() {
+    if (personalBestBootstrapPromise) return personalBestBootstrapPromise;
+    const playerBests = window.SlimeJumpPlayerBests;
+
+    if (typeof playerBests?.syncLocalPersonalBest !== "function") {
+      personalBestBootstrapPromise = Promise.resolve(null);
+      return personalBestBootstrapPromise;
+    }
+
+    try {
+      personalBestBootstrapPromise = Promise.resolve(
+        playerBests.syncLocalPersonalBest()
+      ).catch(() => null);
+    } catch (_) {
+      personalBestBootstrapPromise = Promise.resolve(null);
+    }
+
+    return personalBestBootstrapPromise;
+  }
+
   async function updatePersonalGlobalRank() {
     const requestId = ++personalGlobalRankRequestId;
     renderPersonalGlobalRank(null);
+    await bootstrapLocalPersonalBest();
+    if (requestId !== personalGlobalRankRequestId) return;
+
     const playerBests = window.SlimeJumpPlayerBests;
     if (typeof playerBests?.getPersonalGlobalRank !== "function") return;
 
