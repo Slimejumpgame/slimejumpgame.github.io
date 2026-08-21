@@ -292,7 +292,7 @@ function assertIdsAndStartupOrder() {
   const playerIndex = html.indexOf("./js/player.js");
   assert.ok(prestigeIndex >= 0 && prestigeIndex < achievementsIndex);
   assert.ok(achievementsIndex < migrationIndex && migrationIndex < playerIndex);
-  assert.match(read("js/slime-achievements.js"), /recoverInterruptedRun[\s\S]*?checkWardrobeAchievements/);
+  assert.match(read("js/slime-achievements.js"), /recoverInterruptedRun[\s\S]*?checkStateAchievements/);
 
   const resetSource = read("js/slime-progress-reset.js");
   assert.match(resetSource, /RESET_VERSION = "progress-reset-2\.43"/);

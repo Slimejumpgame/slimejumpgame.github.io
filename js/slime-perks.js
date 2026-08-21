@@ -244,13 +244,15 @@
       return {ok: false, reason: "economy-unavailable", balance};
     }
 
-    return economy.purchaseUnlock({
+    const result = economy.purchaseUnlock({
       purchaseKey: `perk:${id}`,
       price: PERK_BALANCE.PERK_UNLOCK_COST,
       isUnlocked: () => getStoredUnlockedPerkIds().includes(id),
       unlock: () => unlockPerkForPurchase(id),
       rollback: () => rollbackPerkUnlock(id)
     });
+    if (result?.ok === true) window.SlimeAchievements?.checkState?.();
+    return result;
   }
 
   function getUnlockedPerkIds() {
@@ -300,9 +302,11 @@
     const normalized = normalizeSelectedIds(selected, getUnlockedPerkIds());
     if (devSelectedPerkIds !== null) {
       devSelectedPerkIds = normalized;
+      window.SlimeAchievements?.checkState?.();
       return {ok: true, reason: "updated", selected: normalized.slice()};
     }
     const saved = persistCanonicalArray(SELECTED_PERKS_STORAGE_KEY, normalized);
+    if (saved) window.SlimeAchievements?.checkState?.();
     return {ok: saved, reason: saved ? "updated" : "storage-error", selected: normalized};
   }
 

@@ -395,6 +395,9 @@ function assertDynamicAchievements() {
   };
   const context = vm.createContext({
     BIOMES: biomeRegistry,
+    NIGHT_BIOME_IDS: ["night", "stormNight", "bambooNight", "redMoon"],
+    CAVE_BIOME_IDS: ["crystalCave", "mushroomCave", "abandonedMine", "undergroundTemple"],
+    NEW_BIOME_IDS: NEW_BIOMES.map(biome => biome.id),
     achievementProgress,
     runState: {runBiomeIds: new Set()},
     saveAchievementProgress() {},
@@ -468,8 +471,7 @@ function assertScopeBoundaries() {
   for (const relativePath of [
     "js/hazards.js",
     "js/level-generator.js",
-    "js/physics.js",
-    "js/slime-achievements.js"
+    "js/physics.js"
   ]) {
     assert.equal(
       normalizeLineEndings(read(relativePath)),

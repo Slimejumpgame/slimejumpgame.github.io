@@ -345,7 +345,6 @@ function assertEngineAndScopeRemainStable() {
   for (const relativePath of [
     "js/level-generator.js",
     "js/physics.js",
-    "js/slime-achievements.js",
     "android-update.json"
   ]) {
     assert.equal(read(relativePath).replace(/\r\n/g, "\n"), readHead(relativePath).replace(/\r\n/g, "\n"));

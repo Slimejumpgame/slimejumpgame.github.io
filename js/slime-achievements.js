@@ -30,7 +30,7 @@
     Object.freeze({id: "hot_stuff", icon: "🌋", name: "HOT STUFF", description: "Schließe ein Vulkan-Level ab, ohne zu sterben.", secret: false}),
     Object.freeze({id: "head_in_the_clouds", icon: "☁️", name: "HEAD IN THE CLOUDS", description: "Erreiche erstmals die Himmelswelt.", secret: false}),
     Object.freeze({id: "world_traveler", icon: "🌍", name: "WORLD TRAVELER", description: "Erreiche alle existierenden Biome.", secret: false}),
-    Object.freeze({id: "round_two", icon: "🔁", name: "ROUND TWO", description: "Durchlaufe eine komplette Biomrotation und erreiche erneut das erste Biom.", secret: false}),
+    Object.freeze({id: "round_two", icon: "🔁", name: "ROUND TWO", description: "Schließe eine komplette Biomrotation ab und mache Runde zwei bereit.", secret: false}),
     Object.freeze({id: "fashion_slime", icon: "👑", name: "FASHION SLIME", description: "Schalte mindestens einen normalen Hut frei.", secret: false}),
     Object.freeze({id: "glorious_beard", icon: "🧔", name: "GLORIOUS BEARD", description: "Schalte mindestens einen Bart frei.", secret: false}),
     Object.freeze({id: "dressed_to_slime", icon: "🎩", name: "DRESSED TO SLIME", description: "Trage gleichzeitig einen Hut und einen Bart.", secret: false}),
@@ -58,15 +58,77 @@
     Object.freeze({id: "perfect_25", icon: "🏅", name: "PERFECT 25", description: "Schaffe insgesamt 25 Perfects.", secret: false}),
     Object.freeze({id: "veteran_slime", icon: "🏁", name: "VETERAN SLIME", description: "Schließe insgesamt 100 Level ab.", secret: false}),
     Object.freeze({id: "ouch", icon: "💀", name: "OUCH!", description: "Stirb insgesamt 25-mal.", secret: false}),
-    Object.freeze({id: "achievement_hunter", icon: "🏆", name: "ACHIEVEMENT HUNTER", description: "Schalte alle anderen Achievements frei.", secret: false}),
+    Object.freeze({id: "achievement_hunter", icon: "🏆", name: "ACHIEVEMENT HUNTER", description: "Schalte alle Achievements außer dem finalen Secret frei.", secret: false}),
     Object.freeze({id: "secret_one_shot", icon: "🏹", name: "ONE SHOT WONDER", description: "Schaffe ein Level mit nur einem Schuss.", secret: true}),
     Object.freeze({id: "secret_star_sniper", icon: "🌠", name: "STAR SNIPER", description: "Sammle 3 Sterne mit einem einzigen Schuss.", secret: true}),
     Object.freeze({id: "secret_second_chance", icon: "🩹", name: "SECOND CHANCE", description: "Nutze deine zweite Chance und erreiche trotzdem das Ziel.", secret: true}),
     Object.freeze({id: "secret_air_time", icon: "🛸", name: "AIR TIME", description: "Bleib 5 Sekunden in der Luft und lande sicher.", secret: true}),
     Object.freeze({id: "secret_ragequitter", icon: "🤬", name: "RAGEQUITTER", description: "Stirb 3-mal innerhalb von 5 Sekunden.", secret: true}),
     Object.freeze({id: "secret_groundhog_slime", icon: "⏰", name: "GROUNDHOG SLIME", description: "Stirb 5-mal im selben Level und schaffe es danach trotzdem.", secret: true}),
-    Object.freeze({id: "secret_take_your_time", icon: "🐌", name: "TAKE YOUR TIME", description: "Schließe ein Level erst nach 120 Sekunden ohne Tod ab.", secret: true})
+    Object.freeze({id: "secret_take_your_time", icon: "🐌", name: "TAKE YOUR TIME", description: "Schließe ein Level erst nach 120 Sekunden ohne Tod ab.", secret: true}),
+    Object.freeze({id: "slime_scholar", icon: "📗", name: "SLIME SCHOLAR", description: "Erreiche Spielerlevel 10.", secret: false, conditionKey: "player-level-10", category: "player-level"}),
+    Object.freeze({id: "rising_prodigy", icon: "📈", name: "RISING PRODIGY", description: "Erreiche Spielerlevel 25.", secret: false, conditionKey: "player-level-25", category: "player-level"}),
+    Object.freeze({id: "halfway_to_prestige", icon: "🌓", name: "HALFWAY TO PRESTIGE", description: "Erreiche Spielerlevel 50.", secret: false, conditionKey: "player-level-50", category: "player-level"}),
+    Object.freeze({id: "upper_class_slime", icon: "🎓", name: "UPPER CLASS SLIME", description: "Erreiche Spielerlevel 75.", secret: false, conditionKey: "player-level-75", category: "player-level"}),
+    Object.freeze({id: "level_cap", icon: "🧗", name: "LEVEL CAP", description: "Erreiche Spielerlevel 100.", secret: false, conditionKey: "player-level-100", category: "player-level"}),
+    Object.freeze({id: "ready_to_ascend", icon: "🚀", name: "READY TO ASCEND", description: "Fülle auf Spielerlevel 100 auch den letzten XP-Balken.", secret: false, conditionKey: "player-prestige-ready", category: "player-level"}),
+    Object.freeze({id: "meadow_graduate", icon: "🥾", name: "MEADOW GRADUATE", description: "Schließe Map-Level 10 ab.", secret: false, conditionKey: "map-level-10-complete", category: "map-level"}),
+    Object.freeze({id: "old_world_complete", icon: "🌅", name: "OLD WORLD COMPLETE", description: "Schließe Map-Level 100 ab.", secret: false, conditionKey: "map-level-100-complete", category: "map-level"}),
+    Object.freeze({id: "worlds_end", icon: "🧭", name: "WORLD'S END", description: "Schließe Map-Level 200 ab.", secret: false, conditionKey: "map-level-200-complete", category: "map-level"}),
+    Object.freeze({id: "beyond_the_map", icon: "🏔️", name: "BEYOND THE MAP", description: "Schließe Map-Level 300 ab.", secret: false, conditionKey: "map-level-300-complete", category: "map-level"}),
+    Object.freeze({id: "storm_chaser", icon: "⛈️", name: "STORM CHASER", description: "Erreiche erstmals Storm Night.", secret: false, conditionKey: "reach-biome-stormNight", category: "biome"}),
+    Object.freeze({id: "temple_threshold", icon: "🪔", name: "TEMPLE THRESHOLD", description: "Erreiche erstmals den Underground Temple.", secret: false, conditionKey: "reach-biome-undergroundTemple", category: "biome"}),
+    Object.freeze({id: "after_dark", icon: "🌙", name: "AFTER DARK", description: "Entdecke Night, Storm Night, Bamboo Night und Red Moon.", secret: false, conditionKey: "discover-four-night-biomes", category: "biome"}),
+    Object.freeze({id: "cave_connoisseur", icon: "⛏️", name: "CAVE CONNOISSEUR", description: "Schaffe ein Perfect in allen vier Höhlen- und Tiefenbiomen.", secret: false, conditionKey: "perfect-four-cave-biomes", category: "biome"}),
+    Object.freeze({id: "new_world_perfection", icon: "🗾", name: "NEW WORLD PERFECTION", description: "Schaffe in jedem Biom der zweiten Welthälfte ein Perfect.", secret: false, conditionKey: "perfect-biomes-11-through-20", category: "biome"}),
+    Object.freeze({id: "secret_pirates_code", icon: "🏴‍☠️", name: "PIRATE'S CODE", description: "Schaffe im Pirate Harbor ein Perfect mit genau einem Schuss.", secret: true, conditionKey: "pirateHarbor-perfect-one-shot", category: "secret-situation"}),
+    Object.freeze({id: "secret_first_contact", icon: "👽", name: "FIRST CONTACT", description: "Schaffe im Alien Jungle ein Perfect im grünen Standardlook.", secret: true, conditionKey: "alienJungle-perfect-green-none-none", category: "secret-situation"}),
+    Object.freeze({id: "secret_blood_moon", icon: "🩸", name: "BLOOD MOON", description: "Schaffe bei Red Moon ein Perfect mit nur einem übrigen Leben.", secret: true, conditionKey: "redMoon-perfect-one-life", category: "secret-situation"}),
+    Object.freeze({id: "secret_temple_raider", icon: "🏺", name: "TEMPLE RAIDER", description: "Entkomme dem Underground Temple ohne Tod und ohne Sterne.", secret: true, conditionKey: "undergroundTemple-zero-stars-no-death", category: "secret-situation"}),
+    Object.freeze({id: "golden_ticket", icon: "🎫", name: "GOLDEN TICKET", description: "Besitze den Gold-Slime – durch Kauf oder Mastery.", secret: false, conditionKey: "owns-gold-slime", category: "gold"}),
+    Object.freeze({id: "true_alchemy", icon: "⚗️", name: "TRUE ALCHEMY", description: "Schalte die echte Gold-Slime-Mastery frei.", secret: false, conditionKey: "gold-slime-mastery", category: "gold"}),
+    Object.freeze({id: "crowned_in_gold", icon: "🥇", name: "CROWNED IN GOLD", description: "Schalte die Gold-Hut-Mastery frei.", secret: false, conditionKey: "gold-hat-mastery", category: "gold"}),
+    Object.freeze({id: "beard_of_midas", icon: "🏵️", name: "BEARD OF MIDAS", description: "Schalte die Gold-Bart-Mastery frei.", secret: false, conditionKey: "gold-beard-mastery", category: "gold"}),
+    Object.freeze({id: "gold_rush", icon: "🤑", name: "GOLD RUSH", description: "Kaufe deinen ersten Gold-Hut.", secret: false, conditionKey: "purchased-first-gold-hat", category: "gold"}),
+    Object.freeze({id: "bullion_barber", icon: "✂️", name: "BULLION BARBER", description: "Kaufe deinen ersten Gold-Bart.", secret: false, conditionKey: "purchased-first-gold-beard", category: "gold"}),
+    Object.freeze({id: "all_that_glitters", icon: "💎", name: "ALL THAT GLITTERS", description: "Besitze den Gold-Slime und alle Gold-Hüte und Gold-Bärte.", secret: false, conditionKey: "own-complete-gold-wardrobe", category: "gold"}),
+    Object.freeze({id: "secret_gold_standard", icon: "⚜️", name: "GOLD STANDARD", description: "Schließe ein Level komplett in Gold gekleidet ab.", secret: true, conditionKey: "complete-with-gold-slime-hat-beard", category: "secret-situation"}),
+    Object.freeze({id: "first_ascent", icon: "🛫", name: "FIRST ASCENT", description: "Erreiche Prestige 1.", secret: false, conditionKey: "prestige-1", category: "prestige"}),
+    Object.freeze({id: "seasoned_soul", icon: "🥉", name: "SEASONED SOUL", description: "Erreiche Prestige 3.", secret: false, conditionKey: "prestige-3", category: "prestige"}),
+    Object.freeze({id: "high_society", icon: "🏰", name: "HIGH SOCIETY", description: "Erreiche Prestige 5.", secret: false, conditionKey: "prestige-5", category: "prestige"}),
+    Object.freeze({id: "beyond_mortal", icon: "🪐", name: "BEYOND MORTAL", description: "Erreiche Prestige 8.", secret: false, conditionKey: "prestige-8", category: "prestige"}),
+    Object.freeze({id: "prestige_legend", icon: "🛡️", name: "PRESTIGE LEGEND", description: "Erreiche Prestige 10.", secret: false, conditionKey: "prestige-10", category: "prestige"}),
+    Object.freeze({id: "forever_fashionable", icon: "🔒", name: "FOREVER FASHIONABLE", description: "Wähle dein erstes permanentes Prestige-Garderobenitem.", secret: false, conditionKey: "permanent-wardrobe-unlocks-1", category: "wardrobe"}),
+    Object.freeze({id: "three_of_a_kind", icon: "🧵", name: "THREE OF A KIND", description: "Besitze je einen permanenten Farb-, Hut- und Bart-Unlock.", secret: false, conditionKey: "permanent-unlock-each-category", category: "wardrobe"}),
+    Object.freeze({id: "heirloom_collection", icon: "🗄️", name: "HEIRLOOM COLLECTION", description: "Besitze 5 permanente Prestige-Garderobenitems.", secret: false, conditionKey: "permanent-wardrobe-unlocks-5", category: "wardrobe"}),
+    Object.freeze({id: "legacy_closet", icon: "🏛️", name: "LEGACY CLOSET", description: "Besitze 10 permanente Prestige-Garderobenitems.", secret: false, conditionKey: "permanent-wardrobe-unlocks-10", category: "wardrobe"}),
+    Object.freeze({id: "perk_up", icon: "🧩", name: "PERK UP", description: "Schalte deinen ersten Perk frei.", secret: false, conditionKey: "unlocked-perks-1", category: "perks"}),
+    Object.freeze({id: "fully_loaded", icon: "🧰", name: "FULLY LOADED", description: "Schalte alle implementierten Perks frei.", secret: false, conditionKey: "unlocked-all-implemented-perks", category: "perks"}),
+    Object.freeze({id: "triple_threat", icon: "🃏", name: "TRIPLE THREAT", description: "Rüste gleichzeitig 3 Perks aus.", secret: false, conditionKey: "selected-perks-3", category: "perks"}),
+    Object.freeze({id: "build_online", icon: "🔧", name: "BUILD ONLINE", description: "Schließe ein Level mit 3 aktiven Run-Perks ab.", secret: false, conditionKey: "complete-with-three-active-run-perks", category: "skill"}),
+    Object.freeze({id: "double_tap", icon: "✌️", name: "DOUBLE TAP", description: "Schließe ein Level mit genau zwei Schüssen ab.", secret: false, conditionKey: "complete-with-two-shots", category: "skill"}),
+    Object.freeze({id: "two_out_of_three", icon: "⚖️", name: "TWO OUT OF THREE", description: "Schließe ein Level mit genau zwei von drei Pflichtsternen ab.", secret: false, conditionKey: "complete-with-two-of-three-required-stars", category: "skill"}),
+    Object.freeze({id: "bounce_marathon", icon: "🪀", name: "BOUNCE MARATHON", description: "Nutze 25 Bounce-Pads in Folge, ohne normal zu landen.", secret: false, conditionKey: "bounce-streak-25", category: "skill"}),
+    Object.freeze({id: "flawless_20", icon: "🦾", name: "FLAWLESS 20", description: "Schaffe 20 Perfects direkt hintereinander.", secret: false, conditionKey: "perfect-streak-20", category: "endgame"}),
+    Object.freeze({id: "clean_50", icon: "🧽", name: "CLEAN 50", description: "Schließe 50 Level hintereinander ohne Tod ab.", secret: false, conditionKey: "clean-level-streak-50", category: "endgame"}),
+    Object.freeze({id: "run_200", icon: "♾️", name: "RUN 200", description: "Schließe 200 Level in einem einzigen Run ab.", secret: false, conditionKey: "run-completed-levels-200", category: "endgame"}),
+    Object.freeze({id: "the_long_memory", icon: "🧓", name: "THE LONG MEMORY", description: "Schließe insgesamt 500 Level ab.", secret: false, conditionKey: "lifetime-completed-levels-500", category: "endgame"}),
+    Object.freeze({id: "secret_achievement_404", icon: "🖥️", name: "ACHIEVEMENT 404", description: "Schließe Map-Level 404 ab. Achievement not found? Doch.", secret: true, conditionKey: "map-level-404-complete", category: "secret-endgame"}),
+    Object.freeze({id: "secret_bare_minimum", icon: "🥚", name: "BARE MINIMUM", description: "Schließe ein Level ohne Tod, mit einem Leben und ohne Sterne ab.", secret: true, conditionKey: "zero-stars-one-life-no-death", category: "secret-situation"}),
+    Object.freeze({id: "ein_richtiger_kevin", icon: "🐐", name: "EIN RICHTIGER KEVIN", description: "Schalte alle anderen 100 Achievements frei.", secret: true, conditionKey: "all-achievements-except-kevin", category: "completion"})
   ]);
+
+  const NEW_BIOME_IDS = Object.freeze([
+    "stormNight", "neonCity", "mushroomCave", "abandonedMine", "bambooNight",
+    "pirateHarbor", "alienJungle", "enchantedGarden", "redMoon", "undergroundTemple"
+  ]);
+  const NIGHT_BIOME_IDS = Object.freeze([
+    "night", "stormNight", "bambooNight", "redMoon"
+  ]);
+  const CAVE_BIOME_IDS = Object.freeze([
+    "crystalCave", "mushroomCave", "abandonedMine", "undergroundTemple"
+  ]);
+  const LEVELS_PER_BIOME = 10;
 
   const ACHIEVEMENT_BY_ID = new Map(
     ACHIEVEMENT_REGISTRY.map(achievement => [achievement.id, achievement])
@@ -183,6 +245,7 @@
   let popupActive = false;
   let popupGeneration = 0;
   let runProgressSnapshot = null;
+  let completionCheckInProgress = false;
 
   const runState = {
     perfectStreak: 0,
@@ -952,26 +1015,48 @@
     saveAchievementUnlocks();
     renderAchievementViews();
     queueAchievementPopup(achievement);
-    if (achievement.id !== "achievement_hunter") {
-      checkAchievementHunter();
-    }
+    if (!completionCheckInProgress) checkCompletionAchievements();
     return true;
   }
 
-  function checkAchievementHunter() {
-    if (unlockedById.has("achievement_hunter")) return;
-    const allOtherAchievementsUnlocked = ACHIEVEMENT_REGISTRY
-      .filter(achievement => achievement.id !== "achievement_hunter")
-      .every(achievement => unlockedById.has(achievement.id));
-    if (allOtherAchievementsUnlocked) {
-      unlockAchievement("achievement_hunter");
+  function checkCompletionAchievements() {
+    if (completionCheckInProgress) return;
+    completionCheckInProgress = true;
+    try {
+      for (let pass = 0; pass < 3; pass++) {
+        let unlockedInPass = false;
+        const hunterReady = ACHIEVEMENT_REGISTRY
+          .filter(achievement =>
+            achievement.id !== "achievement_hunter" &&
+            achievement.id !== "ein_richtiger_kevin"
+          )
+          .every(achievement => unlockedById.has(achievement.id));
+        if (!unlockedById.has("achievement_hunter") && hunterReady) {
+          unlockedInPass = unlockAchievement("achievement_hunter") || unlockedInPass;
+        }
+
+        const kevinReady = ACHIEVEMENT_REGISTRY
+          .filter(achievement => achievement.id !== "ein_richtiger_kevin")
+          .every(achievement => unlockedById.has(achievement.id));
+        if (!unlockedById.has("ein_richtiger_kevin") && kevinReady) {
+          unlockedInPass = unlockAchievement("ein_richtiger_kevin") || unlockedInPass;
+        }
+        if (!unlockedInPass) break;
+      }
+    } finally {
+      completionCheckInProgress = false;
     }
+  }
+
+  function checkAchievementHunter() {
+    checkCompletionAchievements();
   }
 
   function checkPerfectAchievements() {
     if (runState.perfectStreak >= 3) unlockAchievement("hp_gen");
     if (runState.perfectStreak >= 5) unlockAchievement("perfectionist");
     if (runState.perfectStreak >= 10) unlockAchievement("untouchable");
+    if (runState.perfectStreak >= 20) unlockAchievement("flawless_20");
   }
 
   function checkStarAchievements() {
@@ -1072,6 +1157,94 @@
     if (allColorsUnlocked && allCosmeticsUnlocked && allBeardsUnlocked) {
       unlockAchievement("full_wardrobe");
     }
+  }
+
+  function checkStateAchievements() {
+    const playerProgress = window.SlimePlayerProgress?.getPlayerProgress?.();
+    const playerLevel = Math.floor(Number(playerProgress?.level));
+    if (Number.isFinite(playerLevel)) {
+      if (playerLevel >= 10) unlockAchievement("slime_scholar");
+      if (playerLevel >= 25) unlockAchievement("rising_prodigy");
+      if (playerLevel >= 50) unlockAchievement("halfway_to_prestige");
+      if (playerLevel >= 75) unlockAchievement("upper_class_slime");
+      if (playerLevel >= 100) unlockAchievement("level_cap");
+    }
+    if (
+      playerProgress?.isPrestigeReady === true ||
+      window.SlimePlayerProgress?.isPrestigeReady?.() === true
+    ) {
+      unlockAchievement("ready_to_ascend");
+    }
+
+    const prestigeLevel = Math.floor(Number(window.SlimePrestige?.getLevel?.()));
+    if (Number.isFinite(prestigeLevel)) {
+      if (prestigeLevel >= 1) unlockAchievement("first_ascent");
+      if (prestigeLevel >= 3) unlockAchievement("seasoned_soul");
+      if (prestigeLevel >= 5) unlockAchievement("high_society");
+      if (prestigeLevel >= 8) unlockAchievement("beyond_mortal");
+      if (prestigeLevel >= 10) unlockAchievement("prestige_legend");
+    }
+
+    const permanentUnlocks = window.SlimePrestige
+      ?.getPermanentWardrobeUnlocks?.() ?? [];
+    if (permanentUnlocks.length >= 1) unlockAchievement("forever_fashionable");
+    if (permanentUnlocks.length >= 5) unlockAchievement("heirloom_collection");
+    if (permanentUnlocks.length >= 10) unlockAchievement("legacy_closet");
+    const permanentCategories = new Set(
+      permanentUnlocks.map(unlock => String(unlock?.category ?? "").toLowerCase())
+    );
+    if (["color", "cosmetic", "beard"].every(category => permanentCategories.has(category))) {
+      unlockAchievement("three_of_a_kind");
+    }
+
+    const perkDefinitions = window.SlimePerks?.definitions ?? [];
+    const implementedPerkIds = perkDefinitions
+      .filter(perk => perk?.implemented === true)
+      .map(perk => String(perk.id));
+    const unlockedPerkIds = window.SlimePerks?.getStoredUnlockedPerkIds?.() ?? [];
+    const selectedPerkIds = window.SlimePerks?.getStoredSelectedPerkIds?.() ?? [];
+    if (unlockedPerkIds.length >= 1) unlockAchievement("perk_up");
+    if (
+      implementedPerkIds.length > 0 &&
+      implementedPerkIds.every(id => unlockedPerkIds.includes(id))
+    ) {
+      unlockAchievement("fully_loaded");
+    }
+    if (selectedPerkIds.length >= 3) unlockAchievement("triple_threat");
+
+    const gold = window.SlimeGold;
+    if (gold?.ownsGoldSlime?.() === true) unlockAchievement("golden_ticket");
+    if (gold?.isGoldSlimeMasteryUnlocked?.() === true) {
+      unlockAchievement("true_alchemy");
+    }
+    if (gold?.isGoldHatMasteryUnlocked?.() === true) {
+      unlockAchievement("crowned_in_gold");
+    }
+    if (gold?.isGoldBeardMasteryUnlocked?.() === true) {
+      unlockAchievement("beard_of_midas");
+    }
+    const goldProgress = gold?.getProgress?.();
+    if ((goldProgress?.hats?.purchasedGoldHatIds?.length ?? 0) > 0) {
+      unlockAchievement("gold_rush");
+    }
+    if ((goldProgress?.beards?.purchasedGoldBeardIds?.length ?? 0) > 0) {
+      unlockAchievement("bullion_barber");
+    }
+    const goldHatIds = gold?.getGoldHatIds?.() ?? [];
+    const goldBeardIds = gold?.getGoldBeardIds?.() ?? [];
+    if (
+      gold?.ownsGoldSlime?.() === true &&
+      goldHatIds.length > 0 &&
+      goldBeardIds.length > 0 &&
+      goldHatIds.every(id => gold.ownsGoldHat?.(id) === true) &&
+      goldBeardIds.every(id => gold.ownsGoldBeard?.(id) === true)
+    ) {
+      unlockAchievement("all_that_glitters");
+    }
+
+    checkWardrobeAchievements();
+    checkPersistentProgressAchievements();
+    checkCompletionAchievements();
   }
 
   function getWardrobePurchaseTarget(category, itemId) {
@@ -1480,12 +1653,33 @@
     ) {
       unlockAchievement("biome_master");
     }
+    if (
+      NIGHT_BIOME_IDS.every(id => existingBiomeIds.includes(id)) &&
+      NIGHT_BIOME_IDS.every(id => achievementProgress.discoveredBiomeIds.includes(id))
+    ) {
+      unlockAchievement("after_dark");
+    }
+    if (
+      CAVE_BIOME_IDS.every(id => existingBiomeIds.includes(id)) &&
+      CAVE_BIOME_IDS.every(id => achievementProgress.perfectBiomeIds.includes(id))
+    ) {
+      unlockAchievement("cave_connoisseur");
+    }
+    if (
+      NEW_BIOME_IDS.every(id => existingBiomeIds.includes(id)) &&
+      NEW_BIOME_IDS.every(id => achievementProgress.perfectBiomeIds.includes(id))
+    ) {
+      unlockAchievement("new_world_perfection");
+    }
     if (achievementProgress.lifetimeStars >= 1000) unlockAchievement("star_bank");
     if (getLifetimeAirTime() >= 60) unlockAchievement("frequent_flyer");
     if (achievementProgress.completedLookIds.length >= 10) unlockAchievement("style_master");
     if (achievementProgress.lifetimePerfects >= 25) unlockAchievement("perfect_25");
     if (achievementProgress.lifetimeCompletedLevels >= 100) {
       unlockAchievement("veteran_slime");
+    }
+    if (achievementProgress.lifetimeCompletedLevels >= 500) {
+      unlockAchievement("the_long_memory");
     }
     if (achievementProgress.lifetimeDeaths >= 25) unlockAchievement("ouch");
   }
@@ -1502,6 +1696,8 @@
     }
 
     if (id === "sky") unlockAchievement("head_in_the_clouds");
+    if (id === "stormNight") unlockAchievement("storm_chaser");
+    if (id === "undergroundTemple") unlockAchievement("temple_threshold");
     if (
       existingBiomeIds.length > 0 &&
       existingBiomeIds.every(existingId =>
@@ -1577,6 +1773,7 @@
     runState.previousBiomeId = null;
     runState.previousLevelNumber = 0;
     onLevelStart({levelNumber, biomeId, hasGhost});
+    checkStateAchievements();
   }
 
   function onFrame(dt, {grounded = false} = {}) {
@@ -1628,6 +1825,7 @@
     runState.bounceStreak++;
     if (runState.bounceStreak >= 3) unlockAchievement("bounce_master");
     if (runState.bounceStreak >= 10) unlockAchievement("bounce_addict");
+    if (runState.bounceStreak >= 25) unlockAchievement("bounce_marathon");
   }
 
   function onLanding() {
@@ -1709,12 +1907,14 @@
       runState.cleanLevelStreak++;
       if (runState.cleanLevelStreak >= 10) unlockAchievement("clean_run");
       if (runState.cleanLevelStreak >= 25) unlockAchievement("clean_machine");
+      if (runState.cleanLevelStreak >= 50) unlockAchievement("clean_50");
     }
 
     runState.completedLevels++;
     if (runState.completedLevels >= 25) unlockAchievement("long_haul");
     if (runState.completedLevels >= 50) unlockAchievement("marathon_slime");
     if (runState.completedLevels >= 100) unlockAchievement("century_slime");
+    if (runState.completedLevels >= 200) unlockAchievement("run_200");
 
     const actualCollectedStars = collectedStars === null
       ? NaN
@@ -1736,6 +1936,13 @@
     }
     if (hasCollectibleStars && actualCollectedStars === 0) {
       unlockAchievement("empty_handed");
+    }
+    if (
+      hasCollectibleStars &&
+      actualTotalStars === 3 &&
+      actualCollectedStars === 2
+    ) {
+      unlockAchievement("two_out_of_three");
     }
 
     if (Math.floor(Number(remainingLives)) === 1) unlockAchievement("not_today");
@@ -1764,6 +1971,20 @@
     const completedLevelNumber = levelNumber === null
       ? runState.levelNumber
       : Math.max(1, Math.floor(Number(levelNumber) || 1));
+    if (completedLevelNumber >= 10) unlockAchievement("meadow_graduate");
+    if (completedLevelNumber >= 100) unlockAchievement("old_world_complete");
+    if (completedLevelNumber >= 200) unlockAchievement("worlds_end");
+    if (completedLevelNumber >= 300) unlockAchievement("beyond_the_map");
+    if (completedLevelNumber === 404) unlockAchievement("secret_achievement_404");
+
+    const rotationLevelCount = getExistingBiomeIds().length * LEVELS_PER_BIOME;
+    if (
+      rotationLevelCount > 0 &&
+      completedLevelNumber % rotationLevelCount === 0 &&
+      runState.rotationComplete
+    ) {
+      unlockAchievement("round_two");
+    }
     if (
       runState.groundhogLevelNumber === completedLevelNumber &&
       runState.groundhogDeaths >= 5
@@ -1776,7 +1997,69 @@
       ? Math.max(0, providedShots)
       : runState.levelShots;
     if (actualShots === 1) unlockAchievement("secret_one_shot");
+    if (actualShots === 2) unlockAchievement("double_tap");
     if (runState.rescueUsed) unlockAchievement("secret_second_chance");
+
+    if (
+      completedBiomeId === "pirateHarbor" &&
+      perfectLevel &&
+      actualShots === 1
+    ) {
+      unlockAchievement("secret_pirates_code");
+    }
+    const goldAppearance = window.SlimeGold?.getEquippedAppearance?.() ?? {
+      slime: false,
+      hatId: null,
+      beardId: null
+    };
+    if (
+      completedBiomeId === "alienJungle" &&
+      perfectLevel &&
+      typeof selectedSlimeColor !== "undefined" &&
+      typeof selectedSlimeCosmetic !== "undefined" &&
+      typeof selectedSlimeBeard !== "undefined" &&
+      selectedSlimeColor === "green" &&
+      selectedSlimeCosmetic === "none" &&
+      selectedSlimeBeard === "none" &&
+      goldAppearance.slime !== true &&
+      goldAppearance.hatId === null &&
+      goldAppearance.beardId === null
+    ) {
+      unlockAchievement("secret_first_contact");
+    }
+    if (
+      completedBiomeId === "redMoon" &&
+      perfectLevel &&
+      Math.floor(Number(remainingLives)) === 1
+    ) {
+      unlockAchievement("secret_blood_moon");
+    }
+    if (
+      completedBiomeId === "undergroundTemple" &&
+      !diedInLevel &&
+      hasCollectibleStars &&
+      actualCollectedStars === 0
+    ) {
+      unlockAchievement("secret_temple_raider");
+    }
+    if (
+      !diedInLevel &&
+      hasCollectibleStars &&
+      actualCollectedStars === 0 &&
+      Math.floor(Number(remainingLives)) === 1
+    ) {
+      unlockAchievement("secret_bare_minimum");
+    }
+    if (
+      goldAppearance.slime === true &&
+      goldAppearance.hatId !== null &&
+      goldAppearance.beardId !== null
+    ) {
+      unlockAchievement("secret_gold_standard");
+    }
+    if ((window.SlimePerks?.getActiveRunPerkIds?.() ?? []).length >= 3) {
+      unlockAchievement("build_online");
+    }
 
     flushLifetimeAirTime({save: false});
     achievementProgress.lifetimeCompletedLevels++;
@@ -1795,7 +2078,7 @@
     const lookKey = getCurrentLookKey();
     if (lookKey) addUniqueProgressValue(achievementProgress.completedLookIds, lookKey);
     saveAchievementProgress();
-    checkPersistentProgressAchievements();
+    checkStateAchievements();
   }
 
   try {
@@ -1832,6 +2115,7 @@
     renderMenu: renderAchievementMenu,
     renderRecent: renderRecentAchievements,
     checkWardrobe: checkWardrobeAchievements,
+    checkState: checkStateAchievements,
     isRunProgressSnapshotValid,
     captureRunProgressSnapshot,
     restoreRunProgressSnapshot,
@@ -1883,8 +2167,11 @@
     restoreWardrobeSnapshot: restoreWardrobeRunProgressSnapshot
   });
 
-  checkWardrobeAchievements();
-  checkPersistentProgressAchievements();
-  checkAchievementHunter();
+  if (typeof window.addEventListener === "function") {
+    window.addEventListener("slimegoldchange", checkStateAchievements);
+    window.addEventListener("DOMContentLoaded", checkStateAchievements, {once: true});
+  }
+
+  checkStateAchievements();
   renderAchievementViews();
 })();

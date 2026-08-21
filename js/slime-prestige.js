@@ -445,7 +445,9 @@
     )) return false;
 
     wardrobeRegistry.applyUnlock?.(candidate.category, candidate.id);
-    return removeVerifiedStorageValue(PENDING_WARDROBE_CHOICE_STORAGE_KEY);
+    const completed = removeVerifiedStorageValue(PENDING_WARDROBE_CHOICE_STORAGE_KEY);
+    if (completed) window.SlimeAchievements?.checkState?.();
+    return completed;
   }
 
   function normalizeIdentitySnapshot(value) {
@@ -641,6 +643,7 @@
       selectedRewardCache[type] = selectedId;
       writeVerifiedStorageValue(PRESTIGE_SELECTION_STORAGE_KEYS[type], selectedId);
     }
+    window.SlimeAchievements?.checkState?.();
     return true;
   }
 

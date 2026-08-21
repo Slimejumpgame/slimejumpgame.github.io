@@ -193,6 +193,7 @@
     const nextProgress = applyLevelThresholds(level, levelXP);
     if (!persistPlayerProgress(nextProgress)) return false;
     playerProgress = nextProgress;
+    window.SlimeAchievements?.checkState?.();
     return true;
   }
 
@@ -205,7 +206,10 @@
     );
     const persisted = earnedXP === 0 || persistPlayerProgress(nextProgress);
 
-    if (persisted) playerProgress = nextProgress;
+    if (persisted) {
+      playerProgress = nextProgress;
+      window.SlimeAchievements?.checkState?.();
+    }
 
     const currentProgress = getPlayerProgress();
     return {

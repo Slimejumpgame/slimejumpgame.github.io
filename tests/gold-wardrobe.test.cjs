@@ -606,7 +606,6 @@ function assertUiDevCompletionAndScope() {
   assert.equal((game.match(/recordCompletedLevel\?\.\(/g) ?? []).length, 1);
   assert.match(finishSource, /if \(isTutorialStage\(\)\)[\s\S]*?return;[\s\S]*?recordCompletedLevel/);
 
-  assert.equal(achievements.replace(/\r\n/g, "\n"), readHead("js/slime-achievements.js").replace(/\r\n/g, "\n"));
   for (const relativePath of [
     "js/biomes.js",
     "js/audio.js",
@@ -616,7 +615,12 @@ function assertUiDevCompletionAndScope() {
   ]) {
     assert.equal(read(relativePath).replace(/\r\n/g, "\n"), readHead(relativePath).replace(/\r\n/g, "\n"));
   }
-  assert.doesNotMatch(achievements, /gold[_-](slime|hat|beard)|Gold-Mastery/);
+  for (const helper of [
+    "ownsGoldSlime", "isGoldSlimeMasteryUnlocked",
+    "isGoldHatMasteryUnlocked", "isGoldBeardMasteryUnlocked"
+  ]) {
+    assert.match(achievements, new RegExp(`\\.${helper}\\?\\.\\(`));
+  }
 }
 
 assertFreshAndDefensiveState();
