@@ -1,9 +1,13 @@
 {
   "android": {
-    "versionCode": 11,
-    "versionName": "2.66",
+    "versionCode": 12,
+    "versionName": "2.67",
     "notes": [
-      "Hotfix für Ui"
+      "Das Leaderboard wurde einmalig zurückgesetzt, damit das neue globale Rangsystem sauber und fair von vorne starten kann.",
+      "Persönlicher globaler Rang direkt im Hauptmenü.",
+      "Jeder Spieler sieht jetzt, wie weit er von den Top 10 entfernt ist.",
+      "Pro Spieler zählt nur noch der persönliche Bestscore fürs globale Ranking.",
+      "Danke an Freddy für die Idee zum persönlichen Rang! ❤️"
     ]
   }
 }
