@@ -597,22 +597,14 @@
     const pendingPermanentChoice = prestige.getPendingPermanentWardrobeChoice?.();
 
     ui.menuPrestigeBtn.classList.remove("hidden");
-    ui.menuPrestigeBtn.classList.toggle(
-      "prestigeInvisible",
-      !hasEmblem && !isReady && !pendingPermanentChoice
-    );
+    ui.menuPrestigeBtn.classList.toggle("prestigeInvisible", !hasEmblem);
     ui.menuPrestigeBtn.classList.toggle(
       "prestigeReady",
       (isReady && !isMastered) || Boolean(pendingPermanentChoice)
     );
     ui.menuPrestigeBtn.classList.toggle("prestigeMastered", isMastered);
-    ui.menuPrestigeBtn.classList.toggle(
-      "prestigeZeroReady",
-      (!hasEmblem && isReady) || Boolean(pendingPermanentChoice)
-    );
-    ui.menuPrestigeBtn.disabled = transactionPending || (
-      !pendingPermanentChoice && !hasEmblem && !isReady
-    );
+    ui.menuPrestigeBtn.classList.remove("prestigeZeroReady");
+    ui.menuPrestigeBtn.disabled = transactionPending || !hasEmblem;
 
     if (ui.menuPrestigeEmblem) {
       ui.menuPrestigeEmblem.innerHTML = hasEmblem
@@ -620,17 +612,7 @@
         : "";
     }
 
-    const displayDefinition = prestige.getDisplayDefinition(prestigeLevel);
-    const label = transactionPending
-      ? "RESET AUSSTEHEND"
-      : pendingPermanentChoice
-        ? "PERMANENT UNLOCK WÄHLEN"
-      : isMastered
-        ? "PRESTIGE MASTERED"
-        : isReady
-          ? "PRESTIGE READY"
-          : displayDefinition?.displayLabel ?? `P${prestigeLevel}`;
-    if (ui.menuPrestigeLabel) ui.menuPrestigeLabel.textContent = label;
+    if (ui.menuPrestigeLabel) ui.menuPrestigeLabel.textContent = "";
     ui.menuPrestigeBtn.setAttribute(
       "aria-label",
       pendingPermanentChoice
@@ -830,21 +812,63 @@
     return preview;
   }
 
-  function createPrestigeWardrobeOption(type, reward, selectedId) {
+  function getPrestigeRewardCatalogByType(prestige, type) {
+    return prestige.definitions.flatMap(definition =>
+      (definition.rewards ?? (definition.reward ? [definition.reward] : []))
+        .filter(reward => reward.type === type)
+        .map(reward => ({
+          ...reward,
+          requiredPrestige: definition.level
+        }))
+    );
+  }
+
+  function createPrestigeWardrobeOption(type, reward, selectedId, prestigeLevel) {
+    const requiredPrestige = Math.max(0, Number(reward.requiredPrestige) || 0);
+    const unlocked = reward.id === "none" || requiredPrestige <= prestigeLevel;
+    const selected = unlocked && reward.id === selectedId;
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "prestigeWardrobeOption";
+    button.className = "slimeColorOption prestigeWardrobeOption";
     button.dataset.rewardId = reward.id;
-    button.classList.toggle("selected", reward.id === selectedId);
-    button.setAttribute("aria-pressed", String(reward.id === selectedId));
-    button.setAttribute("aria-label", `${reward.displayName} auswählen`);
+    button.dataset.requiredPrestige = String(requiredPrestige);
+    button.dataset.unlocked = String(unlocked);
+    button.classList.toggle("selected", selected);
+    button.classList.toggle("locked", !unlocked);
+    button.disabled = !unlocked;
+    button.setAttribute("aria-pressed", String(selected));
+    button.setAttribute(
+      "aria-label",
+      unlocked
+        ? `${reward.displayName} auswählen`
+        : `${reward.displayName} gesperrt, Prestige ${requiredPrestige} erforderlich`
+    );
     button.appendChild(createPrestigeRewardPreview(type, reward));
-    const label = document.createElement("span");
-    label.textContent = reward.displayName;
-    button.appendChild(label);
-    button.addEventListener("click", () => {
-      selectPrestigeReward(type, reward.id);
-    });
+    if (reward.id !== "none" && type !== "title") {
+      const label = document.createElement("span");
+      label.className = "slimeColorLabel prestigeRewardName";
+      label.textContent = reward.displayName;
+      button.appendChild(label);
+    }
+    const requirement = document.createElement("small");
+    requirement.className = "prestigeRewardRequirement";
+    requirement.textContent = reward.id === "none"
+      ? "STANDARD"
+      : unlocked
+        ? `FREIGESCHALTET · P${requiredPrestige}`
+        : `PRESTIGE ${requiredPrestige} ERFORDERLICH`;
+    button.appendChild(requirement);
+    if (!unlocked) {
+      const lock = document.createElement("span");
+      lock.className = "slimeColorLock prestigeRewardLock";
+      lock.textContent = "🔒";
+      lock.setAttribute("aria-hidden", "true");
+      button.appendChild(lock);
+    } else {
+      button.addEventListener("click", () => {
+        selectPrestigeReward(type, reward.id);
+      });
+    }
     return button;
   }
 
@@ -852,14 +876,32 @@
     const prestige = window.SlimePrestige;
     if (!prestige || !ui.wardrobePrestigeOptions) return;
     const prestigeLevel = prestige.getLevel();
-    const definition = prestige.getDisplayDefinition(prestigeLevel);
     if (ui.wardrobePrestigeEmblem) {
       ui.wardrobePrestigeEmblem.innerHTML = prestigeLevel > 0
         ? prestige.getEmblemMarkup(prestigeLevel)
         : "";
     }
     if (ui.wardrobePrestigeLevel) {
-      ui.wardrobePrestigeLevel.textContent = definition?.displayLabel ?? "P0";
+      ui.wardrobePrestigeLevel.textContent = prestigeLevel > 0
+        ? `PRESTIGE-STUFE ${prestigeLevel}`
+        : "NOCH KEIN PRESTIGE";
+    }
+    if (ui.wardrobePrestigeActivateBtn) {
+      const transactionPending = prestige.isTransactionPending();
+      const pendingPermanentChoice = prestige.getPendingPermanentWardrobeChoice?.();
+      const mastered = prestige.isMastered();
+      const ready = prestige.isReady() && !mastered &&
+        !transactionPending && !pendingPermanentChoice;
+      ui.wardrobePrestigeActivateBtn.disabled = !ready;
+      ui.wardrobePrestigeActivateBtn.textContent = transactionPending
+        ? "RESET AUSSTEHEND"
+        : pendingPermanentChoice
+          ? "PERMANENT UNLOCK WÄHLEN"
+          : mastered
+            ? "PRESTIGE ABGESCHLOSSEN"
+            : ready
+              ? "PRESTIGE AKTIVIEREN"
+              : "PRESTIGE NICHT BEREIT";
     }
     ui.wardrobePrestigeCategories?.querySelectorAll("[data-prestige-category]")
       .forEach(button => {
@@ -869,13 +911,20 @@
       });
 
     const selectedId = prestige.getSelectedReward(prestigeWardrobeCategory);
-    const rewards = prestige.getUnlockedRewardsByType(prestigeWardrobeCategory);
-    const options = [{id: "none", displayName: "NONE"}, ...rewards];
+    const rewards = getPrestigeRewardCatalogByType(
+      prestige,
+      prestigeWardrobeCategory
+    );
+    const options = [
+      {id: "none", displayName: "NONE", requiredPrestige: 0},
+      ...rewards
+    ];
     ui.wardrobePrestigeOptions.replaceChildren(
       ...options.map(reward => createPrestigeWardrobeOption(
         prestigeWardrobeCategory,
         reward,
-        selectedId
+        selectedId,
+        prestigeLevel
       ))
     );
   }
@@ -884,13 +933,14 @@
     const prestige = window.SlimePrestige;
     if (!prestige) return;
     const prestigeLevel = prestige.getLevel();
-    const displayDefinition = prestige.getDisplayDefinition(prestigeLevel);
     if (ui.prestigeCustomizationEmblem) {
-      ui.prestigeCustomizationEmblem.innerHTML = prestige.getEmblemMarkup(prestigeLevel);
+      ui.prestigeCustomizationEmblem.innerHTML = prestigeLevel > 0
+        ? prestige.getEmblemMarkup(prestigeLevel)
+        : "";
     }
     if (ui.prestigeCustomizationLevel) {
       ui.prestigeCustomizationLevel.textContent =
-        `${displayDefinition?.displayLabel ?? `P${prestigeLevel}`} · AKTUELLES PRESTIGE`;
+        `${prestigeLevel > 0 ? `PRESTIGE-STUFE ${prestigeLevel}` : "NOCH KEIN PRESTIGE"} · AKTUELLES PRESTIGE`;
     }
     if (ui.prestigePermanentUnlockCount) {
       ui.prestigePermanentUnlockCount.textContent =
@@ -907,12 +957,14 @@
   }
 
   function showPrestigeCustomization() {
-    if (!ui.prestigeCustomizationOverlay || window.SlimePrestige?.getLevel?.() < 1) {
-      return false;
-    }
-    renderPrestigeCustomization();
-    ui.prestigeCustomizationOverlay.classList.remove("hidden");
-    window.requestAnimationFrame(() => ui.prestigeCustomizationCloseBtn?.focus());
+    if (!ui.wardrobeScreen || !ui.wardrobePrestigeView) return false;
+    showMenuScreen("wardrobe");
+    showWardrobeView("prestige");
+    window.requestAnimationFrame(() =>
+      ui.wardrobePrestigeCategories
+        ?.querySelector("[data-prestige-category].active")
+        ?.focus()
+    );
     return true;
   }
 

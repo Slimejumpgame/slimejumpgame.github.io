@@ -199,6 +199,7 @@
     goldWardrobeOptions: document.getElementById("goldWardrobeOptions"),
     wardrobePrestigeEmblem: document.getElementById("wardrobePrestigeEmblem"),
     wardrobePrestigeLevel: document.getElementById("wardrobePrestigeLevel"),
+    wardrobePrestigeActivateBtn: document.getElementById("wardrobePrestigeActivateBtn"),
     wardrobePrestigeCategories: document.getElementById("wardrobePrestigeCategories"),
     wardrobePrestigeOptions: document.getElementById("wardrobePrestigeOptions"),
     howToTopPanel: document.getElementById("howToTopPanel"),

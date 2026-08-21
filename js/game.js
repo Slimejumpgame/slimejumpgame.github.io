@@ -550,8 +550,15 @@
     if (prestige.getPendingPermanentWardrobeChoice?.()) {
       return showPrestigeWardrobeChoice();
     }
-    if (prestige.getLevel() > 0) return showPrestigeCustomization();
-    return showPrestigeConfirmation();
+    return showPrestigeCustomization();
+  }
+
+  function requestPrestigeActivationFromWardrobe() {
+    showMenuScreen("main");
+    if (showPrestigeConfirmation()) return true;
+    showMenuScreen("wardrobe");
+    showWardrobeView("prestige");
+    return false;
   }
 
   function showPrestigeConfirmation() {
@@ -1410,7 +1417,7 @@
     ui.startBtn, ui.achievementsBtn, ui.wardrobeBtn, ui.perksBtn, ui.highScoresBtn,
     ui.achievementsBackBtn,
     ui.wardrobeBackBtn, ui.wardrobeColorMenuBtn, ui.wardrobeCosmeticsMenuBtn,
-    ui.wardrobeBeardsMenuBtn, ui.wardrobePrestigeMenuBtn, ui.wardrobeColorBackBtn,
+    ui.wardrobeBeardsMenuBtn, ui.wardrobePrestigeMenuBtn, ui.wardrobePrestigeActivateBtn, ui.wardrobeColorBackBtn,
     ui.wardrobeCosmeticsBackBtn, ui.wardrobeBeardsBackBtn, ui.wardrobePrestigeBackBtn,
     ui.perksBackBtn, ui.howToBackBtn, ui.highScoresBackBtn
   ]) {
@@ -1462,6 +1469,7 @@
   ui.wardrobeBeardsMenuBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeBeardsMenuBtn, () => showWardrobeView("beards")));
   ui.wardrobeGoldMenuBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeGoldMenuBtn, requestGoldWardrobeOpen));
   ui.wardrobePrestigeMenuBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobePrestigeMenuBtn, () => showWardrobeView("prestige")));
+  ui.wardrobePrestigeActivateBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobePrestigeActivateBtn, requestPrestigeActivationFromWardrobe));
   ui.wardrobeColorBackBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeColorBackBtn, () => showWardrobeView("home")));
   ui.wardrobeCosmeticsBackBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeCosmeticsBackBtn, () => showWardrobeView("home")));
   ui.wardrobeBeardsBackBtn.addEventListener("click", () => runMenuButtonAction(ui.wardrobeBeardsBackBtn, () => showWardrobeView("home")));

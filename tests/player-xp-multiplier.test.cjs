@@ -271,6 +271,9 @@ function assertMainMenuPlayerLevelDisplay() {
     assert.equal(ui.menuXPPlayerLevel.textContent, `#${level}`);
     assert.equal(ui.menuPrestigeBtn.classList.contains("hidden"), false);
     assert.equal(ui.menuPrestigeBtn.classList.contains("prestigeInvisible"), true);
+    assert.equal(ui.menuPrestigeBtn.classList.contains("prestigeZeroReady"), false);
+    assert.equal(ui.menuPrestigeBtn.disabled, true);
+    assert.equal(ui.menuPrestigeLabel.textContent, "");
     assert.equal(ui.menuPrestigeEmblem.innerHTML, "");
   }
 
@@ -281,6 +284,9 @@ function assertMainMenuPlayerLevelDisplay() {
     assert.equal(ui.menuPlayerLevel.textContent, `#${level}`);
     assert.equal(ui.menuXPPlayerLevel.textContent, `#${level}`);
     assert.equal(ui.menuPrestigeBtn.classList.contains("prestigeInvisible"), false);
+    assert.equal(ui.menuPrestigeBtn.classList.contains("prestigeZeroReady"), false);
+    assert.equal(ui.menuPrestigeBtn.disabled, false);
+    assert.equal(ui.menuPrestigeLabel.textContent, "");
     assert.equal(ui.menuPrestigeEmblem.innerHTML, "<svg>P1</svg>");
   }
 }

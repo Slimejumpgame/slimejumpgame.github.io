@@ -2308,21 +2308,16 @@ p {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   gap: clamp(7px, 1vw, 12px);
-  border-color: rgba(255, 224, 92, 0.55);
-  background:
-    radial-gradient(circle at 12% 0, rgba(255, 224, 92, 0.12), transparent 30%),
-    linear-gradient(155deg, rgba(101, 43, 151, 0.36), transparent 46%),
-    var(--ui-panel-strong);
 }
 
 .wardrobePrestigeSummary {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: center;
   gap: clamp(9px, 1.3vw, 15px);
 }
 
-.wardrobePrestigeSummary > span:last-child {
+.wardrobePrestigeSummary > span:nth-child(2) {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -2344,6 +2339,13 @@ p {
   aspect-ratio: 1;
   display: block;
   line-height: 0;
+}
+
+.wardrobePrestigeActivateButton {
+  min-width: min(34vw, 220px);
+  min-height: clamp(34px, 5.8vh, 46px);
+  padding: 5px clamp(8px, 1.2vw, 15px);
+  font-size: clamp(8px, 0.84vw, 12px);
 }
 
 .wardrobePrestigeCategories {
@@ -2372,7 +2374,7 @@ p {
 .wardrobePrestigeOptions {
   min-height: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-content: start;
   gap: clamp(8px, 1vw, 13px);
   padding: 3px;
@@ -2387,17 +2389,13 @@ p {
 
 .prestigeWardrobeOption {
   min-width: 0;
-  min-height: clamp(112px, 18vh, 146px);
+  min-height: clamp(76px, 12vh, 96px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(6px, 1vh, 10px);
-  padding: clamp(9px, 1.4vh, 13px) 7px;
-  border: 1px solid rgba(218, 168, 255, 0.36);
-  border-radius: 11px;
-  background: linear-gradient(155deg, rgba(91, 40, 143, 0.9), rgba(34, 19, 74, 0.96));
-  color: #f5efff;
+  gap: clamp(2px, 0.45vh, 4px);
+  padding: clamp(4px, 0.7vh, 7px) 4px;
   font: 850 clamp(10px, 0.9vw, 13px)/1.1 var(--ui-title-font);
   text-align: center;
 }
@@ -2411,11 +2409,36 @@ p {
 .prestigeRewardPreview {
   position: relative;
   width: min(100%, 132px);
-  height: clamp(64px, 10vh, 82px);
+  height: clamp(34px, 5.6vh, 48px);
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: none;
+}
+
+.prestigeRewardName {
+  width: 100%;
+  overflow: visible;
+  line-height: 1.05;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.prestigeRewardRequirement {
+  display: block;
+  min-height: 1.05em;
+  color: #baff72;
+  font-size: clamp(6px, 0.6vw, 8px);
+  font-weight: 900;
+  line-height: 1.05;
+}
+
+.prestigeWardrobeOption.locked:not(.unlockable) {
+  opacity: 0.56;
+}
+
+.prestigeWardrobeOption.locked .prestigeRewardRequirement {
+  color: #ffe977;
 }
 
 .prestigeRewardPreview--none {
