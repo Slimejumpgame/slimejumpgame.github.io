@@ -1663,6 +1663,223 @@
       context.strokeStyle = palette.main;
       context.lineWidth = 4;
       context.stroke();
+    } else if (cosmetic === "graduation_cap") {
+      const capGradient = context.createLinearGradient(-22, -30, 22, 4);
+      capGradient.addColorStop(0, palette.light);
+      capGradient.addColorStop(0.45, palette.main);
+      capGradient.addColorStop(1, palette.dark);
+      context.fillStyle = capGradient;
+      context.strokeStyle = palette.dark;
+      context.beginPath();
+      context.moveTo(-17, 1);
+      context.quadraticCurveTo(-16, -16, 0, -19);
+      context.quadraticCurveTo(16, -16, 17, 1);
+      context.closePath();
+      context.fill();
+      context.stroke();
+
+      context.beginPath();
+      context.moveTo(0, -31);
+      context.lineTo(30, -20);
+      context.lineTo(0, -8);
+      context.lineTo(-30, -20);
+      context.closePath();
+      context.fill();
+      context.stroke();
+
+      context.fillStyle = palette.tassel;
+      context.beginPath();
+      context.arc(0, -20, 3.2, 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
+      context.strokeStyle = palette.tassel;
+      context.lineWidth = 2.5;
+      context.beginPath();
+      context.moveTo(2, -20);
+      context.quadraticCurveTo(22, -15, 25, -1);
+      context.stroke();
+      context.beginPath();
+      context.moveTo(22, -2);
+      context.lineTo(25, 5);
+      context.lineTo(28, -2);
+      context.stroke();
+    } else if (cosmetic === "construction_helmet") {
+      const helmetGradient = context.createLinearGradient(-22, -32, 22, 6);
+      helmetGradient.addColorStop(0, palette.light);
+      helmetGradient.addColorStop(0.48, palette.main);
+      helmetGradient.addColorStop(1, palette.dark);
+      context.fillStyle = helmetGradient;
+      context.strokeStyle = palette.dark;
+      context.beginPath();
+      context.moveTo(-23, 0);
+      context.quadraticCurveTo(-22, -26, 0, -31);
+      context.quadraticCurveTo(22, -26, 23, 0);
+      context.closePath();
+      context.fill();
+      context.stroke();
+
+      context.fillStyle = palette.accent;
+      roundedCosmeticRectPath(context, -4, -31, 8, 31, 3);
+      context.fill();
+      context.stroke();
+      context.fillStyle = palette.main;
+      roundedCosmeticRectPath(context, -29, -4, 58, 10, 4);
+      context.fill();
+      context.stroke();
+      context.beginPath();
+      context.moveTo(16, 0);
+      context.quadraticCurveTo(31, -1, 34, 5);
+      context.quadraticCurveTo(25, 9, 13, 5);
+      context.closePath();
+      context.fill();
+      context.stroke();
+      context.strokeStyle = "rgba(255,255,255,0.55)";
+      context.lineWidth = 2;
+      context.beginPath();
+      context.moveTo(-16, -19);
+      context.quadraticCurveTo(-7, -27, 0, -27);
+      context.stroke();
+    } else if (cosmetic === "mushroom_hat") {
+      const mushroomGradient = context.createRadialGradient(-10, -22, 3, 0, -10, 38);
+      mushroomGradient.addColorStop(0, palette.light);
+      mushroomGradient.addColorStop(0.48, palette.main);
+      mushroomGradient.addColorStop(1, palette.dark);
+      context.fillStyle = mushroomGradient;
+      context.strokeStyle = palette.dark;
+      context.beginPath();
+      context.moveTo(-35, -2);
+      context.bezierCurveTo(-31, -25, -18, -35, 0, -36);
+      context.bezierCurveTo(19, -35, 31, -25, 35, -2);
+      context.quadraticCurveTo(20, 7, 0, 5);
+      context.quadraticCurveTo(-20, 7, -35, -2);
+      context.closePath();
+      context.fill();
+      context.stroke();
+
+      context.fillStyle = palette.gills;
+      context.beginPath();
+      context.moveTo(-27, 0);
+      context.quadraticCurveTo(0, 12, 27, 0);
+      context.quadraticCurveTo(14, 6, 0, 5);
+      context.quadraticCurveTo(-14, 6, -27, 0);
+      context.closePath();
+      context.fill();
+      context.stroke();
+
+      context.fillStyle = palette.spots;
+      for (const [x, y, spotRadius] of [[-18, -14, 5], [2, -25, 6], [20, -12, 4.5], [7, -8, 3]]) {
+        context.beginPath();
+        context.arc(x, y, spotRadius, 0, Math.PI * 2);
+        context.fill();
+      }
+    } else if (cosmetic === "jester_hat") {
+      context.strokeStyle = palette.dark;
+      context.lineWidth = 3;
+      context.fillStyle = palette.main;
+      context.beginPath();
+      context.moveTo(-22, -5);
+      context.quadraticCurveTo(-28, -22, -36, -35);
+      context.quadraticCurveTo(-24, -31, -12, -15);
+      context.lineTo(-3, -4);
+      context.closePath();
+      context.fill();
+      context.stroke();
+
+      context.fillStyle = palette.accent;
+      context.beginPath();
+      context.moveTo(-6, -5);
+      context.quadraticCurveTo(-5, -25, 1, -38);
+      context.quadraticCurveTo(10, -26, 9, -7);
+      context.closePath();
+      context.fill();
+      context.stroke();
+
+      context.fillStyle = palette.light;
+      context.beginPath();
+      context.moveTo(4, -5);
+      context.quadraticCurveTo(23, -23, 35, -29);
+      context.quadraticCurveTo(31, -15, 21, -3);
+      context.closePath();
+      context.fill();
+      context.stroke();
+
+      context.fillStyle = palette.bell;
+      for (const [x, y] of [[-36, -36], [1, -39], [35, -30]]) {
+        context.beginPath();
+        context.arc(x, y, 4, 0, Math.PI * 2);
+        context.fill();
+        context.stroke();
+      }
+
+      const bandGradient = context.createLinearGradient(-25, -6, 25, 5);
+      bandGradient.addColorStop(0, palette.dark);
+      bandGradient.addColorStop(0.5, palette.main);
+      bandGradient.addColorStop(1, palette.accent);
+      context.fillStyle = bandGradient;
+      roundedCosmeticRectPath(context, -25, -7, 50, 12, 5);
+      context.fill();
+      context.stroke();
+      context.fillStyle = palette.bell;
+      for (const x of [-15, 0, 15]) {
+        context.beginPath();
+        context.arc(x, -1, 2.2, 0, Math.PI * 2);
+        context.fill();
+      }
+    } else if (cosmetic === "ufo_hat") {
+      context.save();
+      context.globalAlpha = 0.82;
+      const glassGradient = context.createLinearGradient(0, -29, 0, -4);
+      glassGradient.addColorStop(0, palette.light);
+      glassGradient.addColorStop(0.35, palette.glass);
+      glassGradient.addColorStop(1, "rgba(48,126,166,0.38)");
+      context.fillStyle = glassGradient;
+      context.strokeStyle = palette.dark;
+      context.beginPath();
+      context.ellipse(0, -11, 16, 17, 0, Math.PI, Math.PI * 2);
+      context.lineTo(16, -8);
+      context.lineTo(-16, -8);
+      context.closePath();
+      context.fill();
+      context.stroke();
+      context.restore();
+
+      context.fillStyle = palette.glow;
+      context.beginPath();
+      context.arc(0, -13, 6, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = palette.dark;
+      context.beginPath();
+      context.arc(-2, -14, 1.2, 0, Math.PI * 2);
+      context.arc(2, -14, 1.2, 0, Math.PI * 2);
+      context.fill();
+
+      const saucerGradient = context.createLinearGradient(-36, -8, 36, 8);
+      saucerGradient.addColorStop(0, palette.dark);
+      saucerGradient.addColorStop(0.35, palette.light);
+      saucerGradient.addColorStop(0.62, palette.main);
+      saucerGradient.addColorStop(1, palette.dark);
+      context.fillStyle = saucerGradient;
+      context.strokeStyle = palette.dark;
+      context.beginPath();
+      context.moveTo(-38, -6);
+      context.quadraticCurveTo(0, -17, 38, -6);
+      context.quadraticCurveTo(29, 9, 0, 10);
+      context.quadraticCurveTo(-29, 9, -38, -6);
+      context.closePath();
+      context.fill();
+      context.stroke();
+      context.fillStyle = palette.glow;
+      for (const x of [-24, -8, 8, 24]) {
+        context.beginPath();
+        context.arc(x, 1, 2.5, 0, Math.PI * 2);
+        context.fill();
+      }
+      context.strokeStyle = palette.light;
+      context.lineWidth = 2;
+      context.beginPath();
+      context.moveTo(-23, -7);
+      context.quadraticCurveTo(0, -13, 23, -7);
+      context.stroke();
     }
 
     context.restore();

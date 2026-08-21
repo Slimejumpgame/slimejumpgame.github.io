@@ -51,7 +51,12 @@
     480,
     490,
     500,
-    510
+    510,
+    520,
+    530,
+    540,
+    550,
+    560
   ]);
 
   const WARDROBE_PROGRESS_VERSION_STORAGE_KEY = "slimejumperWardrobeProgressVersion";
