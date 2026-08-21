@@ -20,12 +20,16 @@ function createStorage(initial = {}) {
   };
 }
 
-function response({ok = true, status = 200, json = [], text = ""} = {}) {
+function response({ok = true, status = 200, json = [], text = "", headers = {}} = {}) {
+  const normalizedHeaders = new Map(
+    Object.entries(headers).map(([name, value]) => [name.toLowerCase(), String(value)])
+  );
   return {
     ok,
     status,
     json: async () => json,
-    text: async () => text
+    text: async () => text,
+    headers: {get: name => normalizedHeaders.get(String(name).toLowerCase()) ?? null}
   };
 }
 
@@ -67,11 +71,26 @@ function loadApi({
       rankCalls.push({url, options});
       if (rankNeverSettles) {
         return new Promise((_, reject) => {
-          options.signal.addEventListener("abort", () => {
+          const rejectAbort = () => {
             const error = new Error("aborted");
             error.name = "AbortError";
             reject(error);
-          }, {once: true});
+          };
+          if (options.signal.aborted) rejectAbort();
+          else options.signal.addEventListener("abort", rejectAbort, {once: true});
+        });
+      }
+      const parsedUrl = new URL(url);
+      if (parsedUrl.pathname.endsWith("/rest/v1/slime_jump_highscores")) {
+        const row = rankResponse[0] ?? null;
+        if (parsedUrl.searchParams.get("player_id")?.startsWith("eq.")) {
+          const score = row?.best_score ?? row?.bestScore;
+          return response({json: score == null ? [] : [{score}]});
+        }
+        const higherScoreCount = Math.max(0, Number(row?.rank) - 1 || 0);
+        return response({
+          json: higherScoreCount > 0 ? [{player_id: EXISTING_ID}] : [],
+          headers: {"content-range": `0-0/${higherScoreCount}`}
         });
       }
       return response({json: rankResponse});
@@ -84,6 +103,8 @@ function loadApi({
     },
     Uint8Array,
     Math,
+    URL,
+    URLSearchParams,
     CustomEvent: class {
       constructor(type) {
         this.type = type;
@@ -211,7 +232,8 @@ async function assertHangingSubmitDoesNotBlockRankRead() {
     plain(await fixture.api.getPersonalGlobalRank()),
     {bestScore: 25628, rank: 1}
   );
-  assert.equal(fixture.rankCalls.length, 1);
+  assert.equal(fixture.rankCalls.length, 2);
+  assert.equal(fixture.api.getLastPersonalRankReadStatus().source, "postgrest");
 }
 
 async function assertHangingRequestsReachTheirTimeout() {

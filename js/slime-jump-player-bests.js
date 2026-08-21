@@ -10,6 +10,7 @@
   const SUPABASE_PUBLISHABLE_KEY =
     "sb_publishable_DDpbowG2-g6ZVios1OTrfA_DkUyh2TC";
 
+  const HIGHSCORE_TABLE = "slime_jump_highscores";
   const INSTALLATION_ID_STORAGE_KEY = "slimejumperInstallationId";
   const GLOBAL_RANK_BEST_STORAGE_KEY = "slimejumperGlobalRankBestV1";
   const GLOBAL_RANK_PAYLOAD_STORAGE_KEY = "slimejumperGlobalRankBestPayloadV1";
@@ -22,6 +23,10 @@
 
   let volatileInstallationId = null;
   let pendingGlobalBestSubmit = Promise.resolve(null);
+  let lastPersonalRankReadStatus = Object.freeze({
+    status: "idle",
+    source: null
+  });
 
   function isConfigured() {
     return (
@@ -65,7 +70,10 @@
   function getOrCreateInstallationId() {
     try {
       const storedId = localStorage.getItem(INSTALLATION_ID_STORAGE_KEY);
-      if (isValidInstallationId(storedId)) return storedId;
+      if (isValidInstallationId(storedId)) {
+        volatileInstallationId = storedId;
+        return storedId;
+      }
     } catch (_) {}
 
     if (isValidInstallationId(volatileInstallationId)) {
@@ -168,46 +176,157 @@
     } catch (_) {}
   }
 
-  async function callRpc(rpcName, payload) {
-    if (!isConfigured()) return null;
+  function setPersonalRankReadStatus(status, details = {}) {
+    lastPersonalRankReadStatus = Object.freeze({status, ...details});
+    console.debug?.("[PlayerBests] Personal rank read:", lastPersonalRankReadStatus);
+  }
 
-    const timeout = createAbortTimeout();
+  function getLastPersonalRankReadStatus() {
+    return {...lastPersonalRankReadStatus};
+  }
 
+  function rankReadFailure(reason, details = {}) {
+    return {ok: false, reason, ...details};
+  }
+
+  async function requestRankResource(url, options, signal) {
     try {
-      const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/rpc/${rpcName}`,
-        {
-          method: "POST",
-          headers: {
-            apikey: SUPABASE_PUBLISHABLE_KEY,
-            Accept: "application/json",
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(payload),
-          cache: "no-store",
-          ...(timeout ? {signal: timeout.signal} : {})
-        }
-      );
+      const response = await fetch(url, {
+        ...options,
+        cache: "no-store",
+        ...(signal ? {signal} : {})
+      });
 
       if (!response.ok) {
         const details = await readResponseError(response);
         console.warn(
-          `[PlayerBests] RPC ${rpcName} fehlgeschlagen (${response.status})` +
+          `[PlayerBests] Rang-Read fehlgeschlagen (${response.status})` +
           `${details ? `: ${details}` : "."}`
         );
-        return null;
+        return rankReadFailure("http-error", {
+          httpStatus: response.status,
+          details
+        });
       }
-
-      return await response.json();
+      return {ok: true, response};
     } catch (error) {
-      const reason = error?.name === "AbortError"
-        ? "Zeitlimit ueberschritten"
-        : "nicht erreichbar";
-      console.warn(`[PlayerBests] RPC ${rpcName} ${reason}:`, error);
-      return null;
-    } finally {
-      timeout?.clear();
+      const reason = signal?.aborted
+        ? "timeout"
+        : error?.name === "AbortError"
+          ? "abort"
+          : "network-error";
+      console.warn(`[PlayerBests] Rang-Read ${reason}:`, error);
+      return rankReadFailure(reason);
     }
+  }
+
+  async function parseRankJson(response) {
+    try {
+      return {ok: true, value: await response.json()};
+    } catch (error) {
+      console.warn("[PlayerBests] Rang-Response ist kein gueltiges JSON:", error);
+      return rankReadFailure("json-error");
+    }
+  }
+
+  function parseExactCount(response) {
+    const contentRange = response?.headers?.get?.("content-range") ?? "";
+    const match = String(contentRange).match(/\/(\d+)\s*$/);
+    if (!match) return null;
+    const count = Number(match[1]);
+    return Number.isSafeInteger(count) && count >= 0 ? count : null;
+  }
+
+  async function getPersonalRankFromTable(playerId, signal) {
+    const ownScoreQuery = new URLSearchParams({
+      select: "score",
+      player_id: `eq.${playerId}`,
+      limit: "1"
+    });
+    const ownScoreRequest = await requestRankResource(
+      `${SUPABASE_URL}/rest/v1/${HIGHSCORE_TABLE}?${ownScoreQuery}`,
+      {
+        method: "GET",
+        headers: {
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          Accept: "application/json"
+        }
+      },
+      signal
+    );
+    if (!ownScoreRequest.ok) return ownScoreRequest;
+
+    const ownScoreJson = await parseRankJson(ownScoreRequest.response);
+    if (!ownScoreJson.ok) return ownScoreJson;
+    if (!Array.isArray(ownScoreJson.value)) {
+      return rankReadFailure("invalid-response");
+    }
+    if (ownScoreJson.value.length === 0) {
+      return rankReadFailure("not-found");
+    }
+
+    const bestScore = normalizePositiveScore(ownScoreJson.value[0]?.score);
+    if (bestScore === null) return rankReadFailure("invalid-response");
+
+    const higherScoresQuery = new URLSearchParams({
+      select: "score",
+      score: `gt.${bestScore}`,
+      player_id: "not.is.null",
+      limit: "1"
+    });
+    const higherScoresRequest = await requestRankResource(
+      `${SUPABASE_URL}/rest/v1/${HIGHSCORE_TABLE}?${higherScoresQuery}`,
+      {
+        method: "GET",
+        headers: {
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          Accept: "application/json",
+          Prefer: "count=exact",
+          Range: "0-0"
+        }
+      },
+      signal
+    );
+    if (!higherScoresRequest.ok) return higherScoresRequest;
+
+    const higherScoreCount = parseExactCount(higherScoresRequest.response);
+    if (higherScoreCount === null) {
+      return rankReadFailure("invalid-response");
+    }
+    return {
+      ok: true,
+      result: {bestScore, rank: higherScoreCount + 1}
+    };
+  }
+
+  async function getPersonalRankFromRpc(playerId, signal) {
+    const rpcRequest = await requestRankResource(
+      `${SUPABASE_URL}/rest/v1/rpc/${GET_PERSONAL_RANK_RPC}`,
+      {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          Accept: "application/json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({p_player_id: playerId})
+      },
+      signal
+    );
+    if (!rpcRequest.ok) return rpcRequest;
+
+    const rpcJson = await parseRankJson(rpcRequest.response);
+    if (!rpcJson.ok) return rpcJson;
+    const row = getRpcRow(rpcJson.value);
+    const bestScore = normalizePositiveScore(row?.best_score ?? row?.bestScore);
+    const rank = normalizePositiveInteger(row?.rank);
+    if (bestScore === null && rank === null) {
+      return rankReadFailure("not-found");
+    }
+    if (bestScore === null || rank === null) {
+      return rankReadFailure("invalid-response");
+    }
+    return {ok: true, result: {bestScore, rank}};
   }
 
   function normalizeGlobalBestPayload(value) {
@@ -306,17 +425,48 @@
   }
 
   async function getPersonalGlobalRank() {
-    const result = await callRpc(GET_PERSONAL_RANK_RPC, {
-      p_player_id: getOrCreateInstallationId()
-    });
-    const row = getRpcRow(result);
-    const bestScore = normalizePositiveScore(row?.best_score ?? row?.bestScore);
-    const rank = normalizePositiveInteger(row?.rank);
-
-    if (bestScore === null || rank === null) {
+    const playerId = getOrCreateInstallationId();
+    if (!isValidInstallationId(playerId)) {
+      setPersonalRankReadStatus("missing-player-id", {source: null});
       return {bestScore: null, rank: null};
     }
-    return {bestScore, rank};
+
+    const timeout = createAbortTimeout();
+    try {
+      const directResult = await getPersonalRankFromTable(
+        playerId,
+        timeout?.signal
+      );
+      if (directResult.ok) {
+        setPersonalRankReadStatus("ok", {source: "postgrest"});
+        return directResult.result;
+      }
+
+      const rpcResult = await getPersonalRankFromRpc(
+        playerId,
+        timeout?.signal
+      );
+      if (rpcResult.ok) {
+        setPersonalRankReadStatus("ok", {
+          source: "rpc-fallback",
+          primaryStatus: directResult.reason
+        });
+        return rpcResult.result;
+      }
+
+      const status = directResult.reason === "not-found" &&
+        rpcResult.reason === "not-found"
+        ? "not-found"
+        : rpcResult.reason ?? directResult.reason ?? "invalid-response";
+      setPersonalRankReadStatus(status, {
+        source: null,
+        primaryStatus: directResult.reason,
+        fallbackStatus: rpcResult.reason
+      });
+      return {bestScore: null, rank: null};
+    } finally {
+      timeout?.clear();
+    }
   }
 
   function syncLocalGlobalBest() {
@@ -338,9 +488,11 @@
     getPersonalRankRpc: GET_PERSONAL_RANK_RPC,
     globalBestSubmitSettledEvent: GLOBAL_BEST_SUBMIT_SETTLED_EVENT,
     rpcTimeoutMs: RPC_TIMEOUT_MS,
+    personalRankReadPath: "postgrest-with-rpc-fallback",
     isConfigured,
     getOrCreateInstallationId,
     getPersonalGlobalRank,
+    getLastPersonalRankReadStatus,
     recordGlobalBestCandidate,
     syncLocalGlobalBest
   });

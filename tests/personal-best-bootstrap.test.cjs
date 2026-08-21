@@ -17,12 +17,16 @@ function extract(source, startMarker, endMarker) {
   return source.slice(start, end);
 }
 
-function response(json) {
+function response(json, headers = {}) {
+  const normalizedHeaders = new Map(
+    Object.entries(headers).map(([name, value]) => [name.toLowerCase(), String(value)])
+  );
   return {
     ok: true,
     status: 200,
     json: async () => json,
-    text: async () => ""
+    text: async () => "",
+    headers: {get: name => normalizedHeaders.get(String(name).toLowerCase()) ?? null}
   };
 }
 
@@ -85,6 +89,16 @@ function createBootstrapFixture({
         const payload = JSON.parse(options.body);
         return response([{best_score: payload.p_score, improved: true}]);
       }
+      const parsedUrl = new URL(url);
+      if (parsedUrl.pathname.endsWith("/rest/v1/slime_jump_highscores")) {
+        if (parsedUrl.searchParams.get("player_id")?.startsWith("eq.")) {
+          return response(globalBest === null ? [] : [{score: globalBest}]);
+        }
+        return response(
+          [{player_id: INSTALLATION_ID}],
+          {"content-range": "0-0/36"}
+        );
+      }
       if (url.endsWith("/get_slime_jump_personal_rank")) {
         return globalBest !== null
           ? response([{best_score: globalBest, rank: 37}])
@@ -95,6 +109,7 @@ function createBootstrapFixture({
     crypto: {randomUUID: () => INSTALLATION_ID},
     Uint8Array,
     Math,
+    URL,
     URLSearchParams,
     normalizeSlimeColor: value => value,
     normalizeSlimeCosmetic: value => value,
@@ -148,10 +163,11 @@ async function assertPostResetBestSyncRunsInBackground() {
   const fixture = createBootstrapFixture({globalBest: 6000});
   await fixture.update();
 
-  assert.equal(fixture.calls.length, 2);
-  assert.match(fixture.calls[0].url, /\/get_slime_jump_personal_rank$/);
+  assert.equal(fixture.calls.length, 3);
+  assert.match(fixture.calls[0].url, /\/rest\/v1\/slime_jump_highscores\?/);
   assert.match(fixture.calls[1].url, /\/submit_slime_jump_global_best$/);
   assert.equal(JSON.parse(fixture.calls[1].options.body).p_score, 6000);
+  assert.match(fixture.calls[2].url, /\/rest\/v1\/slime_jump_highscores\?/);
   assert.equal(fixture.rankValue.textContent, "37");
 }
 
@@ -176,8 +192,8 @@ async function assertFailureIsIsolatedAndBootstrapCanRetry() {
     1
   );
   assert.equal(
-    online.calls.filter(call => /get_slime_jump_personal_rank$/.test(call.url)).length,
-    2
+    online.calls.filter(call => /rest\/v1\/slime_jump_highscores\?/.test(call.url)).length,
+    4
   );
 }
 

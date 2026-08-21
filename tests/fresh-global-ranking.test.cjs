@@ -9,12 +9,16 @@ const root = path.resolve(__dirname, "..");
 const read = relativePath => fs.readFileSync(path.join(root, relativePath), "utf8");
 const plain = value => JSON.parse(JSON.stringify(value));
 
-function response({ok = true, status = 200, json = [], text = ""} = {}) {
+function response({ok = true, status = 200, json = [], text = "", headers = {}} = {}) {
+  const normalizedHeaders = new Map(
+    Object.entries(headers).map(([name, value]) => [name.toLowerCase(), String(value)])
+  );
   return {
     ok,
     status,
     json: async () => json,
-    text: async () => text
+    text: async () => text,
+    headers: {get: name => normalizedHeaders.get(String(name).toLowerCase()) ?? null}
   };
 }
 
@@ -78,6 +82,24 @@ function createServer() {
       options.method === "GET" &&
       parsedUrl.pathname.endsWith("/rest/v1/slime_jump_highscores")
     ) {
+      const playerIdFilter = parsedUrl.searchParams.get("player_id");
+      if (playerIdFilter?.startsWith("eq.")) {
+        const row = rows.get(playerIdFilter.slice(3));
+        return response({json: row ? [{score: row.score}] : []});
+      }
+
+      if (options.headers?.Prefer === "count=exact") {
+        const minimumScore = Number(
+          String(parsedUrl.searchParams.get("score") || "").replace(/^gt\./, "")
+        );
+        const count = [...rows.values()]
+          .filter(row => row.score > minimumScore).length;
+        return response({
+          json: count > 0 ? [{player_id: sortedRows()[0].player_id}] : [],
+          headers: {"content-range": `0-0/${count}`}
+        });
+      }
+
       const limit = Number(parsedUrl.searchParams.get("limit")) || 10;
       return response({json: sortedRows().slice(0, limit)});
     }
