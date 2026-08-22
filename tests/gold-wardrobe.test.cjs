@@ -438,6 +438,9 @@ function assertPrestigeWipesGoldOnlyAsConfigured() {
     slimejumperPrestigeLevel: "0",
     slimejumperPrestigePermanentWardrobeUnlocks: permanentUnlocks,
     slimejumperGoldProgressV1: JSON.stringify(gold),
+    slimejumperAchievements: JSON.stringify([{id: "hp_gen", unlockedAt: 100}]),
+    slimejumperSelectedAchievementBadges: JSON.stringify(["hp_gen"]),
+    slimejumperCallingCardBadgesConfigured: "true",
     slimejumperSkipGoldShopIntro: "true",
     unrelatedProgress: "keep-me"
   });
@@ -449,6 +452,9 @@ function assertPrestigeWipesGoldOnlyAsConfigured() {
   assert.equal(stored.slimejumperSelectedSlimeColor, "green");
   assert.equal(stored.slimejumperSelectedSlimeCosmetic, "none");
   assert.equal(stored.slimejumperSelectedSlimeBeard, "none");
+  assert.equal(stored.slimejumperAchievements, "[]");
+  assert.equal(stored.slimejumperSelectedAchievementBadges, "[]");
+  assert.equal(stored.slimejumperCallingCardBadgesConfigured, "false");
   assert.equal(stored.slimejumperPrestigePermanentWardrobeUnlocks, permanentUnlocks);
   assert.equal(stored.slimejumperSkipGoldShopIntro, "true");
   assert.equal(stored.unrelatedProgress, "keep-me");
@@ -613,15 +619,31 @@ function assertUiDevCompletionAndScope() {
     "js/physics.js",
     "android-update.json"
   ]) {
-    const normalizeAuthorizedLaunchGain = source => relativePath === "js/audio.js"
-      ? source.replace(
-        /(function playLaunch\(\) \{ tone\(240, 0\.12, "triangle", )[0-9.]+(, 520\); \})/,
-        "$1<launch-gain>$2"
-      )
+    const normalizeAuthorizedAudioChanges = source => relativePath === "js/audio.js"
+      ? source
+        .replace(
+          /  const LIFECYCLE_GAIN_RAMP_SECONDS = 0\.025;[\s\S]*?(?=  function getAudio\(\))/, ""
+        )
+        .replace("    if (audioCtx) getMasterGain(audioCtx);\n", "")
+        .replace(
+          /  function setLifecycleMuted\(muted\) \{[\s\S]*?  \}\);\n\n/, ""
+        )
+        .replaceAll(
+          "    const master = getMasterGain(a);\n    if (!master) return;\n", ""
+        )
+        .replace(
+          "    const master = getMasterGain(a);\n    if (!master) return null;\n", ""
+        )
+        .replace("    gain.connect(master);", "    gain.connect(a.destination);")
+        .replace("      musicBus.connect(master);", "      musicBus.connect(a.destination);")
+        .replace(
+          /(function playLaunch\(\) \{ tone\(240, 0\.12, "triangle", )[0-9.]+(, 520\); \})/,
+          "$1<launch-gain>$2"
+        )
       : source;
     assert.equal(
-      normalizeAuthorizedLaunchGain(read(relativePath)).replace(/\r\n/g, "\n"),
-      normalizeAuthorizedLaunchGain(readHead(relativePath)).replace(/\r\n/g, "\n")
+      normalizeAuthorizedAudioChanges(read(relativePath)).replace(/\r\n/g, "\n"),
+      normalizeAuthorizedAudioChanges(readHead(relativePath)).replace(/\r\n/g, "\n")
     );
   }
   for (const helper of [

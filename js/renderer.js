@@ -2460,6 +2460,9 @@
     const prestigeEffectRadius = Number.isFinite(options.prestigeEffectRadius)
       ? Math.max(0, options.prestigeEffectRadius)
       : 30;
+    const prestigeTrailRadius = Number.isFinite(options.prestigeTrailRadius)
+      ? Math.max(0, options.prestigeTrailRadius)
+      : prestigeEffectRadius;
     const centerX = Number.isFinite(options.centerX)
       ? options.centerX
       : canvasElement.width / 2;
@@ -2470,7 +2473,7 @@
     previewContext.translate(centerX, centerY);
     previewContext.scale(scale, scale);
 
-    drawStaticPrestigeTrail(previewContext, prestigeTrail, prestigeEffectRadius);
+    drawStaticPrestigeTrail(previewContext, prestigeTrail, prestigeTrailRadius);
     drawPrestigeAura(previewContext, prestigeAura, prestigeEffectRadius);
 
     const bodyGradient = previewContext.createRadialGradient(-9, -10, 2, 0, 0, 30);

@@ -1,13 +1,51 @@
 "use strict";
 
+  const LIFECYCLE_GAIN_RAMP_SECONDS = 0.025;
+  let masterGain = null;
+  let lifecycleMuted = globalThis.document?.visibilityState === "hidden";
+
+  function getMasterGain(a) {
+    if (!a) return null;
+
+    if (!masterGain) {
+      masterGain = a.createGain();
+      masterGain.gain.value = lifecycleMuted ? 0 : 1;
+      masterGain.connect(a.destination);
+    }
+
+    return masterGain;
+  }
+
   function getAudio() {
     if (!audioCtx) {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       if (AudioContext) audioCtx = new AudioContext();
     }
+    if (audioCtx) getMasterGain(audioCtx);
     if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
     return audioCtx;
   }
+
+  function setLifecycleMuted(muted) {
+    const nextMuted = Boolean(muted);
+    if (lifecycleMuted === nextMuted) return;
+    lifecycleMuted = nextMuted;
+
+    if (!audioCtx || !masterGain) return;
+
+    const now = audioCtx.currentTime;
+    const gain = masterGain.gain;
+    gain.cancelScheduledValues(now);
+    gain.setValueAtTime(gain.value, now);
+    gain.linearRampToValueAtTime(
+      lifecycleMuted ? 0 : 1,
+      now + LIFECYCLE_GAIN_RAMP_SECONDS
+    );
+  }
+
+  globalThis.document?.addEventListener?.("visibilitychange", () => {
+    setLifecycleMuted(globalThis.document.visibilityState === "hidden");
+  });
 
   const SFX_VOLUME_MULTIPLIER = 1.30;
   const MUSIC_BUS_VOLUME = 0.33; // V1.9: +50 % gegenüber V1.8 (0.22 -> 0.33)
@@ -16,6 +54,8 @@
     if (sfxMuted) return;
     const a = getAudio();
     if (!a) return;
+    const master = getMasterGain(a);
+    if (!master) return;
     const now = a.currentTime;
     const osc = a.createOscillator();
     const gain = a.createGain();
@@ -25,7 +65,7 @@
     gain.gain.setValueAtTime(Math.min(1, volume * SFX_VOLUME_MULTIPLIER), now);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
     osc.connect(gain);
-    gain.connect(a.destination);
+    gain.connect(master);
     osc.start(now);
     osc.stop(now + duration);
   }
@@ -166,11 +206,13 @@
   function getMusicBus() {
     const a = getAudio();
     if (!a) return null;
+    const master = getMasterGain(a);
+    if (!master) return null;
 
     if (!musicBus) {
       musicBus = a.createGain();
       musicBus.gain.value = musicMuted ? 0 : MUSIC_BUS_VOLUME;
-      musicBus.connect(a.destination);
+      musicBus.connect(master);
     }
 
     return musicBus;

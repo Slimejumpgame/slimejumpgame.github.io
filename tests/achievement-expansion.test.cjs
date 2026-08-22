@@ -138,7 +138,12 @@ function loadAchievements({storageValues = {}} = {}) {
     getEquippedAppearance: () => ({...gold.equipped})
   };
 
-  vm.runInContext(read("js/slime-achievements.js"), context, {
+  const achievementSource = read("js/slime-achievements.js").replace(
+    "  window.SlimeAchievements = Object.freeze({",
+    "  window.__toggleCallingCardAchievementForTest = toggleCallingCardAchievement;\n\n" +
+      "  window.SlimeAchievements = Object.freeze({"
+  );
+  vm.runInContext(achievementSource, context, {
     filename: "js/slime-achievements.js"
   });
 
@@ -150,7 +155,8 @@ function loadAchievements({storageValues = {}} = {}) {
     prestige,
     perks,
     gold,
-    listeners
+    listeners,
+    toggleCallingCardAchievement: context.__toggleCallingCardAchievementForTest
   };
 }
 
@@ -358,6 +364,214 @@ function assertMasterKevinChain() {
   assert.equal(unlockedIds(negative).includes("ein_richtiger_kevin"), false);
 }
 
+function achievementUnlocks(ids) {
+  return ids.map((id, index) => ({id, unlockedAt: (index + 1) * 100}));
+}
+
+function effectiveBadgeIds(fixture) {
+  return Array.from(fixture.api.getEffectiveBadgeIds());
+}
+
+function assertCallingCardBadgeDefaults() {
+  const ids = [
+    "hp_gen",
+    "world_traveler",
+    "golden_ticket",
+    "first_ascent",
+    "secret_star_sniper",
+    "century_slime",
+    "biome_master",
+    "achievement_hunter",
+    "secret_bare_minimum",
+    "ein_richtiger_kevin"
+  ];
+  const unlocks = achievementUnlocks(ids);
+
+  const empty = loadAchievements();
+  assert.deepEqual(effectiveBadgeIds(empty), []);
+
+  const autoThree = loadAchievements({
+    storageValues: {
+      slimejumperAchievements: JSON.stringify(unlocks.slice(0, 3))
+    }
+  });
+  assert.deepEqual(effectiveBadgeIds(autoThree), ids.slice(0, 3).reverse());
+
+  const autoTen = loadAchievements({
+    storageValues: {
+      slimejumperAchievements: JSON.stringify(unlocks)
+    }
+  });
+  assert.deepEqual(effectiveBadgeIds(autoTen), ids.slice(5).reverse());
+
+  const legacyFiveIds = [ids[0], ids[2], ids[4], ids[1], ids[3]];
+  const legacyFive = loadAchievements({
+    storageValues: {
+      slimejumperAchievements: JSON.stringify(unlocks),
+      slimejumperSelectedAchievementBadges: JSON.stringify(legacyFiveIds)
+    }
+  });
+  assert.deepEqual(
+    effectiveBadgeIds(legacyFive),
+    legacyFiveIds,
+    "Eine nicht-leere Legacy-Auswahl muss in ihrer Slot-Reihenfolge erhalten bleiben"
+  );
+
+  const legacyTwo = loadAchievements({
+    storageValues: {
+      slimejumperAchievements: JSON.stringify(unlocks),
+      slimejumperSelectedAchievementBadges: JSON.stringify([ids[1], ids[0]])
+    }
+  });
+  assert.deepEqual(effectiveBadgeIds(legacyTwo), [ids[1], ids[0]]);
+
+  const legacyEmpty = loadAchievements({
+    storageValues: {
+      slimejumperAchievements: JSON.stringify(unlocks),
+      slimejumperSelectedAchievementBadges: JSON.stringify([])
+    }
+  });
+  assert.deepEqual(
+    effectiveBadgeIds(legacyEmpty),
+    ids.slice(5).reverse(),
+    "Eine leere Legacy-Auswahl ohne Configured-Key muss den Recent-Default verwenden"
+  );
+
+  const legacyWithInvalidIds = loadAchievements({
+    storageValues: {
+      slimejumperAchievements: JSON.stringify(unlocks),
+      slimejumperSelectedAchievementBadges: JSON.stringify([
+        ids[1], "missing-achievement", ids[0], "", ids[1]
+      ])
+    }
+  });
+  assert.deepEqual(
+    effectiveBadgeIds(legacyWithInvalidIds),
+    [ids[1], ids[0]],
+    "Legacy-Inference muss die bestehende Badge-Validierung verwenden"
+  );
+
+  const legacyWithOnlyInvalidIds = loadAchievements({
+    storageValues: {
+      slimejumperAchievements: JSON.stringify(unlocks),
+      slimejumperSelectedAchievementBadges: JSON.stringify(["missing-achievement"])
+    }
+  });
+  assert.deepEqual(
+    effectiveBadgeIds(legacyWithOnlyInvalidIds),
+    ids.slice(5).reverse()
+  );
+
+  const modernExplicitFalse = loadAchievements({
+    storageValues: {
+      slimejumperAchievements: JSON.stringify(unlocks),
+      slimejumperSelectedAchievementBadges: JSON.stringify(legacyFiveIds),
+      slimejumperCallingCardBadgesConfigured: "false"
+    }
+  });
+  assert.deepEqual(
+    effectiveBadgeIds(modernExplicitFalse),
+    ids.slice(5).reverse(),
+    "Explizites modernes false muss gegenüber zufälligen Selected-Daten Vorrang haben"
+  );
+
+  const manualFiveIds = [
+    "hp_gen",
+    "golden_ticket",
+    "first_ascent",
+    "secret_star_sniper",
+    "ein_richtiger_kevin"
+  ];
+  const manualFive = loadAchievements({
+    storageValues: {
+      slimejumperAchievements: JSON.stringify(unlocks),
+      slimejumperSelectedAchievementBadges: JSON.stringify(manualFiveIds),
+      slimejumperCallingCardBadgesConfigured: "true"
+    }
+  });
+  assert.deepEqual(effectiveBadgeIds(manualFive), manualFiveIds);
+
+  const manualTwo = loadAchievements({
+    storageValues: {
+      slimejumperAchievements: JSON.stringify(unlocks),
+      slimejumperSelectedAchievementBadges: JSON.stringify([ids[1], ids[0]]),
+      slimejumperCallingCardBadgesConfigured: "true"
+    }
+  });
+  assert.deepEqual(effectiveBadgeIds(manualTwo), [ids[1], ids[0]]);
+
+  const manualEmpty = loadAchievements({
+    storageValues: {
+      slimejumperAchievements: JSON.stringify(unlocks),
+      slimejumperSelectedAchievementBadges: JSON.stringify([]),
+      slimejumperCallingCardBadgesConfigured: "true"
+    }
+  });
+  assert.deepEqual(effectiveBadgeIds(manualEmpty), []);
+}
+
+function assertCallingCardBadgeUpdates() {
+  const autoIds = [
+    "hp_gen",
+    "world_traveler",
+    "golden_ticket",
+    "first_ascent",
+    "century_slime"
+  ];
+  const auto = loadAchievements({
+    storageValues: {
+      slimejumperAchievements: JSON.stringify(achievementUnlocks(autoIds))
+    }
+  });
+  auto.api.unlock("secret_bare_minimum");
+  assert.deepEqual(effectiveBadgeIds(auto), [
+    "secret_bare_minimum",
+    ...autoIds.slice(1).reverse()
+  ]);
+  assert.equal(
+    auto.localStorage.getItem("slimejumperCallingCardBadgesConfigured"),
+    null,
+    "Ein automatischer Unlock darf den Configured-State nicht persistieren"
+  );
+  assert.equal(
+    auto.localStorage.getItem("slimejumperSelectedAchievementBadges"),
+    null,
+    "Der Recent-Default darf nicht als manuelle Auswahl persistiert werden"
+  );
+
+  const manual = loadAchievements({
+    storageValues: {
+      slimejumperAchievements: JSON.stringify(achievementUnlocks(autoIds)),
+      slimejumperSelectedAchievementBadges: JSON.stringify([autoIds[0], autoIds[2]]),
+      slimejumperCallingCardBadgesConfigured: "true"
+    }
+  });
+  manual.api.unlock("secret_bare_minimum");
+  assert.deepEqual(effectiveBadgeIds(manual), [autoIds[0], autoIds[2]]);
+
+  const userConfigured = loadAchievements({
+    storageValues: {
+      slimejumperAchievements: JSON.stringify(achievementUnlocks(autoIds.slice(0, 3)))
+    }
+  });
+  assert.equal(
+    userConfigured.toggleCallingCardAchievement(autoIds[2]),
+    true
+  );
+  assert.equal(
+    userConfigured.localStorage.getItem("slimejumperCallingCardBadgesConfigured"),
+    "true"
+  );
+  assert.deepEqual(effectiveBadgeIds(userConfigured), [autoIds[1], autoIds[0]]);
+  userConfigured.toggleCallingCardAchievement(autoIds[1]);
+  userConfigured.toggleCallingCardAchievement(autoIds[0]);
+  assert.deepEqual(effectiveBadgeIds(userConfigured), []);
+  assert.equal(
+    userConfigured.localStorage.getItem("slimejumperSelectedAchievementBadges"),
+    "[]"
+  );
+}
+
 function assertUiAndResetCompatibility() {
   const html = read("index.html");
   const source = read("js/slime-achievements.js");
@@ -370,8 +584,20 @@ function assertUiAndResetCompatibility() {
   assert.match(source, /for \(let pass = 0; pass < 3; pass\+\+\)/);
   assert.match(prestige, /ACHIEVEMENT_PROGRESS_DEFAULT/);
   assert.match(prestige, /slimejumperAchievements: JSON\.stringify\(\[\]\)/);
+  assert.match(prestige, /slimejumperCallingCardBadgesConfigured: "false"/);
+  assert.match(reset, /slimejumperCallingCardBadgesConfigured: "false"/);
+  assert.match(source, /getEffectiveBadgeIds: getEffectiveCallingCardBadgeIds/);
+  assert.match(
+    source,
+    /function renderRecentAchievements\(\)[\s\S]*?const callingCardIds = getCallingCardDisplayIds\(\)/
+  );
+  assert.match(
+    source,
+    /function renderCallingCardPreview\(\)[\s\S]*?const selectedIds = getCallingCardDisplayIds\(\)/
+  );
   assert.match(source, /const ACHIEVEMENT_PROGRESS_VERSION = "achievements-v1"/);
   assert.match(reset, /achievements-v1/);
+  assert.match(reset, /const RESET_VERSION = "progress-reset-2\.43"/);
 }
 
 assertRegistryContract();
@@ -383,6 +609,8 @@ assertRotationCompletesAtLevelTwoHundred();
 assertGoldOwnedAndMasteryAreSeparate();
 assertTwoOfThreeUsesTheRealStarLayout();
 assertMasterKevinChain();
+assertCallingCardBadgeDefaults();
+assertCallingCardBadgeUpdates();
 assertUiAndResetCompatibility();
 
 console.log("Achievement expansion tests passed.");

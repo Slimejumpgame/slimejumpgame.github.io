@@ -8,6 +8,16 @@ const vm = require("node:vm");
 const root = path.resolve(__dirname, "..");
 const read = relativePath => fs.readFileSync(path.join(root, relativePath), "utf8");
 const INSTALLATION_ID = "11111111-2222-4333-8444-555555555555";
+const RETRY_BADGES = Object.freeze([
+  "hp_gen",
+  "golden_ticket",
+  "first_ascent",
+  "secret_star_sniper",
+  "ein_richtiger_kevin"
+]);
+const RETRY_BADGE_REGISTRY = Object.freeze(
+  [...RETRY_BADGES, "secret_bare_minimum"].map(id => Object.freeze({id, icon: id}))
+);
 
 function extract(source, startMarker, endMarker) {
   const start = source.indexOf(startMarker);
@@ -38,7 +48,7 @@ function retryPayload(score) {
     slimeColor: "green",
     slimeCosmetic: "none",
     slimeBeard: "none",
-    slimeAchievements: [],
+    slimeAchievements: RETRY_BADGES.slice(),
     callingCardSnapshot: {
       playerLevel: 9,
       prestigeLevel: 0,
@@ -46,7 +56,7 @@ function retryPayload(score) {
       prestigeTitle: "none",
       prestigeAura: "none",
       prestigeTrail: "none",
-      slimeAchievements: []
+      slimeAchievements: RETRY_BADGES.slice()
     }
   };
 }
@@ -68,9 +78,13 @@ function createBootstrapFixture({
     );
   }
   const calls = [];
+  const liveBadges = RETRY_BADGES.slice();
   const ui = {personalGlobalRankValue: {textContent: "initial"}};
   const window = {
-    SlimeAchievements: {registry: []},
+    SlimeAchievements: {
+      registry: RETRY_BADGE_REGISTRY,
+      getEffectiveBadgeIds: () => liveBadges.slice()
+    },
     SlimePrestige: {
       normalizeIdentitySnapshot: value => ({...value, prestigeEmblemId: "none"})
     }
@@ -142,7 +156,8 @@ function createBootstrapFixture({
     update: context.bootstrapTestApi.updatePersonalGlobalRank,
     calls,
     rankValue: ui.personalGlobalRankValue,
-    storage
+    storage,
+    unlockBadge: id => liveBadges.unshift(id)
   };
 }
 
@@ -166,7 +181,12 @@ async function assertPostResetBestSyncRunsInBackground() {
   assert.equal(fixture.calls.length, 3);
   assert.match(fixture.calls[0].url, /\/rest\/v1\/slime_jump_highscores\?/);
   assert.match(fixture.calls[1].url, /\/submit_slime_jump_global_best$/);
-  assert.equal(JSON.parse(fixture.calls[1].options.body).p_score, 6000);
+  const submittedPayload = JSON.parse(fixture.calls[1].options.body);
+  assert.equal(submittedPayload.p_score, 6000);
+  assert.deepEqual(
+    submittedPayload.p_calling_card_snapshot.slimeAchievements,
+    RETRY_BADGES
+  );
   assert.match(fixture.calls[2].url, /\/rest\/v1\/slime_jump_highscores\?/);
   assert.equal(fixture.rankValue.textContent, "37");
 }
@@ -176,13 +196,21 @@ async function assertFailureIsIsolatedAndBootstrapCanRetry() {
   await assert.doesNotReject(() => offline.update());
   await Promise.resolve();
   await Promise.resolve();
+  offline.unlockBadge("secret_bare_minimum");
   await assert.doesNotReject(() => offline.update());
   assert.equal(offline.rankValue.textContent, "—");
 
-  assert.equal(
-    offline.calls.filter(call => /submit_slime_jump_global_best$/.test(call.url)).length,
-    2
-  );
+  const offlineSubmits = offline.calls
+    .filter(call => /submit_slime_jump_global_best$/.test(call.url));
+  assert.equal(offlineSubmits.length, 2);
+  offlineSubmits.forEach(call => {
+    const payload = JSON.parse(call.options.body);
+    assert.deepEqual(
+      payload.p_calling_card_snapshot.slimeAchievements,
+      RETRY_BADGES,
+      "Retries müssen den gespeicherten historischen Snapshot unverändert senden"
+    );
+  });
 
   const online = createBootstrapFixture({globalBest: 6000});
   await online.update();

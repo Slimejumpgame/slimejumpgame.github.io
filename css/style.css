@@ -3072,6 +3072,14 @@ p {
   transform: translateY(-28px) rotate(-2deg);
 }
 
+.menuMascot.menuMascot--prestigeAura {
+  filter: drop-shadow(0 5px 0 rgba(14, 47, 16, 0.76));
+  transform:
+    translateY(-28px)
+    rotate(-2deg)
+    scale(var(--menu-mascot-aura-visual-scale, 1));
+}
+
 .menuMascotPrestigeSpace {
   min-width: 0;
   min-height: 1px;
@@ -4877,6 +4885,13 @@ p {
     transform: translateY(-6px) rotate(-2deg);
   }
 
+  .menuMascot.menuMascot--prestigeAura {
+    transform:
+      translateY(-6px)
+      rotate(-2deg)
+      scale(var(--menu-mascot-aura-visual-scale, 1));
+  }
+
   .wardrobePrestigePanel {
     gap: 4px;
   }
@@ -5322,6 +5337,13 @@ p {
 @media (display-mode: standalone) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
   #mainMenuScreen .menuMascot {
     transform: translateY(-12px) rotate(-2deg);
+  }
+
+  #mainMenuScreen .menuMascot.menuMascot--prestigeAura {
+    transform:
+      translateY(-12px)
+      rotate(-2deg)
+      scale(var(--menu-mascot-aura-visual-scale, 1));
   }
 }
 

@@ -4,6 +4,8 @@
   const ACHIEVEMENTS_STORAGE_KEY = "slimejumperAchievements";
   const SELECTED_ACHIEVEMENT_BADGES_STORAGE_KEY =
     "slimejumperSelectedAchievementBadges";
+  const CALLING_CARD_BADGES_CONFIGURED_STORAGE_KEY =
+    "slimejumperCallingCardBadgesConfigured";
   const CALLING_CARD_BADGE_LIMIT = 5;
   const ACHIEVEMENT_PROGRESS_STORAGE_KEY = "slimejumperAchievementProgress";
   const ACHIEVEMENT_PROGRESS_VERSION_STORAGE_KEY = "slimejumperAchievementProgressVersion";
@@ -229,6 +231,9 @@
     unlockedAchievements.map(unlock => [unlock.id, unlock])
   );
   let selectedAchievementBadges = loadSelectedAchievementBadges();
+  let callingCardBadgesConfigured = loadCallingCardBadgesConfigured(
+    selectedAchievementBadges
+  );
   let devCallingCardPreview = null;
   let lastUnlockTimestamp = unlockedAchievements.reduce(
     (latest, unlock) => Math.max(latest, unlock.unlockedAt),
@@ -720,6 +725,18 @@
     );
   }
 
+  function loadCallingCardBadgesConfigured(selectedBadgeIds) {
+    try {
+      const storedValue = localStorage.getItem(
+        CALLING_CARD_BADGES_CONFIGURED_STORAGE_KEY
+      );
+      if (storedValue !== null) return storedValue === "true";
+      return Array.isArray(selectedBadgeIds) && selectedBadgeIds.length > 0;
+    } catch (_) {
+      return false;
+    }
+  }
+
   function saveSelectedAchievementBadges() {
     try {
       localStorage.setItem(
@@ -729,15 +746,32 @@
     } catch (_) {}
   }
 
+  function saveCallingCardBadgesConfigured() {
+    try {
+      localStorage.setItem(
+        CALLING_CARD_BADGES_CONFIGURED_STORAGE_KEY,
+        String(callingCardBadgesConfigured)
+      );
+    } catch (_) {}
+  }
+
   function getSelectedAchievementBadgeIds() {
     return selectedAchievementBadges.slice(0, CALLING_CARD_BADGE_LIMIT);
+  }
+
+  function getEffectiveCallingCardBadgeIds() {
+    if (callingCardBadgesConfigured) {
+      return getSelectedAchievementBadgeIds();
+    }
+    return getRecentAchievements(CALLING_CARD_BADGE_LIMIT)
+      .map(achievement => achievement.id);
   }
 
   function getCallingCardDisplayIds() {
     if (isDevModeEnabled() && devCallingCardPreview !== null) {
       return devCallingCardPreview.slice(0, CALLING_CARD_BADGE_LIMIT);
     }
-    return getSelectedAchievementBadgeIds();
+    return getEffectiveCallingCardBadgeIds();
   }
 
   function toggleCallingCardAchievement(id) {
@@ -749,7 +783,7 @@
     if (!actuallyUnlocked && !devPreviewAllowed) return false;
 
     if (devPreviewAllowed && devCallingCardPreview === null) {
-      devCallingCardPreview = getSelectedAchievementBadgeIds();
+      devCallingCardPreview = getEffectiveCallingCardBadgeIds();
     }
 
     const displaySelection = getCallingCardDisplayIds();
@@ -765,17 +799,10 @@
     }
 
     if (actuallyUnlocked) {
-      const persistentIndex = selectedAchievementBadges.indexOf(achievementId);
-      if (selectedIndex >= 0 && persistentIndex >= 0) {
-        selectedAchievementBadges.splice(persistentIndex, 1);
-      } else if (
-        selectedIndex < 0 &&
-        persistentIndex < 0 &&
-        selectedAchievementBadges.length < CALLING_CARD_BADGE_LIMIT
-      ) {
-        selectedAchievementBadges.push(achievementId);
-      }
+      selectedAchievementBadges = normalizeSelectedAchievementBadgeIds(displaySelection);
+      callingCardBadgesConfigured = true;
       saveSelectedAchievementBadges();
+      saveCallingCardBadgesConfigured();
     }
 
     if (isDevModeEnabled() && devCallingCardPreview !== null) {
@@ -800,16 +827,16 @@
     );
     if (recentPanel) recentPanel.dataset.prestigeFrame = selectedPrestigeFrame;
     const callingCardIds = getCallingCardDisplayIds();
-    const achievements = callingCardIds.length > 0
-      ? callingCardIds
-          .map(id => ACHIEVEMENT_BY_ID.get(id))
-          .filter(Boolean)
-          .slice(0, CALLING_CARD_BADGE_LIMIT)
-      : getRecentAchievements(CALLING_CARD_BADGE_LIMIT);
+    const achievements = callingCardIds
+      .map(id => ACHIEVEMENT_BY_ID.get(id))
+      .filter(Boolean)
+      .slice(0, CALLING_CARD_BADGE_LIMIT);
+    const hasManualCallingCardDisplay = callingCardBadgesConfigured ||
+      (isDevModeEnabled() && devCallingCardPreview !== null);
     if (title) {
       title.textContent = prestigeTitleDefinition
         ? prestigeTitleDefinition.displayName
-        : callingCardIds.length > 0
+        : hasManualCallingCardDisplay
           ? "Calling Card"
           : "Letzte Erfolge";
     }
@@ -818,7 +845,9 @@
     if (achievements.length === 0) {
       const empty = document.createElement("span");
       empty.className = "recentAchievementEmpty";
-      empty.textContent = "Noch keine Erfolge";
+      empty.textContent = hasManualCallingCardDisplay
+        ? "Keine Badges ausgewählt"
+        : "Noch keine Erfolge";
       list.appendChild(empty);
       return;
     }
@@ -2094,6 +2123,7 @@
     getUnlocked: () => unlockedAchievements.map(unlock => ({...unlock})),
     getRecent: getRecentAchievements,
     getSelectedBadgeIds: getSelectedAchievementBadgeIds,
+    getEffectiveBadgeIds: getEffectiveCallingCardBadgeIds,
     getProgress: () => ({
       discoveredBiomeIds: achievementProgress.discoveredBiomeIds.slice(),
       perfectBiomeIds: achievementProgress.perfectBiomeIds.slice(),

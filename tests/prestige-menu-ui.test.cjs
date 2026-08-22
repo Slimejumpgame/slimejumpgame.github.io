@@ -57,6 +57,17 @@ class FakeClassList {
   }
 }
 
+class FakeStyle {
+  constructor() { this.values = new Map(); }
+  setProperty(name, value) { this.values.set(name, String(value)); }
+  removeProperty(name) {
+    const previous = this.values.get(name) ?? "";
+    this.values.delete(name);
+    return previous;
+  }
+  getPropertyValue(name) { return this.values.get(name) ?? ""; }
+}
+
 class FakeElement {
   constructor(tagName = "div", initialClasses = []) {
     this.tagName = tagName.toUpperCase();
@@ -68,6 +79,7 @@ class FakeElement {
     this.eventListeners = new Map();
     this.innerHTML = "";
     this.textContent = "";
+    this.style = new FakeStyle();
   }
   set className(value) {
     this.classList = new FakeClassList(String(value).split(/\s+/).filter(Boolean));
@@ -125,6 +137,71 @@ function loadPrestigeMenuRenderer(prestige) {
     {filename: "js/ui-prestige-menu-test-slice.js"}
   );
   return {api: context.prestigeMenuTestApi, selectedCalls, ui};
+}
+
+function loadMainMenuMascotRenderer({
+  aura = "none",
+  trail = "none",
+  cosmetic = "none",
+  beard = "none",
+  color = "green",
+  goldAppearance = {slime: false, hatId: null, beardId: null}
+} = {}) {
+  const source = read("js/ui.js");
+  const sliceStart = source.indexOf("  function getSelectedPrestigeSlimePreviewOptions(");
+  const sliceEnd = source.indexOf("  function getPersonalBestScore(", sliceStart);
+  assert.ok(sliceStart >= 0 && sliceEnd > sliceStart);
+
+  const ui = {
+    menuMascot: new FakeElement("canvas"),
+    gameToast: new FakeElement()
+  };
+  const drawCalls = [];
+  const context = vm.createContext({
+    DEV_MODE: false,
+    document: {createElement: tagName => new FakeElement(tagName)},
+    ui,
+    window: {
+      SlimePrestige: {
+        getSelectedReward(type) {
+          if (type === "aura") return aura;
+          if (type === "trail") return trail;
+          return "none";
+        }
+      },
+      SlimeGold: {getEquippedAppearance: () => ({...goldAppearance})}
+    },
+    getActiveSlimeCosmetic: () => cosmetic,
+    getActiveSlimeBeard: () => beard,
+    getActiveSlimeColor: () => color,
+    getSlimeCosmeticDefinition(id) {
+      return {type: id === "none" ? "none" : id === "bow" ? "head" : "hat"};
+    },
+    drawSlimeCharacterPreview(...args) { drawCalls.push(args); },
+    normalizeSlimeCosmetic: value => value,
+    normalizeSlimeBeard: value => value,
+    normalizeSlimeColor: value => value,
+    getSlimeColorPalette: () => ({
+      light: "#fff",
+      main: "#0f0",
+      dark: "#070",
+      outline: "#030",
+      glow: "#8f8",
+      face: "#020"
+    }),
+    console
+  });
+  vm.runInContext(
+    source.slice(sliceStart, sliceEnd) + `
+      globalThis.mainMenuMascotTestApi = {
+        renderMenuMascot,
+        getSelectedPrestigeSlimePreviewOptions
+      };
+    `,
+    context,
+    {filename: "js/ui-main-menu-mascot-test-slice.js"}
+  );
+  return {api: context.mainMenuMascotTestApi, drawCalls, ui};
 }
 
 function getCatalog(api) {
@@ -322,9 +399,131 @@ function assertP0EntryAndScope() {
   assert.equal((read("js/slime-prestige.js").match(/const PRESTIGE_REWARD_PACKAGES/g) ?? []).length, 1);
 }
 
+function assertMainMenuAuraPreviewParity() {
+  const auraIds = getCatalog(loadPrestige(10).api)
+    .filter(reward => reward.type === "aura")
+    .map(reward => reward.id);
+  assert.deepEqual(auraIds, [
+    "prestige-aura-p3",
+    "prestige-aura-bubble-p3",
+    "prestige-aura-mist-p3",
+    "prestige-aura-star-p3",
+    "prestige-aura-p8",
+    "prestige-aura-royal-p8",
+    "prestige-aura-flame-p8",
+    "prestige-aura-prism-p8"
+  ]);
+
+  const noAura = loadMainMenuMascotRenderer({trail: "prestige-trail-p5"});
+  noAura.api.renderMenuMascot();
+  assert.equal(noAura.drawCalls.length, 1);
+  assert.deepEqual(plain(noAura.drawCalls[0].slice(1, 4)), ["none", "none", "green"]);
+  assert.deepEqual(plain(noAura.drawCalls[0][4]), {
+    centerY: 95,
+    scale: 2,
+    prestigeAura: "none",
+    prestigeTrail: "prestige-trail-p5",
+    prestigeEffectRadius: 30,
+    prestigeTrailRadius: 20,
+    goldSlime: false,
+    goldCosmetic: false,
+    goldBeard: false
+  });
+  assert.equal(noAura.ui.menuMascot.classList.contains("menuMascot--prestigeAura"), false);
+  assert.equal(
+    noAura.ui.menuMascot.style.getPropertyValue("--menu-mascot-aura-visual-scale"),
+    ""
+  );
+  assert.equal(noAura.api.getSelectedPrestigeSlimePreviewOptions().prestigeEffectRadius, 20);
+  assert.equal(noAura.api.getSelectedPrestigeSlimePreviewOptions().prestigeTrailRadius, 20);
+
+  const aura = loadMainMenuMascotRenderer({
+    aura: "prestige-aura-prism-p8",
+    trail: "prestige-trail-prism-p9"
+  });
+  aura.api.renderMenuMascot();
+  const auraOptions = plain(aura.drawCalls[0][4]);
+  assert.equal(auraOptions.centerY, 85);
+  assert.equal(auraOptions.scale, 1.5);
+  assert.equal(auraOptions.prestigeEffectRadius, 30);
+  assert.equal(auraOptions.prestigeTrailRadius, 20);
+  assert.equal(aura.ui.menuMascot.classList.contains("menuMascot--prestigeAura"), true);
+  assert.equal(
+    Number(aura.ui.menuMascot.style.getPropertyValue("--menu-mascot-aura-visual-scale")),
+    2 / 1.5
+  );
+  const maximumAuraExtent = 30 * 1.8 * auraOptions.scale;
+  assert.ok(maximumAuraExtent <= 90);
+  assert.ok(maximumAuraExtent <= auraOptions.centerY);
+  assert.ok(maximumAuraExtent <= 170 - auraOptions.centerY);
+
+  const bow = loadMainMenuMascotRenderer({
+    aura: "prestige-aura-star-p3",
+    cosmetic: "bow",
+    beard: "full_beard"
+  });
+  bow.api.renderMenuMascot();
+  const bowOptions = plain(bow.drawCalls[0][4]);
+  assert.equal(bowOptions.centerY, 85);
+  assert.equal(bowOptions.scale, 1.5);
+  assert.equal(
+    Number(bow.ui.menuMascot.style.getPropertyValue("--menu-mascot-aura-visual-scale")),
+    1.7 / 1.5
+  );
+
+  const goldHatAndBeard = loadMainMenuMascotRenderer({
+    aura: "prestige-aura-flame-p8",
+    trail: "prestige-trail-flame-p9",
+    cosmetic: "top_hat",
+    beard: "full_beard",
+    goldAppearance: {slime: true, hatId: "top_hat", beardId: "full_beard"}
+  });
+  goldHatAndBeard.api.renderMenuMascot();
+  const goldOptions = plain(goldHatAndBeard.drawCalls[0][4]);
+  assert.equal(goldOptions.centerY, 105);
+  assert.equal(goldOptions.scale, 1.08);
+  assert.equal(goldOptions.prestigeEffectRadius, 30);
+  assert.equal(goldOptions.prestigeTrailRadius, 20);
+  assert.equal(goldOptions.goldSlime, true);
+  assert.equal(goldOptions.goldCosmetic, true);
+  assert.equal(goldOptions.goldBeard, true);
+  assert.equal(
+    Number(goldHatAndBeard.ui.menuMascot.style.getPropertyValue("--menu-mascot-aura-visual-scale")),
+    1.35 / 1.08
+  );
+  const maximumHatAuraExtent = 30 * 1.8 * goldOptions.scale;
+  assert.ok(maximumHatAuraExtent <= 90);
+  assert.ok(maximumHatAuraExtent <= goldOptions.centerY);
+  assert.ok(maximumHatAuraExtent <= 170 - goldOptions.centerY);
+
+  const rendererSource = read("js/renderer.js");
+  const uiSource = read("js/ui.js");
+  const menuSliceStart = uiSource.indexOf("  function renderMenuMascot(");
+  const menuSliceEnd = uiSource.indexOf("  function getPersonalBestScore(", menuSliceStart);
+  const menuSource = uiSource.slice(menuSliceStart, menuSliceEnd);
+  assert.equal((rendererSource.match(/function drawPrestigeAura\(/g) ?? []).length, 1);
+  assert.match(
+    rendererSource,
+    /drawStaticPrestigeTrail\(previewContext, prestigeTrail, prestigeTrailRadius\);\s*drawPrestigeAura\(previewContext, prestigeAura, prestigeEffectRadius\);/
+  );
+  assert.match(rendererSource, /drawPrestigeAura\(ctx, prestigeAura, player\.r\);/);
+  assert.doesNotMatch(menuSource, /requestAnimationFrame|Math\.sin|drawPrestigeAura/);
+
+  const cssSource = read("css/style.css");
+  assert.match(
+    cssSource,
+    /\.menuMascot\.menuMascot--prestigeAura\s*\{[\s\S]*?filter:\s*drop-shadow\(0 5px 0 rgba\(14, 47, 16, 0\.76\)\);/
+  );
+  assert.match(
+    cssSource,
+    /\.menuMascot\.menuMascot--prestigeAura\s*\{[\s\S]*?scale\(var\(--menu-mascot-aura-visual-scale, 1\)\)/
+  );
+}
+
 assertRewardCatalog();
 assertP0LockedAndSelectionSafe();
 assertMiddleAndMaxStates();
 assertPrestigeEligibilityGuards();
 assertP0EntryAndScope();
+assertMainMenuAuraPreviewParity();
 console.log("Prestige menu UI tests passed.");

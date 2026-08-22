@@ -473,12 +473,16 @@
     return window.SlimeGold?.getEquippedAppearance?.().beardId ?? selectedSlimeBeard;
   }
 
-  function getSelectedPrestigeSlimePreviewOptions() {
+  function getSelectedPrestigeSlimePreviewOptions(
+    prestigeEffectRadius = 20,
+    prestigeTrailRadius = prestigeEffectRadius
+  ) {
     const prestige = window.SlimePrestige;
     return {
       prestigeAura: prestige?.getSelectedReward?.("aura") ?? "none",
       prestigeTrail: prestige?.getSelectedReward?.("trail") ?? "none",
-      prestigeEffectRadius: 20
+      prestigeEffectRadius,
+      prestigeTrailRadius
     };
   }
 
@@ -546,6 +550,8 @@
     if (!ui.menuMascot) return;
     const cosmetic = getActiveSlimeCosmetic();
     const beard = getActiveSlimeBeard();
+    const prestigePreviewOptions = getSelectedPrestigeSlimePreviewOptions(30, 20);
+    const hasPrestigeAura = prestigePreviewOptions.prestigeAura !== "none";
     const goldAppearance = window.SlimeGold?.getEquippedAppearance?.() ?? {
       slime: false,
       hatId: null,
@@ -554,11 +560,25 @@
     const definition = getSlimeCosmeticDefinition(cosmetic);
     const isHat = definition?.type === "hat";
     const isBow = cosmetic === "bow";
-    const previewLayout = isHat
+    const basePreviewLayout = isHat
       ? {centerY: 128, scale: 1.35}
       : isBow
         ? {centerY: 96, scale: 1.7}
         : {centerY: 95, scale: 2};
+    const previewLayout = hasPrestigeAura
+      ? isHat
+        ? {centerY: 105, scale: 1.08}
+        : {centerY: 85, scale: 1.5}
+      : basePreviewLayout;
+    ui.menuMascot.classList.toggle("menuMascot--prestigeAura", hasPrestigeAura);
+    if (hasPrestigeAura) {
+      ui.menuMascot.style.setProperty(
+        "--menu-mascot-aura-visual-scale",
+        String(basePreviewLayout.scale / previewLayout.scale)
+      );
+    } else {
+      ui.menuMascot.style.removeProperty("--menu-mascot-aura-visual-scale");
+    }
     drawSlimeCharacterPreview(
       ui.menuMascot,
       cosmetic,
@@ -566,7 +586,7 @@
       getActiveSlimeColor(),
       {
         ...previewLayout,
-        ...getSelectedPrestigeSlimePreviewOptions(),
+        ...prestigePreviewOptions,
         goldSlime: goldAppearance.slime,
         goldCosmetic: goldAppearance.hatId === cosmetic,
         goldBeard: goldAppearance.beardId === beard
@@ -2022,7 +2042,9 @@
   }
 
   function getHighScoreAchievementSnapshot() {
-    const selectedCallingCardIds = window.SlimeAchievements?.getSelectedBadgeIds?.();
+    const selectedCallingCardIds =
+      window.SlimeAchievements?.getEffectiveBadgeIds?.() ??
+      window.SlimeAchievements?.getSelectedBadgeIds?.();
     return normalizeHighScoreAchievementIds(
       Array.isArray(selectedCallingCardIds) ? selectedCallingCardIds : []
     );

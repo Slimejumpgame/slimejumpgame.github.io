@@ -279,7 +279,7 @@ function assertLoopPlaybackAndEnvelopes() {
     assert.equal(fixture.api.getState().musicStep, 17);
     assert.equal(fixture.api.getState().musicMode, id);
 
-    const melodyGainAutomation = fixture.gainNodes[1].automation;
+    const melodyGainAutomation = fixture.gainNodes[2].automation;
     assert.deepEqual(melodyGainAutomation[0], ["setValueAtTime", 0.0001, 12.5]);
     assert.deepEqual(melodyGainAutomation[1], ["exponentialRampToValueAtTime", theme.noteVolume, 12.535]);
     assert.deepEqual(melodyGainAutomation[2], ["exponentialRampToValueAtTime", 0.0001, 12.5 + theme.noteDuration]);

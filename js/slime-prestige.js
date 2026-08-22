@@ -55,6 +55,7 @@
     slimejumperAchievements: JSON.stringify([]),
     slimejumperAchievementProgress: JSON.stringify(ACHIEVEMENT_PROGRESS_DEFAULT),
     slimejumperSelectedAchievementBadges: JSON.stringify([]),
+    slimejumperCallingCardBadgesConfigured: "false",
     slimejumperUnlockedPerks: JSON.stringify([]),
     slimejumperSelectedPerks: JSON.stringify([]),
     slimejumperGoldProgressV1: JSON.stringify({
@@ -491,7 +492,10 @@
       prestigeTitle: getSelectedReward("title"),
       prestigeAura: getSelectedReward("aura"),
       prestigeTrail: getSelectedReward("trail"),
-      slimeAchievements: window.SlimeAchievements?.getSelectedBadgeIds?.() ?? []
+      slimeAchievements:
+        window.SlimeAchievements?.getEffectiveBadgeIds?.() ??
+        window.SlimeAchievements?.getSelectedBadgeIds?.() ??
+        []
     });
   }
 

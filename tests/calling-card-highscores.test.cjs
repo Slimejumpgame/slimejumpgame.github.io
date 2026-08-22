@@ -54,7 +54,10 @@ function loadPrestigeApi() {
   const playerProgress = {level: 42};
   const window = {
     SlimePlayerProgress: {getPlayerProgress: () => ({...playerProgress})},
-    SlimeAchievements: {getSelectedBadgeIds: () => selectedBadges.slice()}
+    SlimeAchievements: {
+      getEffectiveBadgeIds: () => selectedBadges.slice(),
+      getSelectedBadgeIds: () => ["badge-6"]
+    }
   };
   const context = vm.createContext({window, localStorage, console});
   vm.runInContext(read("js/slime-prestige.js"), context, {
@@ -251,6 +254,22 @@ class FakeElement {
     this.textContent = "";
     this.innerHTML = "";
     this.title = "";
+    const classes = new Set();
+    this.classList = {
+      toggle(value, force) {
+        const enabled = force === undefined ? !classes.has(value) : Boolean(force);
+        if (enabled) classes.add(value);
+        else classes.delete(value);
+        return enabled;
+      },
+      contains: value => classes.has(value)
+    };
+    const styles = new Map();
+    this.style = {
+      setProperty: (name, value) => styles.set(name, String(value)),
+      removeProperty: name => styles.delete(name),
+      getPropertyValue: name => styles.get(name) ?? ""
+    };
   }
   appendChild(child) { this.children.push(child); return child; }
   append(...children) { this.children.push(...children); }
@@ -286,7 +305,10 @@ function assertLocalPersistenceAndRendering(prestigeApi, snapshot) {
   let onlineSubmitCount = 0;
   const window = {
     SlimePrestige: prestigeApi,
-    SlimeAchievements: {registry: achievementRegistry},
+    SlimeAchievements: {
+      registry: achievementRegistry,
+      getEffectiveBadgeIds: () => ["badge-6"]
+    },
     SlimeJumpHighscores: {submitScore: () => { onlineSubmitCount += 1; }}
   };
   const context = vm.createContext({
@@ -385,6 +407,47 @@ function assertLocalPersistenceAndRendering(prestigeApi, snapshot) {
     prestigeAura: "none",
     prestigeTrail: "none"
   });
+  assert.equal(
+    renderedNewCard.children[3].children.at(-1).children.length,
+    5,
+    "Der Auto-5-Snapshot rendert fünf gespeicherte Badge-Icons"
+  );
+
+  const manualFiveIds = ["badge-5", "badge-3", "badge-1", "badge-4", "badge-2"];
+  const [manualFiveEntry] = context.highscoreTestApi.sanitizeScoreEntries([{
+    name: "MAN",
+    score: 300,
+    level: 6,
+    callingCardSnapshot: {
+      ...JSON.parse(JSON.stringify(snapshot)),
+      slimeAchievements: manualFiveIds
+    }
+  }]);
+  const manualFiveCard = context.highscoreTestApi.createHighScoreCallingCard(
+    manualFiveEntry
+  );
+  assert.deepEqual(
+    manualFiveCard.children[3].children.at(-1).children.map(child => child.textContent),
+    manualFiveIds.map(id => achievementRegistry.find(entry => entry.id === id).icon)
+  );
+
+  const [manualEmptyEntry] = context.highscoreTestApi.sanitizeScoreEntries([{
+    name: "EMP",
+    score: 290,
+    level: 6,
+    callingCardSnapshot: {
+      ...JSON.parse(JSON.stringify(snapshot)),
+      slimeAchievements: []
+    }
+  }]);
+  const manualEmptyCard = context.highscoreTestApi.createHighScoreCallingCard(
+    manualEmptyEntry
+  );
+  assert.equal(
+    manualEmptyCard.children[3].children.at(-1).children.length,
+    0,
+    "Ein historischer Manual-0-Snapshot bleibt ohne visuellen Live-Fallback leer"
+  );
 
   const [prestigeZeroEntry] = context.highscoreTestApi.sanitizeScoreEntries([{
     name: "ZER",
@@ -556,7 +619,14 @@ function assertMainMenuPrestigePreview() {
   assert.equal(draws[0][3], "hot_pink");
   assert.equal(draws[0][4].prestigeAura, "prestige-aura-prism-p8");
   assert.equal(draws[0][4].prestigeTrail, "prestige-trail-prism-p9");
-  assert.equal(draws[0][4].prestigeEffectRadius, 20);
+  assert.equal(draws[0][4].prestigeEffectRadius, 30);
+  assert.equal(draws[0][4].prestigeTrailRadius, 20);
+  assert.equal(draws[0][4].centerY, 105);
+  assert.equal(draws[0][4].scale, 1.08);
+  assert.equal(
+    context.ui.menuMascot.classList.contains("menuMascot--prestigeAura"),
+    true
+  );
 
   selectedRewards.aura = "prestige-aura-p8";
   selectedRewards.trail = "prestige-trail-p9";
@@ -602,6 +672,11 @@ function assertStaticReleaseGuards() {
   );
 
   const prestigeSource = read("js/slime-prestige.js");
+  assert.match(prestigeSource, /SlimeAchievements\?\.getEffectiveBadgeIds\?\.\(\)/);
+  assert.match(
+    uiSource,
+    /function getHighScoreAchievementSnapshot\(\)[\s\S]*?getEffectiveBadgeIds\?\.\(\)/
+  );
   for (const id of [
     "prestige-frame-p10",
     "prestige-title-p10",
@@ -645,7 +720,7 @@ function assertStaticReleaseGuards() {
   assert.ok(staticTrailStart >= 0 && previewEnd > staticTrailStart);
   assert.match(leaderboardEffectSource, /PRESTIGE_AURA_STYLES\[options\.prestigeAura\]/);
   assert.match(leaderboardEffectSource, /PRESTIGE_TRAIL_STYLES\[options\.prestigeTrail\]/);
-  assert.match(leaderboardEffectSource, /drawStaticPrestigeTrail\(previewContext, prestigeTrail, prestigeEffectRadius\)/);
+  assert.match(leaderboardEffectSource, /drawStaticPrestigeTrail\(previewContext, prestigeTrail, prestigeTrailRadius\)/);
   assert.match(leaderboardEffectSource, /drawPrestigeAura\(previewContext, prestigeAura, prestigeEffectRadius\)/);
   assert.doesNotMatch(
     leaderboardEffectSource,
