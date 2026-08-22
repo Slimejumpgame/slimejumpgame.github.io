@@ -537,8 +537,8 @@
       normalizeSlimeColor(color),
       {
         centerX: 68,
-        centerY: 54,
-        scale: 0.8,
+        centerY: 56,
+        scale: 0.92,
         prestigeAura,
         prestigeTrail
       }

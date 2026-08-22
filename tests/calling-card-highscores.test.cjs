@@ -641,6 +641,52 @@ function assertMainMenuPrestigePreview() {
   assert.equal(draws[2][4].prestigeTrail, "none");
 }
 
+function assertLeaderboardSlimePreviewScale() {
+  const source = read("js/ui.js");
+  const previewStart = source.indexOf("  function createLeaderboardSlimePreview(");
+  const previewEnd = source.indexOf("  function renderMenuMascot(", previewStart);
+  assert.ok(previewStart >= 0 && previewEnd > previewStart);
+
+  const draws = [];
+  const context = vm.createContext({
+    document: {createElement: tagName => new FakeElement(tagName)},
+    normalizeSlimeColor: value => value,
+    normalizeSlimeCosmetic: value => value,
+    normalizeSlimeBeard: value => value,
+    drawSlimeCharacterPreview: (...args) => draws.push(args)
+  });
+  vm.runInContext(
+    source.slice(previewStart, previewEnd) + `
+      globalThis.leaderboardPreviewTestApi = {createLeaderboardSlimePreview};
+    `,
+    context,
+    {filename: "js/ui-leaderboard-slime-preview-test-slice.js"}
+  );
+
+  const preview = context.leaderboardPreviewTestApi.createLeaderboardSlimePreview(
+    "hot_pink",
+    "wizard_hat",
+    "braided_beard",
+    "prestige-aura-prism-p8",
+    "prestige-trail-prism-p9"
+  );
+  assert.equal(preview.className, "slimeLeaderboardPreview");
+  assert.equal(preview.width, 116);
+  assert.equal(preview.height, 100);
+  assert.equal(draws.length, 1);
+  assert.equal(draws[0][1], "wizard_hat");
+  assert.equal(draws[0][2], "braided_beard");
+  assert.equal(draws[0][3], "hot_pink");
+  assert.deepEqual(JSON.parse(JSON.stringify(draws[0][4])), {
+    centerX: 68,
+    centerY: 56,
+    scale: 0.92,
+    prestigeAura: "prestige-aura-prism-p8",
+    prestigeTrail: "prestige-trail-prism-p9"
+  });
+  assert.equal(draws[0][4].scale / 0.8, 1.15);
+}
+
 function assertStaticReleaseGuards() {
   const html = read("index.html");
   const staticIds = [...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
@@ -744,6 +790,7 @@ function assertStaticReleaseGuards() {
   await assertMissingColumnFallback(prestige.api, snapshot);
   assertLocalPersistenceAndRendering(prestige.api, snapshot);
   assertMainMenuPrestigePreview();
+  assertLeaderboardSlimePreviewScale();
   assertStaticReleaseGuards();
   console.log("Calling-card highscore tests passed.");
 })().catch(error => {
