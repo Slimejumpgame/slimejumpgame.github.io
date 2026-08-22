@@ -1,11 +1,27 @@
 {
   "android": {
-    "versionCode": 15,
-    "versionName": "2.70",
+    "versionCode": 16,
+    "versionName": "2.71",
     "notes": [
-      "Hotfix für die persönliche Rang-Anzeige in der Android-App.",
-      "Der globale Rang wird jetzt zuverlässig im Hauptmenü geladen und aktualisiert.",
-      "Verbesserte Stabilität beim Abrufen des persönlichen Rangs."
+      "🚀 DAS BISHER GRÖSSTE SLIME-SOAR-UPDATE IST DA!",
+      "🟢 Slime-Movement und Physik wurden umfassend überarbeitet: präzisere Bewegung, besseres Bodenverhalten und zahlreiche Verbesserungen an Plattformen und Spielgefühl.",
+      "🎰 NEU: Checkpoint-Bonus-Slot-Machine! Beim erstmaligen Erreichen jedes neuen 10er-Checkpoints pro Prestige-Zyklus wartet eine Bonusmaschine mit Sternen, Leben, kostenlosen Garderoben-Unlocks und sogar einer extrem seltenen Chance auf den Gold-Slime.",
+      "✨ NEU: Gold-System! Schalte den Gold-Slime frei und erhalte Zugang zum Gold-Shop mit goldenen Hüten und goldenen Bärten. Gold kann über Fortschritt, Sterne oder mit sehr viel Glück über den Checkpoint-Jackpot freigeschaltet werden.",
+      "👑 Prestige wurde massiv ausgebaut: Prestige-Stufen, eigene Belohnungen, Titel, Rahmen, Auren und Trails geben langfristigem Fortschritt noch mehr Bedeutung.",
+      "🎨 Über 55.225 einzigartige Slime-Kombinationen! Kombiniere Farben, Hüte, Bärte, Gold-Varianten und weitere Anpassungen zu deinem eigenen Slime.",
+      "🌍 Slime Soar besitzt jetzt 20 verschiedene Biome. Neue Welten wie Gewitternacht, Neon City, Pilzhöhle, Verlassene Mine, Bambusnacht, Piratenhafen, Alien-Dschungel, Verzauberter Nachtgarten, Rote Mondnacht und Unterirdische Tempelruinen erweitern den Endless-Run deutlich.",
+      "🎵 10 neue Musik-Themes sorgen dafür, dass auch die neuen Biome ihren eigenen musikalischen Charakter bekommen.",
+      "⚡ Fähigkeiten wurden erweitert und überarbeitet. Unter anderem ist Star Shield neu dabei: Eingesammelte Sterne können deinen Slime kurzzeitig schützen. Weitere Fähigkeiten, Kombinationen und Balancing-Anpassungen sorgen für mehr unterschiedliche Runs.",
+      "🏆 101 Achievements warten jetzt darauf, freigeschaltet zu werden – darunter 15 geheime Achievements, neue Prestige-Meilensteine, Gold-Herausforderungen und viele neue Langzeitziele.",
+      "🌟 Bestehender Fortschritt wird berücksichtigt: Bereits erreichte Prestige-Meilensteine können ihre neuen Achievements automatisch nachträglich freischalten.",
+      "📈 Persönlicher globaler Rang überarbeitet und repariert: Auch außerhalb der sichtbaren Top 10 kannst du jetzt deinen eigenen Platz in der weltweiten Rangliste sehen.",
+      "🏅 Highscore-, Leaderboard- und Calling-Card-System wurden weiter verbessert. Deine ausgewählten Achievements und dein Slime können deinen persönlichen Ranglisten-Eintrag noch stärker repräsentieren.",
+      "❤️ Checkpoints, Prestige-Fortschritt, Fähigkeiten, XP und zahlreiche Progressionssysteme wurden weiter verfeinert und miteinander abgestimmt.",
+      "🔊 Audio und Musik wurden überarbeitet. Sounds reagieren zuverlässiger auf Hintergrund/Vordergrund der App und zahlreiche Effekte wurden verbessert.",
+      "📱 Viele Mobile-, UI- und Layout-Verbesserungen sorgen für eine sauberere Darstellung und bessere Bedienung auf verschiedenen Geräten.",
+      "🔄 Der Android-Update-Screen wurde zuverlässiger gemacht und kann nach Netzwerkproblemen, erneutem Onlinegehen oder der Rückkehr in die App automatisch erneut nach Updates suchen.",
+      "🛠️ Zusätzlich enthält v2.71 zahlreiche Bugfixes, Stabilitätsverbesserungen und Balancing-Anpassungen aus den vergangenen Testversionen.",
+      "💚 Danke fürs Testen von Slime Soar! Mit v2.71 erreicht das Spiel seinen bisher größten und umfangreichsten Content-Stand."
     ]
   }
 }
