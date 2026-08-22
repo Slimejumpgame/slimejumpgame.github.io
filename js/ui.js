@@ -20,6 +20,12 @@
   const ANDROID_UPDATE_ENDPOINT =
     "https://slimejumpgame.github.io/android-update.json";
   const ANDROID_UPDATE_TIMEOUT_MS = 2500;
+  const ANDROID_UPDATE_RETRY_DELAYS_MS = Object.freeze([5000, 15000]);
+  const ANDROID_UPDATE_CHECK_RESULT = Object.freeze({
+    SUCCESS_NO_UPDATE: "SUCCESS_NO_UPDATE",
+    UPDATE_AVAILABLE: "UPDATE_AVAILABLE",
+    TECHNICAL_FAILURE: "TECHNICAL_FAILURE"
+  });
   const MAX_ANDROID_UPDATE_NOTES = 12;
   const MAX_ANDROID_UPDATE_NOTE_LENGTH = 240;
   const PERK_CONFLICT_PURCHASE_INFO = Object.freeze({
@@ -46,6 +52,13 @@
   });
   let perkPurchaseGuardUntil = 0;
   let updateScreenPreviousFocus = null;
+  let androidUpdateCheckInFlight = null;
+  let androidUpdateRetryTimeoutId = null;
+  let androidUpdateRetryIndex = 0;
+  let androidUpdateHadTechnicalFailure = false;
+  let androidUpdateScreenShown = false;
+  let androidUpdateOnlineListenerRegistered = false;
+  let androidUpdateAppStateListenerRegistrationStarted = false;
   let perkConflictPurchaseInfoPreviousFocus = null;
   let goldShopIntroPreviousFocus = null;
 
@@ -314,34 +327,142 @@
     }
   }
 
-  async function initializeAndroidUpdateCheck() {
-    if (!isNativeAndroidUpdateRuntime()) return false;
-
+  async function performAndroidUpdateCheck() {
     try {
       const appPlugin = window.Capacitor?.Plugins?.App;
-      if (typeof appPlugin?.getInfo !== "function") return false;
+      if (typeof appPlugin?.getInfo !== "function") {
+        return ANDROID_UPDATE_CHECK_RESULT.TECHNICAL_FAILURE;
+      }
 
       const installedVersion = parseInstalledAndroidVersion(
         await appPlugin.getInfo()
       );
-      if (!installedVersion) return false;
-
-      const remoteUpdate = await fetchRemoteAndroidUpdateData();
-      if (
-        !remoteUpdate ||
-        remoteUpdate.versionCode <= installedVersion.versionCode
-      ) {
-        return false;
+      if (!installedVersion) {
+        return ANDROID_UPDATE_CHECK_RESULT.TECHNICAL_FAILURE;
       }
 
-      return showUpdateScreen({
+      const remoteUpdate = await fetchRemoteAndroidUpdateData();
+      if (!remoteUpdate) {
+        return ANDROID_UPDATE_CHECK_RESULT.TECHNICAL_FAILURE;
+      }
+      if (remoteUpdate.versionCode <= installedVersion.versionCode) {
+        return ANDROID_UPDATE_CHECK_RESULT.SUCCESS_NO_UPDATE;
+      }
+
+      if (androidUpdateScreenShown) {
+        return ANDROID_UPDATE_CHECK_RESULT.UPDATE_AVAILABLE;
+      }
+      const screenShown = showUpdateScreen({
         installedVersion: installedVersion.versionName,
         versionName: remoteUpdate.versionName,
         notes: remoteUpdate.notes
       });
+      if (!screenShown) {
+        return ANDROID_UPDATE_CHECK_RESULT.TECHNICAL_FAILURE;
+      }
+      androidUpdateScreenShown = true;
+      return ANDROID_UPDATE_CHECK_RESULT.UPDATE_AVAILABLE;
     } catch (_) {
+      return ANDROID_UPDATE_CHECK_RESULT.TECHNICAL_FAILURE;
+    }
+  }
+
+  function cancelAndroidUpdateRetry({resetIndex = false} = {}) {
+    if (androidUpdateRetryTimeoutId !== null) {
+      window.clearTimeout(androidUpdateRetryTimeoutId);
+      androidUpdateRetryTimeoutId = null;
+    }
+    if (resetIndex) androidUpdateRetryIndex = 0;
+  }
+
+  function scheduleAndroidUpdateRetry() {
+    if (
+      androidUpdateRetryTimeoutId !== null ||
+      androidUpdateRetryIndex >= ANDROID_UPDATE_RETRY_DELAYS_MS.length ||
+      !androidUpdateHadTechnicalFailure ||
+      androidUpdateScreenShown
+    ) {
       return false;
     }
+
+    const delay = ANDROID_UPDATE_RETRY_DELAYS_MS[androidUpdateRetryIndex];
+    androidUpdateRetryIndex += 1;
+    androidUpdateRetryTimeoutId = window.setTimeout(() => {
+      androidUpdateRetryTimeoutId = null;
+      if (!androidUpdateHadTechnicalFailure || androidUpdateScreenShown) return;
+      void requestAndroidUpdateCheck();
+    }, delay);
+    return true;
+  }
+
+  function handleAndroidUpdateCheckResult(result) {
+    if (result === ANDROID_UPDATE_CHECK_RESULT.TECHNICAL_FAILURE) {
+      androidUpdateHadTechnicalFailure = true;
+      scheduleAndroidUpdateRetry();
+      return result;
+    }
+
+    androidUpdateHadTechnicalFailure = false;
+    cancelAndroidUpdateRetry({resetIndex: true});
+    return result;
+  }
+
+  function registerAndroidUpdateRecoveryListeners() {
+    if (!isNativeAndroidUpdateRuntime()) return;
+
+    if (!androidUpdateOnlineListenerRegistered) {
+      window.addEventListener("online", () => {
+        if (!androidUpdateHadTechnicalFailure || androidUpdateScreenShown) return;
+        void requestAndroidUpdateCheck({resetRetryBudget: true});
+      });
+      androidUpdateOnlineListenerRegistered = true;
+    }
+
+    const appPlugin = window.Capacitor?.Plugins?.App;
+    if (
+      androidUpdateAppStateListenerRegistrationStarted ||
+      typeof appPlugin?.addListener !== "function"
+    ) {
+      return;
+    }
+
+    androidUpdateAppStateListenerRegistrationStarted = true;
+    try {
+      Promise.resolve(appPlugin.addListener("appStateChange", appState => {
+        if (appState?.isActive !== true || androidUpdateScreenShown) return;
+        void requestAndroidUpdateCheck({resetRetryBudget: true});
+      })).catch(() => {
+        androidUpdateAppStateListenerRegistrationStarted = false;
+      });
+    } catch (_) {
+      androidUpdateAppStateListenerRegistrationStarted = false;
+    }
+  }
+
+  function requestAndroidUpdateCheck({resetRetryBudget = false} = {}) {
+    if (!isNativeAndroidUpdateRuntime()) {
+      return Promise.resolve(ANDROID_UPDATE_CHECK_RESULT.SUCCESS_NO_UPDATE);
+    }
+
+    registerAndroidUpdateRecoveryListeners();
+    if (androidUpdateScreenShown) {
+      return Promise.resolve(ANDROID_UPDATE_CHECK_RESULT.UPDATE_AVAILABLE);
+    }
+    if (androidUpdateCheckInFlight) return androidUpdateCheckInFlight;
+
+    if (resetRetryBudget) {
+      cancelAndroidUpdateRetry({resetIndex: true});
+    }
+    androidUpdateCheckInFlight = performAndroidUpdateCheck()
+      .then(handleAndroidUpdateCheckResult)
+      .finally(() => {
+        androidUpdateCheckInFlight = null;
+      });
+    return androidUpdateCheckInFlight;
+  }
+
+  function initializeAndroidUpdateCheck() {
+    return requestAndroidUpdateCheck();
   }
 
   function isDevShopTestActive() {
