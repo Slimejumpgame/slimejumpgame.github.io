@@ -80,7 +80,8 @@
         slime: false,
         hatId: null,
         beardId: null
-      }
+      },
+      checkpointBonusTransactionIds: []
     };
   }
 
@@ -97,6 +98,16 @@
       value.map(id => String(id ?? "").toLowerCase())
     );
     return allowedIds.filter(id => requested.has(id));
+  }
+
+  function normalizeCheckpointBonusTransactionIds(value) {
+    if (!Array.isArray(value)) return [];
+    return [...new Set(value
+      .map(transactionId => String(transactionId ?? ""))
+      .filter(transactionId =>
+        transactionId.length > 0 && transactionId.length <= 160 &&
+        /^[a-zA-Z0-9:._-]+$/.test(transactionId)
+      ))];
   }
 
   function meetsMasteryRequirement(completedLevels, distinctIds) {
@@ -164,6 +175,9 @@
     state.beards.purchasedGoldBeardIds = normalizeIds(
       source.beards?.purchasedGoldBeardIds,
       getBeardIds()
+    );
+    state.checkpointBonusTransactionIds = normalizeCheckpointBonusTransactionIds(
+      source.checkpointBonusTransactionIds
     );
 
     const equippedHatId = String(source.equipped?.hatId ?? "").toLowerCase();
@@ -519,6 +533,49 @@
     return persistGoldState(nextState);
   }
 
+  function grantGoldSlimeFromCheckpointBonus({transactionId} = {}) {
+    const normalizedTransactionId = normalizeCheckpointBonusTransactionIds([
+      transactionId
+    ])[0] ?? null;
+    if (!normalizedTransactionId) {
+      return {ok: false, reason: "invalid-transaction"};
+    }
+    if (goldState.checkpointBonusTransactionIds.includes(normalizedTransactionId)) {
+      return {
+        ok: true,
+        duplicate: true,
+        owned: ownsGoldSlime(),
+        shopUnlocked: isGoldShopUnlocked()
+      };
+    }
+
+    const masteryBefore = {
+      completedLevels: goldState.slime.completedLevels,
+      distinctColorIds: goldState.slime.distinctColorIds.slice(),
+      masteryUnlocked: goldState.slime.masteryUnlocked
+    };
+    const nextState = cloneGoldState(goldState);
+    nextState.slime.purchased = true;
+    nextState.checkpointBonusTransactionIds.push(normalizedTransactionId);
+    if (!persistGoldState(nextState)) {
+      return {ok: false, reason: "storage-error"};
+    }
+    const masteryUnchanged =
+      goldState.slime.completedLevels === masteryBefore.completedLevels &&
+      goldState.slime.masteryUnlocked === masteryBefore.masteryUnlocked &&
+      goldState.slime.distinctColorIds.length === masteryBefore.distinctColorIds.length &&
+      goldState.slime.distinctColorIds.every(
+        (id, index) => id === masteryBefore.distinctColorIds[index]
+      );
+    return {
+      ok: true,
+      duplicate: false,
+      owned: ownsGoldSlime(),
+      shopUnlocked: isGoldShopUnlocked(),
+      masteryUnchanged
+    };
+  }
+
   function removePurchasedTarget(target) {
     if (!target) return false;
     const nextState = cloneGoldState(goldState);
@@ -767,6 +824,7 @@
     getMaterialPalette: () => GOLD_MATERIAL_PALETTE,
     getProgress,
     recordCompletedLevel,
+    grantGoldSlimeFromCheckpointBonus,
     isGoldShopUnlocked,
     isGoldShopAccessible,
     isGoldSlimeMasteryUnlocked,

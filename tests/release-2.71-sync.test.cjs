@@ -51,6 +51,7 @@ const releaseRuntimeFiles = Object.freeze([
   "js/renderer.js",
   "js/slime-achievements.js",
   "js/slime-beards.js",
+  "js/slime-checkpoint-bonus.js",
   "js/slime-colors.js",
   "js/slime-cosmetics.js",
   "js/slime-gold.js",

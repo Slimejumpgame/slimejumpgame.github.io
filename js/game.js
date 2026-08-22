@@ -74,7 +74,13 @@
 
   function recordReachedCheckpoint(levelNumber) {
     const reachedCheckpoint = normalizeCheckpointLevel(levelNumber);
-    if (reachedCheckpoint === 0) return getHighestCheckpointLevel();
+    if (reachedCheckpoint === 0) {
+      return {
+        checkpointLevel: getHighestCheckpointLevel(),
+        isNew: false,
+        verified: true
+      };
+    }
 
     let storedCheckpoint = 0;
     try {
@@ -83,6 +89,7 @@
       );
     } catch (_) {}
 
+    const previousCheckpoint = Math.max(highestCheckpointLevel, storedCheckpoint);
     const nextCheckpoint = Math.max(
       highestCheckpointLevel,
       storedCheckpoint,
@@ -90,16 +97,23 @@
     );
     highestCheckpointLevel = nextCheckpoint;
 
+    let verified = storedCheckpoint === nextCheckpoint;
     if (nextCheckpoint > storedCheckpoint) {
       try {
         localStorage.setItem(
           HIGHEST_CHECKPOINT_STORAGE_KEY,
           String(nextCheckpoint)
         );
+        verified = localStorage.getItem(HIGHEST_CHECKPOINT_STORAGE_KEY) ===
+          String(nextCheckpoint);
       } catch (_) {}
     }
 
-    return highestCheckpointLevel;
+    return {
+      checkpointLevel: highestCheckpointLevel,
+      isNew: reachedCheckpoint > previousCheckpoint,
+      verified
+    };
   }
 
   function captureCheckpointLevelAtRunStart() {
@@ -314,6 +328,7 @@
       ? window.SlimePerks.balance.EXTRA_LIFE_BONUS
       : 0;
     lives = Math.min(MAX_LIVES, 3 + extraLifeBonus);
+    window.SlimeCheckpointBonus?.handleTrueRunStart?.();
     perfectLevelStreak = 0;
     levelHadDeath = false;
     score = 0;
@@ -1066,7 +1081,10 @@
     }
 
     const completedLevel = levelIndex + 1;
-    recordReachedCheckpoint(completedLevel);
+    const checkpointResult = recordReachedCheckpoint(completedLevel);
+    const checkpointBonusPending = checkpointResult.isNew && checkpointResult.verified
+      ? window.SlimeCheckpointBonus?.prepareCheckpoint?.(checkpointResult.checkpointLevel)
+      : null;
     const stars = collected.filter(Boolean).length;
     const starProgress = getStarProgress();
     const levelScoreBase = 650 + completedLevel * 45;
@@ -1126,12 +1144,23 @@
           .join(", ")} freigeschaltet!`
       : "";
 
-    showMessage(
+    const continueLevelEndFlow = () => showMessage(
       `Level ${completedLevel} geschafft!`,
       `${collectedStarSummary}. Levelbonus: ${awardedBonus} Punkte.${goldMasterySummary}`,
       "Nächstes Zufallslevel",
       "next"
     );
+    if (checkpointBonusPending) {
+      const opened = window.SlimeCheckpointBonus?.openPending?.({
+        onComplete: continueLevelEndFlow
+      }) === true;
+      if (!opened) {
+        state = "checkpointBonus";
+        console.error("[CheckpointBonus] Persistierter Bonus konnte nicht geöffnet werden.");
+      }
+      return;
+    }
+    continueLevelEndFlow();
   }
 
   function loseLife() {
@@ -1578,6 +1607,19 @@
 
   document.addEventListener("visibilitychange", () => {
     lastTime = performance.now();
+  });
+
+  window.SlimeCheckpointBonus?.configureGame?.({
+    getHighestCheckpoint: getHighestCheckpointLevel,
+    getLives: () => lives,
+    setLives(value) {
+      lives = Math.max(0, Math.min(MAX_LIVES, Math.floor(Number(value) || 0)));
+    },
+    updateHUD,
+    isRunAvailable: () => state === "playing" || state === "checkpointBonus",
+    setGameState(nextState) {
+      if (["checkpointBonus", "menu"].includes(nextState)) state = nextState;
+    }
   });
 
   updateAudioButtons();

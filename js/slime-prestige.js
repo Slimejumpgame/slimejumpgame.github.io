@@ -44,7 +44,17 @@
     slimejumperPlayerLevel: "1",
     slimejumperPlayerLevelXP: "0",
     slimejumperHighestCheckpointLevel: "0",
+    slimejumperCheckpointBonusV1: JSON.stringify({
+      version: 1,
+      highestClaimedCheckpoint: 0,
+      pending: null
+    }),
     slimejumperStarBalance: "0",
+    slimejumperStarAwardReceiptsV1: JSON.stringify({
+      version: 1,
+      totalAwarded: 0,
+      receipts: {}
+    }),
     slimejumperUnlockedSlimeColors: JSON.stringify(["green"]),
     slimejumperSelectedSlimeColor: "green",
     slimejumperUnlockedSlimeCosmetics: JSON.stringify([]),
@@ -77,7 +87,8 @@
         masteryUnlocked: false,
         purchasedGoldBeardIds: []
       },
-      equipped: {slime: false, hatId: null, beardId: null}
+      equipped: {slime: false, hatId: null, beardId: null},
+      checkpointBonusTransactionIds: []
     })
     // Future cycle-bound perk and mastery keys belong in this explicit allowlist.
   });

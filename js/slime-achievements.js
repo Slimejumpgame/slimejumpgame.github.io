@@ -13,6 +13,8 @@
   const STAR_BALANCE_STORAGE_KEY = "slimejumperStarBalance";
   const STAR_ECONOMY_VERSION_STORAGE_KEY = "slimejumperStarEconomyVersion";
   const STAR_ECONOMY_VERSION = "star-economy-v1";
+  const STAR_AWARD_RECEIPTS_STORAGE_KEY = "slimejumperStarAwardReceiptsV1";
+  const STAR_AWARD_RECEIPTS_VERSION = 1;
   const WARDROBE_ITEM_STAR_PRICE = 250;
   const DEV_SHOP_TEST_INITIAL_BALANCE = 1000;
 
@@ -241,6 +243,7 @@
   );
   const achievementProgress = loadAchievementProgress();
   let starBalance = loadStarBalance();
+  let starAwardReceipts = loadStarAwardReceipts();
   const popupQueue = [];
   const recentDeathTimestamps = [];
   const activeWardrobePurchases = new Set();
@@ -248,6 +251,8 @@
   let devShopTestActive = false;
   let devShopTestBalance = DEV_SHOP_TEST_INITIAL_BALANCE;
   let popupActive = false;
+  let activePopupAchievement = null;
+  let achievementPopupsPaused = false;
   let popupGeneration = 0;
   let runProgressSnapshot = null;
   let completionCheckInProgress = false;
@@ -355,6 +360,157 @@
     } catch (_) {
       return false;
     }
+  }
+
+  function normalizeStarAwardTransactionId(value) {
+    const transactionId = String(value ?? "");
+    return transactionId.length > 0 && transactionId.length <= 160 &&
+      /^[a-zA-Z0-9:._-]+$/.test(transactionId)
+      ? transactionId
+      : null;
+  }
+
+  function createDefaultStarAwardReceipts() {
+    return {version: STAR_AWARD_RECEIPTS_VERSION, totalAwarded: 0, receipts: {}};
+  }
+
+  function normalizeStarAwardReceipts(value) {
+    const normalized = createDefaultStarAwardReceipts();
+    if (!value || typeof value !== "object" || Array.isArray(value)) return normalized;
+    const sourceReceipts = value.receipts && typeof value.receipts === "object" &&
+      !Array.isArray(value.receipts)
+      ? value.receipts
+      : {};
+    let appliedTotal = 0;
+    for (const [rawTransactionId, rawReceipt] of Object.entries(sourceReceipts)) {
+      const transactionId = normalizeStarAwardTransactionId(rawTransactionId);
+      const amount = Math.floor(Number(rawReceipt?.amount));
+      const beforeBalance = Math.floor(Number(rawReceipt?.beforeBalance));
+      const beforeLifetimeStars = Math.floor(Number(rawReceipt?.beforeLifetimeStars));
+      const status = rawReceipt?.status === "applied" ? "applied" : "pending";
+      if (
+        !transactionId ||
+        !Number.isSafeInteger(amount) || amount <= 0 ||
+        !Number.isSafeInteger(beforeBalance) || beforeBalance < 0 ||
+        !Number.isSafeInteger(beforeLifetimeStars) || beforeLifetimeStars < 0 ||
+        rawReceipt?.source !== "checkpoint_bonus"
+      ) {
+        continue;
+      }
+      normalized.receipts[transactionId] = {
+        amount,
+        source: "checkpoint_bonus",
+        beforeBalance,
+        beforeLifetimeStars,
+        status
+      };
+      if (status === "applied") appliedTotal += amount;
+    }
+    normalized.totalAwarded = appliedTotal;
+    return normalized;
+  }
+
+  function loadStarAwardReceipts() {
+    try {
+      return normalizeStarAwardReceipts(JSON.parse(
+        localStorage.getItem(STAR_AWARD_RECEIPTS_STORAGE_KEY) || "null"
+      ));
+    } catch (_) {
+      return createDefaultStarAwardReceipts();
+    }
+  }
+
+  function saveStarAwardReceiptsVerified(nextReceipts = starAwardReceipts) {
+    const normalized = normalizeStarAwardReceipts(nextReceipts);
+    const serialized = JSON.stringify(normalized);
+    try {
+      localStorage.setItem(STAR_AWARD_RECEIPTS_STORAGE_KEY, serialized);
+      if (localStorage.getItem(STAR_AWARD_RECEIPTS_STORAGE_KEY) !== serialized) {
+        return false;
+      }
+    } catch (_) {
+      return false;
+    }
+    starAwardReceipts = normalized;
+    return true;
+  }
+
+  function notifyStarEconomyChange() {
+    try {
+      if (typeof renderMainMenuStats === "function") renderMainMenuStats();
+      if (typeof window.CustomEvent === "function") {
+        window.dispatchEvent(new window.CustomEvent("slimestareconomychange"));
+      }
+    } catch (_) {}
+  }
+
+  function awardStars(amount, {transactionId, source} = {}) {
+    const normalizedAmount = Math.floor(Number(amount));
+    const normalizedTransactionId = normalizeStarAwardTransactionId(transactionId);
+    if (
+      !Number.isSafeInteger(normalizedAmount) || normalizedAmount <= 0 ||
+      !normalizedTransactionId || source !== "checkpoint_bonus"
+    ) {
+      return {ok: false, reason: "invalid-award", balance: starBalance};
+    }
+
+    let receipt = starAwardReceipts.receipts[normalizedTransactionId] ?? null;
+    if (receipt && (receipt.amount !== normalizedAmount || receipt.source !== source)) {
+      return {ok: false, reason: "transaction-conflict", balance: starBalance};
+    }
+    if (receipt?.status === "applied") {
+      return {
+        ok: true,
+        duplicate: true,
+        transactionId: normalizedTransactionId,
+        amount: normalizedAmount,
+        balance: starBalance,
+        lifetimeStars: achievementProgress.lifetimeStars
+      };
+    }
+
+    if (!receipt) {
+      receipt = {
+        amount: normalizedAmount,
+        source: "checkpoint_bonus",
+        beforeBalance: starBalance,
+        beforeLifetimeStars: achievementProgress.lifetimeStars,
+        status: "pending"
+      };
+      const nextReceipts = normalizeStarAwardReceipts(starAwardReceipts);
+      nextReceipts.receipts[normalizedTransactionId] = receipt;
+      if (!saveStarAwardReceiptsVerified(nextReceipts)) {
+        return {ok: false, reason: "receipt-storage-error", balance: starBalance};
+      }
+    }
+
+    const targetBalance = receipt.beforeBalance + normalizedAmount;
+    const targetLifetimeStars = receipt.beforeLifetimeStars + normalizedAmount;
+    starBalance = Math.max(starBalance, targetBalance);
+    achievementProgress.lifetimeStars = Math.max(
+      achievementProgress.lifetimeStars,
+      targetLifetimeStars
+    );
+    if (!saveAchievementProgress() || !saveStarBalanceVerified()) {
+      return {ok: false, reason: "award-storage-error", balance: starBalance};
+    }
+
+    if (achievementProgress.lifetimeStars >= 1000) unlockAchievement("star_bank");
+    const appliedReceipts = normalizeStarAwardReceipts(starAwardReceipts);
+    appliedReceipts.receipts[normalizedTransactionId] = {...receipt, status: "applied"};
+    if (!saveStarAwardReceiptsVerified(appliedReceipts)) {
+      return {ok: false, reason: "receipt-finalize-error", balance: starBalance};
+    }
+
+    notifyStarEconomyChange();
+    return {
+      ok: true,
+      duplicate: false,
+      transactionId: normalizedTransactionId,
+      amount: normalizedAmount,
+      balance: starBalance,
+      lifetimeStars: achievementProgress.lifetimeStars
+    };
   }
 
   function applyPerkMigrationBalance(targetBalance) {
@@ -578,12 +734,16 @@
       (latest, unlock) => Math.max(latest, unlock.unlockedAt),
       0
     );
+    const starAwardTotal = value.starAwardTotal === undefined
+      ? 0
+      : value.starAwardTotal;
     if (
       !normalizedProgress ||
       !normalizedRunState ||
       !recentDeathTimestamps ||
       !popupQueueIds ||
       !isNonNegativeIntegerSnapshotValue(value.starBalance) ||
+      !isNonNegativeIntegerSnapshotValue(starAwardTotal) ||
       !isNonNegativeIntegerSnapshotValue(value.lastUnlockTimestamp) ||
       value.lastUnlockTimestamp < latestUnlockTimestamp
     ) {
@@ -593,6 +753,7 @@
       unlockedAchievements: normalizedUnlocks,
       achievementProgress: normalizedProgress,
       starBalance: value.starBalance,
+      starAwardTotal,
       lastUnlockTimestamp: value.lastUnlockTimestamp,
       runState: normalizedRunState,
       recentDeathTimestamps,
@@ -609,6 +770,7 @@
       unlockedAchievements: unlockedAchievements.map(unlock => ({...unlock})),
       achievementProgress: cloneAchievementProgress(),
       starBalance,
+      starAwardTotal: starAwardReceipts.totalAwarded,
       lastUnlockTimestamp,
       runState: cloneRunState(),
       recentDeathTimestamps: recentDeathTimestamps.slice(),
@@ -627,6 +789,13 @@
     unlockedById.clear();
     unlockedAchievements.forEach(unlock => unlockedById.set(unlock.id, unlock));
     lastUnlockTimestamp = normalizedSnapshot.lastUnlockTimestamp;
+
+    const durableStarDelta = Math.max(
+      0,
+      starAwardReceipts.totalAwarded - normalizedSnapshot.starAwardTotal
+    );
+    normalizedSnapshot.achievementProgress.lifetimeStars += durableStarDelta;
+    normalizedSnapshot.starBalance += durableStarDelta;
 
     Object.assign(
       achievementProgress,
@@ -669,6 +838,7 @@
     const unlocksSaved = saveAchievementUnlocks();
     const progressSaved = saveAchievementProgress({writeVersion: false});
     const balanceSaved = saveStarBalance();
+    if (achievementProgress.lifetimeStars >= 1000) unlockAchievement("star_bank");
     renderAchievementViews();
     showNextAchievementPopup();
     return unlocksSaved && progressSaved && balanceSaved;
@@ -1001,7 +1171,10 @@
   }
 
   function showNextAchievementPopup() {
-    if (popupActive || popupQueue.length === 0 || typeof document === "undefined") return;
+    if (
+      achievementPopupsPaused || popupActive || popupQueue.length === 0 ||
+      typeof document === "undefined"
+    ) return;
     const popup = document.getElementById("achievementPopup");
     const icon = document.getElementById("achievementPopupIcon");
     const name = document.getElementById("achievementPopupName");
@@ -1010,6 +1183,7 @@
     const achievement = popupQueue.shift();
     const generation = popupGeneration;
     popupActive = true;
+    activePopupAchievement = achievement;
     icon.textContent = achievement.icon;
     name.textContent = achievement.name;
     popup.classList.remove("visible");
@@ -1022,9 +1196,25 @@
       window.setTimeout(() => {
         if (generation !== popupGeneration) return;
         popupActive = false;
+        activePopupAchievement = null;
         showNextAchievementPopup();
       }, 260);
     }, 2400);
+  }
+
+  function setAchievementPopupsPaused(paused) {
+    const nextPaused = Boolean(paused);
+    if (achievementPopupsPaused === nextPaused) return;
+    achievementPopupsPaused = nextPaused;
+    if (nextPaused && popupActive) {
+      popupGeneration++;
+      if (activePopupAchievement) popupQueue.unshift(activePopupAchievement);
+      activePopupAchievement = null;
+      popupActive = false;
+      document.getElementById("achievementPopup")?.classList.remove("visible");
+      return;
+    }
+    if (!nextPaused) showNextAchievementPopup();
   }
 
   function queueAchievementPopup(achievement) {
@@ -2144,6 +2334,7 @@
     }),
     renderMenu: renderAchievementMenu,
     renderRecent: renderRecentAchievements,
+    setPopupsPaused: setAchievementPopupsPaused,
     checkWardrobe: checkWardrobeAchievements,
     checkState: checkStateAchievements,
     isRunProgressSnapshotValid,
@@ -2166,8 +2357,10 @@
 
   window.SlimeStarEconomy = Object.freeze({
     itemPrice: WARDROBE_ITEM_STAR_PRICE,
+    receiptStorageKey: STAR_AWARD_RECEIPTS_STORAGE_KEY,
     getBalance: () => starBalance,
     getLifetimeStars: () => achievementProgress.lifetimeStars,
+    awardStars,
     applyPerkMigrationBalance,
     isPurchaseInProgress: () => activeWardrobePurchases.size > 0,
     canPurchaseUnlock,

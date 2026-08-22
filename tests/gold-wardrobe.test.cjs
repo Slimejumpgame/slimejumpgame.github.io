@@ -64,7 +64,8 @@ function createDefaultState() {
     slime: {completedLevels: 0, distinctColorIds: [], masteryUnlocked: false, purchased: false},
     hats: {completedLevels: 0, distinctHatIds: [], masteryUnlocked: false, purchasedGoldHatIds: []},
     beards: {completedLevels: 0, distinctBeardIds: [], masteryUnlocked: false, purchasedGoldBeardIds: []},
-    equipped: {slime: false, hatId: null, beardId: null}
+    equipped: {slime: false, hatId: null, beardId: null},
+    checkpointBonusTransactionIds: []
   };
 }
 

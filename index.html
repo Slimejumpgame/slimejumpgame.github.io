@@ -50,6 +50,33 @@
       <button id="devPerkInspectorBtn" data-dev-mode-only type="button">DEV FÄHIGKEITEN-INSPEKTOR</button>
       <pre id="devPerkInspector" class="devPrestigeRewardInspector" data-dev-mode-only hidden></pre>
       <button id="devCallingCardTestBtn" data-dev-mode-only type="button">DEV CALLING CARD TEST</button>
+      <details class="devCheckpointBonusGroup" data-dev-mode-only>
+        <summary>CHECKPOINT BONUS TEST</summary>
+        <div class="devCheckpointBonusControls">
+          <button id="devCheckpointBonusOpenBtn" type="button">SLOT SOFORT ÖFFNEN</button>
+          <button id="devCheckpointBonusSimulateBtn" type="button">NEUEN CHECKPOINT SIMULIEREN</button>
+          <button data-dev-checkpoint-reward="stars_100" type="button">FORCE 100 STERNE</button>
+          <button data-dev-checkpoint-reward="life_refill" type="button">FORCE LIFE REFILL</button>
+          <button data-dev-checkpoint-reward="stars_500" type="button">FORCE 500 STERNE</button>
+          <button data-dev-checkpoint-reward="color_voucher" type="button">FORCE COLOR VOUCHER</button>
+          <button data-dev-checkpoint-reward="hat_voucher" type="button">FORCE HAT VOUCHER</button>
+          <button data-dev-checkpoint-reward="beard_voucher" type="button">FORCE BEARD VOUCHER</button>
+          <button data-dev-checkpoint-reward="gold_slime" type="button">FORCE GOLD-SLIME JACKPOT</button>
+          <button id="devCheckpointBonusResetBtn" type="button">BONUS STATE RESET</button>
+          <button id="devCheckpointBonusPendingPreparedBtn" type="button">PENDING VOR ANIMATION</button>
+          <button id="devCheckpointBonusPendingLandedBtn" type="button">PENDING VOR AUSZAHLUNG</button>
+          <button id="devCheckpointBonusPendingPaidBtn" type="button">PENDING NACH AUSZAHLUNG</button>
+          <button id="devCheckpointBonusReplayClaimedBtn" type="button">GECLAIMTEN CHECKPOINT WIEDERHOLEN</button>
+          <button id="devCheckpointBonusRollbackBtn" type="button">CHECKPOINT-ROLLBACK SIMULIEREN</button>
+          <button data-dev-checkpoint-condition="fullLives" type="button" aria-pressed="false">LIVES = 5</button>
+          <button data-dev-checkpoint-condition="goldOwned" type="button" aria-pressed="false">GOLD OWNED</button>
+          <button data-dev-checkpoint-condition="fullColor" type="button" aria-pressed="false">ALLE FARBEN</button>
+          <button data-dev-checkpoint-condition="fullHat" type="button" aria-pressed="false">ALLE HÜTE</button>
+          <button data-dev-checkpoint-condition="fullBeard" type="button" aria-pressed="false">ALLE BÄRTE</button>
+          <button id="devCheckpointBonusInspectorBtn" type="button">BONUS INSPECTOR</button>
+        </div>
+        <pre id="devCheckpointBonusInspector" class="devCheckpointBonusInspector" hidden></pre>
+      </details>
       <button id="devUpdateScreenTestBtn" data-dev-mode-only type="button">UPDATE SCREEN TESTEN</button>
     </div>
   </aside>
@@ -581,6 +608,37 @@
         </div>
       </section>
 
+      <section id="checkpointBonusOverlay" class="checkpointBonusOverlay hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="checkpointBonusTitle">
+        <div id="checkpointBonusPanel" class="checkpointBonusPanel uiPanel">
+          <div class="dialogAccent checkpointBonusAccent" aria-hidden="true"></div>
+          <header class="checkpointBonusHeader">
+            <span id="checkpointBonusCheckpoint" class="checkpointBonusCheckpoint">CHECKPOINT 10</span>
+            <h2 id="checkpointBonusTitle">CHECKPOINT-BONUS</h2>
+          </header>
+          <div id="checkpointBonusMachine" class="checkpointBonusMachine">
+            <div class="checkpointBonusMarquee" aria-hidden="true">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+            <div class="checkpointBonusReelFrame" aria-label="Eine vertikale Gewinnwalze">
+              <div id="checkpointBonusPrevious" class="checkpointBonusReelCell checkpointBonusReelCell--side"></div>
+              <div class="checkpointBonusWinLine" aria-hidden="true"></div>
+              <div id="checkpointBonusCurrent" class="checkpointBonusReelCell checkpointBonusReelCell--center"></div>
+              <div id="checkpointBonusNext" class="checkpointBonusReelCell checkpointBonusReelCell--side"></div>
+            </div>
+            <div id="checkpointBonusLever" class="checkpointBonusLever" aria-hidden="true">
+              <span class="checkpointBonusLeverKnob"></span>
+              <span class="checkpointBonusLeverArm"></span>
+              <span class="checkpointBonusLeverBase"></span>
+            </div>
+          </div>
+          <p id="checkpointBonusStatus" class="checkpointBonusStatus">DEIN CHECKPOINT-GEWINN WARTET</p>
+          <strong id="checkpointBonusReward" class="checkpointBonusReward hidden" role="status"></strong>
+          <div id="checkpointBonusVoucherChoices" class="checkpointBonusVoucherChoices hidden" aria-label="Voucher-Auswahl"></div>
+          <p id="checkpointBonusError" class="checkpointBonusError hidden" role="alert"></p>
+          <button id="checkpointBonusAction" class="checkpointBonusAction uiButton uiButton--primary" type="button">SPIN STARTEN</button>
+        </div>
+      </section>
+
       <section id="tutorialCompleteOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="tutorialCompleteTitle" aria-describedby="tutorialCompleteText">
         <div class="card uiPanel">
           <div class="dialogAccent" aria-hidden="true"></div>
@@ -660,6 +718,7 @@
   <script src="./js/physics.js"></script>
   <script src="./js/audio.js"></script>
   <script src="./js/ui.js"></script>
+  <script src="./js/slime-checkpoint-bonus.js"></script>
   <script src="./js/hazards.js"></script>
   <script src="./js/tutorials.js"></script>
   <script src="./js/renderer.js"></script>
