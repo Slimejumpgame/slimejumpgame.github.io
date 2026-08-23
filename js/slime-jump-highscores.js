@@ -12,7 +12,7 @@
 
   const TABLE = "slime_jump_highscores";
   const SUBMIT_GLOBAL_BEST_RPC = "submit_slime_jump_global_best";
-  const GAME_VERSION = "2.71";
+  const GAME_VERSION = "2.72";
   // Nach der unten dokumentierten Supabase-Migration auf true setzen.
   const SLIME_COLOR_COLUMN_ENABLED = true;
   // Erst nach 
@@ -99,6 +99,23 @@
     return normalized;
   }
 
+  function normalizeGoldAppearance(value) {
+    const source = value && typeof value === "object" && !Array.isArray(value)
+      ? value
+      : {};
+    const normalizedHatId = typeof source.hatId === "string"
+      ? normalizeSlimeCosmetic(source.hatId)
+      : "none";
+    const normalizedBeardId = typeof source.beardId === "string"
+      ? normalizeSlimeBeard(source.beardId)
+      : "none";
+    return {
+      slime: source.slime === true,
+      hatId: normalizedHatId === "none" ? null : normalizedHatId,
+      beardId: normalizedBeardId === "none" ? null : normalizedBeardId
+    };
+  }
+
   function normalizeCallingCardSnapshot(value) {
     if (!value || typeof value !== "object" || Array.isArray(value)) return null;
     const nestedSnapshot = value.callingCardSnapshot ?? value.calling_card_snapshot;
@@ -140,7 +157,13 @@
       prestigeTitle: normalized.prestigeTitle,
       prestigeAura: normalized.prestigeAura,
       prestigeTrail: normalized.prestigeTrail,
-      slimeAchievements: normalizeSlimeAchievementIds(normalized.slimeAchievements)
+      slimeAchievements: normalizeSlimeAchievementIds(normalized.slimeAchievements),
+      goldAppearance: normalizeGoldAppearance(
+        source.goldAppearance ??
+        source.gold_appearance ??
+        value.goldAppearance ??
+        value.gold_appearance
+      )
     };
   }
 
@@ -262,6 +285,8 @@
             prestigeTitle: callingCardSnapshot?.prestigeTitle,
             prestigeAura: callingCardSnapshot?.prestigeAura,
             prestigeTrail: callingCardSnapshot?.prestigeTrail,
+            goldAppearance: callingCardSnapshot?.goldAppearance ??
+              normalizeGoldAppearance(null),
             callingCardSnapshot,
             hasPlayerLevelSnapshot: Boolean(callingCardSnapshot),
             hasPrestigeLevelSnapshot: Boolean(callingCardSnapshot),
@@ -283,6 +308,7 @@
     slimeBeard = "none",
     slimeAchievements = [],
     callingCardSnapshot = null,
+    goldAppearance = null,
     playerLevel,
     prestigeLevel,
     prestigeFrame,
@@ -304,7 +330,8 @@
         prestigeTitle,
         prestigeAura,
         prestigeTrail,
-        slimeAchievements
+        slimeAchievements,
+        goldAppearance
       }
     );
 

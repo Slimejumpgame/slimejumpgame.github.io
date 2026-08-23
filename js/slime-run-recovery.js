@@ -147,6 +147,11 @@
     }
   }
 
+  function neutralizeForMenu() {
+    if (!hasStoredRecoveryRecord()) return true;
+    return markRunCompleted();
+  }
+
   function recoverInterruptedRun({
     isAchievementSnapshotValid,
     isWardrobeSnapshotValid,
@@ -198,8 +203,8 @@
       return {found: true, recovered: false, blocked: true};
     }
 
-    const cleared = clearAfterRollback();
-    if (!cleared) return {found: true, recovered: true, blocked: true};
+    const neutralized = neutralizeForMenu();
+    if (!neutralized) return {found: true, recovered: true, blocked: true};
 
     console.info("[RunRecovery] Unvollstaendiger Run wurde auf den Pre-Run-Zustand zurueckgesetzt.");
     return {found: true, recovered: true, blocked: false};
@@ -211,6 +216,7 @@
     beginActiveRun,
     markRunCompleted,
     clearAfterRollback,
+    neutralizeForMenu,
     recoverInterruptedRun,
     hasStoredRecord: hasStoredRecoveryRecord,
     isBlocked: () => recoveryBlocked

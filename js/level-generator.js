@@ -1,5 +1,10 @@
 "use strict";
 
+  function getEffectiveDifficultyLevel(levelNumber) {
+    if (levelNumber <= 20) return levelNumber;
+    return 20 + 30 * clamp((levelNumber - 20) / 80, 0, 1);
+  }
+
   function generateProceduralLevel(levelNumber) {
     const seed = (
       Date.now() ^
@@ -8,7 +13,8 @@
     ) >>> 0;
 
     const random = createSeededRandom(seed);
-    const intensityFactor = clamp((levelNumber - 1) / 49, 0, 1);
+    const effectiveDifficultyLevel = getEffectiveDifficultyLevel(levelNumber);
+    const intensityFactor = clamp((effectiveDifficultyLevel - 1) / 49, 0, 1);
 
     const adjectives = [
       "Schleimige", "Wackelige", "Tückische", "Sprunghafte",
@@ -38,9 +44,9 @@
 
     // Weniger und schmalere Plattformen bedeuten später größere Sprünge.
     let routeCount;
-    if (levelNumber <= 10) {
+    if (effectiveDifficultyLevel <= 10) {
       routeCount = 5;
-    } else if (levelNumber <= 24) {
+    } else if (effectiveDifficultyLevel < 25) {
       routeCount = randomInt(random, 4, 5);
     } else {
       routeCount = randomInt(random, 3, 5);
@@ -174,7 +180,7 @@
         desiredSpikePlatforms = focusCount;
       }
     } else if (levelNumber >= 20) {
-      const mixFactor = clamp((levelNumber - 20) / 30, 0, 1);
+      const mixFactor = clamp((effectiveDifficultyLevel - 20) / 30, 0, 1);
       focusMechanic = chooseRandom(random, mechanicPool);
       const selectedMechanics = new Set([focusMechanic]);
 
