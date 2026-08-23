@@ -1163,6 +1163,15 @@
     continueLevelEndFlow();
   }
 
+  function captureHighScoreGoldAppearanceSnapshot() {
+    const appearance = window.SlimeGold?.getEquippedAppearance?.() ?? {};
+    return Object.freeze({
+      slime: appearance.slime === true,
+      hatId: typeof appearance.hatId === "string" ? appearance.hatId : null,
+      beardId: typeof appearance.beardId === "string" ? appearance.beardId : null
+    });
+  }
+
   function loseLife() {
     if (state !== "playing") return;
     if (isTutorialStage()) {
@@ -1205,7 +1214,10 @@
       pendingGameOverScore = {
         score,
         reachedLevel,
-        identitySnapshot: window.SlimePrestige?.capturePlayerIdentitySnapshot?.()
+        identitySnapshot: {
+          ...window.SlimePrestige?.capturePlayerIdentitySnapshot?.(),
+          goldAppearance: captureHighScoreGoldAppearanceSnapshot()
+        }
       };
       let runXPResult = null;
       if (recoveryCompleted && !activeRunXPAwarded) {

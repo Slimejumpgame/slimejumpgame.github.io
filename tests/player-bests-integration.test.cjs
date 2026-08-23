@@ -46,7 +46,12 @@ function createCommitFixture({submitFails = false, rankingAvailable = true} = {}
       prestigeTitle: "none",
       prestigeAura: "none",
       prestigeTrail: "none",
-      slimeAchievements: []
+      slimeAchievements: [],
+      goldAppearance: {
+        slime: true,
+        hatId: "top_hat",
+        beardId: "full_beard"
+      }
     }
   };
   const ui = {
@@ -110,6 +115,15 @@ async function assertEveryConfirmedRunUsesCanonicalSubmit() {
   assert.equal(fixture.counters.localSaves, 1);
   assert.equal(fixture.submittedPayloads[0].score, 7000);
   assert.equal(fixture.submittedPayloads[0].callingCardSnapshot.playerLevel, 9);
+  assert.deepEqual(fixture.submittedPayloads[0].goldAppearance, {
+    slime: true,
+    hatId: "top_hat",
+    beardId: "full_beard"
+  });
+  assert.deepEqual(
+    fixture.submittedPayloads[0].callingCardSnapshot.goldAppearance,
+    fixture.submittedPayloads[0].goldAppearance
+  );
 }
 
 async function assertNetworkFailureDoesNotBlockLocalFlow() {

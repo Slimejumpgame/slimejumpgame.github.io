@@ -644,8 +644,14 @@
     cosmetic,
     beard = "none",
     prestigeAura = "none",
-    prestigeTrail = "none"
+    prestigeTrail = "none",
+    goldAppearance = null
   ) {
+    const historicalGoldAppearance = normalizeHighScoreGoldAppearance(goldAppearance);
+    const visibleCosmetic = historicalGoldAppearance.hatId ??
+      normalizeSlimeCosmetic(cosmetic);
+    const visibleBeard = historicalGoldAppearance.beardId ??
+      normalizeSlimeBeard(beard);
     const preview = document.createElement("canvas");
     preview.className = "slimeLeaderboardPreview";
     preview.width = 116;
@@ -653,15 +659,18 @@
     preview.setAttribute("aria-hidden", "true");
     drawSlimeCharacterPreview(
       preview,
-      normalizeSlimeCosmetic(cosmetic),
-      normalizeSlimeBeard(beard),
+      visibleCosmetic,
+      visibleBeard,
       normalizeSlimeColor(color),
       {
         centerX: 68,
         centerY: 56,
         scale: 0.92,
         prestigeAura,
-        prestigeTrail
+        prestigeTrail,
+        goldSlime: historicalGoldAppearance.slime,
+        goldCosmetic: historicalGoldAppearance.hatId !== null,
+        goldBeard: historicalGoldAppearance.beardId !== null
       }
     );
     return preview;
@@ -2171,12 +2180,35 @@
     );
   }
 
+  function normalizeHighScoreGoldAppearance(value) {
+    const source = value && typeof value === "object" && !Array.isArray(value)
+      ? value
+      : {};
+    const normalizedHatId = typeof source.hatId === "string"
+      ? normalizeSlimeCosmetic(source.hatId)
+      : "none";
+    const normalizedBeardId = typeof source.beardId === "string"
+      ? normalizeSlimeBeard(source.beardId)
+      : "none";
+    return {
+      slime: source.slime === true,
+      hatId: normalizedHatId === "none" ? null : normalizedHatId,
+      beardId: normalizedBeardId === "none" ? null : normalizedBeardId
+    };
+  }
+
   function normalizeHighScoreIdentitySnapshot(value) {
     const source = value && typeof value === "object" ? value : {};
     const nestedSnapshot = source.callingCardSnapshot ?? source.calling_card_snapshot;
     const identitySource = nestedSnapshot && typeof nestedSnapshot === "object"
       ? nestedSnapshot
       : source;
+    const goldAppearance = normalizeHighScoreGoldAppearance(
+      identitySource.goldAppearance ??
+      identitySource.gold_appearance ??
+      source.goldAppearance ??
+      source.gold_appearance
+    );
     const normalized = window.SlimePrestige?.normalizeIdentitySnapshot?.({
       playerLevel: identitySource.playerLevel ?? identitySource.player_level,
       prestigeLevel: identitySource.prestigeLevel ?? identitySource.prestige_level,
@@ -2190,7 +2222,7 @@
         source.slimeAchievements ??
         source.slime_achievements
     });
-    return normalized ?? {
+    const identity = normalized ?? {
       playerLevel: 1,
       prestigeLevel: 0,
       prestigeEmblemId: "none",
@@ -2200,6 +2232,7 @@
       prestigeTrail: "none",
       slimeAchievements: []
     };
+    return {...identity, goldAppearance};
   }
 
   function hasHighScoreIdentitySnapshot(value) {
@@ -2248,6 +2281,7 @@
           prestigeTitle: identity.prestigeTitle,
           prestigeAura: identity.prestigeAura,
           prestigeTrail: identity.prestigeTrail,
+          goldAppearance: {...identity.goldAppearance},
           hasPlayerLevelSnapshot: hasHighScoreSnapshotField(
             entry,
             "playerLevel",
@@ -2318,6 +2352,7 @@
       prestigeTitle: identity.prestigeTitle,
       prestigeAura: identity.prestigeAura,
       prestigeTrail: identity.prestigeTrail,
+      goldAppearance: {...identity.goldAppearance},
       hasIdentitySnapshot: true
     });
 
@@ -2357,7 +2392,11 @@
       prestigeTitle: identity.prestigeTitle,
       prestigeAura: identity.prestigeAura,
       prestigeTrail: identity.prestigeTrail,
-      callingCardSnapshot: identity
+      goldAppearance: {...identity.goldAppearance},
+      callingCardSnapshot: {
+        ...identity,
+        goldAppearance: {...identity.goldAppearance}
+      }
     };
 
     console.info(`[Highscore] NAME CONFIRMED=${submittedScore.name}`);
@@ -2395,6 +2434,7 @@
       prestigeTitle: identity.prestigeTitle,
       prestigeAura: identity.prestigeAura,
       prestigeTrail: identity.prestigeTrail,
+      goldAppearance: {...identity.goldAppearance},
       hasIdentitySnapshot: true
     });
 
@@ -2584,7 +2624,8 @@
       entry.slimeCosmetic,
       entry.slimeBeard,
       entry.prestigeAura,
-      entry.prestigeTrail
+      entry.prestigeTrail,
+      entry.goldAppearance
     );
     const name = document.createElement("strong");
     name.textContent = nickname;

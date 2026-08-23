@@ -146,6 +146,11 @@ function globalPayload(score, overrides = {}) {
     slimeCosmetic: "none",
     slimeBeard: "none",
     slimeAchievements: [],
+    goldAppearance: {
+      slime: true,
+      hatId: "top_hat",
+      beardId: "full_beard"
+    },
     callingCardSnapshot: {
       playerLevel: 9,
       prestigeLevel: 0,
@@ -153,7 +158,12 @@ function globalPayload(score, overrides = {}) {
       prestigeTitle: "none",
       prestigeAura: "none",
       prestigeTrail: "none",
-      slimeAchievements: []
+      slimeAchievements: [],
+      goldAppearance: {
+        slime: true,
+        hatId: "top_hat",
+        beardId: "full_beard"
+      }
     },
     ...overrides
   };
@@ -194,13 +204,40 @@ async function assertPostResetBestAndPayloadAreRetried() {
   );
   const stored = fixture.localStorage.snapshot();
   assert.equal(stored.slimejumperGlobalRankBestV1, "85000");
-  assert.equal(JSON.parse(stored.slimejumperGlobalRankBestPayloadV1).score, 85000);
+  const storedPayload = JSON.parse(stored.slimejumperGlobalRankBestPayloadV1);
+  assert.equal(storedPayload.score, 85000);
+  assert.deepEqual(storedPayload.goldAppearance, {
+    slime: true,
+    hatId: "top_hat",
+    beardId: "full_beard"
+  });
+  assert.deepEqual(
+    storedPayload.callingCardSnapshot.goldAppearance,
+    storedPayload.goldAppearance
+  );
   assert.equal(fixture.submissions[0].playerId, GENERATED_ID);
   assert.deepEqual(fixture.dispatchedEvents, ["slimeglobalbestsubmitsettled"]);
 
   await fixture.api.recordGlobalBestCandidate(globalPayload(70000, {name: "LOW"}));
   assert.equal(fixture.localStorage.snapshot().slimejumperGlobalRankBestV1, "85000");
   assert.equal(fixture.submissions.at(-1).score, 85000);
+  assert.deepEqual(fixture.submissions.at(-1).goldAppearance, storedPayload.goldAppearance);
+
+  await fixture.api.recordGlobalBestCandidate(globalPayload(85000, {
+    name: "TIE",
+    goldAppearance: {slime: false, hatId: null, beardId: null},
+    callingCardSnapshot: {
+      ...globalPayload(85000).callingCardSnapshot,
+      goldAppearance: {slime: false, hatId: null, beardId: null}
+    }
+  }));
+  assert.deepEqual(
+    JSON.parse(
+      fixture.localStorage.snapshot().slimejumperGlobalRankBestPayloadV1
+    ).goldAppearance,
+    storedPayload.goldAppearance
+  );
+  assert.deepEqual(fixture.submissions.at(-1).goldAppearance, storedPayload.goldAppearance);
 }
 
 async function assertRankNormalizationAndErrorHandling() {

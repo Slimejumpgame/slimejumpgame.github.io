@@ -241,16 +241,39 @@ async function assertCanonicalRanksAndVisibleTopTen() {
 async function assertLowerRunCannotOverwriteBestRunData() {
   const server = createServer();
   const client = createClient(server, 3);
+  const bestGoldAppearance = {
+    slime: true,
+    hatId: "top_hat",
+    beardId: "full_beard"
+  };
+  const bestCallingCardSnapshot = {
+    ...scorePayload(3, 10000).callingCardSnapshot,
+    goldAppearance: bestGoldAppearance
+  };
   await client.ranking.recordGlobalBestCandidate(scorePayload(3, 10000, {
     name: "BEST",
-    level: 10
+    level: 10,
+    goldAppearance: bestGoldAppearance,
+    callingCardSnapshot: bestCallingCardSnapshot
   }));
   const bestRow = plain(server.rows.get(playerId(3)));
+  assert.deepEqual(
+    bestRow.calling_card_snapshot.goldAppearance,
+    bestGoldAppearance
+  );
 
   await client.ranking.recordGlobalBestCandidate(scorePayload(3, 5000, {
     name: "LOW",
     level: 99,
-    slimeColor: "purple"
+    slimeColor: "purple",
+    goldAppearance: {slime: false, hatId: null, beardId: null}
+  }));
+  assert.deepEqual(plain(server.rows.get(playerId(3))), bestRow);
+
+  await client.ranking.recordGlobalBestCandidate(scorePayload(3, 10000, {
+    name: "TIE",
+    level: 100,
+    goldAppearance: {slime: false, hatId: null, beardId: null}
   }));
   assert.deepEqual(plain(server.rows.get(playerId(3))), bestRow);
   assert.deepEqual(

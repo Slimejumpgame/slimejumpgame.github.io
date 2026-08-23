@@ -42,6 +42,12 @@ const achievementRegistry = Object.freeze(
   }))
 );
 
+const historicalGoldAppearance = Object.freeze({
+  slime: true,
+  hatId: "top_hat",
+  beardId: "full_beard"
+});
+
 function loadPrestigeApi() {
   const localStorage = createStorage({
     slimejumperPrestigeLevel: "10",
@@ -106,6 +112,46 @@ function assertHistoricalSnapshotIsolation(prestige) {
   return snapshot;
 }
 
+function assertGameOverGoldSnapshotCapture() {
+  const source = read("js/game.js");
+  const captureStart = source.indexOf(
+    "  function captureHighScoreGoldAppearanceSnapshot()"
+  );
+  const captureEnd = source.indexOf("  function loseLife()", captureStart);
+  assert.ok(captureStart >= 0 && captureEnd > captureStart);
+
+  const liveAppearance = {
+    slime: true,
+    hatId: "top_hat",
+    beardId: "full_beard"
+  };
+  const context = vm.createContext({
+    window: {
+      SlimeGold: {getEquippedAppearance: () => liveAppearance}
+    }
+  });
+  vm.runInContext(
+    source.slice(captureStart, captureEnd) +
+      "\nglobalThis.captureGoldSnapshot = captureHighScoreGoldAppearanceSnapshot;",
+    context,
+    {filename: "js/game-gold-highscore-snapshot-test-slice.js"}
+  );
+
+  const snapshot = context.captureGoldSnapshot();
+  liveAppearance.slime = false;
+  liveAppearance.hatId = "cap";
+  liveAppearance.beardId = "stubble";
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(snapshot)),
+    historicalGoldAppearance
+  );
+  assert.equal(Object.isFrozen(snapshot), true);
+  assert.match(
+    source,
+    /pendingGameOverScore\s*=\s*\{[\s\S]*?identitySnapshot:\s*\{[\s\S]*?goldAppearance:\s*captureHighScoreGoldAppearanceSnapshot\(\)/
+  );
+}
+
 function createOnlineApi(prestigeApi, fetchImplementation) {
   const window = {
     SlimePrestige: prestigeApi,
@@ -117,8 +163,12 @@ function createOnlineApi(prestigeApi, fetchImplementation) {
     URLSearchParams,
     console: {info() {}, error() {}, warn() {}},
     normalizeSlimeColor: value => typeof value === "string" ? value : "green",
-    normalizeSlimeCosmetic: value => typeof value === "string" ? value : "none",
-    normalizeSlimeBeard: value => typeof value === "string" ? value : "none"
+    normalizeSlimeCosmetic: value =>
+      ["none", "cap", "top_hat", "wizard_hat"].includes(value) ? value : "none",
+    normalizeSlimeBeard: value =>
+      ["none", "stubble", "full_beard", "braided_beard"].includes(value)
+        ? value
+        : "none"
   });
   vm.runInContext(read("js/slime-jump-highscores.js"), context, {
     filename: "js/slime-jump-highscores.js"
@@ -128,6 +178,10 @@ function createOnlineApi(prestigeApi, fetchImplementation) {
 
 async function assertGlobalSnapshotRoundTrip(prestigeApi, snapshot) {
   const calls = [];
+  const goldSnapshot = {
+    ...JSON.parse(JSON.stringify(snapshot)),
+    goldAppearance: {...historicalGoldAppearance}
+  };
   const globalRows = [
     {
       name: "NEW",
@@ -139,7 +193,7 @@ async function assertGlobalSnapshotRoundTrip(prestigeApi, snapshot) {
       slime_cosmetic: "none",
       slime_beard: "none",
       slime_achievements: ["badge-1"],
-      calling_card_snapshot: {...JSON.parse(JSON.stringify(snapshot)), formatVersion: 1}
+      calling_card_snapshot: {...goldSnapshot, formatVersion: 1}
     },
     {
       name: "OLD",
@@ -151,6 +205,21 @@ async function assertGlobalSnapshotRoundTrip(prestigeApi, snapshot) {
       slime_cosmetic: "none",
       slime_beard: "none",
       slime_achievements: ["badge-2"]
+    },
+    {
+      name: "VON",
+      score: 7500,
+      level: 10,
+      game_version: "2.71",
+      created_at: "2026-08-13T00:00:00Z",
+      slime_color: "purple",
+      slime_cosmetic: "cap",
+      slime_beard: "stubble",
+      slime_achievements: ["badge-3"],
+      calling_card_snapshot: {
+        ...JSON.parse(JSON.stringify(snapshot)),
+        formatVersion: 1
+      }
     }
   ];
   const api = createOnlineApi(prestigeApi, async (url, options) => {
@@ -171,9 +240,26 @@ async function assertGlobalSnapshotRoundTrip(prestigeApi, snapshot) {
   assert.equal(rows[0].prestigeAura, "prestige-aura-p8");
   assert.equal(rows[0].prestigeTrail, "prestige-trail-p9");
   assert.equal(rows[0].slimeAchievements.length, 5);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(rows[0].goldAppearance)),
+    historicalGoldAppearance
+  );
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(rows[0].callingCardSnapshot.goldAppearance)),
+    historicalGoldAppearance
+  );
   assert.equal(rows[0].hasIdentitySnapshot, true);
   assert.equal(rows[1].hasIdentitySnapshot, false);
   assert.deepEqual(Array.from(rows[1].slimeAchievements), ["badge-2"]);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(rows[1].goldAppearance)),
+    {slime: false, hatId: null, beardId: null}
+  );
+  assert.equal(rows[2].hasIdentitySnapshot, true);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(rows[2].goldAppearance)),
+    {slime: false, hatId: null, beardId: null}
+  );
 
   const requestSignal = {aborted: false};
   await api.submitScore({
@@ -182,7 +268,8 @@ async function assertGlobalSnapshotRoundTrip(prestigeApi, snapshot) {
     score: 9000,
     level: 12,
     slimeAchievements: snapshot.slimeAchievements,
-    callingCardSnapshot: snapshot
+    goldAppearance: historicalGoldAppearance,
+    callingCardSnapshot: goldSnapshot
   }, {signal: requestSignal});
   const submitted = JSON.parse(calls.at(-1).options.body);
   assert.equal(calls.at(-1).options.signal, requestSignal);
@@ -195,6 +282,62 @@ async function assertGlobalSnapshotRoundTrip(prestigeApi, snapshot) {
   assert.equal(submitted.p_calling_card_snapshot.prestigeAura, "prestige-aura-p8");
   assert.equal(submitted.p_calling_card_snapshot.prestigeTrail, "prestige-trail-p9");
   assert.equal(submitted.p_calling_card_snapshot.slimeAchievements.length, 5);
+  assert.deepEqual(
+    submitted.p_calling_card_snapshot.goldAppearance,
+    historicalGoldAppearance
+  );
+}
+
+async function assertInvalidGoldDoesNotInvalidateSnapshot(prestigeApi, snapshot) {
+  const calls = [];
+  const invalidGoldSnapshot = {
+    ...JSON.parse(JSON.stringify(snapshot)),
+    formatVersion: 1,
+    goldAppearance: {
+      slime: "true",
+      hatId: "unknown_hat",
+      beardId: 123
+    }
+  };
+  const api = createOnlineApi(prestigeApi, async (url, options) => {
+    calls.push({url, options});
+    return options.method === "GET"
+      ? response({json: [{
+          name: "BAD",
+          score: 7000,
+          level: 9,
+          game_version: "2.71",
+          created_at: "2026-08-23T00:00:00Z",
+          slime_color: "gold",
+          slime_cosmetic: "cap",
+          slime_beard: "stubble",
+          slime_achievements: [],
+          calling_card_snapshot: invalidGoldSnapshot
+        }]})
+      : response({json: [{best_score: 7000, improved: true}]});
+  });
+
+  const [row] = await api.getTopScores(1);
+  assert.equal(row.hasIdentitySnapshot, true);
+  assert.equal(row.slimeColor, "gold");
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(row.goldAppearance)),
+    {slime: false, hatId: null, beardId: null}
+  );
+
+  await api.submitScore({
+    playerId: "11111111-2222-4333-8444-555555555555",
+    name: "BAD",
+    score: 7000,
+    level: 9,
+    callingCardSnapshot: invalidGoldSnapshot
+  });
+  const submitted = JSON.parse(calls.at(-1).options.body);
+  assert.equal(submitted.p_calling_card_snapshot.playerLevel, 42);
+  assert.deepEqual(
+    submitted.p_calling_card_snapshot.goldAppearance,
+    {slime: false, hatId: null, beardId: null}
+  );
 }
 
 async function assertMissingColumnFallback(prestigeApi, snapshot) {
@@ -282,8 +425,12 @@ function collectText(element) {
 }
 
 function assertLocalPersistenceAndRendering(prestigeApi, snapshot) {
+  const goldSnapshot = {
+    ...JSON.parse(JSON.stringify(snapshot)),
+    goldAppearance: {...historicalGoldAppearance}
+  };
   const source = read("js/ui.js");
-  const modelStart = source.indexOf("  function normalizeNickname(");
+  const modelStart = source.indexOf("  function loadRecentScores(");
   const modelEnd = source.indexOf("  function showNicknameEntry(");
   const renderStart = source.indexOf("  let devCallingCardTestEntry = null;");
   const renderEnd = source.indexOf("  async function updateHighScores(");
@@ -322,19 +469,36 @@ function assertLocalPersistenceAndRendering(prestigeApi, snapshot) {
       menu: {classList: {remove() {}}}
     },
     normalizeSlimeColor: value => value ?? "green",
-    normalizeSlimeCosmetic: value => value ?? "none",
-    normalizeSlimeBeard: value => value ?? "none",
-    selectedSlimeColor: "green",
-    selectedSlimeCosmetic: "none",
-    selectedSlimeBeard: "none",
-    createLeaderboardSlimePreview: (color, cosmetic, beard, prestigeAura, prestigeTrail) => {
-      renderedSlimeSnapshots.push({
+    normalizeSlimeCosmetic: value =>
+      ["none", "cap", "top_hat", "wizard_hat"].includes(value)
+        ? value
+        : "none",
+    normalizeSlimeBeard: value =>
+      ["none", "stubble", "full_beard", "braided_beard"].includes(value)
+        ? value
+        : "none",
+    selectedSlimeColor: "purple",
+    selectedSlimeCosmetic: "cap",
+    selectedSlimeBeard: "stubble",
+    createLeaderboardSlimePreview: (
+      color,
+      cosmetic,
+      beard,
+      prestigeAura,
+      prestigeTrail,
+      goldAppearance
+    ) => {
+      const renderedSnapshot = {
         color,
         cosmetic,
         beard,
         prestigeAura,
         prestigeTrail
-      });
+      };
+      if (goldAppearance !== undefined) {
+        renderedSnapshot.goldAppearance = JSON.parse(JSON.stringify(goldAppearance));
+      }
+      renderedSlimeSnapshots.push(renderedSnapshot);
       return new FakeElement("canvas");
     },
     showMenuScreen: screenName => openedScreens.push(screenName)
@@ -349,6 +513,7 @@ function assertLocalPersistenceAndRendering(prestigeApi, snapshot) {
       globalThis.highscoreTestApi = {
         loadHighScores,
         saveHighScore,
+        saveRecentScore,
         sanitizeScoreEntries,
         renderHighScoreRows,
         createHighScoreCallingCard,
@@ -360,7 +525,7 @@ function assertLocalPersistenceAndRendering(prestigeApi, snapshot) {
     {filename: "js/ui-highscore-test-slice.js"}
   );
 
-  context.highscoreTestApi.saveHighScore("NEW", 500, 7, snapshot);
+  context.highscoreTestApi.saveHighScore("NEW", 500, 7, goldSnapshot);
   const stored = JSON.parse(localStorage.snapshot().slimejumperHighscoresV14);
   assert.deepEqual(stored.find(entry => entry.name === "OLD"), legacyRecord);
   const newRecord = stored.find(entry => entry.name === "NEW");
@@ -371,6 +536,7 @@ function assertLocalPersistenceAndRendering(prestigeApi, snapshot) {
   assert.equal(newRecord.prestigeAura, "prestige-aura-p8");
   assert.equal(newRecord.prestigeTrail, "prestige-trail-p9");
   assert.equal(newRecord.slimeAchievements.length, 5);
+  assert.deepEqual(newRecord.goldAppearance, historicalGoldAppearance);
   assert.deepEqual(stored.map(entry => entry.score), [500, 100]);
 
   const sanitized = context.highscoreTestApi.sanitizeScoreEntries(stored);
@@ -394,23 +560,44 @@ function assertLocalPersistenceAndRendering(prestigeApi, snapshot) {
   assert.equal(renderedNewCard.children[5].className, "highscoreCallingCardScore");
   assert.equal(renderedNewCard.children[3].dataset.prestigeFrame, "prestige-frame-p10");
   assert.deepEqual(renderedSlimeSnapshots[0], {
-    color: "green",
-    cosmetic: "none",
-    beard: "none",
+    color: "purple",
+    cosmetic: "cap",
+    beard: "stubble",
     prestigeAura: "prestige-aura-p8",
-    prestigeTrail: "prestige-trail-p9"
+    prestigeTrail: "prestige-trail-p9",
+    goldAppearance: historicalGoldAppearance
   });
   assert.deepEqual(renderedSlimeSnapshots[1], {
     color: "green",
     cosmetic: "none",
     beard: "none",
     prestigeAura: "none",
-    prestigeTrail: "none"
+    prestigeTrail: "none",
+    goldAppearance: {slime: false, hatId: null, beardId: null}
   });
   assert.equal(
     renderedNewCard.children[3].children.at(-1).children.length,
     5,
     "Der Auto-5-Snapshot rendert fünf gespeicherte Badge-Icons"
+  );
+
+  const [invalidGoldEntry] = context.highscoreTestApi.sanitizeScoreEntries([{
+    name: "BAD",
+    score: 350,
+    level: 6,
+    callingCardSnapshot: {
+      ...JSON.parse(JSON.stringify(snapshot)),
+      goldAppearance: {
+        slime: 1,
+        hatId: "unknown_hat",
+        beardId: "unknown_beard"
+      }
+    }
+  }]);
+  assert.equal(invalidGoldEntry.hasIdentitySnapshot, true);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(invalidGoldEntry.goldAppearance)),
+    {slime: false, hatId: null, beardId: null}
   );
 
   const manualFiveIds = ["badge-5", "badge-3", "badge-1", "badge-4", "badge-2"];
@@ -572,6 +759,13 @@ function assertLocalPersistenceAndRendering(prestigeApi, snapshot) {
     "all five badges stay inside the framed calling card"
   );
   assert.equal(highscoreRows.children[1].children[0].textContent, "1");
+
+  context.highscoreTestApi.saveRecentScore("REC", 450, 6, goldSnapshot);
+  const recentScores = JSON.parse(
+    localStorage.snapshot().slimejumperRecentScores
+  );
+  assert.equal(recentScores[0].name, "REC");
+  assert.deepEqual(recentScores[0].goldAppearance, historicalGoldAppearance);
 }
 
 function assertMainMenuPrestigePreview() {
@@ -645,17 +839,36 @@ function assertLeaderboardSlimePreviewScale() {
   const source = read("js/ui.js");
   const previewStart = source.indexOf("  function createLeaderboardSlimePreview(");
   const previewEnd = source.indexOf("  function renderMenuMascot(", previewStart);
-  assert.ok(previewStart >= 0 && previewEnd > previewStart);
+  const goldNormalizeStart = source.indexOf(
+    "  function normalizeHighScoreGoldAppearance("
+  );
+  const goldNormalizeEnd = source.indexOf(
+    "  function normalizeHighScoreIdentitySnapshot(",
+    goldNormalizeStart
+  );
+  assert.ok(
+    previewStart >= 0 &&
+    previewEnd > previewStart &&
+    goldNormalizeStart >= 0 &&
+    goldNormalizeEnd > goldNormalizeStart
+  );
+  assert.doesNotMatch(
+    source.slice(previewStart, previewEnd),
+    /SlimeGold|localStorage|sessionStorage/
+  );
 
   const draws = [];
   const context = vm.createContext({
     document: {createElement: tagName => new FakeElement(tagName)},
     normalizeSlimeColor: value => value,
-    normalizeSlimeCosmetic: value => value,
-    normalizeSlimeBeard: value => value,
+    normalizeSlimeCosmetic: value =>
+      ["none", "cap", "top_hat"].includes(value) ? value : "none",
+    normalizeSlimeBeard: value =>
+      ["none", "stubble", "full_beard"].includes(value) ? value : "none",
     drawSlimeCharacterPreview: (...args) => draws.push(args)
   });
   vm.runInContext(
+    source.slice(goldNormalizeStart, goldNormalizeEnd) +
     source.slice(previewStart, previewEnd) + `
       globalThis.leaderboardPreviewTestApi = {createLeaderboardSlimePreview};
     `,
@@ -664,27 +877,69 @@ function assertLeaderboardSlimePreviewScale() {
   );
 
   const preview = context.leaderboardPreviewTestApi.createLeaderboardSlimePreview(
-    "hot_pink",
-    "wizard_hat",
-    "braided_beard",
+    "purple",
+    "cap",
+    "stubble",
     "prestige-aura-prism-p8",
-    "prestige-trail-prism-p9"
+    "prestige-trail-prism-p9",
+    historicalGoldAppearance
   );
   assert.equal(preview.className, "slimeLeaderboardPreview");
   assert.equal(preview.width, 116);
   assert.equal(preview.height, 100);
   assert.equal(draws.length, 1);
-  assert.equal(draws[0][1], "wizard_hat");
-  assert.equal(draws[0][2], "braided_beard");
-  assert.equal(draws[0][3], "hot_pink");
+  assert.equal(draws[0][1], "top_hat");
+  assert.equal(draws[0][2], "full_beard");
+  assert.equal(draws[0][3], "purple");
   assert.deepEqual(JSON.parse(JSON.stringify(draws[0][4])), {
     centerX: 68,
     centerY: 56,
     scale: 0.92,
     prestigeAura: "prestige-aura-prism-p8",
-    prestigeTrail: "prestige-trail-prism-p9"
+    prestigeTrail: "prestige-trail-prism-p9",
+    goldSlime: true,
+    goldCosmetic: true,
+    goldBeard: true
   });
   assert.equal(draws[0][4].scale / 0.8, 1.15);
+
+  const combinations = [
+    [{slime: false, hatId: null, beardId: null}, false, false, false],
+    [{slime: true, hatId: null, beardId: null}, true, false, false],
+    [{slime: false, hatId: "top_hat", beardId: null}, false, true, false],
+    [{slime: false, hatId: null, beardId: "full_beard"}, false, false, true],
+    [{slime: true, hatId: "top_hat", beardId: null}, true, true, false],
+    [{slime: true, hatId: null, beardId: "full_beard"}, true, false, true],
+    [{slime: false, hatId: "top_hat", beardId: "full_beard"}, false, true, true],
+    [{slime: true, hatId: "top_hat", beardId: "full_beard"}, true, true, true]
+  ];
+  combinations.forEach(([goldAppearance, goldSlime, goldCosmetic, goldBeard]) => {
+    context.leaderboardPreviewTestApi.createLeaderboardSlimePreview(
+      "purple",
+      "cap",
+      "stubble",
+      "none",
+      "none",
+      goldAppearance
+    );
+    const draw = draws.at(-1);
+    assert.equal(draw[1], goldCosmetic ? "top_hat" : "cap");
+    assert.equal(draw[2], goldBeard ? "full_beard" : "stubble");
+    assert.equal(draw[4].goldSlime, goldSlime);
+    assert.equal(draw[4].goldCosmetic, goldCosmetic);
+    assert.equal(draw[4].goldBeard, goldBeard);
+  });
+
+  context.leaderboardPreviewTestApi.createLeaderboardSlimePreview(
+    "gold",
+    "cap",
+    "stubble"
+  );
+  const amberDraw = draws.at(-1);
+  assert.equal(amberDraw[3], "gold");
+  assert.equal(amberDraw[4].goldSlime, false);
+  assert.equal(amberDraw[4].goldCosmetic, false);
+  assert.equal(amberDraw[4].goldBeard, false);
 }
 
 function assertStaticReleaseGuards() {
@@ -697,6 +952,11 @@ function assertStaticReleaseGuards() {
   );
 
   const uiSource = read("js/ui.js");
+  const highscoreModelSource = uiSource.slice(
+    uiSource.indexOf("  function normalizeHighScoreGoldAppearance("),
+    uiSource.indexOf("  function showNicknameEntry(")
+  );
+  assert.doesNotMatch(highscoreModelSource, /SlimeGold/);
   const selectPrestigeStart = uiSource.indexOf("  function selectPrestigeReward(");
   const selectPrestigeEnd = uiSource.indexOf("  function hideGameOverXPProgress(");
   const selectPrestigeSource = uiSource.slice(selectPrestigeStart, selectPrestigeEnd);
@@ -786,7 +1046,9 @@ function assertStaticReleaseGuards() {
 (async () => {
   const prestige = loadPrestigeApi();
   const snapshot = assertHistoricalSnapshotIsolation(prestige);
+  assertGameOverGoldSnapshotCapture();
   await assertGlobalSnapshotRoundTrip(prestige.api, snapshot);
+  await assertInvalidGoldDoesNotInvalidateSnapshot(prestige.api, snapshot);
   await assertMissingColumnFallback(prestige.api, snapshot);
   assertLocalPersistenceAndRendering(prestige.api, snapshot);
   assertMainMenuPrestigePreview();
