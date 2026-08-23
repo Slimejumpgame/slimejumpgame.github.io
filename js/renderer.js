@@ -919,6 +919,7 @@
   }
 
   let currentAimBouncePreviewHit = false;
+  const AIM_TRAJECTORY_POINT_OUTLINE_WIDTH = 1.25;
 
   function setCurrentAimBouncePreviewHit(hit) {
     const nextHit = hit === true;
@@ -944,19 +945,35 @@
     );
     let vy = -getBouncePadVerticalSpeed(hit.impactSpeed);
 
-    ctx.fillStyle = "#9deeff";
     ctx.globalAlpha = 0.88;
+    ctx.fillStyle = "#000000";
     ctx.beginPath();
     ctx.arc(x, y, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#9deeff";
+    ctx.beginPath();
+    ctx.arc(x, y, 6 - AIM_TRAJECTORY_POINT_OUTLINE_WIDTH, 0, Math.PI * 2);
     ctx.fill();
 
     for (let i = 0; i < pointCount; i++) {
       vy += 1570 * stepDuration;
       x += vx * stepDuration;
       y += vy * stepDuration;
+      const pointRadius = Math.max(2.2, 5.2 - i * 0.18);
       ctx.globalAlpha = 0.72 * (1 - i / pointCount);
+      ctx.fillStyle = "#000000";
       ctx.beginPath();
-      ctx.arc(x, y, Math.max(2.2, 5.2 - i * 0.18), 0, Math.PI * 2);
+      ctx.arc(x, y, pointRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#9deeff";
+      ctx.beginPath();
+      ctx.arc(
+        x,
+        y,
+        pointRadius - AIM_TRAJECTORY_POINT_OUTLINE_WIDTH,
+        0,
+        Math.PI * 2
+      );
       ctx.fill();
     }
   }
@@ -1033,10 +1050,21 @@
         x = bounceHit.x;
         y = bounceHit.y;
       }
+      const pointRadius = Math.max(2.5, 6 - i * 0.18);
       ctx.globalAlpha = 1 - i / 19;
+      ctx.fillStyle = "#000000";
+      ctx.beginPath();
+      ctx.arc(x, y, pointRadius, 0, Math.PI * 2);
+      ctx.fill();
       ctx.fillStyle = "#e9ffef";
       ctx.beginPath();
-      ctx.arc(x, y, Math.max(2.5, 6 - i * 0.18), 0, Math.PI * 2);
+      ctx.arc(
+        x,
+        y,
+        pointRadius - AIM_TRAJECTORY_POINT_OUTLINE_WIDTH,
+        0,
+        Math.PI * 2
+      );
       ctx.fill();
       if (bounceHit) break;
     }
