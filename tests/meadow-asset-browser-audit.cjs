@@ -128,10 +128,15 @@ async function auditViewport(cdp, viewport) {
   })()`);
   assert.equal(startup.loaded, true);
   assert.equal(startup.status.ready, true);
-  assert.equal(startup.status.loaded.start_platform, true);
+  assert.equal(startup.status.loaded.meadow_top, true);
   assert.equal(
-    startup.status.paths.start_platform,
-    "assets/environments/meadow/platforms/start_platform.png"
+    startup.status.paths.meadow_top,
+    "assets/environments/meadow/platforms/meadow_top.png"
+  );
+  assert.equal(startup.status.loaded.meadow_body_base, true);
+  assert.equal(
+    startup.status.paths.meadow_body_base,
+    "assets/environments/meadow/platforms/meadow_body_base.png"
   );
   assert.equal(startup.state, "menu");
   assert.equal(startup.menuGuard, false);
@@ -218,6 +223,7 @@ async function auditViewport(cdp, viewport) {
       surfaceContext.drawImage = (...args) => {
         if (args.length === 9) {
           drawCalls.push({
+            asset: args[0].getAttribute?.("src") ?? args[0].src,
             source: {x: args[1], y: args[2], w: args[3], h: args[4]},
             destination: {x: args[5], y: args[6], w: args[7], h: args[8]}
           });
@@ -271,6 +277,7 @@ async function auditViewport(cdp, viewport) {
       return {
         width,
         height,
+        platformHeight: platform.h,
         coverageRatio: coveredInteriorPixels / interiorPixels,
         opaqueRatio: opaqueInteriorPixels / interiorPixels,
         brownFallbackPixels,
@@ -340,43 +347,57 @@ async function auditViewport(cdp, viewport) {
   assert.equal(gameplay.massiveBlocks.start.blackPixels, 0);
   assert.equal(gameplay.massiveBlocks.goal.blackPixels, 0);
   assert.ok(gameplay.massiveBlocks.goal.height >= 500);
-  assert.equal(gameplay.massiveBlocks.start.drawCalls.length, 1);
+  assert.equal(gameplay.massiveBlocks.start.drawCalls.length, 3);
   assert.deepEqual(
-    gameplay.massiveBlocks.start.drawCalls[0],
-    {
-      asset: "assets/environments/meadow/platforms/start_platform.png",
-      source: null,
-      destination: {x: 0, y: 0, w: 235, h: 80}
-    }
+    gameplay.massiveBlocks.start.drawCalls,
+    [
+      {
+        asset: "assets/environments/meadow/platforms/meadow_body_base.png",
+        source: {x: 1, y: 1, w: 2079, h: 756},
+        destination: {x: 0, y: 19, w: 235, h: 48}
+      },
+      {
+        asset: "assets/environments/meadow/platforms/meadow_body_base.png",
+        source: {x: 1, y: 1, w: 2079, h: 220.5},
+        destination: {x: 0, y: 66, w: 235, h: 14}
+      },
+      {
+        asset: "assets/environments/meadow/platforms/meadow_top.png",
+        source: {x: 0, y: 0, w: 2048, h: 176},
+        destination: {x: 0, y: 0, w: 235, h: 20}
+      }
+    ]
   );
   const goalDrawCalls = gameplay.massiveBlocks.goal.drawCalls;
   assert.ok(goalDrawCalls.length >= 3);
   assert.deepEqual(
     goalDrawCalls.at(-1),
     {
-      source: {x: 1170, y: 672, w: 214, h: 203},
+      asset: "assets/environments/meadow/platforms/meadow_top.png",
+      source: null,
       destination: {x: 0, y: 0, w: 220, h: 80}
     }
   );
-  const goalBodySources = new Set([
-    "320,370,239", "599,370,238", "876,370,240",
-    "317,627,242", "600,627,239", "877,626,240"
-  ]);
   const goalBodyCalls = goalDrawCalls.slice(0, -1);
   for (const [rowIndex, call] of goalBodyCalls.entries()) {
-    assert.ok(
-      goalBodySources.has([call.source.x, call.source.y, call.source.w].join(",")),
-      `unexpected body source ${JSON.stringify(call.source)}`
+    assert.equal(
+      call.asset,
+      "assets/environments/meadow/platforms/meadow_body_base.png"
     );
+    assert.equal(call.source.x, 1);
+    assert.equal(call.source.y, 1);
+    assert.equal(call.source.w, 2079);
     assert.equal(call.destination.x, 0);
     assert.equal(call.destination.w, 220);
     assert.equal(call.destination.y, 79 + rowIndex * 47);
     assert.ok(call.destination.h <= 48);
     if (rowIndex < goalBodyCalls.length - 1) assert.equal(call.destination.h, 48);
+    assert.ok(Math.abs(call.source.h / 756 - call.destination.h / 48) < 1e-9);
   }
   assert.equal(
     goalBodyCalls.at(-1).destination.h,
-    gameplay.massiveBlocks.goal.height - goalBodyCalls.at(-1).destination.y
+    gameplay.massiveBlocks.goal.platformHeight -
+      goalBodyCalls.at(-1).destination.y
   );
   assert.equal(gameplay.canvas.internalWidth, 1280);
   assert.equal(gameplay.canvas.internalHeight, 720);
@@ -436,6 +457,15 @@ async function auditViewport(cdp, viewport) {
       let topGrassPixels = 0;
       let topPixels = 0;
       const topMargin = Math.min(24, Math.floor(surface.width * 0.18));
+      const interiorLeft = Math.min(10, Math.floor(surface.width * 0.10));
+      const interiorRight = surface.width - interiorLeft;
+      const interiorWidth = interiorRight - interiorLeft;
+      const coveredInteriorPixelsByRow = Array(surface.height).fill(0);
+      let bodyEdgeRows = 0;
+      let opaqueLeftBodyEdgeRows = 0;
+      let opaqueRightBodyEdgeRows = 0;
+      let minimumLeftBodyEdgeAlpha = 255;
+      let minimumRightBodyEdgeAlpha = 255;
       for (let index = 0; index < pixels.length; index += 4) {
         const red = pixels[index];
         const green = pixels[index + 1];
@@ -449,6 +479,19 @@ async function auditViewport(cdp, viewport) {
           if (alpha >= 64) topTerrainPixels += 1;
           if (alpha >= 64 && green > red * 1.05 && green > blue * 1.25) {
             topGrassPixels += 1;
+          }
+        }
+        if (alpha >= 64 && x >= interiorLeft && x < interiorRight) {
+          coveredInteriorPixelsByRow[y] += 1;
+        }
+        if (name.startsWith("goal-") && y >= 80 && y < surface.height - 10) {
+          if (x === 0) {
+            bodyEdgeRows += 1;
+            if (alpha === 255) opaqueLeftBodyEdgeRows += 1;
+            minimumLeftBodyEdgeAlpha = Math.min(minimumLeftBodyEdgeAlpha, alpha);
+          } else if (x === surface.width - 1) {
+            if (alpha === 255) opaqueRightBodyEdgeRows += 1;
+            minimumRightBodyEdgeAlpha = Math.min(minimumRightBodyEdgeAlpha, alpha);
           }
         }
         if (alpha < 64) continue;
@@ -465,6 +508,32 @@ async function auditViewport(cdp, viewport) {
           terrainRatio: topTerrainPixels / topPixels,
           grassRatio: topGrassPixels / topPixels
         },
+        minimumInteriorRowCoverage: Math.min(
+          ...coveredInteriorPixelsByRow.map(covered => covered / interiorWidth)
+        ),
+        startMaterialSeamDelta: name === "start" ? (() => {
+          const averageRow = y => {
+            const totals = [0, 0, 0];
+            for (let x = interiorLeft; x < interiorRight; x++) {
+              const offset = (y * surface.width + x) * 4;
+              totals[0] += pixels[offset];
+              totals[1] += pixels[offset + 1];
+              totals[2] += pixels[offset + 2];
+            }
+            return totals.map(total => total / interiorWidth);
+          };
+          const topEdge = averageRow(19);
+          const bodyEdge = averageRow(20);
+          return Math.max(...topEdge.map((channel, index) =>
+            Math.abs(channel - bodyEdge[index])
+          ));
+        })() : null,
+        bodyEdgeOpacity: bodyEdgeRows === 0 ? null : {
+          left: opaqueLeftBodyEdgeRows / bodyEdgeRows,
+          right: opaqueRightBodyEdgeRows / bodyEdgeRows,
+          minimumLeftAlpha: minimumLeftBodyEdgeAlpha,
+          minimumRightAlpha: minimumRightBodyEdgeAlpha
+        },
         alpha64Padding: {
           left: minX,
           top: minY,
@@ -479,9 +548,31 @@ async function auditViewport(cdp, viewport) {
       ),
       inspectRendered("start", {x: 0, y: 0, w: 235, h: 80}, 31),
       inspectRendered("goal-short", {x: 1060, y: 0, w: 220, h: 150}, 17),
+      inspectRendered("goal-medium", {x: 1060, y: 0, w: 220, h: 250}, 19),
       inspectRendered("goal-tall", {x: 1060, y: 0, w: 220, h: 535}, 23)
     ];
   })()`);
+  const goalBodyDecodeAudit = await evaluate(`(async () => {
+    const image = new Image();
+    image.src = "assets/environments/meadow/platforms/meadow_body_base.png?decode-audit=" + Date.now();
+    await image.decode();
+    const surface = document.createElement("canvas");
+    surface.width = 220;
+    surface.height = 48;
+    const context = surface.getContext("2d", {willReadFrequently: true});
+    context.drawImage(image, 1, 1, 2079, 756, 0, 0, 220, 48);
+    const pixels = context.getImageData(0, 0, 220, 48).data;
+    let minimumAlpha = 255;
+    for (let index = 3; index < pixels.length; index += 4) {
+      minimumAlpha = Math.min(minimumAlpha, pixels[index]);
+    }
+    return {naturalWidth: image.naturalWidth, naturalHeight: image.naturalHeight, minimumAlpha};
+  })()`);
+  assert.deepEqual(goalBodyDecodeAudit, {
+    naturalWidth: 2081,
+    naturalHeight: 758,
+    minimumAlpha: 255
+  });
   const floatingAssets = [
     "assets/environments/meadow/platforms/floating_middle.png",
     "assets/environments/meadow/platforms/floating_left.png",
@@ -520,12 +611,129 @@ async function auditViewport(cdp, viewport) {
       assert.equal(middle.x + middle.w - right.x, 1);
       assert.equal(right.x + right.w, alignment.destination.width);
     } else if (alignment.name === "start") {
-      assert.deepEqual(alignment.drawCalls, [{
-        asset: "assets/environments/meadow/platforms/start_platform.png",
+      assert.deepEqual(alignment.drawCalls, [
+        {
+          asset: "assets/environments/meadow/platforms/meadow_body_base.png",
+          source: {x: 1, y: 1, w: 2079, h: 756},
+          destination: {x: 0, y: 19, w: 235, h: 48}
+        },
+        {
+          asset: "assets/environments/meadow/platforms/meadow_body_base.png",
+          source: {x: 1, y: 1, w: 2079, h: 220.5},
+          destination: {x: 0, y: 66, w: 235, h: 14}
+        },
+        {
+          asset: "assets/environments/meadow/platforms/meadow_top.png",
+          source: {x: 0, y: 0, w: 2048, h: 176},
+          destination: {x: 0, y: 0, w: 235, h: 20}
+        }
+      ]);
+      assert.ok(
+        alignment.minimumInteriorRowCoverage > 0.99,
+        `start horizontal alpha seam: ${alignment.minimumInteriorRowCoverage}`
+      );
+      assert.ok(
+        alignment.startMaterialSeamDelta < 24,
+        `start top/body material seam delta: ${alignment.startMaterialSeamDelta}`
+      );
+    } else if (alignment.name.startsWith("goal-")) {
+      const top = alignment.drawCalls.at(-1);
+      const body = alignment.drawCalls.slice(0, -1);
+      assert.deepEqual(top, {
+        asset: "assets/environments/meadow/platforms/meadow_top.png",
         source: null,
-        destination: {x: 0, y: 0, w: 235, h: 80}
-      }]);
+        destination: {x: 0, y: 0, w: 220, h: 80}
+      });
+      assert.ok(body.length > 0);
+      assert.equal(body.length, {
+        "goal-short": 2,
+        "goal-medium": 4,
+        "goal-tall": 10
+      }[alignment.name]);
+      assert.equal(
+        alignment.bodyEdgeOpacity.left,
+        1,
+        `${alignment.name} left body edge: ${JSON.stringify({
+          bodyEdgeOpacity: alignment.bodyEdgeOpacity,
+          goalBodyDecodeAudit
+        })}`
+      );
+      assert.equal(
+        alignment.bodyEdgeOpacity.right,
+        1,
+        `${alignment.name} right body edge: ${JSON.stringify(alignment.bodyEdgeOpacity)}`
+      );
+      assert.ok(body.every(call =>
+        call.asset === "assets/environments/meadow/platforms/meadow_body_base.png" &&
+        call.source !== null &&
+        call.source.x === 1 &&
+        call.source.y === 1 &&
+        call.source.w === 2079 &&
+        call.destination.x === 0 &&
+        call.destination.w === 220
+      ));
+      assert.equal(body[0].destination.y, 79);
+      assert.ok(
+        alignment.minimumInteriorRowCoverage > 0.99,
+        `${alignment.name} horizontal alpha seam: ${alignment.minimumInteriorRowCoverage}`
+      );
+      assert.ok(body.every(call =>
+        Math.abs(call.source.h / 756 - call.destination.h / 48) < 1e-9
+      ));
     }
+  }
+
+  let goalHeightScreenshot = null;
+  if (viewport.width === 1280) {
+    await evaluate(`(() => {
+      const surface = document.createElement("canvas");
+      surface.id = "meadow-goal-height-audit";
+      surface.width = 1280;
+      surface.height = 720;
+      Object.assign(surface.style, {
+        position: "fixed",
+        inset: "0",
+        width: "100vw",
+        height: "100vh",
+        zIndex: "2147483647"
+      });
+      const context = surface.getContext("2d");
+      context.fillStyle = "#cfeafa";
+      context.fillRect(0, 0, surface.width, surface.height);
+      context.fillStyle = "#91c979";
+      context.fillRect(0, 670, surface.width, 50);
+      context.strokeStyle = "rgba(34, 76, 45, 0.4)";
+      context.beginPath();
+      context.moveTo(0, 670.5);
+      context.lineTo(surface.width, 670.5);
+      context.stroke();
+      const towers = [
+        {label: "LOW 150 px", drawX: 100, height: 150, seed: 17},
+        {label: "MEDIUM 250 px", drawX: 500, height: 250, seed: 19},
+        {label: "HIGH 535 px / 10 rows", drawX: 900, height: 535, seed: 23}
+      ];
+      context.font = "bold 18px sans-serif";
+      context.textAlign = "center";
+      context.textBaseline = "bottom";
+      for (const tower of towers) {
+        const y = 670 - tower.height;
+        MEADOW_ASSET_VISUALS.drawPlatformBase(
+          context,
+          {x: 1060, y, w: 220, h: tower.height},
+          tower.drawX,
+          tower.seed
+        );
+        context.fillStyle = "#24472d";
+        context.fillText(tower.label, tower.drawX + 110, Math.max(24, y - 10));
+      }
+      document.body.appendChild(surface);
+    })()`);
+    await delay(100);
+    goalHeightScreenshot = await capture(
+      cdp,
+      "1280x720-meadow-goal-body-low-medium-high.png"
+    );
+    await evaluate(`document.getElementById("meadow-goal-height-audit")?.remove()`);
   }
 
   const seedAudits = [];
@@ -702,6 +910,7 @@ async function auditViewport(cdp, viewport) {
     screenshots: {
       menuScreenshot,
       gameplayScreenshot,
+      goalHeightScreenshot,
       tutorialScreenshot,
       devAlignmentScreenshot
     }

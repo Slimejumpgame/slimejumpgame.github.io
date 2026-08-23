@@ -5,21 +5,21 @@
     const ASSET_PATHS = Object.freeze({
       background: "assets/environments/meadow/background/meadow_background.png",
       decor: "assets/environments/meadow/decor/meadow_decor.png",
-      platforms: "assets/environments/meadow/platforms/meadow_tileset.png",
       floating_left: "assets/environments/meadow/platforms/floating_left.png",
       floating_middle: "assets/environments/meadow/platforms/floating_middle.png",
       floating_right: "assets/environments/meadow/platforms/floating_right.png",
-      start_platform: "assets/environments/meadow/platforms/start_platform.png",
+      meadow_top: "assets/environments/meadow/platforms/meadow_top.png",
+      meadow_body_base: "assets/environments/meadow/platforms/meadow_body_base.png",
       portal: "assets/environments/meadow/portal/meadow_portal_props.png"
     });
     const SOURCE_SIZES = Object.freeze({
       background: Object.freeze({w: 1672, h: 941}),
       decor: Object.freeze({w: 1448, h: 1086}),
-      platforms: Object.freeze({w: 1448, h: 1086}),
       floating_left: Object.freeze({w: 112, h: 127}),
       floating_middle: Object.freeze({w: 300, h: 127}),
       floating_right: Object.freeze({w: 108, h: 127}),
-      start_platform: Object.freeze({w: 471, h: 119}),
+      meadow_top: Object.freeze({w: 2048, h: 745}),
+      meadow_body_base: Object.freeze({w: 2081, h: 758}),
       portal: Object.freeze({w: 1448, h: 1086})
     });
     const DECOR_SPRITES = Object.freeze({
@@ -41,7 +41,15 @@
         rightWidth: 22,
         middleMode: "horizontal-scale-or-crop"
       }),
-      start: Object.freeze({width: 235, height: 80}),
+      start: Object.freeze({
+        width: 235,
+        height: 80,
+        topHeight: 20,
+        topSourceHeight: 176,
+        bodyHeight: 48,
+        bodyOverlap: 1,
+        lastBodyMode: "crop"
+      }),
       goal: Object.freeze({
         width: 220,
         topHeight: 80,
@@ -57,15 +65,14 @@
       floating_left: Object.freeze({asset: "floating_left", w: 112, h: 127}),
       floating_middle: Object.freeze({asset: "floating_middle", w: 300, h: 127}),
       floating_right: Object.freeze({asset: "floating_right", w: 108, h: 127}),
-      start_platform: Object.freeze({asset: "start_platform", w: 471, h: 119}),
-      GOAL_TOP: Object.freeze({x: 1170, y: 672, w: 214, h: 203}),
-      // Inner crops exclude weak alpha fringes and rounded outer tile edges.
-      GOAL_BODY_A: Object.freeze({x: 320, y: 370, w: 239, h: 230}),
-      GOAL_BODY_B: Object.freeze({x: 599, y: 370, w: 238, h: 230}),
-      GOAL_BODY_C: Object.freeze({x: 876, y: 370, w: 240, h: 230}),
-      GOAL_BODY_D: Object.freeze({x: 317, y: 627, w: 242, h: 229}),
-      GOAL_BODY_E: Object.freeze({x: 600, y: 627, w: 239, h: 229}),
-      GOAL_BODY_F: Object.freeze({x: 877, y: 626, w: 240, h: 231})
+      meadow_top: Object.freeze({asset: "meadow_top", w: 2048, h: 745}),
+      // The normalized body texture is fully opaque through every outer edge.
+      meadow_body_base: Object.freeze({
+        asset: "meadow_body_base",
+        w: 2081,
+        h: 758,
+        source: Object.freeze({x: 1, y: 1, w: 2079, h: 756})
+      })
     });
     const FLOATING_SLOT_NAMES = Object.freeze([
       "floating_left",
@@ -73,14 +80,6 @@
       "floating_right"
     ]);
     const FLOATING_SEAM_OVERLAP = 1;
-    const GOAL_BODY_SLOT_NAMES = Object.freeze([
-      "GOAL_BODY_A",
-      "GOAL_BODY_B",
-      "GOAL_BODY_C",
-      "GOAL_BODY_D",
-      "GOAL_BODY_E",
-      "GOAL_BODY_F"
-    ]);
     const MEADOW_ASSET_MANIFEST = Object.freeze({
       biome: "meadow",
       paths: ASSET_PATHS,
@@ -218,13 +217,6 @@
       return true;
     }
 
-    function mixVisualSeed(value) {
-      let mixed = value >>> 0;
-      mixed = Math.imul(mixed ^ (mixed >>> 16), 0x7feb352d);
-      mixed = Math.imul(mixed ^ (mixed >>> 15), 0x846ca68b);
-      return (mixed ^ (mixed >>> 16)) >>> 0;
-    }
-
     function resolvePlatformRole(platform) {
       if (!platform || platform.lastBubbleSupport) return null;
       if (
@@ -243,77 +235,87 @@
       return null;
     }
 
-    function getGoalBodySprite(platform, levelSeed, rowIndex, previousIndex) {
-      const geometrySalt = (
-        Math.imul(Math.round(platform.y * 1000), 0x1f123bb5) ^
-        Math.imul(Math.round(platform.h * 1000), 0x5f356495)
-      ) >>> 0;
-      const mixed = mixVisualSeed(
-        ((Number(levelSeed) || 0) >>> 0) ^
-        VISUAL_SEED_SALT ^
-        geometrySalt ^
-        Math.imul(rowIndex + 1, 0x6d2b79f5)
-      );
-      let index = mixed % GOAL_BODY_SLOT_NAMES.length;
-      if (index === previousIndex) {
-        index = (index + 1 + ((mixed >>> 8) % (GOAL_BODY_SLOT_NAMES.length - 1))) %
-          GOAL_BODY_SLOT_NAMES.length;
-      }
-      const slotName = GOAL_BODY_SLOT_NAMES[index];
-      return {index, slotName, sprite: PLATFORM_SLOTS[slotName]};
-    }
-
-    function drawGoalPlatform(context, image, platform, drawX, levelSeed) {
+    function drawGoalPlatform(context, platform, drawX) {
       const contract = PLATFORM_VISUAL_CONTRACT.goal;
       const topCapHeight = Math.min(contract.topHeight, platform.h);
       const blockBottom = platform.y + platform.h;
+      const bodySlot = PLATFORM_SLOTS.meadow_body_base;
+      const bodySource = bodySlot.source;
+      const bodyImage = assets[bodySlot.asset].image;
 
       if (platform.h > topCapHeight) {
         let destinationY = platform.y + topCapHeight - contract.bodyOverlap;
-        let rowIndex = 0;
-        let previousIndex = -1;
         while (destinationY < blockBottom) {
-          const selection = getGoalBodySprite(
-            platform,
-            levelSeed,
-            rowIndex,
-            previousIndex
-          );
           const destinationHeight = Math.min(
             contract.bodyHeight,
             blockBottom - destinationY
           );
-          const sourceHeight = selection.sprite.h *
+          const sourceHeight = bodySource.h *
             (destinationHeight / contract.bodyHeight);
           context.drawImage(
-            image,
-            selection.sprite.x,
-            selection.sprite.y,
-            selection.sprite.w,
+            bodyImage,
+            bodySource.x,
+            bodySource.y,
+            bodySource.w,
             sourceHeight,
             drawX,
             destinationY,
             platform.w,
             destinationHeight
           );
-          previousIndex = selection.index;
-          rowIndex += 1;
           destinationY += contract.bodyHeight - contract.bodyOverlap;
         }
       }
 
       // Draw last so its lower edge covers the one-pixel body overlap at the seam.
-      const topSlot = PLATFORM_SLOTS.GOAL_TOP;
       context.drawImage(
-        image,
-        topSlot.x,
-        topSlot.y,
-        topSlot.w,
-        topSlot.h,
+        assets[PLATFORM_SLOTS.meadow_top.asset].image,
         drawX,
         platform.y,
         platform.w,
         topCapHeight
+      );
+    }
+
+    function drawStartPlatform(context, platform, drawX) {
+      const contract = PLATFORM_VISUAL_CONTRACT.start;
+      const bodySlot = PLATFORM_SLOTS.meadow_body_base;
+      const bodySource = bodySlot.source;
+      const blockBottom = platform.y + platform.h;
+      let destinationY = platform.y + contract.topHeight - contract.bodyOverlap;
+
+      while (destinationY < blockBottom) {
+        const destinationHeight = Math.min(
+          contract.bodyHeight,
+          blockBottom - destinationY
+        );
+        const sourceHeight = bodySource.h *
+          (destinationHeight / contract.bodyHeight);
+        context.drawImage(
+          assets[bodySlot.asset].image,
+          bodySource.x,
+          bodySource.y,
+          bodySource.w,
+          sourceHeight,
+          drawX,
+          destinationY,
+          platform.w,
+          destinationHeight
+        );
+        destinationY += contract.bodyHeight - contract.bodyOverlap;
+      }
+
+      const topSlot = PLATFORM_SLOTS.meadow_top;
+      context.drawImage(
+        assets[topSlot.asset].image,
+        0,
+        0,
+        topSlot.w,
+        contract.topSourceHeight,
+        drawX,
+        platform.y,
+        platform.w,
+        contract.topHeight
       );
     }
 
@@ -370,11 +372,16 @@
           isReady(PLATFORM_SLOTS[slotName].asset)
         )) return false;
       } else if (role === "START_PLATFORM") {
-        if (!isReady(PLATFORM_SLOTS.start_platform.asset)) return false;
-      } else if (!isReady("platforms")) {
-        return false;
+        if (
+          !isReady(PLATFORM_SLOTS.meadow_top.asset) ||
+          !isReady(PLATFORM_SLOTS.meadow_body_base.asset)
+        ) return false;
+      } else if (role === "GOAL_TOWER") {
+        if (
+          !isReady(PLATFORM_SLOTS.meadow_top.asset) ||
+          !isReady(PLATFORM_SLOTS.meadow_body_base.asset)
+        ) return false;
       }
-      const atlasImage = assets.platforms.image;
 
       context.save();
       traceRoundedRect(context, drawX, platform.y, platform.w, platform.h, 10);
@@ -382,14 +389,11 @@
       context.imageSmoothingEnabled = true;
       context.imageSmoothingQuality = "high";
       if (role === "GOAL_TOWER") {
-        drawGoalPlatform(context, atlasImage, platform, drawX, levelSeed);
+        drawGoalPlatform(context, platform, drawX);
       } else if (role === "FLOATING") {
         drawFloatingPlatform(context, platform, drawX);
       } else {
-        context.drawImage(
-          assets[PLATFORM_SLOTS.start_platform.asset].image,
-          drawX, platform.y, platform.w, platform.h
-        );
+        drawStartPlatform(context, platform, drawX);
       }
       context.restore();
 
