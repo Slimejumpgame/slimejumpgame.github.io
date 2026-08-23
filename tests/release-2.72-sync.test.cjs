@@ -84,11 +84,11 @@ for (const relativePath of wwwFiles) {
 }
 
 const gradle = read(projectRoot, "android/app/build.gradle");
-assert.match(gradle, /versionCode 16/);
-assert.match(gradle, /versionName "2\.71"/);
+assert.match(gradle, /versionCode 17/);
+assert.match(gradle, /versionName "2\.72"/);
 const publishedUpdate = JSON.parse(read(projectRoot, "android-update.json"));
-assert.equal(publishedUpdate.android.versionCode, 15);
-assert.equal(publishedUpdate.android.versionName, "2.70");
+assert.equal(publishedUpdate.android.versionCode, 16);
+assert.equal(publishedUpdate.android.versionName, "2.71");
 
 const index = read(androidRoot, "index.html");
 const biomes = read(androidRoot, "js/biomes.js");
@@ -206,7 +206,7 @@ assert.match(
   /@media \(orientation: landscape\) and \(hover: none\) and \(pointer: coarse\) \{[\s\S]*?#mainMenuScreen \.menuStatusBadge--rank\s*\{[\s\S]*?border-radius: clamp\(9px, 2\.5dvh, 13px\);[\s\S]*?background: rgba\(16, 28, 45, 0\.82\);/
 );
 const highscores = read(androidRoot, "js/slime-jump-highscores.js");
-assert.match(highscores, /const GAME_VERSION = "2\.71";/);
+assert.match(highscores, /const GAME_VERSION = "2\.72";/);
 
 const reset = read(androidRoot, "js/slime-progress-reset.js");
 const migration = read(androidRoot, "js/slime-perk-migration.js");
@@ -215,7 +215,7 @@ assert.match(reset, /const PREFERENCE_RESET_VERSION = "preferences-reset-2\.58";
 assert.match(migration, /const MIGRATION_VERSION = "perk-migration-2\.65";/);
 
 console.log(
-  `v2.71 release sync tests passed (${wwwFiles.length} web assets, ` +
+  `v2.72 release sync tests passed (${wwwFiles.length} web assets, ` +
   `${biomeIds.length} biomes, ${newMusicThemeIds.length} new music themes, ` +
   `${achievementIds.length} achievements).`
 );

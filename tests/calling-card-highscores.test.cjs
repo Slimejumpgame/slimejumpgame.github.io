@@ -1040,7 +1040,7 @@ function assertStaticReleaseGuards() {
   assert.match(migrationWithoutComments, /add column if not exists calling_card_snapshot jsonb/i);
 
   assert.match(read("js/slime-progress-reset.js"), /progress-reset-2\.43/);
-  assert.match(read("js/slime-jump-highscores.js"), /GAME_VERSION = "2\.71"/);
+  assert.match(read("js/slime-jump-highscores.js"), /GAME_VERSION = "2\.72"/);
 }
 
 (async () => {
