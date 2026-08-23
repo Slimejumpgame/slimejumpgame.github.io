@@ -297,7 +297,7 @@ function assertAnchorStepTimer() {
 function assertAnchorStepWarningTimingAndBorderOnly() {
   const source = read("js/renderer.js");
   const start = source.indexOf("  const ANCHOR_STEP_WARNING_BLINK_COUNT");
-  const end = source.indexOf("  function drawPlatforms(biome)", start);
+  const end = source.indexOf("  function drawPlatforms(", start);
   assert.ok(start >= 0 && end > start);
 
   const platform = {
@@ -372,7 +372,7 @@ function assertAnchorStepWarningTimingAndBorderOnly() {
 
   const borderSource = source.slice(
     source.indexOf("  function drawAnchorStepWarningBorder"),
-    source.indexOf("  function drawPlatforms(biome)")
+    source.indexOf("  function drawPlatforms(")
   );
   assert.match(borderSource, /ctx\.stroke\(\);/);
   assert.doesNotMatch(borderSource, /ctx\.fill\(\);|ctx\.fillStyle/);
@@ -381,7 +381,7 @@ function assertAnchorStepWarningTimingAndBorderOnly() {
 function assertGhostStepOutlineIsVisualOnly() {
   const source = read("js/renderer.js");
   const start = source.indexOf("  function drawGhostStepFadeOutline");
-  const end = source.indexOf("  function drawPlatforms(biome)", start);
+  const end = source.indexOf("  function drawPlatforms(", start);
   assert.ok(start >= 0 && end > start);
 
   const drawCalls = [];

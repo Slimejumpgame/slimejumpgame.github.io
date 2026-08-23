@@ -230,6 +230,16 @@
     );
   }
 
+  function isMeadowAssetVisualsActive(biome) {
+    return (
+      biome?.id === "meadow" &&
+      state !== "menu" &&
+      typeof isTutorialStage === "function" &&
+      !isTutorialStage() &&
+      typeof MEADOW_ASSET_VISUALS !== "undefined"
+    );
+  }
+
   function drawEarthPlatformDetail(x, y, w, h, style) {
     ctx.fillStyle = style.detailColor;
     ctx.globalAlpha = 0.42;
@@ -447,13 +457,14 @@
     ctx.restore();
   }
 
-  function drawPlatforms(biome) {
+  function drawPlatforms(biome, useMeadowAssets = false) {
     const level = currentLevel();
     const platforms = getPlatforms();
 
     for (const p of platforms) {
       let drawX = p.x;
       const standardPlatform = isStandardPlatform(p);
+      let meadowAssetPlatform = false;
       if (
         p.fragile &&
         p.fallingPlatform.triggered &&
@@ -472,46 +483,53 @@
 
       ctx.save();
       if (p.fade) ctx.globalAlpha = p.fadeData.opacity;
+      meadowAssetPlatform = Boolean(
+        useMeadowAssets &&
+        !p.lastBubbleSupport &&
+        MEADOW_ASSET_VISUALS.drawPlatformBase(ctx, p, drawX, level.seed)
+      );
 
-      ctx.fillStyle = p.fragile
-        ? "#815142"
-        : p.moving
-          ? "#5e7592"
-          : p.conveyor
-            ? "#4a4f5b"
-            : p.fade
-              ? "#584f87"
-              : p.ice
-                ? "#75bad1"
-                : p.spikePlatform
-                  ? "#5b4e58"
-                  : standardPlatform
-                    ? biome.platform.body
-                    : "#3c5872";
-      roundedRect(drawX, p.y, p.w, p.h, 10);
-      ctx.fill();
+      if (!meadowAssetPlatform) {
+        ctx.fillStyle = p.fragile
+          ? "#815142"
+          : p.moving
+            ? "#5e7592"
+            : p.conveyor
+              ? "#4a4f5b"
+              : p.fade
+                ? "#584f87"
+                : p.ice
+                  ? "#75bad1"
+                  : p.spikePlatform
+                    ? "#5b4e58"
+                    : standardPlatform
+                      ? biome.platform.body
+                      : "#3c5872";
+        roundedRect(drawX, p.y, p.w, p.h, 10);
+        ctx.fill();
 
-      ctx.fillStyle = p.fragile
-        ? "#ff9d61"
-        : p.moving
-          ? "#a7d2ff"
-          : p.conveyor
-            ? "#ffad45"
-            : p.fade
-              ? "#d5b9ff"
-              : p.ice
-                ? "#e8fbff"
-                : p.spikePlatform
-                  ? (p.spikeData.dangerous
-                      ? "#ff705d"
-                      : p.spikeData.warning
-                        ? "#ffc15c"
-                        : "#d98a69")
-                  : standardPlatform
-                    ? biome.platform.top
-                    : "#77c68a";
-      roundedRect(drawX, p.y, p.w, Math.min(12, p.h), 8);
-      ctx.fill();
+        ctx.fillStyle = p.fragile
+          ? "#ff9d61"
+          : p.moving
+            ? "#a7d2ff"
+            : p.conveyor
+              ? "#ffad45"
+              : p.fade
+                ? "#d5b9ff"
+                : p.ice
+                  ? "#e8fbff"
+                  : p.spikePlatform
+                    ? (p.spikeData.dangerous
+                        ? "#ff705d"
+                        : p.spikeData.warning
+                          ? "#ffc15c"
+                          : "#d98a69")
+                    : standardPlatform
+                      ? biome.platform.top
+                      : "#77c68a";
+        roundedRect(drawX, p.y, p.w, Math.min(12, p.h), 8);
+        ctx.fill();
+      }
 
       if (p.fade) {
         ctx.strokeStyle = "rgba(230,215,255,0.8)";
@@ -520,6 +538,12 @@
         roundedRect(drawX + 4, p.y + 4, p.w - 8, p.h - 8, 7);
         ctx.stroke();
         ctx.setLineDash([]);
+      }
+
+      if (p.moving && meadowAssetPlatform) {
+        ctx.fillStyle = "rgba(167,210,255,0.62)";
+        roundedRect(drawX + 3, p.y + 2, p.w - 6, 7, 5);
+        ctx.fill();
       }
 
       if (p.ice) {
@@ -614,7 +638,7 @@
           ctx.arc(x, p.y + Math.min(20, p.h * 0.67), 5, 0, Math.PI * 2);
           ctx.fill();
         }
-      } else if (!p.fade && !p.ice && !p.spikePlatform) {
+      } else if (!p.fade && !p.ice && !p.spikePlatform && !meadowAssetPlatform) {
         ctx.fillStyle = "rgba(0,0,0,0.16)";
         for (let x = drawX + 18; x < drawX + p.w - 8; x += 38) {
           ctx.beginPath();
@@ -623,7 +647,7 @@
         }
       }
 
-      if (standardPlatform) {
+      if (standardPlatform && !meadowAssetPlatform) {
         drawStandardPlatformDetails(drawX, p.y, p.w, p.h, biome.platform);
       }
 
@@ -670,27 +694,32 @@
     for (const s of level.spikes) drawDeathZone(s, biome);
   }
 
-  function drawGoal() {
+  function drawGoal(useMeadowAssets = false) {
     const level = currentLevel();
     const g = level.goal;
-    const pulse = 1 + Math.sin(worldTime * 4) * 0.06;
-    ctx.save();
-    ctx.translate(g.x + g.w / 2, g.y + g.h / 2);
-    ctx.scale(pulse, pulse);
-    ctx.shadowColor = "#b76cff";
-    ctx.shadowBlur = 35;
-    ctx.fillStyle = "rgba(157,83,255,0.35)";
-    ctx.beginPath();
-    ctx.ellipse(0, 0, g.w / 2, g.h / 2, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#dfc0ff";
-    ctx.lineWidth = 9;
-    ctx.stroke();
-    ctx.fillStyle = "rgba(20,7,43,0.72)";
-    ctx.beginPath();
-    ctx.ellipse(0, 0, g.w * 0.29, g.h * 0.35, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    const meadowAssetPortal = Boolean(
+      useMeadowAssets && MEADOW_ASSET_VISUALS.drawPortal(ctx, g)
+    );
+    if (!meadowAssetPortal) {
+      const pulse = 1 + Math.sin(worldTime * 4) * 0.06;
+      ctx.save();
+      ctx.translate(g.x + g.w / 2, g.y + g.h / 2);
+      ctx.scale(pulse, pulse);
+      ctx.shadowColor = "#b76cff";
+      ctx.shadowBlur = 35;
+      ctx.fillStyle = "rgba(157,83,255,0.35)";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, g.w / 2, g.h / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#dfc0ff";
+      ctx.lineWidth = 9;
+      ctx.stroke();
+      ctx.fillStyle = "rgba(20,7,43,0.72)";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, g.w * 0.29, g.h * 0.35, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
 
     const goalLabel = typeof level.goalLabel === "string"
       ? level.goalLabel.trim()
@@ -2751,14 +2780,26 @@
     ctx.translate(sx, sy);
 
     const biome = getBiomeForLevel(levelIndex + 1);
-    drawBackground(biome);
-    drawPlatforms(biome);
-    drawGoal();
+    const meadowAssetsActive = isMeadowAssetVisualsActive(biome);
+    const meadowScene = meadowAssetsActive
+      ? MEADOW_ASSET_VISUALS.getScene(currentLevel())
+      : null;
+    if (!meadowAssetsActive || !MEADOW_ASSET_VISUALS.drawBackground(ctx, W, H)) {
+      drawBackground(biome);
+    }
+    if (meadowAssetsActive) {
+      MEADOW_ASSET_VISUALS.drawBackDecor(ctx, meadowScene);
+    }
+    drawPlatforms(biome, meadowAssetsActive);
+    drawGoal(meadowAssetsActive);
     drawStars();
     drawEnemies();
     drawTrajectory();
     drawPlayer();
     drawParticles();
+    if (meadowAssetsActive) {
+      MEADOW_ASSET_VISUALS.drawForegroundDecor(ctx, meadowScene);
+    }
     drawTutorialDragHand();
     drawTutorialHeadline();
 
