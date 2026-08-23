@@ -9,6 +9,7 @@
       floating_left: "assets/environments/meadow/platforms/floating_left.png",
       floating_middle: "assets/environments/meadow/platforms/floating_middle.png",
       floating_right: "assets/environments/meadow/platforms/floating_right.png",
+      start_platform: "assets/environments/meadow/platforms/start_platform.png",
       portal: "assets/environments/meadow/portal/meadow_portal_props.png"
     });
     const SOURCE_SIZES = Object.freeze({
@@ -18,6 +19,7 @@
       floating_left: Object.freeze({w: 112, h: 127}),
       floating_middle: Object.freeze({w: 300, h: 127}),
       floating_right: Object.freeze({w: 108, h: 127}),
+      start_platform: Object.freeze({w: 471, h: 119}),
       portal: Object.freeze({w: 1448, h: 1086})
     });
     const DECOR_SPRITES = Object.freeze({
@@ -55,7 +57,7 @@
       floating_left: Object.freeze({asset: "floating_left", w: 112, h: 127}),
       floating_middle: Object.freeze({asset: "floating_middle", w: 300, h: 127}),
       floating_right: Object.freeze({asset: "floating_right", w: 108, h: 127}),
-      START_PLATFORM: Object.freeze({x: 680, y: 220, w: 471, h: 119}),
+      start_platform: Object.freeze({asset: "start_platform", w: 471, h: 119}),
       GOAL_TOP: Object.freeze({x: 1170, y: 672, w: 214, h: 203}),
       // Inner crops exclude weak alpha fringes and rounded outer tile edges.
       GOAL_BODY_A: Object.freeze({x: 320, y: 370, w: 239, h: 230}),
@@ -367,6 +369,8 @@
         if (!FLOATING_SLOT_NAMES.every(slotName =>
           isReady(PLATFORM_SLOTS[slotName].asset)
         )) return false;
+      } else if (role === "START_PLATFORM") {
+        if (!isReady(PLATFORM_SLOTS.start_platform.asset)) return false;
       } else if (!isReady("platforms")) {
         return false;
       }
@@ -382,10 +386,8 @@
       } else if (role === "FLOATING") {
         drawFloatingPlatform(context, platform, drawX);
       } else {
-        const sprite = PLATFORM_SLOTS.START_PLATFORM;
         context.drawImage(
-          atlasImage,
-          sprite.x, sprite.y, sprite.w, sprite.h,
+          assets[PLATFORM_SLOTS.start_platform.asset].image,
           drawX, platform.y, platform.w, platform.h
         );
       }

@@ -43,6 +43,7 @@ const assetExpectations = Object.freeze({
   "assets/environments/meadow/platforms/floating_left.png": [112, 127],
   "assets/environments/meadow/platforms/floating_middle.png": [300, 127],
   "assets/environments/meadow/platforms/floating_right.png": [108, 127],
+  "assets/environments/meadow/platforms/start_platform.png": [471, 119],
   "assets/environments/meadow/portal/meadow_portal_props.png": [1448, 1086]
 });
 const assetHashesBefore = new Map();
@@ -167,7 +168,7 @@ vm.runInContext(`${read("js/visual-meadow-assets.js")}
   globalThis.meadowAssetVisualsForTest = MEADOW_ASSET_VISUALS;
 `, visualContext, {filename: "js/visual-meadow-assets.js"});
 const visualApi = visualContext.meadowAssetVisualsForTest;
-assert.equal(imageConstructionCount, 7, "assets must be constructed once at module load");
+assert.equal(imageConstructionCount, 8, "assets must be constructed once at module load");
 assert.equal(visualApi.areAllReady(), true);
 assert.deepEqual(
   JSON.parse(JSON.stringify(visualApi.getStatus().paths)),
@@ -178,6 +179,7 @@ assert.deepEqual(
     floating_left: "assets/environments/meadow/platforms/floating_left.png",
     floating_middle: "assets/environments/meadow/platforms/floating_middle.png",
     floating_right: "assets/environments/meadow/platforms/floating_right.png",
+    start_platform: "assets/environments/meadow/platforms/start_platform.png",
     portal: "assets/environments/meadow/portal/meadow_portal_props.png"
   }
 );
@@ -203,7 +205,7 @@ assert.deepEqual(Object.keys(meadowManifest.platforms.slots), [
   "floating_left",
   "floating_middle",
   "floating_right",
-  "START_PLATFORM",
+  "start_platform",
   "GOAL_TOP",
   "GOAL_BODY_A",
   "GOAL_BODY_B",
@@ -262,7 +264,7 @@ for (const level of generatedLevels) {
     "asset rendering must not mutate level geometry or gameplay data"
   );
 }
-assert.equal(imageConstructionCount, 7, "draw calls must not construct additional images");
+assert.equal(imageConstructionCount, 8, "draw calls must not construct additional images");
 assert.ok(drawCalls.length > 0);
 assert.ok(
   drawCalls.every(call => call.length === 5 || call.length === 9),
@@ -311,8 +313,12 @@ drawCalls.length = 0;
 assert.equal(visualApi.drawPlatformBase(fakeCanvasContext, startPlatform), true);
 assert.equal(drawCalls.length, 1, "the start platform must remain one full-sprite draw");
 assertDrawBounds(startPlatform, drawCalls);
-assert.deepEqual(drawCalls[0].slice(1, 5), [680, 220, 471, 119]);
-assert.deepEqual(drawCalls[0].slice(5, 9), [0, 640, 235, 80]);
+assert.equal(drawCalls[0].length, 5);
+assert.equal(
+  drawCalls[0][0].src,
+  "assets/environments/meadow/platforms/start_platform.png"
+);
+assert.deepEqual(drawCalls[0].slice(1, 5), [0, 640, 235, 80]);
 
 const goalTopCapSource = [1170, 672, 214, 203];
 const goalBodySources = [
@@ -439,6 +445,7 @@ assert.match(visualSource, /function drawFloatingPlatform/);
 assert.match(visualSource, /function drawGoalPlatform/);
 assert.match(visualSource, /const FLOATING_SEAM_OVERLAP = 1;/);
 assert.doesNotMatch(visualSource, /FLOAT_LEFT|FLOAT_MIDDLE|FLOAT_RIGHT/);
+assert.doesNotMatch(visualSource, /START_PLATFORM: Object\.freeze\(\{x:/);
 const standardPlatformSource = visualSource.slice(
   visualSource.indexOf("    function drawFloatingPlatform"),
   visualSource.indexOf("    function drawPortal")

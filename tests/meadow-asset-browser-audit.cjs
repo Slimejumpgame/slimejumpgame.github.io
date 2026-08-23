@@ -128,6 +128,11 @@ async function auditViewport(cdp, viewport) {
   })()`);
   assert.equal(startup.loaded, true);
   assert.equal(startup.status.ready, true);
+  assert.equal(startup.status.loaded.start_platform, true);
+  assert.equal(
+    startup.status.paths.start_platform,
+    "assets/environments/meadow/platforms/start_platform.png"
+  );
   assert.equal(startup.state, "menu");
   assert.equal(startup.menuGuard, false);
   assert.equal(startup.menuVisible, true);
@@ -215,6 +220,12 @@ async function auditViewport(cdp, viewport) {
           drawCalls.push({
             source: {x: args[1], y: args[2], w: args[3], h: args[4]},
             destination: {x: args[5], y: args[6], w: args[7], h: args[8]}
+          });
+        } else if (args.length === 5) {
+          drawCalls.push({
+            asset: args[0].getAttribute?.("src") ?? args[0].src,
+            source: null,
+            destination: {x: args[1], y: args[2], w: args[3], h: args[4]}
           });
         }
         return drawImage(...args);
@@ -331,8 +342,12 @@ async function auditViewport(cdp, viewport) {
   assert.ok(gameplay.massiveBlocks.goal.height >= 500);
   assert.equal(gameplay.massiveBlocks.start.drawCalls.length, 1);
   assert.deepEqual(
-    gameplay.massiveBlocks.start.drawCalls[0].source,
-    {x: 680, y: 220, w: 471, h: 119}
+    gameplay.massiveBlocks.start.drawCalls[0],
+    {
+      asset: "assets/environments/meadow/platforms/start_platform.png",
+      source: null,
+      destination: {x: 0, y: 0, w: 235, h: 80}
+    }
   );
   const goalDrawCalls = gameplay.massiveBlocks.goal.drawCalls;
   assert.ok(goalDrawCalls.length >= 3);
@@ -504,6 +519,12 @@ async function auditViewport(cdp, viewport) {
       assert.equal(left.x + left.w - middle.x, 1);
       assert.equal(middle.x + middle.w - right.x, 1);
       assert.equal(right.x + right.w, alignment.destination.width);
+    } else if (alignment.name === "start") {
+      assert.deepEqual(alignment.drawCalls, [{
+        asset: "assets/environments/meadow/platforms/start_platform.png",
+        source: null,
+        destination: {x: 0, y: 0, w: 235, h: 80}
+      }]);
     }
   }
 
