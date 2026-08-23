@@ -924,6 +924,11 @@
 
   async function returnToMenu() {
     if (pendingGameOverScore && !(await commitPendingHighScore())) return false;
+    if (window.SlimeRunRecovery?.neutralizeForMenu?.() !== true) {
+      console.error("[RunRecovery] Run konnte vor dem Hauptmenue nicht sicher neutralisiert werden.");
+      showGameToast("Hauptmenue konnte nicht sicher geoeffnet werden.");
+      return false;
+    }
     enterRunStage();
     window.SlimePerks?.clearRunPerkSnapshot?.();
     state = "menu";

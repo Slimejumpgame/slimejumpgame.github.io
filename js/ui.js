@@ -2807,8 +2807,7 @@
   function canChangePerkSelection() {
     return state === "menu" &&
       !ui.menu.classList.contains("hidden") &&
-      !ui.perksScreen.classList.contains("hidden") &&
-      window.SlimeRunRecovery?.hasStoredRecord?.() !== true;
+      !ui.perksScreen.classList.contains("hidden");
   }
 
   function renderPerksScreen() {
