@@ -70,6 +70,7 @@
       "floating_middle",
       "floating_right"
     ]);
+    const FLOATING_SEAM_OVERLAP = 1;
     const GOAL_BODY_SLOT_NAMES = Object.freeze([
       "GOAL_BODY_A",
       "GOAL_BODY_B",
@@ -331,17 +332,24 @@
         platform.w - leftWidth
       );
       const middleWidth = platform.w - leftWidth - rightWidth;
+      const seamOverlap = Math.min(
+        FLOATING_SEAM_OVERLAP,
+        Math.max(0, middleWidth / 2)
+      );
       const left = assets[PLATFORM_SLOTS.floating_left.asset].image;
       const middle = assets[PLATFORM_SLOTS.floating_middle.asset].image;
       const right = assets[PLATFORM_SLOTS.floating_right.asset].image;
 
       context.drawImage(
-        left,
-        drawX, platform.y, leftWidth, contract.height
+        middle,
+        drawX + leftWidth - seamOverlap,
+        platform.y,
+        middleWidth + seamOverlap * 2,
+        contract.height
       );
       context.drawImage(
-        middle,
-        drawX + leftWidth, platform.y, middleWidth, contract.height
+        left,
+        drawX, platform.y, leftWidth, contract.height
       );
       context.drawImage(
         right,

@@ -468,8 +468,8 @@ async function auditViewport(cdp, viewport) {
     ];
   })()`);
   const floatingAssets = [
-    "assets/environments/meadow/platforms/floating_left.png",
     "assets/environments/meadow/platforms/floating_middle.png",
+    "assets/environments/meadow/platforms/floating_left.png",
     "assets/environments/meadow/platforms/floating_right.png"
   ];
   for (const alignment of alphaAlignment) {
@@ -492,16 +492,17 @@ async function auditViewport(cdp, viewport) {
         floatingAssets
       );
       assert.ok(alignment.drawCalls.every(call => call.source === null));
-      const [left, middle, right] = alignment.drawCalls.map(call => call.destination);
+      const [middle, left, right] = alignment.drawCalls.map(call => call.destination);
       assert.equal(left.x, 0);
       assert.equal(left.y, 0);
       assert.equal(left.w, 23);
       assert.equal(left.h, 26);
-      assert.equal(middle.x, 23);
-      assert.equal(middle.w, alignment.destination.width - 45);
+      assert.equal(middle.x, 22);
+      assert.equal(middle.w, alignment.destination.width - 43);
       assert.equal(right.x, alignment.destination.width - 22);
       assert.equal(right.w, 22);
-      assert.equal(middle.x + middle.w, right.x);
+      assert.equal(left.x + left.w - middle.x, 1);
+      assert.equal(middle.x + middle.w - right.x, 1);
       assert.equal(right.x + right.w, alignment.destination.width);
     }
   }

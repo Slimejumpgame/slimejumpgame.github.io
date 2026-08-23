@@ -283,8 +283,8 @@ function assertDrawBounds(platform, calls) {
 }
 
 const floatingAssetPaths = [
-  "assets/environments/meadow/platforms/floating_left.png",
   "assets/environments/meadow/platforms/floating_middle.png",
+  "assets/environments/meadow/platforms/floating_left.png",
   "assets/environments/meadow/platforms/floating_right.png"
 ];
 for (const width of [100, 138, 176]) {
@@ -296,11 +296,11 @@ for (const width of [100, 138, 176]) {
   assert.ok(drawCalls.every(call => call.length === 5));
   assert.deepEqual(drawCalls.map(call => call[0].src), floatingAssetPaths);
   const destinations = drawCalls.map(call => call.slice(1, 5));
-  assert.deepEqual(destinations[0], [420, 310, 23, 26]);
-  assert.deepEqual(destinations[1], [443, 310, width - 45, 26]);
+  assert.deepEqual(destinations[0], [442, 310, width - 43, 26]);
+  assert.deepEqual(destinations[1], [420, 310, 23, 26]);
   assert.deepEqual(destinations[2], [420 + width - 22, 310, 22, 26]);
-  assert.equal(destinations[0][0] + destinations[0][2], destinations[1][0]);
-  assert.equal(destinations[1][0] + destinations[1][2], destinations[2][0]);
+  assert.equal(destinations[1][0] + destinations[1][2] - destinations[0][0], 1);
+  assert.equal(destinations[0][0] + destinations[0][2] - destinations[2][0], 1);
   assert.equal(destinations[2][0] + destinations[2][2], floatingPlatform.x + width);
 }
 assert.ok(Math.abs(23 / 112 - 26 / 127) < 0.002);
@@ -409,9 +409,11 @@ for (const specialPlatform of [
   assert.ok(drawCalls.every(call => call.length === 5));
   assert.deepEqual(drawCalls.map(call => call[0].src), floatingAssetPaths);
   assert.deepEqual(drawCalls.map(call => call[4]), [26, 26, 26]);
-  assert.equal(drawCalls[0][3], 23);
-  assert.equal(drawCalls[1][3], specialPlatform.w - 45);
+  assert.equal(drawCalls[0][3], specialPlatform.w - 43);
+  assert.equal(drawCalls[1][3], 23);
   assert.equal(drawCalls[2][3], 22);
+  assert.equal(drawCalls[1][1] + drawCalls[1][3] - drawCalls[0][1], 1);
+  assert.equal(drawCalls[0][1] + drawCalls[0][3] - drawCalls[2][1], 1);
 }
 
 drawCalls.length = 0;
@@ -435,6 +437,7 @@ assert.match(visualSource, /const PLATFORM_VISUAL_CONTRACT = Object\.freeze/);
 assert.match(visualSource, /const PLATFORM_SLOTS = Object\.freeze/);
 assert.match(visualSource, /function drawFloatingPlatform/);
 assert.match(visualSource, /function drawGoalPlatform/);
+assert.match(visualSource, /const FLOATING_SEAM_OVERLAP = 1;/);
 assert.doesNotMatch(visualSource, /FLOAT_LEFT|FLOAT_MIDDLE|FLOAT_RIGHT/);
 const standardPlatformSource = visualSource.slice(
   visualSource.indexOf("    function drawFloatingPlatform"),
