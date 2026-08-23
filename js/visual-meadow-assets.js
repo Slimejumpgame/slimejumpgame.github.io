@@ -6,12 +6,18 @@
       background: "assets/environments/meadow/background/meadow_background.png",
       decor: "assets/environments/meadow/decor/meadow_decor.png",
       platforms: "assets/environments/meadow/platforms/meadow_tileset.png",
+      floating_left: "assets/environments/meadow/platforms/floating_left.png",
+      floating_middle: "assets/environments/meadow/platforms/floating_middle.png",
+      floating_right: "assets/environments/meadow/platforms/floating_right.png",
       portal: "assets/environments/meadow/portal/meadow_portal_props.png"
     });
     const SOURCE_SIZES = Object.freeze({
       background: Object.freeze({w: 1672, h: 941}),
       decor: Object.freeze({w: 1448, h: 1086}),
       platforms: Object.freeze({w: 1448, h: 1086}),
+      floating_left: Object.freeze({w: 112, h: 127}),
+      floating_middle: Object.freeze({w: 300, h: 127}),
+      floating_right: Object.freeze({w: 108, h: 127}),
       portal: Object.freeze({w: 1448, h: 1086})
     });
     const DECOR_SPRITES = Object.freeze({
@@ -42,14 +48,13 @@
         lastBodyMode: "crop"
       })
     });
-    // Source mappings stay isolated from the renderer. Future biome manifests
-    // can provide the same logical slots with different artwork.
+    // Standalone slots and the remaining legacy atlas mappings stay isolated
+    // from the renderer. Future biome manifests can provide the same logical
+    // slots with different artwork.
     const PLATFORM_SLOTS = Object.freeze({
-      // Runtime crops begin at the measured walkable grass line. Decorative
-      // alpha above that line must not offset terrain from its collision top.
-      FLOAT_LEFT: Object.freeze({x: 142, y: 49, w: 112, h: 127}),
-      FLOAT_MIDDLE: Object.freeze({x: 520, y: 49, w: 300, h: 127}),
-      FLOAT_RIGHT: Object.freeze({x: 1071, y: 49, w: 108, h: 127}),
+      floating_left: Object.freeze({asset: "floating_left", w: 112, h: 127}),
+      floating_middle: Object.freeze({asset: "floating_middle", w: 300, h: 127}),
+      floating_right: Object.freeze({asset: "floating_right", w: 108, h: 127}),
       START_PLATFORM: Object.freeze({x: 680, y: 220, w: 471, h: 119}),
       GOAL_TOP: Object.freeze({x: 1170, y: 672, w: 214, h: 203}),
       // Inner crops exclude weak alpha fringes and rounded outer tile edges.
@@ -60,6 +65,11 @@
       GOAL_BODY_E: Object.freeze({x: 600, y: 627, w: 239, h: 229}),
       GOAL_BODY_F: Object.freeze({x: 877, y: 626, w: 240, h: 231})
     });
+    const FLOATING_SLOT_NAMES = Object.freeze([
+      "floating_left",
+      "floating_middle",
+      "floating_right"
+    ]);
     const GOAL_BODY_SLOT_NAMES = Object.freeze([
       "GOAL_BODY_A",
       "GOAL_BODY_B",
@@ -313,7 +323,7 @@
       return true;
     }
 
-    function drawFloatingPlatform(context, image, platform, drawX) {
+    function drawFloatingPlatform(context, platform, drawX) {
       const contract = PLATFORM_VISUAL_CONTRACT.floating;
       const leftWidth = Math.min(contract.leftWidth, platform.w / 2);
       const rightWidth = Math.min(
@@ -321,23 +331,20 @@
         platform.w - leftWidth
       );
       const middleWidth = platform.w - leftWidth - rightWidth;
-      const left = PLATFORM_SLOTS.FLOAT_LEFT;
-      const middle = PLATFORM_SLOTS.FLOAT_MIDDLE;
-      const right = PLATFORM_SLOTS.FLOAT_RIGHT;
+      const left = assets[PLATFORM_SLOTS.floating_left.asset].image;
+      const middle = assets[PLATFORM_SLOTS.floating_middle.asset].image;
+      const right = assets[PLATFORM_SLOTS.floating_right.asset].image;
 
       context.drawImage(
-        image,
-        left.x, left.y, left.w, left.h,
+        left,
         drawX, platform.y, leftWidth, contract.height
       );
       context.drawImage(
-        image,
-        middle.x, middle.y, middle.w, middle.h,
+        middle,
         drawX + leftWidth, platform.y, middleWidth, contract.height
       );
       context.drawImage(
-        image,
-        right.x, right.y, right.w, right.h,
+        right,
         drawX + platform.w - rightWidth,
         platform.y,
         rightWidth,
@@ -346,10 +353,16 @@
     }
 
     function drawPlatformBase(context, platform, drawX = platform.x, levelSeed = 0) {
-      if (!isReady("platforms")) return false;
       const role = resolvePlatformRole(platform);
       if (!role) return false;
-      const image = assets.platforms.image;
+      if (role === "FLOATING") {
+        if (!FLOATING_SLOT_NAMES.every(slotName =>
+          isReady(PLATFORM_SLOTS[slotName].asset)
+        )) return false;
+      } else if (!isReady("platforms")) {
+        return false;
+      }
+      const atlasImage = assets.platforms.image;
 
       context.save();
       traceRoundedRect(context, drawX, platform.y, platform.w, platform.h, 10);
@@ -357,13 +370,13 @@
       context.imageSmoothingEnabled = true;
       context.imageSmoothingQuality = "high";
       if (role === "GOAL_TOWER") {
-        drawGoalPlatform(context, image, platform, drawX, levelSeed);
+        drawGoalPlatform(context, atlasImage, platform, drawX, levelSeed);
       } else if (role === "FLOATING") {
-        drawFloatingPlatform(context, image, platform, drawX);
+        drawFloatingPlatform(context, platform, drawX);
       } else {
         const sprite = PLATFORM_SLOTS.START_PLATFORM;
         context.drawImage(
-          image,
+          atlasImage,
           sprite.x, sprite.y, sprite.w, sprite.h,
           drawX, platform.y, platform.w, platform.h
         );

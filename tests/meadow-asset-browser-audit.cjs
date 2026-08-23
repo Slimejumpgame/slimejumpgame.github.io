@@ -378,14 +378,6 @@ async function auditViewport(cdp, viewport) {
   );
 
   const alphaAlignment = await evaluate(`(async () => {
-    const image = new Image();
-    image.src = "assets/environments/meadow/platforms/meadow_tileset.png";
-    if (!image.complete) {
-      await new Promise((resolve, reject) => {
-        image.onload = resolve;
-        image.onerror = reject;
-      });
-    }
     const inspectRendered = (name, platform, seed) => {
       const surface = document.createElement("canvas");
       surface.width = platform.w;
@@ -396,8 +388,15 @@ async function auditViewport(cdp, viewport) {
       surfaceContext.drawImage = (...args) => {
         if (args.length === 9) {
           drawCalls.push({
+            asset: args[0].getAttribute?.("src") ?? args[0].src,
             source: {x: args[1], y: args[2], w: args[3], h: args[4]},
             destination: {x: args[5], y: args[6], w: args[7], h: args[8]}
+          });
+        } else if (args.length === 5) {
+          drawCalls.push({
+            asset: args[0].getAttribute?.("src") ?? args[0].src,
+            source: null,
+            destination: {x: args[1], y: args[2], w: args[3], h: args[4]}
           });
         }
         return drawImage(...args);
@@ -468,10 +467,10 @@ async function auditViewport(cdp, viewport) {
       inspectRendered("goal-tall", {x: 1060, y: 0, w: 220, h: 535}, 23)
     ];
   })()`);
-  const floatingSources = [
-    {x: 142, y: 49, w: 112, h: 127},
-    {x: 520, y: 49, w: 300, h: 127},
-    {x: 1071, y: 49, w: 108, h: 127}
+  const floatingAssets = [
+    "assets/environments/meadow/platforms/floating_left.png",
+    "assets/environments/meadow/platforms/floating_middle.png",
+    "assets/environments/meadow/platforms/floating_right.png"
   ];
   for (const alignment of alphaAlignment) {
     assert.ok(alignment.alpha64Padding.left <= 1, `${alignment.name} left alpha gap`);
@@ -489,9 +488,10 @@ async function auditViewport(cdp, viewport) {
     if (alignment.name.startsWith("floating-")) {
       assert.equal(alignment.drawCalls.length, 3);
       assert.deepEqual(
-        alignment.drawCalls.map(call => call.source),
-        floatingSources
+        alignment.drawCalls.map(call => call.asset),
+        floatingAssets
       );
+      assert.ok(alignment.drawCalls.every(call => call.source === null));
       const [left, middle, right] = alignment.drawCalls.map(call => call.destination);
       assert.equal(left.x, 0);
       assert.equal(left.y, 0);
