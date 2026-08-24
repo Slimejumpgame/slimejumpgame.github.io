@@ -1294,6 +1294,8 @@
       if (!isReady(topSlot.asset)) return false;
 
       context.save();
+      traceRoundedRect(context, platform.x, platform.y, platform.w, platform.h, 10);
+      context.clip();
       context.imageSmoothingEnabled = true;
       context.imageSmoothingQuality = "high";
       // Repeat the already selected Goal top with the exact original destination.

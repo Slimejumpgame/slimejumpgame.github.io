@@ -315,7 +315,10 @@ const fakeCanvasContext = new Proxy({}, {
         return {addColorStop: (...stop) => stops.push(stop)};
       };
     }
-    if (["translate", "scale", "arc", "rect"].includes(property)) {
+    if ([
+      "save", "restore", "translate", "scale", "arc", "rect", "beginPath",
+      "moveTo", "arcTo", "closePath", "clip"
+    ].includes(property)) {
       return (...args) => canvasOperationCalls.push([property, ...args]);
     }
     if (!(property in target)) target[property] = () => {};
@@ -858,7 +861,50 @@ assert.equal(drawCalls.length, 1);
 assert.equal(drawCalls[0].length, 5);
 assert.deepEqual(drawCalls[0].slice(1), [1060, portalGoalPlatformY, 220, 80]);
 assert.equal(canvasOperationCalls.some(call => call[0] === "rect"), false);
+const goalTopClipOperations = [
+  ["save"],
+  ["beginPath"],
+  ["moveTo", 1070, portalGoalPlatformY],
+  ["arcTo", 1280, portalGoalPlatformY, 1280, 720, 10],
+  ["arcTo", 1280, 720, 1060, 720, 10],
+  ["arcTo", 1060, 720, 1060, portalGoalPlatformY, 10],
+  ["arcTo", 1060, portalGoalPlatformY, 1280, portalGoalPlatformY, 10],
+  ["closePath"],
+  ["clip"],
+  ["restore"]
+];
+assert.deepEqual(canvasOperationCalls, goalTopClipOperations);
 const foregroundGoalTopAsset = drawCalls[0][0].src;
+const foregroundGoalTopVariantPaths = Array.from(
+  {length: 6},
+  (_, index) => `assets/environments/meadow/platforms/meadow_top_0${index + 1}.png`
+);
+const foregroundGoalTopAssets = new Set();
+for (let goalIndex = 0; goalIndex < foregroundGoalTopVariantPaths.length; goalIndex++) {
+  let variantSeed = null;
+  for (let seed = 0; seed < 4096; seed++) {
+    if (visualApi.getTopVariantSelection(seed).goalIndex === goalIndex) {
+      variantSeed = seed;
+      break;
+    }
+  }
+  assert.notEqual(variantSeed, null, `missing Goal top foreground seed for variant ${goalIndex}`);
+  drawCalls.length = 0;
+  canvasOperationCalls.length = 0;
+  assert.equal(
+    visualApi.drawGoalTopForeground(
+      fakeCanvasContext,
+      portalGoalPlatformFixture,
+      variantSeed
+    ),
+    true
+  );
+  assert.equal(drawCalls[0][0].src, foregroundGoalTopVariantPaths[goalIndex]);
+  assert.deepEqual(drawCalls[0].slice(1), [1060, portalGoalPlatformY, 220, 80]);
+  assert.deepEqual(canvasOperationCalls, goalTopClipOperations);
+  foregroundGoalTopAssets.add(drawCalls[0][0].src);
+}
+assert.deepEqual([...foregroundGoalTopAssets].sort(), foregroundGoalTopVariantPaths);
 drawCalls.length = 0;
 assert.equal(
   visualApi.drawPlatformBase(
