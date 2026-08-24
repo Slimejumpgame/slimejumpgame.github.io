@@ -433,7 +433,7 @@
     for (const enemy of getEnemies()) {
       if (
         Math.hypot(player.x - enemy.x, player.y - enemy.y) <
-        player.r * 0.74 + enemy.r * 0.82
+        player.r * 0.74 + enemy.r * 0.8856
       ) {
         const ghostProtectionReason = enemy.type === "fast" ? "fast_ghost" : "ghost";
         const protection = tryHandleProtectedDeadlyContact(ghostProtectionReason);
