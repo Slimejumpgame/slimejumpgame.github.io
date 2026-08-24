@@ -2912,7 +2912,7 @@
         getMeadowDecorAttemptNonce(meadowLevel)
       )
       : null;
-    if (!meadowAssetsActive || !MEADOW_ASSET_VISUALS.drawBackground(ctx, W, H)) {
+    if (!meadowAssetsActive || !MEADOW_ASSET_VISUALS.drawBackground(ctx, W, H, worldTime)) {
       drawBackground(biome);
     }
     if (meadowAssetsActive) {

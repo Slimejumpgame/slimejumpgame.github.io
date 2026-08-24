@@ -29,6 +29,10 @@
     ]);
     const ASSET_PATHS = Object.freeze({
       background: "assets/environments/meadow/background/meadow_background.png",
+      background_sky_base: "assets/environments/meadow/background/meadow_background_sky_base.png",
+      background_clouds_back: "assets/environments/meadow/background/meadow_background_clouds_back.png",
+      background_landscape: "assets/environments/meadow/background/meadow_background_landscape.png",
+      background_clouds_front: "assets/environments/meadow/background/meadow_background_clouds_front.png",
       floating_left: "assets/environments/meadow/platforms/floating_left.png",
       floating_middle: "assets/environments/meadow/platforms/floating_middle.png",
       floating_right: "assets/environments/meadow/platforms/floating_right.png",
@@ -54,6 +58,10 @@
     });
     const SOURCE_SIZES = Object.freeze({
       background: Object.freeze({w: 1672, h: 941}),
+      background_sky_base: Object.freeze({w: 1280, h: 720}),
+      background_clouds_back: Object.freeze({w: 1280, h: 720}),
+      background_landscape: Object.freeze({w: 1280, h: 720}),
+      background_clouds_front: Object.freeze({w: 1280, h: 720}),
       floating_left: Object.freeze({w: 112, h: 127}),
       floating_middle: Object.freeze({w: 300, h: 127}),
       floating_right: Object.freeze({w: 108, h: 127}),
@@ -369,6 +377,15 @@
     const PORTAL_GLOW_ALPHA_MINIMUM = 0.10;
     const PORTAL_GLOW_ALPHA_MAXIMUM = 0.17;
     const PORTAL_VISUAL_Y_OFFSET = 10;
+    const OPTIONAL_ASSET_NAMES = Object.freeze([
+      "background_clouds_back",
+      "background_clouds_front"
+    ]);
+    const CLOUD_BACK_DRIFT_AMPLITUDE = 15;
+    const CLOUD_BACK_DRIFT_PERIOD_SECONDS = 22;
+    const CLOUD_FRONT_DRIFT_AMPLITUDE = 22;
+    const CLOUD_FRONT_DRIFT_PERIOD_SECONDS = 15;
+    const CLOUD_FRONT_DRIFT_PHASE = Math.PI / 3;
     const assets = {};
     const sceneCache = new WeakMap();
 
@@ -388,7 +405,9 @@
     }
 
     const readyPromise = Promise.all(
-      Object.values(assets).map(asset => asset.ready)
+      Object.entries(assets).map(([name, asset]) => (
+        asset.ready.then(loaded => OPTIONAL_ASSET_NAMES.includes(name) || loaded)
+      ))
     ).then(results => results.every(Boolean));
 
     function isReady(name) {
@@ -397,7 +416,9 @@
     }
 
     function areAllReady() {
-      return Object.keys(ASSET_PATHS).every(isReady);
+      return Object.keys(ASSET_PATHS).every(name => (
+        OPTIONAL_ASSET_NAMES.includes(name) || isReady(name)
+      ));
     }
 
     function whenReady() {
@@ -870,17 +891,65 @@
       context.closePath();
     }
 
-    function drawBackground(context, width, height) {
-      if (!isReady("background")) return false;
+    function drawBackgroundLayer(context, name, width, height, offsetX = 0) {
+      if (!isReady(name)) return false;
+      const source = SOURCE_SIZES[name];
+      context.drawImage(
+        assets[name].image,
+        0, 0, source.w, source.h,
+        offsetX, 0, width, height
+      );
+      return true;
+    }
+
+    function getCloudDriftOffset(time, amplitude, periodSeconds, phase = 0) {
+      const safeTime = Number.isFinite(time) ? time : 0;
+      return Math.sin(safeTime * Math.PI * 2 / periodSeconds + phase) * amplitude;
+    }
+
+    function drawBackground(context, width, height, visualTime = 0) {
       const source = SOURCE_SIZES.background;
       context.save();
       context.imageSmoothingEnabled = true;
       context.imageSmoothingQuality = "high";
-      context.drawImage(
-        assets.background.image,
-        0, 0, source.w, source.h,
-        0, 0, width, height
-      );
+
+      if (isReady("background_sky_base") && isReady("background_landscape")) {
+        drawBackgroundLayer(context, "background_sky_base", width, height);
+        drawBackgroundLayer(
+          context,
+          "background_clouds_back",
+          width,
+          height,
+          getCloudDriftOffset(
+            visualTime,
+            CLOUD_BACK_DRIFT_AMPLITUDE,
+            CLOUD_BACK_DRIFT_PERIOD_SECONDS
+          )
+        );
+        drawBackgroundLayer(context, "background_landscape", width, height);
+        drawBackgroundLayer(
+          context,
+          "background_clouds_front",
+          width,
+          height,
+          getCloudDriftOffset(
+            visualTime,
+            CLOUD_FRONT_DRIFT_AMPLITUDE,
+            CLOUD_FRONT_DRIFT_PERIOD_SECONDS,
+            CLOUD_FRONT_DRIFT_PHASE
+          )
+        );
+      } else if (isReady("background")) {
+        context.drawImage(
+          assets.background.image,
+          0, 0, source.w, source.h,
+          0, 0, width, height
+        );
+      } else {
+        context.restore();
+        return false;
+      }
+
       context.restore();
       return true;
     }

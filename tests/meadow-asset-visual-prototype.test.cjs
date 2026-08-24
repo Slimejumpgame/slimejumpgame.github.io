@@ -38,6 +38,10 @@ for (const relativePath of protectedFiles) {
 
 const assetExpectations = Object.freeze({
   "assets/environments/meadow/background/meadow_background.png": [1672, 941],
+  "assets/environments/meadow/background/meadow_background_sky_base.png": [1280, 720],
+  "assets/environments/meadow/background/meadow_background_clouds_back.png": [1280, 720],
+  "assets/environments/meadow/background/meadow_background_landscape.png": [1280, 720],
+  "assets/environments/meadow/background/meadow_background_clouds_front.png": [1280, 720],
   "assets/environments/meadow/platforms/floating_left.png": [112, 127],
   "assets/environments/meadow/platforms/floating_middle.png": [300, 127],
   "assets/environments/meadow/platforms/floating_right.png": [108, 127],
@@ -191,7 +195,7 @@ vm.runInContext(`${read("js/visual-meadow-assets.js")}
 const visualApi = visualContext.meadowAssetVisualsForTest;
 assert.equal(
   imageConstructionCount,
-  23,
+  27,
   "the loader must construct all base assets, platform variants and top-decor sheets once"
 );
 assert.equal(visualApi.areAllReady(), true);
@@ -199,6 +203,10 @@ assert.deepEqual(
   JSON.parse(JSON.stringify(visualApi.getStatus().paths)),
   {
     background: "assets/environments/meadow/background/meadow_background.png",
+    background_sky_base: "assets/environments/meadow/background/meadow_background_sky_base.png",
+    background_clouds_back: "assets/environments/meadow/background/meadow_background_clouds_back.png",
+    background_landscape: "assets/environments/meadow/background/meadow_background_landscape.png",
+    background_clouds_front: "assets/environments/meadow/background/meadow_background_clouds_front.png",
     floating_left: "assets/environments/meadow/platforms/floating_left.png",
     floating_middle: "assets/environments/meadow/platforms/floating_middle.png",
     floating_right: "assets/environments/meadow/platforms/floating_right.png",
@@ -652,7 +660,7 @@ assert.deepEqual(
   [2, 3, 4, 5],
   "goal seam-cover density must exercise the full 2-5 range"
 );
-assert.equal(imageConstructionCount, 23, "draw calls must not construct additional images");
+assert.equal(imageConstructionCount, 27, "draw calls must not construct additional images");
 assert.ok(drawCalls.length > 0);
 assert.ok(
   drawCalls.every(call => call.length === 5 || call.length === 9),
