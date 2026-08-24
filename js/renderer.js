@@ -727,9 +727,21 @@
   function drawGoal(useMeadowAssets = false) {
     const level = currentLevel();
     const g = level.goal;
+    const meadowGoalPlatform = useMeadowAssets
+      ? level.platforms.find(platform => (
+        MEADOW_ASSET_VISUALS.resolvePlatformRole(platform) === "GOAL_TOWER"
+      ))
+      : null;
     const meadowAssetPortal = Boolean(
-      useMeadowAssets && MEADOW_ASSET_VISUALS.drawPortal(ctx, g)
+      useMeadowAssets && MEADOW_ASSET_VISUALS.drawPortal(ctx, g, worldTime)
     );
+    if (meadowAssetPortal && meadowGoalPlatform) {
+      MEADOW_ASSET_VISUALS.drawGoalTopForeground(
+        ctx,
+        meadowGoalPlatform,
+        level.seed
+      );
+    }
     if (!meadowAssetPortal) {
       const pulse = 1 + Math.sin(worldTime * 4) * 0.06;
       ctx.save();
@@ -2858,6 +2870,9 @@
       drawPlatforms(biome, false);
     }
     drawGoal(meadowAssetsActive);
+    if (meadowAssetsActive) {
+      MEADOW_ASSET_VISUALS.drawGoalSeamCoverProps(ctx, meadowScene);
+    }
     drawStars();
     drawEnemies();
     drawTrajectory();

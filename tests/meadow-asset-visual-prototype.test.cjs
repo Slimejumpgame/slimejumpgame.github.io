@@ -289,15 +289,31 @@ assert.deepEqual(meadowManifest.platforms.bodyTopVariantSelection, {
 });
 
 const drawCalls = [];
+const radialGradientCalls = [];
+const radialGradientStops = [];
+const canvasOperationCalls = [];
+const canvasPropertyWrites = [];
 const fakeCanvasContext = new Proxy({}, {
   get(target, property) {
     if (property === "drawImage") {
       return (...args) => drawCalls.push(args);
     }
+    if (property === "createRadialGradient") {
+      return (...args) => {
+        radialGradientCalls.push(args);
+        const stops = [];
+        radialGradientStops.push(stops);
+        return {addColorStop: (...stop) => stops.push(stop)};
+      };
+    }
+    if (["translate", "scale", "arc", "rect"].includes(property)) {
+      return (...args) => canvasOperationCalls.push([property, ...args]);
+    }
     if (!(property in target)) target[property] = () => {};
     return target[property];
   },
   set(target, property, value) {
+    canvasPropertyWrites.push([property, value]);
     target[property] = value;
     return true;
   }
@@ -307,6 +323,26 @@ const startGoalCategoryCoverage = new Set();
 const startDecorCounts = new Set();
 const goalDecorCounts = new Set();
 const renderedTreeVariants = new Set();
+const goalSeamCoverCoverage = new Set();
+const goalSeamCoverCounts = new Set();
+const allowedGoalSeamCoverProps = Object.freeze([
+  "portalLantern",
+  "portalFlowerClump",
+  "portalShortWoodPost",
+  "portalMossStoneMushrooms",
+  "portalStoneGrassClump",
+  "portalFallenLog",
+  "portalTreeStump"
+]);
+const goalSeamCoverMappings = Object.freeze({
+  portalLantern: {source: [752, 512, 232, 312], anchor: [119, 289], base: [28, 210], motifWidth: 195, motifHeight: 269, nominalWidth: 32},
+  portalFlowerClump: {source: [992, 624, 256, 200], anchor: [115.5, 173], base: [15, 216], motifWidth: 219, motifHeight: 146, nominalWidth: 26},
+  portalShortWoodPost: {source: [1248, 552, 200, 272], anchor: [97, 248], base: [16, 178], motifWidth: 168, motifHeight: 224, nominalWidth: 23},
+  portalMossStoneMushrooms: {source: [16, 832, 336, 224], anchor: [172, 196], base: [44, 300], motifWidth: 289, motifHeight: 171, nominalWidth: 30},
+  portalStoneGrassClump: {source: [352, 848, 320, 208], anchor: [176.5, 176], base: [89, 264], motifWidth: 267, motifHeight: 153, nominalWidth: 30},
+  portalFallenLog: {source: [672, 832, 400, 224], anchor: [197.5, 199], base: [35, 360], motifWidth: 357, motifHeight: 176, nominalWidth: 38},
+  portalTreeStump: {source: [1072, 832, 376, 224], anchor: [173.5, 196], base: [26, 321], motifWidth: 314, motifHeight: 171, nominalWidth: 32}
+});
 const startGoalBackPlacement = Object.freeze({
   treeRoundFlowering: {anchor: [204.5, 419], base: [132, 279], motifWidth: 329},
   treeSaplingLeafy: {anchor: [157, 285], base: [109, 201], motifWidth: 207},
@@ -330,6 +366,12 @@ const startGoalLayoutSignature = (scene, role) => JSON.stringify(
 const floatingLayoutSnapshot = scene => JSON.parse(JSON.stringify(
   scene.topBackDecor.filter(item => item.role === "FLOATING")
 ));
+const goalSeamCoverSignature = scene => JSON.stringify(
+  scene.goalSeamCoverProps.map(item => ({
+    sprite: item.sprite,
+    x: Number(((item.baselineX - item.platformX) / item.platformW).toFixed(5))
+  }))
+);
 
 for (const level of generatedLevels) {
   const before = JSON.stringify(geometrySnapshot(level));
@@ -361,6 +403,10 @@ for (const level of generatedLevels) {
   assert.equal(new Set(retryScenes.map(retryScene => (
     startGoalLayoutSignature(retryScene, "GOAL_TOWER")
   ))).size, 3, "each retry must vary the goal decoration");
+  assert.ok(
+    new Set(retryScenes.map(goalSeamCoverSignature)).size >= 2,
+    "retry nonces must vary the goal seam-cover props"
+  );
   assert.deepEqual(
     retryScenes.map(floatingLayoutSnapshot),
     retryScenes.map(() => floatingLayoutSnapshot(scene)),
@@ -420,6 +466,54 @@ for (const level of generatedLevels) {
       expectedFloatingDecorCount
     );
     assert.equal(retryScene.topFrontDecor.some(item => item.role === "FLOATING"), false);
+    const goalSeamCoverProps = retryScene.goalSeamCoverProps;
+    assert.ok(goalSeamCoverProps.length >= 2 && goalSeamCoverProps.length <= 5);
+    goalSeamCoverCounts.add(goalSeamCoverProps.length);
+    const goalPlatform = level.platforms.find(platform => (
+      visualApi.resolvePlatformRole(platform) === "GOAL_TOWER"
+    ));
+    assert.ok(goalPlatform);
+    const propBaseIntervals = [];
+    for (const item of goalSeamCoverProps) {
+      const mapping = goalSeamCoverMappings[item.sprite];
+      assert.ok(mapping, `forbidden goal portal prop: ${item.sprite}`);
+      goalSeamCoverCoverage.add(item.sprite);
+      assert.equal(item.role, "GOAL_TOWER");
+      assert.equal(item.layer, "goal-seam-cover");
+      assert.equal(item.platformX, goalPlatform.x);
+      assert.equal(item.platformY, goalPlatform.y);
+      assert.equal(item.platformW, goalPlatform.w);
+      assert.equal(item.baselineOffset, 11);
+      assert.equal(item.baselineY, goalPlatform.y + 11);
+      assert.equal(item.nominalWidth, mapping.nominalWidth);
+      assert.deepEqual([item.anchor.x, item.anchor.y], mapping.anchor);
+      assert.deepEqual(
+        [item.visibleBase.left, item.visibleBase.right],
+        mapping.base
+      );
+      const scale = item.nominalWidth / mapping.motifWidth;
+      const visibleBaseLeft = item.baselineX +
+        (item.visibleBase.left - item.anchor.x) * scale;
+      const visibleBaseRight = item.baselineX +
+        (item.visibleBase.right - item.anchor.x) * scale;
+      assert.ok(visibleBaseLeft >= goalPlatform.x + 3 - 1e-9);
+      assert.ok(visibleBaseRight <= goalPlatform.x + goalPlatform.w - 3 + 1e-9);
+      propBaseIntervals.push([visibleBaseLeft, visibleBaseRight]);
+      const baselineRatio = (item.baselineX - goalPlatform.x) / goalPlatform.w;
+      assert.ok(baselineRatio >= 0.18 && baselineRatio <= 0.82);
+      const renderedVisibleHeight = mapping.motifHeight * scale;
+      assert.ok(
+        baselineRatio < 0.43 || baselineRatio > 0.57 || renderedVisibleHeight <= 22,
+        "only low seam-cover props may occupy the portal-base center"
+      );
+    }
+    propBaseIntervals.sort((left, right) => left[0] - right[0]);
+    for (let index = 1; index < propBaseIntervals.length; index++) {
+      assert.ok(
+        propBaseIntervals[index][0] - propBaseIntervals[index - 1][1] >= 0,
+        "goal portal prop stand areas must not overlap"
+      );
+    }
     const startGoalItems = [...retryScene.topBackDecor, ...retryScene.topFrontDecor]
       .filter(item => item.role !== "FLOATING");
     startGoalItems.forEach(item => startGoalCategoryCoverage.add(item.category));
@@ -520,6 +614,14 @@ for (const level of generatedLevels) {
     }
     assert.equal(visualApi.drawTopBackDecor(fakeCanvasContext, scene), true);
     assert.equal(visualApi.drawPortal(fakeCanvasContext, level.goal), true);
+    const goalPlatform = level.platforms.find(platform => (
+      visualApi.resolvePlatformRole(platform) === "GOAL_TOWER"
+    ));
+    assert.equal(
+      visualApi.drawGoalTopForeground(fakeCanvasContext, goalPlatform, level.seed),
+      true
+    );
+    assert.equal(visualApi.drawGoalSeamCoverProps(fakeCanvasContext, scene), true);
     assert.equal(visualApi.drawTopFrontDecor(fakeCanvasContext, scene), true);
   }
   assert.equal(
@@ -539,6 +641,16 @@ assert.deepEqual(
   [...renderedTreeVariants].sort(),
   ["treeRoundFlowering", "treeSaplingLeafy"],
   "both mapped tree variants should participate in retry layouts"
+);
+assert.deepEqual(
+  [...goalSeamCoverCoverage].sort(),
+  [...allowedGoalSeamCoverProps].sort(),
+  "all and only the seven approved goal seam-cover props must participate"
+);
+assert.deepEqual(
+  [...goalSeamCoverCounts].sort(),
+  [2, 3, 4, 5],
+  "goal seam-cover density must exercise the full 2-5 range"
 );
 assert.equal(imageConstructionCount, 23, "draw calls must not construct additional images");
 assert.ok(drawCalls.length > 0);
@@ -573,6 +685,18 @@ const previewFixture = {
   ]
 };
 const previewScene = visualApi.getScene(previewFixture);
+const noGoalPreviewScene = visualApi.getScene({
+  seed: 91,
+  platforms: [
+    {x: 0, y: 640, w: 235, h: 80},
+    {x: 420, y: 360, w: 170, h: 26}
+  ]
+}, 4);
+assert.equal(
+  noGoalPreviewScene.goalSeamCoverProps.length,
+  0,
+  "start and floating platforms must never receive goal seam-cover props"
+);
 function assertTopDecorLayer(items, drawLayer) {
   drawCalls.length = 0;
   assert.equal(drawLayer(fakeCanvasContext, previewScene), true);
@@ -619,6 +743,129 @@ assertTopDecorLayer(
 assertTopDecorLayer(
   previewScene.topFrontDecor,
   visualApi.drawTopFrontDecor
+);
+
+drawCalls.length = 0;
+assert.equal(visualApi.drawGoalSeamCoverProps(fakeCanvasContext, previewScene), true);
+assert.equal(drawCalls.length, previewScene.goalSeamCoverProps.length);
+for (const [index, item] of previewScene.goalSeamCoverProps.entries()) {
+  const call = drawCalls[index];
+  const mapping = goalSeamCoverMappings[item.sprite];
+  const scale = item.nominalWidth / mapping.motifWidth;
+  assert.equal(call.length, 9);
+  assert.equal(
+    call[0].src,
+    "assets/environments/meadow/portal/meadow_portal_props.png"
+  );
+  assert.deepEqual(call.slice(1, 5), mapping.source);
+  assert.equal(call[7], mapping.source[2] * scale);
+  assert.equal(call[8], mapping.source[3] * scale);
+  assert.ok(Math.abs(call[7] / mapping.source[2] - call[8] / mapping.source[3]) < 1e-12);
+  assert.ok(Math.abs(call[5] + mapping.anchor[0] * scale - item.baselineX) < 1e-9);
+  assert.ok(Math.abs(call[6] + mapping.anchor[1] * scale - item.baselineY) < 1e-9);
+}
+
+const portalGoalPlatformY = 370;
+const portalGoalFixture = {
+  x: 1140,
+  y: portalGoalPlatformY - 95,
+  w: 62,
+  h: 92
+};
+const portalDestination = [1081, portalGoalPlatformY - 169, 180, 191];
+function capturePortalGlow(visualTime) {
+  drawCalls.length = 0;
+  radialGradientCalls.length = 0;
+  radialGradientStops.length = 0;
+  canvasOperationCalls.length = 0;
+  canvasPropertyWrites.length = 0;
+  assert.equal(visualApi.drawPortal(fakeCanvasContext, portalGoalFixture, visualTime), true);
+  assert.equal(drawCalls.length, 1);
+  assert.deepEqual(drawCalls[0].slice(1, 5), [24, 50, 712, 755]);
+  assert.deepEqual(drawCalls[0].slice(5, 9), portalDestination);
+  assert.deepEqual(radialGradientCalls, [[0, 0, 0, 0, 0, 54]]);
+  assert.equal(radialGradientStops.length, 1);
+  assert.deepEqual(radialGradientStops[0].map(stop => stop[0]), [0, 0.42, 1]);
+  assert.ok(canvasOperationCalls.some(call => (
+    call[0] === "translate" &&
+    Math.abs(call[1] - (portalDestination[0] + 180 * 0.48)) < 1e-12 &&
+    Math.abs(call[2] - (portalDestination[1] + 191 * 0.49)) < 1e-12
+  )));
+  assert.ok(canvasOperationCalls.some(call => (
+    call[0] === "scale" && Math.abs(call[1] - 38 / 54) < 1e-12 && call[2] === 1
+  )));
+  assert.ok(canvasOperationCalls.some(call => (
+    call[0] === "arc" && call[1] === 0 && call[2] === 0 && call[3] === 54
+  )));
+  assert.ok(canvasPropertyWrites.some(write => (
+    write[0] === "globalCompositeOperation" && write[1] === "screen"
+  )));
+  const alphaMatch = radialGradientStops[0][0][1].match(/,([0-9.]+)\)$/);
+  assert.ok(alphaMatch);
+  return Number(alphaMatch[1]);
+}
+assert.ok(Math.abs(capturePortalGlow(1.65) - 0.10) < 1e-12);
+assert.ok(Math.abs(capturePortalGlow(0.55) - 0.17) < 1e-12);
+assert.ok(portalDestination[0] + 180 * 0.48 - 38 >= portalDestination[0]);
+assert.ok(portalDestination[0] + 180 * 0.48 + 38 <= portalDestination[0] + 180);
+assert.ok(portalDestination[1] + 191 * 0.49 - 54 >= portalDestination[1]);
+assert.ok(portalDestination[1] + 191 * 0.49 + 54 <= portalDestination[1] + 191);
+assert.equal(
+  portalDestination[1] -
+    (portalGoalFixture.y + portalGoalFixture.h + 15 - portalDestination[3]),
+  10,
+  "the visual-only portal lowering must be exactly ten pixels"
+);
+const portalVisibleAlphaBottom = portalDestination[1] + 749 * 191 / 755;
+assert.ok(Math.abs(portalVisibleAlphaBottom - (portalGoalPlatformY + 20.4821192053)) < 1e-9);
+assert.deepEqual(portalGoalFixture, {
+  x: 1140,
+  y: portalGoalPlatformY - 95,
+  w: 62,
+  h: 92
+});
+assert.ok(portalGoalFixture.x >= portalDestination[0]);
+assert.ok(portalGoalFixture.x + portalGoalFixture.w <= portalDestination[0] + portalDestination[2]);
+assert.ok(portalGoalFixture.y >= portalDestination[1]);
+assert.ok(portalGoalFixture.y + portalGoalFixture.h <= portalVisibleAlphaBottom);
+
+const portalGoalPlatformFixture = {
+  x: 1060,
+  y: portalGoalPlatformY,
+  w: 220,
+  h: 720 - portalGoalPlatformY
+};
+drawCalls.length = 0;
+canvasOperationCalls.length = 0;
+assert.equal(
+  visualApi.drawGoalTopForeground(fakeCanvasContext, portalGoalPlatformFixture, 91),
+  true
+);
+assert.equal(drawCalls.length, 1);
+assert.equal(drawCalls[0].length, 5);
+assert.deepEqual(drawCalls[0].slice(1), [1060, portalGoalPlatformY, 220, 80]);
+assert.equal(canvasOperationCalls.some(call => call[0] === "rect"), false);
+const foregroundGoalTopAsset = drawCalls[0][0].src;
+drawCalls.length = 0;
+assert.equal(
+  visualApi.drawPlatformBase(
+    fakeCanvasContext,
+    portalGoalPlatformFixture,
+    portalGoalPlatformFixture.x,
+    91
+  ),
+  true
+);
+const originalGoalTopCall = drawCalls.at(-1);
+assert.equal(originalGoalTopCall[0].src, foregroundGoalTopAsset);
+assert.deepEqual(originalGoalTopCall.slice(1), [1060, portalGoalPlatformY, 220, 80]);
+assert.equal(
+  visualApi.drawGoalTopForeground(
+    fakeCanvasContext,
+    {x: 400, y: 300, w: 140, h: 26},
+    91
+  ),
+  false
 );
 
 function assertDrawBounds(platform, calls) {
@@ -1110,11 +1357,19 @@ assert.match(rendererSource, /for \(const s of level\.spikes\) drawDeathZone\(s,
 assert.match(rendererSource, /drawTrajectory\(\);\s*drawPlayer\(\);/);
 assert.match(
   rendererSource,
-  /drawPlatforms\(biome, true, "without-floating"\);[\s\S]*?drawStartGoalBackDecor\(ctx, meadowScene\);[\s\S]*?drawPlatforms\(biome, true, "floating-only"\);[\s\S]*?drawFloatingBackDecor\(ctx, meadowScene\);[\s\S]*?drawGoal\(meadowAssetsActive\);[\s\S]*?drawPlayer\(\);[\s\S]*?drawTopFrontDecor\(ctx, meadowScene\);/
+  /drawPlatforms\(biome, true, "without-floating"\);[\s\S]*?drawStartGoalBackDecor\(ctx, meadowScene\);[\s\S]*?drawPlatforms\(biome, true, "floating-only"\);[\s\S]*?drawFloatingBackDecor\(ctx, meadowScene\);[\s\S]*?drawGoal\(meadowAssetsActive\);[\s\S]*?drawGoalSeamCoverProps\(ctx, meadowScene\);[\s\S]*?drawPlayer\(\);[\s\S]*?drawTopFrontDecor\(ctx, meadowScene\);/
 );
 assert.match(
   rendererSource,
   /MEADOW_ASSET_VISUALS\.getScene\(\s*meadowLevel,\s*getMeadowDecorAttemptNonce\(meadowLevel\)\s*\)/
+);
+assert.match(
+  rendererSource,
+  /MEADOW_ASSET_VISUALS\.drawPortal\(ctx, g, worldTime\)/
+);
+assert.match(
+  rendererSource,
+  /drawPortal\(ctx, g, worldTime\)[\s\S]*?drawGoalTopForeground\([\s\S]*?level\.seed/
 );
 const html = read("index.html");
 assert.match(

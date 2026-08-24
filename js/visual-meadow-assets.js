@@ -6,6 +6,7 @@
     const MEADOW_BODY_TOP_GOAL = 0x4254474c;
     const MEADOW_TOP_DECOR_START = 0x44535441;
     const MEADOW_TOP_DECOR_GOAL = 0x44474f41;
+    const MEADOW_GOAL_SEAM_COVER = 0x47534356;
     const MEADOW_TOP_VARIANT_ASSET_NAMES = Object.freeze([
       "meadow_top_01",
       "meadow_top_02",
@@ -294,6 +295,80 @@
       })
     });
     const PORTAL_SPRITE = Object.freeze({x: 24, y: 50, w: 712, h: 755});
+    const GOAL_SEAM_COVER_SPRITES = Object.freeze({
+      portalLantern: Object.freeze({
+        source: Object.freeze({x: 752, y: 512, w: 232, h: 312}),
+        anchor: Object.freeze({x: 119, y: 289}),
+        visibleBase: Object.freeze({left: 28, right: 210}),
+        motifWidth: 195,
+        motifHeight: 269,
+        nominalWidth: 32,
+        selectionWeight: 1
+      }),
+      portalFlowerClump: Object.freeze({
+        source: Object.freeze({x: 992, y: 624, w: 256, h: 200}),
+        anchor: Object.freeze({x: 115.5, y: 173}),
+        visibleBase: Object.freeze({left: 15, right: 216}),
+        motifWidth: 219,
+        motifHeight: 146,
+        nominalWidth: 26,
+        selectionWeight: 1
+      }),
+      portalShortWoodPost: Object.freeze({
+        source: Object.freeze({x: 1248, y: 552, w: 200, h: 272}),
+        anchor: Object.freeze({x: 97, y: 248}),
+        visibleBase: Object.freeze({left: 16, right: 178}),
+        motifWidth: 168,
+        motifHeight: 224,
+        nominalWidth: 23,
+        selectionWeight: 1
+      }),
+      portalMossStoneMushrooms: Object.freeze({
+        source: Object.freeze({x: 16, y: 832, w: 336, h: 224}),
+        anchor: Object.freeze({x: 172, y: 196}),
+        visibleBase: Object.freeze({left: 44, right: 300}),
+        motifWidth: 289,
+        motifHeight: 171,
+        nominalWidth: 30,
+        selectionWeight: 1
+      }),
+      portalStoneGrassClump: Object.freeze({
+        source: Object.freeze({x: 352, y: 848, w: 320, h: 208}),
+        anchor: Object.freeze({x: 176.5, y: 176}),
+        visibleBase: Object.freeze({left: 89, right: 264}),
+        motifWidth: 267,
+        motifHeight: 153,
+        nominalWidth: 30,
+        selectionWeight: 1
+      }),
+      portalFallenLog: Object.freeze({
+        source: Object.freeze({x: 672, y: 832, w: 400, h: 224}),
+        anchor: Object.freeze({x: 197.5, y: 199}),
+        visibleBase: Object.freeze({left: 35, right: 360}),
+        motifWidth: 357,
+        motifHeight: 176,
+        nominalWidth: 38,
+        selectionWeight: 0.25
+      }),
+      portalTreeStump: Object.freeze({
+        source: Object.freeze({x: 1072, y: 832, w: 376, h: 224}),
+        anchor: Object.freeze({x: 173.5, y: 196}),
+        visibleBase: Object.freeze({left: 26, right: 321}),
+        motifWidth: 314,
+        motifHeight: 171,
+        nominalWidth: 32,
+        selectionWeight: 1
+      })
+    });
+    const GOAL_SEAM_COVER_NAMES = Object.freeze(
+      Object.keys(GOAL_SEAM_COVER_SPRITES)
+    );
+    const GOAL_SEAM_COVER_EDGE_INSET = 3;
+    const GOAL_SEAM_COVER_BASELINE_OFFSET = 11;
+    const PORTAL_GLOW_PERIOD_SECONDS = 2.2;
+    const PORTAL_GLOW_ALPHA_MINIMUM = 0.10;
+    const PORTAL_GLOW_ALPHA_MAXIMUM = 0.17;
+    const PORTAL_VISUAL_Y_OFFSET = 10;
     const assets = {};
     const sceneCache = new WeakMap();
 
@@ -466,6 +541,84 @@
         selected.push(available.splice(randomInteger(random, 0, available.length - 1), 1)[0]);
       }
       return selected;
+    }
+
+    function takeWeightedGoalSeamCoverNames(random, count) {
+      const available = [...GOAL_SEAM_COVER_NAMES];
+      const selected = [];
+      while (selected.length < count && available.length > 0) {
+        const totalWeight = available.reduce((total, name) => (
+          total + GOAL_SEAM_COVER_SPRITES[name].selectionWeight
+        ), 0);
+        let targetWeight = random() * totalWeight;
+        let selectedIndex = available.length - 1;
+        for (let index = 0; index < available.length; index++) {
+          targetWeight -= GOAL_SEAM_COVER_SPRITES[available[index]].selectionWeight;
+          if (targetWeight <= 0) {
+            selectedIndex = index;
+            break;
+          }
+        }
+        selected.push(available.splice(selectedIndex, 1)[0]);
+      }
+      return selected;
+    }
+
+    function getGoalSeamCoverSlotRatios(count) {
+      if (count === 2) return [0.32, 0.68];
+      if (count === 3) return [0.26, 0.50, 0.74];
+      if (count === 4) return [0.22, 0.38, 0.62, 0.78];
+      return [0.20, 0.35, 0.50, 0.65, 0.80];
+    }
+
+    function createGoalSeamCoverProps(level, goalPlatform, decorNonce) {
+      if (!goalPlatform) return Object.freeze([]);
+      const random = createDecorRandom(
+        level?.seed ?? 0,
+        MEADOW_GOAL_SEAM_COVER,
+        decorNonce
+      );
+      const count = randomInteger(random, 2, 5);
+      const selected = takeWeightedGoalSeamCoverNames(random, count);
+      const slotRatios = getGoalSeamCoverSlotRatios(count);
+      const rankedSlots = [...slotRatios].sort((left, right) => (
+        Math.abs(right - 0.5) - Math.abs(left - 0.5)
+      ));
+      const rankedProps = [...selected].sort((left, right) => (
+        GOAL_SEAM_COVER_SPRITES[right].motifHeight *
+          GOAL_SEAM_COVER_SPRITES[right].nominalWidth /
+          GOAL_SEAM_COVER_SPRITES[right].motifWidth -
+        GOAL_SEAM_COVER_SPRITES[left].motifHeight *
+          GOAL_SEAM_COVER_SPRITES[left].nominalWidth /
+          GOAL_SEAM_COVER_SPRITES[left].motifWidth
+      ));
+      const items = rankedProps.map((spriteName, index) => {
+        const sprite = GOAL_SEAM_COVER_SPRITES[spriteName];
+        const scale = sprite.nominalWidth / sprite.motifWidth;
+        const minimumX = GOAL_SEAM_COVER_EDGE_INSET +
+          (sprite.anchor.x - sprite.visibleBase.left) * scale;
+        const maximumX = goalPlatform.w - GOAL_SEAM_COVER_EDGE_INSET -
+          (sprite.visibleBase.right - sprite.anchor.x) * scale;
+        const desiredX = goalPlatform.w * rankedSlots[index] + (random() - 0.5);
+        const x = Math.max(minimumX, Math.min(maximumX, desiredX));
+        return {
+          sprite: spriteName,
+          role: "GOAL_TOWER",
+          layer: "goal-seam-cover",
+          platformX: goalPlatform.x,
+          platformY: goalPlatform.y,
+          platformW: goalPlatform.w,
+          platformH: goalPlatform.h,
+          baselineX: goalPlatform.x + x,
+          baselineY: goalPlatform.y + GOAL_SEAM_COVER_BASELINE_OFFSET,
+          baselineOffset: GOAL_SEAM_COVER_BASELINE_OFFSET,
+          nominalWidth: sprite.nominalWidth,
+          anchor: sprite.anchor,
+          visibleBase: sprite.visibleBase
+        };
+      });
+      items.sort((left, right) => left.baselineX - right.baselineX);
+      return freezeItems(items);
     }
 
     function positionStartGoalSpecifications(
@@ -676,10 +829,15 @@
 
     function createScene(level, decorNonce = 0) {
       const topDecorPreview = createTopDecorPreview(level, decorNonce);
+      const platforms = Array.isArray(level?.platforms) ? level.platforms : [];
+      const goalPlatform = platforms.find(platform => (
+        resolvePlatformRole(platform) === "GOAL_TOWER"
+      ));
       return Object.freeze({
         decorNonce,
         topBackDecor: topDecorPreview.back,
-        topFrontDecor: topDecorPreview.front
+        topFrontDecor: topDecorPreview.front,
+        goalSeamCoverProps: createGoalSeamCoverProps(level, goalPlatform, decorNonce)
       });
     }
 
@@ -882,6 +1040,31 @@
       return drawTopDecorLayer(context, scene?.topFrontDecor ?? []);
     }
 
+    function drawGoalSeamCoverProps(context, scene) {
+      if (!isReady("portal")) return false;
+      const items = scene?.goalSeamCoverProps ?? [];
+      context.save();
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+      for (const item of items) {
+        const sprite = GOAL_SEAM_COVER_SPRITES[item.sprite];
+        const scale = item.nominalWidth / sprite.motifWidth;
+        context.drawImage(
+          assets.portal.image,
+          sprite.source.x,
+          sprite.source.y,
+          sprite.source.w,
+          sprite.source.h,
+          item.baselineX - sprite.anchor.x * scale,
+          item.baselineY - sprite.anchor.y * scale,
+          sprite.source.w * scale,
+          sprite.source.h * scale
+        );
+      }
+      context.restore();
+      return true;
+    }
+
     function drawFloatingPlatform(context, platform, drawX) {
       const contract = PLATFORM_VISUAL_CONTRACT.floating;
       const leftWidth = Math.min(contract.leftWidth, platform.w / 2);
@@ -967,12 +1150,12 @@
       return true;
     }
 
-    function drawPortal(context, goal) {
+    function drawPortal(context, goal, visualTime = 0) {
       if (!isReady("portal")) return false;
       const width = 180;
       const height = 191;
       const x = goal.x + goal.w / 2 - width / 2;
-      const y = goal.y + goal.h + 15 - height;
+      const y = goal.y + goal.h + 15 - height + PORTAL_VISUAL_Y_OFFSET;
 
       context.save();
       context.imageSmoothingEnabled = true;
@@ -983,6 +1166,48 @@
         assets.portal.image,
         PORTAL_SPRITE.x, PORTAL_SPRITE.y, PORTAL_SPRITE.w, PORTAL_SPRITE.h,
         x, y, width, height
+      );
+      context.restore();
+
+      const pulse = (
+        Math.sin((Number(visualTime) || 0) * Math.PI * 2 / PORTAL_GLOW_PERIOD_SECONDS) + 1
+      ) / 2;
+      const glowAlpha = PORTAL_GLOW_ALPHA_MINIMUM +
+        (PORTAL_GLOW_ALPHA_MAXIMUM - PORTAL_GLOW_ALPHA_MINIMUM) * pulse;
+      const glowRadius = 54;
+      const glow = context.createRadialGradient(0, 0, 0, 0, 0, glowRadius);
+      glow.addColorStop(0, `rgba(235,215,255,${glowAlpha})`);
+      glow.addColorStop(0.42, `rgba(190,128,255,${glowAlpha * 0.62})`);
+      glow.addColorStop(1, "rgba(137,70,230,0)");
+
+      context.save();
+      context.translate(x + width * 0.48, y + height * 0.49);
+      context.scale(38 / glowRadius, 1);
+      context.globalCompositeOperation = "screen";
+      context.fillStyle = glow;
+      context.beginPath();
+      context.arc(0, 0, glowRadius, 0, Math.PI * 2);
+      context.fill();
+      context.restore();
+      return true;
+    }
+
+    function drawGoalTopForeground(context, platform, levelSeed = 0) {
+      if (resolvePlatformRole(platform) !== "GOAL_TOWER") return false;
+      const topSlot = getTopVariantSlot("GOAL_TOWER", levelSeed);
+      if (!isReady(topSlot.asset)) return false;
+
+      context.save();
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+      // Repeat the already selected Goal top with the exact original destination.
+      // Its full artwork, rather than a synthetic lip, now occludes the portal base.
+      context.drawImage(
+        assets[topSlot.asset].image,
+        platform.x,
+        platform.y,
+        platform.w,
+        PLATFORM_VISUAL_CONTRACT.goal.topHeight
       );
       context.restore();
       return true;
@@ -1016,7 +1241,9 @@
       drawStartGoalBackDecor,
       drawFloatingBackDecor,
       drawPlatformBase,
+      drawGoalSeamCoverProps,
       drawPortal,
+      drawGoalTopForeground,
       drawTopFrontDecor
     });
   })();
