@@ -3,6 +3,11 @@
   const tutorialDragHandImage = new Image();
   tutorialDragHandImage.src = "assets/tutorial/tutorial-drag-hand.png";
 
+  const COLLECTIBLE_STAR_ASSET_PATH = "assets/collectibles/star_collectible.png";
+  const COLLECTIBLE_STAR_DRAW_SIZE = 60;
+  const collectibleStarImage = new Image();
+  collectibleStarImage.src = COLLECTIBLE_STAR_ASSET_PATH;
+
   const TUTORIAL_DRAG_HAND_RENDER_SIZE = 108;
   const TUTORIAL_DRAG_HAND_FINGERTIP_X_RATIO = 496 / 1254;
   const TUTORIAL_DRAG_HAND_FINGERTIP_Y_RATIO = 24 / 1254;
@@ -963,6 +968,23 @@
     drawTutorialDragHandImage(handX, handY, handScale, handAlpha);
   }
 
+  function drawCanvasCollectibleStarFallback(context) {
+    context.fillStyle = "#ffe66a";
+    context.strokeStyle = "#fff6b0";
+    context.lineWidth = 3;
+    context.beginPath();
+    for (let n = 0; n < 10; n++) {
+      const radius = n % 2 === 0 ? 23 : 10;
+      const a = -Math.PI / 2 + n * Math.PI / 5;
+      const x = Math.cos(a) * radius;
+      const y = Math.sin(a) * radius;
+      n === 0 ? context.moveTo(x, y) : context.lineTo(x, y);
+    }
+    context.closePath();
+    context.fill();
+    context.stroke();
+  }
+
   function drawStars() {
     currentLevel().stars.forEach((s, i) => {
       if (collected[i]) return;
@@ -971,20 +993,22 @@
       ctx.rotate(worldTime * 1.5 + i);
       ctx.shadowColor = "#ffe95c";
       ctx.shadowBlur = 18;
-      ctx.fillStyle = "#ffe66a";
-      ctx.strokeStyle = "#fff6b0";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      for (let n = 0; n < 10; n++) {
-        const radius = n % 2 === 0 ? 23 : 10;
-        const a = -Math.PI / 2 + n * Math.PI / 5;
-        const x = Math.cos(a) * radius;
-        const y = Math.sin(a) * radius;
-        n === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      if (
+        collectibleStarImage.complete &&
+        collectibleStarImage.naturalWidth > 0 &&
+        collectibleStarImage.naturalHeight > 0
+      ) {
+        const halfSize = COLLECTIBLE_STAR_DRAW_SIZE / 2;
+        ctx.drawImage(
+          collectibleStarImage,
+          -halfSize,
+          -halfSize,
+          COLLECTIBLE_STAR_DRAW_SIZE,
+          COLLECTIBLE_STAR_DRAW_SIZE
+        );
+      } else {
+        drawCanvasCollectibleStarFallback(ctx);
       }
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
       ctx.restore();
     });
   }
