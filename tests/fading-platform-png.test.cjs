@@ -12,24 +12,24 @@ const read = relativePath => fs.readFileSync(path.join(root, relativePath), "utf
 const normalize = source => source.replace(/\r\n/g, "\n");
 const assetContracts = Object.freeze({
   left: Object.freeze({
-    path: "assets/platforms/ice_platform_left.png",
-    canvas: [128, 168],
-    bounds: {x: 2, y: 47, w: 126, h: 79},
-    source: {x: 2, y: 47, w: 126, h: 79},
+    path: "assets/platforms/fading_platform_left.png",
+    canvas: [140, 150],
+    bounds: {x: 75, y: 48, w: 65, h: 53},
+    source: {x: 75, y: 47, w: 65, h: 55},
     drawWidth: 24
   }),
   middle: Object.freeze({
-    path: "assets/platforms/ice_platform_middle.png",
-    canvas: [268, 168],
-    bounds: {x: 0, y: 12, w: 268, h: 114},
-    source: {x: 0, y: 29, w: 268, h: 97},
+    path: "assets/platforms/fading_platform_middle.png",
+    canvas: [280, 150],
+    bounds: {x: 0, y: 47, w: 280, h: 51},
+    source: {x: 0, y: 47, w: 280, h: 55},
     drawWidth: 52
   }),
   right: Object.freeze({
-    path: "assets/platforms/ice_platform_right.png",
-    canvas: [128, 168],
-    bounds: {x: 0, y: 48, w: 128, h: 79},
-    source: {x: 0, y: 48, w: 128, h: 79},
+    path: "assets/platforms/fading_platform_right.png",
+    canvas: [140, 150],
+    bounds: {x: 0, y: 48, w: 65, h: 54},
+    source: {x: 0, y: 47, w: 65, h: 55},
     drawWidth: 24
   })
 });
@@ -112,25 +112,25 @@ for (const contract of Object.values(assetContracts)) {
   const decoded = decodeRgbaPng(contract.path);
   assert.deepEqual([decoded.width, decoded.height], contract.canvas);
   assert.deepEqual(decoded.bounds, contract.bounds);
-  assert.ok(decoded.transparentPixels > 0, `${contract.path} must retain transparent padding`);
+  assert.ok(decoded.transparentPixels > 0, `${contract.path} must retain transparency`);
 }
 
 const rendererSource = read("js/renderer.js");
-const assetStart = rendererSource.indexOf("  const ICE_PLATFORM_ASSET_CONTRACT");
+const assetStart = rendererSource.indexOf("  const FADING_PLATFORM_ASSET_CONTRACT");
 const assetEnd = rendererSource.indexOf("  const TUTORIAL_DRAG_HAND_RENDER_SIZE", assetStart);
-const drawStart = rendererSource.indexOf("  function areIcePlatformAssetsReady");
+const drawStart = rendererSource.indexOf("  function areFadingPlatformAssetsReady");
 const drawEnd = rendererSource.indexOf("  function drawCanvasBouncePadFallback", drawStart);
 const platformsStart = rendererSource.indexOf("  function drawPlatforms(");
 const platformsEnd = rendererSource.indexOf("  function drawGoal(", platformsStart);
 assert.ok(assetStart >= 0 && assetEnd > assetStart);
 assert.ok(drawStart >= 0 && drawEnd > drawStart);
 assert.ok(platformsStart >= 0 && platformsEnd > platformsStart);
-const iceRendererSource = [
+const fadingRendererSource = [
   rendererSource.slice(assetStart, assetEnd),
   rendererSource.slice(drawStart, drawEnd),
   rendererSource.slice(platformsStart, platformsEnd)
 ].join("\n");
-assert.doesNotMatch(iceRendererSource, /Math\.random\(/);
+assert.doesNotMatch(fadingRendererSource, /Math\.random\(/);
 
 class FakeImage {
   constructor() {
@@ -155,6 +155,7 @@ class FakeImage {
 
 const drawCalls = [];
 const canvasCalls = [];
+const alphaAssignments = [];
 const fakeCanvasContext = new Proxy({}, {
   get(target, property) {
     if (property === "drawImage") return (...args) => drawCalls.push(args);
@@ -165,12 +166,14 @@ const fakeCanvasContext = new Proxy({}, {
     return target[property];
   },
   set(target, property, value) {
+    if (property === "globalAlpha") alphaAssignments.push(value);
     target[property] = value;
     return true;
   }
 });
 
 let meadowBaseCalls = 0;
+let ghostStepOutlineCalls = 0;
 const rendererContext = vm.createContext({
   Image: FakeImage,
   MEADOW_ASSET_VISUALS: {
@@ -186,7 +189,10 @@ const rendererContext = vm.createContext({
   drawAnchorStepWarningBorder: () => {},
   drawDeathZone: () => {},
   drawFallingPlatformAsset: () => false,
-  drawGhostStepFadeOutline: () => {},
+  drawGhostStepFadeOutline: platform => {
+    if (platform?.fade) ghostStepOutlineCalls++;
+  },
+  drawIcePlatformAsset: () => false,
   drawStandardPlatformDetails: () => {},
   getFallingPlatformActivationDelay: () => 1,
   getPlatforms: () => rendererContext.platforms,
@@ -198,17 +204,19 @@ const rendererContext = vm.createContext({
   roundedRect: () => {},
   worldTime: 1.25
 });
-vm.runInContext(`${iceRendererSource}
-  globalThis.icePlatformTestApi = {
-    contract: ICE_PLATFORM_ASSET_CONTRACT,
-    images: icePlatformImages,
-    draw: drawIcePlatformAsset,
-    ready: areIcePlatformAssetsReady,
+vm.runInContext(`${fadingRendererSource}
+  globalThis.fadingPlatformTestApi = {
+    contract: FADING_PLATFORM_ASSET_CONTRACT,
+    seamOverlap: FADING_PLATFORM_SEAM_OVERLAP,
+    images: fadingPlatformImages,
+    draw: drawFadingPlatformAsset,
+    ready: areFadingPlatformAssetsReady,
     drawPlatforms
   };
-`, rendererContext, {filename: "ice-platform-renderer-fixture.js"});
-const api = rendererContext.icePlatformTestApi;
+`, rendererContext, {filename: "fading-platform-renderer-fixture.js"});
+const api = rendererContext.fadingPlatformTestApi;
 assert.equal(api.ready(), true);
+assert.equal(api.seamOverlap, 1);
 assert.deepEqual(
   JSON.parse(JSON.stringify(api.contract)),
   Object.fromEntries(Object.entries(assetContracts).map(([name, contract]) => [name, {
@@ -220,36 +228,51 @@ assert.deepEqual(
 );
 
 for (const width of [100, 126, 154, 176]) {
-  const platform = {x: 310.125, y: 417.25, w: width, h: 26, ice: true, iceData: {}};
+  const platform = {
+    x: 310.125,
+    y: 417.25,
+    w: width,
+    h: 26,
+    fade: true,
+    fadeData: {opacity: 0.72, solid: true}
+  };
   const before = JSON.stringify(platform);
   drawCalls.length = 0;
   assert.equal(api.draw(fakeCanvasContext, platform), true);
-  assert.equal(JSON.stringify(platform), before, "visual drawing must not mutate collision data");
+  assert.equal(JSON.stringify(platform), before, "visual drawing must not mutate Fade geometry");
 
   const expectedMiddleCount = Math.ceil((width - 48) / 52);
   assert.equal(drawCalls.length, expectedMiddleCount + 2);
   assert.deepEqual(
     drawCalls[0].slice(1),
-    [2, 47, 126, 79, platform.x, platform.y, 24, 32]
+    [75, 47, 65, 55, platform.x, platform.y, 25, 26]
   );
   assert.deepEqual(
     drawCalls.at(-1).slice(1),
-    [0, 48, 128, 79, platform.x + width - 24, platform.y, 24, 32]
+    [0, 47, 65, 55, platform.x + width - 24, platform.y, 24, 26]
   );
 
   const destinations = drawCalls.map(call => ({x: call[5], y: call[6], w: call[7], h: call[8]}));
   assert.equal(destinations[0].x, platform.x);
   assert.equal(destinations.at(-1).x + destinations.at(-1).w, platform.x + width);
-  assert.equal(destinations[0].y, platform.y, "Ice LEFT Y must remain unchanged");
-  assert.equal(destinations.at(-1).y, platform.y, "Ice RIGHT Y must remain unchanged");
-  assert.ok(destinations.every(destination => destination.h === 32));
+  assert.ok(destinations.every(destination => destination.y === platform.y));
+  assert.ok(destinations.every(destination => destination.h === 26));
   for (let index = 1; index < destinations.length; index++) {
-    assert.ok(
-      Math.abs(destinations[index - 1].x + destinations[index - 1].w - destinations[index].x) < 1e-12,
-      `width ${width} must have no segment gap at index ${index}`
+    assert.equal(
+      destinations[index - 1].x + destinations[index - 1].w - destinations[index].x,
+      1,
+      `width ${width} must use exactly 1px internal overlap at index ${index}`
     );
   }
-  assert.ok(Math.abs(destinations.reduce((sum, item) => sum + item.w, 0) - width) < 1e-12);
+  assert.equal(
+    destinations.at(-1).x + destinations.at(-1).w - destinations[0].x,
+    width,
+    "internal overlap must not change the outer platform width"
+  );
+  assert.ok(destinations.every(destination => (
+    destination.x >= platform.x &&
+    destination.x + destination.w <= platform.x + width
+  )), "no overlapped segment may exceed the outer platform bounds");
 
   const middleCalls = drawCalls.slice(1, -1);
   for (const [index, call] of middleCalls.entries()) {
@@ -257,52 +280,66 @@ for (const width of [100, 126, 154, 176]) {
     const expectedDestinationWidth = Math.min(52, remaining);
     assert.equal(call[0].src, assetContracts.middle.path);
     assert.equal(call[1], 0);
-    assert.equal(call[2], 29);
-    assert.equal(call[3], 268 * expectedDestinationWidth / 52);
-    assert.equal(call[4], 97);
-    assert.equal(call[6], platform.y + 1, "only Ice MIDDLE receives the +1px Y offset");
-    assert.equal(call[7], expectedDestinationWidth);
-    assert.equal(call[8], 32);
+    assert.equal(call[2], 47);
+    assert.equal(call[3], 280 * expectedDestinationWidth / 52);
+    assert.equal(call[4], 55);
+    assert.equal(call[5], platform.x + 24 + index * 52);
+    assert.equal(call[7], expectedDestinationWidth + 1);
+    assert.equal(call[8], 26);
     if (remaining >= 52) {
-      assert.equal(call[3], 268);
-      assert.equal(call[7], 52);
+      assert.equal(call[3], 280);
+      assert.equal(call[7], 53);
     }
   }
-
   assert.equal(platform.h, 26);
-  assert.equal(platform.y + platform.h, 443.25);
-  assert.equal(destinations[0].y + destinations[0].h, 449.25);
-  assert.equal(destinations.at(-1).y + destinations.at(-1).h, 449.25);
-  assert.equal(449.25 - 443.25, 6, "Ice cap overhang contract remains unchanged");
 }
 
-assert.equal(api.draw(fakeCanvasContext, {x: 0, y: 0, w: 126, h: 26}, 0), false);
-assert.equal(api.draw(fakeCanvasContext, {x: 0, y: 0, w: 47, h: 26, ice: true}, 0), false);
+assert.deepEqual(
+  Object.values(assetContracts).map(contract => [contract.source.y, contract.source.h]),
+  [[47, 55], [47, 55], [47, 55]],
+  "all three master segments must use one shared vertical source scale"
+);
 
-const iceFixture = {x: 310.125, y: 417.25, w: 126, h: 26, ice: true, iceData: {}};
-const iceSnapshot = JSON.stringify(iceFixture);
-rendererContext.platforms = [iceFixture];
+assert.equal(api.draw(fakeCanvasContext, {x: 0, y: 0, w: 126, h: 26}, 0), false);
+assert.equal(api.draw(fakeCanvasContext, {x: 0, y: 0, w: 47, h: 26, fade: true}, 0), false);
+
+const fadeFixture = {
+  x: 310.125,
+  y: 417.25,
+  w: 126,
+  h: 26,
+  fade: true,
+  fadeData: {opacity: 0.72, solid: true}
+};
+const fadeSnapshot = JSON.stringify(fadeFixture);
+rendererContext.platforms = [fadeFixture];
 for (const useMeadowAssets of [false, true]) {
   drawCalls.length = 0;
   canvasCalls.length = 0;
+  alphaAssignments.length = 0;
   meadowBaseCalls = 0;
+  ghostStepOutlineCalls = 0;
   api.drawPlatforms({platform: {body: "#000", top: "#fff"}}, useMeadowAssets);
-  assert.ok(drawCalls.length > 0, "global Ice PNG must render in every biome path");
-  assert.equal(meadowBaseCalls, 0, "Meadow/biome base must not render behind valid Ice PNGs");
+  assert.ok(drawCalls.length > 0, "global Fading PNG must render in every biome path");
+  assert.equal(meadowBaseCalls, 0, "Meadow/Canvas base must not render behind valid Fading PNGs");
   assert.equal(canvasCalls.filter(call => call[0] === "stroke").length, 0,
-    "legacy white diagonals must be suppressed when the PNG set is active");
-  assert.equal(JSON.stringify(iceFixture), iceSnapshot);
+    "legacy dashed outline must be suppressed when the PNG set is active");
+  assert.ok(alphaAssignments.includes(0.72), "existing fadeData.opacity must wrap the asset draw");
+  assert.equal(ghostStepOutlineCalls, 1, "Ghost-Step overlay hook must remain after the asset");
+  assert.equal(JSON.stringify(fadeFixture), fadeSnapshot);
 }
 
-api.images.middle.naturalWidth = 0;
+api.images.right.naturalWidth = 0;
 drawCalls.length = 0;
 canvasCalls.length = 0;
 meadowBaseCalls = 0;
+ghostStepOutlineCalls = 0;
 api.drawPlatforms({platform: {body: "#000", top: "#fff"}}, true);
 assert.equal(drawCalls.length, 0, "an incomplete set must never render partially");
 assert.equal(meadowBaseCalls, 1, "Meadow fallback must remain available");
 assert.ok(canvasCalls.some(call => call[0] === "stroke"),
-  "legacy white diagonals must remain in the fallback");
+  "legacy dashed outline must remain in the fallback");
+assert.equal(ghostStepOutlineCalls, 1);
 
 drawCalls.length = 0;
 canvasCalls.length = 0;
@@ -311,17 +348,17 @@ api.drawPlatforms({platform: {body: "#000", top: "#fff"}}, false);
 assert.equal(drawCalls.length, 0);
 assert.ok(canvasCalls.some(call => call[0] === "fill"), "Canvas body fallback must remain");
 assert.ok(canvasCalls.some(call => call[0] === "stroke"),
-  "Canvas fallback must retain the white diagonal overlay");
-api.images.middle.naturalWidth = assetContracts.middle.canvas[0];
+  "Canvas fallback must retain the dashed outline");
+api.images.right.naturalWidth = assetContracts.right.canvas[0];
 
 const otherPlatformTypes = [
   {x: 100, y: 200, w: 126, h: 26},
   {x: 240, y: 220, w: 126, h: 26, moving: true},
-  {x: 380, y: 240, w: 126, h: 26, fade: true, fadeData: {opacity: 0.7}},
   {
-    x: 520, y: 260, w: 126, h: 26, fragile: true,
+    x: 380, y: 240, w: 126, h: 26, fragile: true,
     fallingPlatform: {triggered: false, falling: false, timer: 1}
   },
+  {x: 520, y: 260, w: 126, h: 26, ice: true},
   {
     x: 660, y: 280, w: 126, h: 26, conveyor: true,
     conveyorSpeed: 42, conveyorData: {phase: 0}
@@ -335,8 +372,15 @@ const otherPlatformSnapshot = JSON.stringify(otherPlatformTypes);
 rendererContext.platforms = otherPlatformTypes;
 drawCalls.length = 0;
 api.drawPlatforms({platform: {body: "#000", top: "#fff"}}, false);
-assert.equal(drawCalls.length, 0, "other platform types must never use Ice assets");
+assert.equal(drawCalls.length, 0, "other platform types must never use Fading assets");
 assert.equal(JSON.stringify(otherPlatformTypes), otherPlatformSnapshot);
+
+const platformSource = read("js/platforms.js");
+assert.match(platformSource, /const wave = \(Math\.cos\(elapsed \* platform\.speed \+ platform\.phase\) \+ 1\) \* 0\.5;/);
+assert.match(platformSource, /platform\.opacity = 0\.06 \+ wave \* 0\.94;/);
+assert.match(platformSource, /platform\.solid && platform\.opacity <= 0\.30/);
+assert.match(platformSource, /!platform\.solid && platform\.opacity >= 0\.40/);
+assert.match(rendererSource, /drawGhostStepFadeOutline\(p, drawX\);/);
 
 const protectedFiles = [
   "js/game.js",
@@ -352,11 +396,5 @@ for (const relativePath of protectedFiles) {
   });
   assert.equal(normalize(read(relativePath)), normalize(headSource));
 }
-assert.match(read("js/physics.js"), /player\.vx \*= 0\.9996;/);
-assert.match(read("js/physics.js"), /player\.vx \*= Math\.pow\(player\.onIce \? 0\.9998 : 0\.998, dt \* 60\);/);
-assert.doesNotMatch(
-  rendererSource.slice(drawStart, drawEnd),
-  /spikeData|dangerous|damage|hazard/i
-);
 
-console.log("Ice platform PNG bounds, global tiling, crop, fallback and frozen-scope tests passed.");
+console.log("Fading platform PNG bounds, alpha, global tiling, fallback and frozen-scope tests passed.");

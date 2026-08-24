@@ -372,7 +372,7 @@ function assertAnchorStepWarningTimingAndBorderOnly() {
 
   const borderSource = source.slice(
     source.indexOf("  function drawAnchorStepWarningBorder"),
-    source.indexOf("  function drawPlatforms(")
+    source.indexOf("  function drawGhostStepFadeOutline")
   );
   assert.match(borderSource, /ctx\.stroke\(\);/);
   assert.doesNotMatch(borderSource, /ctx\.fill\(\);|ctx\.fillStyle/);
@@ -431,7 +431,10 @@ function assertGhostStepOutlineIsVisualOnly() {
   );
   assert.deepEqual(drawCalls, []);
 
-  const outlineSource = source.slice(start, end);
+  const outlineSource = source.slice(
+    start,
+    source.indexOf("  function areFallingPlatformAssetsReady", start)
+  );
   assert.match(outlineSource, /ctx\.stroke\(\);/);
   assert.doesNotMatch(outlineSource, /ctx\.fill\(\);|ctx\.fillStyle/);
   assert.match(source, /if \(p\.fade\) ctx\.globalAlpha = p\.fadeData\.opacity;/);

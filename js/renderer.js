@@ -72,6 +72,36 @@
     })
   );
 
+  const FADING_PLATFORM_ASSET_CONTRACT = Object.freeze({
+    left: Object.freeze({
+      path: "assets/platforms/fading_platform_left.png",
+      canvas: Object.freeze({w: 140, h: 150}),
+      source: Object.freeze({x: 75, y: 47, w: 65, h: 55}),
+      drawWidth: 24
+    }),
+    middle: Object.freeze({
+      path: "assets/platforms/fading_platform_middle.png",
+      canvas: Object.freeze({w: 280, h: 150}),
+      source: Object.freeze({x: 0, y: 47, w: 280, h: 55}),
+      drawWidth: 52
+    }),
+    right: Object.freeze({
+      path: "assets/platforms/fading_platform_right.png",
+      canvas: Object.freeze({w: 140, h: 150}),
+      source: Object.freeze({x: 0, y: 47, w: 65, h: 55}),
+      drawWidth: 24
+    })
+  });
+  const FADING_PLATFORM_DRAW_HEIGHT = 26;
+  const FADING_PLATFORM_SEAM_OVERLAP = 1;
+  const fadingPlatformImages = Object.fromEntries(
+    Object.entries(FADING_PLATFORM_ASSET_CONTRACT).map(([name, contract]) => {
+      const image = new Image();
+      image.src = contract.path;
+      return [name, image];
+    })
+  );
+
   const TUTORIAL_DRAG_HAND_RENDER_SIZE = 108;
   const TUTORIAL_DRAG_HAND_FINGERTIP_X_RATIO = 496 / 1254;
   const TUTORIAL_DRAG_HAND_FINGERTIP_Y_RATIO = 24 / 1254;
@@ -678,7 +708,7 @@
         sourceWidth,
         contract.middle.source.h,
         destinationX,
-        destinationY,
+        destinationY + 1,
         destinationWidth,
         ICE_PLATFORM_DRAW_HEIGHT
       );
@@ -695,6 +725,83 @@
       destinationY,
       contract.right.drawWidth,
       ICE_PLATFORM_DRAW_HEIGHT
+    );
+    context.restore();
+    return true;
+  }
+
+  function areFadingPlatformAssetsReady() {
+    return Object.entries(FADING_PLATFORM_ASSET_CONTRACT).every(([name, contract]) => {
+      const image = fadingPlatformImages[name];
+      return (
+        image.complete &&
+        image.naturalWidth === contract.canvas.w &&
+        image.naturalHeight === contract.canvas.h
+      );
+    });
+  }
+
+  function drawFadingPlatformAsset(context, platform, drawX = platform.x) {
+    const contract = FADING_PLATFORM_ASSET_CONTRACT;
+    if (
+      !platform?.fade ||
+      platform.h !== FADING_PLATFORM_DRAW_HEIGHT ||
+      platform.w < contract.left.drawWidth + contract.right.drawWidth ||
+      !areFadingPlatformAssetsReady()
+    ) return false;
+
+    const destinationY = platform.y;
+    const middleStartX = drawX + contract.left.drawWidth;
+    const middleEndX = drawX + platform.w - contract.right.drawWidth;
+
+    context.save();
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    context.drawImage(
+      fadingPlatformImages.left,
+      contract.left.source.x,
+      contract.left.source.y,
+      contract.left.source.w,
+      contract.left.source.h,
+      drawX,
+      destinationY,
+      contract.left.drawWidth + FADING_PLATFORM_SEAM_OVERLAP,
+      FADING_PLATFORM_DRAW_HEIGHT
+    );
+
+    let destinationX = middleStartX;
+    while (destinationX < middleEndX) {
+      const destinationWidth = Math.min(
+        contract.middle.drawWidth,
+        middleEndX - destinationX
+      );
+      const sourceWidth = contract.middle.source.w * (
+        destinationWidth / contract.middle.drawWidth
+      );
+      context.drawImage(
+        fadingPlatformImages.middle,
+        contract.middle.source.x,
+        contract.middle.source.y,
+        sourceWidth,
+        contract.middle.source.h,
+        destinationX,
+        destinationY,
+        destinationWidth + FADING_PLATFORM_SEAM_OVERLAP,
+        FADING_PLATFORM_DRAW_HEIGHT
+      );
+      destinationX += destinationWidth;
+    }
+
+    context.drawImage(
+      fadingPlatformImages.right,
+      contract.right.source.x,
+      contract.right.source.y,
+      contract.right.source.w,
+      contract.right.source.h,
+      drawX + platform.w - contract.right.drawWidth,
+      destinationY,
+      contract.right.drawWidth,
+      FADING_PLATFORM_DRAW_HEIGHT
     );
     context.restore();
     return true;
@@ -786,15 +893,24 @@
       const iceAssetPlatform = Boolean(
         p.ice && drawIcePlatformAsset(ctx, p, drawX)
       );
+      const fadingAssetPlatform = Boolean(
+        p.fade && drawFadingPlatformAsset(ctx, p, drawX)
+      );
       meadowAssetPlatform = Boolean(
         !fallingAssetPlatform &&
         !iceAssetPlatform &&
+        !fadingAssetPlatform &&
         useMeadowAssets &&
         !p.lastBubbleSupport &&
         MEADOW_ASSET_VISUALS.drawPlatformBase(ctx, p, drawX, level.seed)
       );
 
-      if (!fallingAssetPlatform && !iceAssetPlatform && !meadowAssetPlatform) {
+      if (
+        !fallingAssetPlatform &&
+        !iceAssetPlatform &&
+        !fadingAssetPlatform &&
+        !meadowAssetPlatform
+      ) {
         ctx.fillStyle = p.fragile
           ? "#815142"
           : p.moving
@@ -836,7 +952,7 @@
         ctx.fill();
       }
 
-      if (p.fade) {
+      if (p.fade && !fadingAssetPlatform) {
         ctx.strokeStyle = "rgba(230,215,255,0.8)";
         ctx.lineWidth = 2;
         ctx.setLineDash([8, 8]);
