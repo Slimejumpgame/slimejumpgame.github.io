@@ -14,22 +14,22 @@ const assetContracts = Object.freeze({
   left: Object.freeze({
     path: "assets/platforms/ice_platform_left.png",
     canvas: [128, 168],
-    bounds: {x: 2, y: 47, w: 126, h: 79},
-    source: {x: 2, y: 47, w: 126, h: 79},
+    bounds: {x: 4, y: 50, w: 124, h: 63},
+    source: {x: 4, y: 50, w: 124, h: 63},
     drawWidth: 24
   }),
   middle: Object.freeze({
     path: "assets/platforms/ice_platform_middle.png",
     canvas: [268, 168],
-    bounds: {x: 0, y: 12, w: 268, h: 114},
-    source: {x: 0, y: 29, w: 268, h: 97},
+    bounds: {x: 0, y: 3, w: 268, h: 110},
+    source: {x: 0, y: 50, w: 268, h: 63},
     drawWidth: 52
   }),
   right: Object.freeze({
     path: "assets/platforms/ice_platform_right.png",
     canvas: [128, 168],
-    bounds: {x: 0, y: 48, w: 128, h: 79},
-    source: {x: 0, y: 48, w: 128, h: 79},
+    bounds: {x: 0, y: 17, w: 124, h: 94},
+    source: {x: 0, y: 50, w: 124, h: 63},
     drawWidth: 24
   })
 });
@@ -201,6 +201,7 @@ const rendererContext = vm.createContext({
 vm.runInContext(`${iceRendererSource}
   globalThis.icePlatformTestApi = {
     contract: ICE_PLATFORM_ASSET_CONTRACT,
+    seamOverlap: ICE_PLATFORM_SEAM_OVERLAP,
     images: icePlatformImages,
     draw: drawIcePlatformAsset,
     ready: areIcePlatformAssetsReady,
@@ -209,6 +210,7 @@ vm.runInContext(`${iceRendererSource}
 `, rendererContext, {filename: "ice-platform-renderer-fixture.js"});
 const api = rendererContext.icePlatformTestApi;
 assert.equal(api.ready(), true);
+assert.equal(api.seamOverlap, 1);
 assert.deepEqual(
   JSON.parse(JSON.stringify(api.contract)),
   Object.fromEntries(Object.entries(assetContracts).map(([name, contract]) => [name, {
@@ -230,26 +232,34 @@ for (const width of [100, 126, 154, 176]) {
   assert.equal(drawCalls.length, expectedMiddleCount + 2);
   assert.deepEqual(
     drawCalls[0].slice(1),
-    [2, 47, 126, 79, platform.x, platform.y, 24, 32]
+    [4, 50, 124, 63, platform.x, platform.y, 25, 32]
   );
   assert.deepEqual(
     drawCalls.at(-1).slice(1),
-    [0, 48, 128, 79, platform.x + width - 24, platform.y, 24, 32]
+    [0, 50, 124, 63, platform.x + width - 24, platform.y, 24, 32]
   );
 
   const destinations = drawCalls.map(call => ({x: call[5], y: call[6], w: call[7], h: call[8]}));
   assert.equal(destinations[0].x, platform.x);
   assert.equal(destinations.at(-1).x + destinations.at(-1).w, platform.x + width);
-  assert.equal(destinations[0].y, platform.y, "Ice LEFT Y must remain unchanged");
-  assert.equal(destinations.at(-1).y, platform.y, "Ice RIGHT Y must remain unchanged");
+  assert.ok(destinations.every(destination => destination.y === platform.y));
   assert.ok(destinations.every(destination => destination.h === 32));
   for (let index = 1; index < destinations.length; index++) {
-    assert.ok(
-      Math.abs(destinations[index - 1].x + destinations[index - 1].w - destinations[index].x) < 1e-12,
-      `width ${width} must have no segment gap at index ${index}`
+    assert.equal(
+      destinations[index - 1].x + destinations[index - 1].w - destinations[index].x,
+      1,
+      `width ${width} must use exactly 1px internal overlap at index ${index}`
     );
   }
-  assert.ok(Math.abs(destinations.reduce((sum, item) => sum + item.w, 0) - width) < 1e-12);
+  assert.equal(
+    destinations.at(-1).x + destinations.at(-1).w - destinations[0].x,
+    width,
+    "internal overlap must not change the outer platform width"
+  );
+  assert.ok(destinations.every(destination => (
+    destination.x >= platform.x &&
+    destination.x + destination.w <= platform.x + width
+  )), "no overlapped segment may exceed the outer platform bounds");
 
   const middleCalls = drawCalls.slice(1, -1);
   for (const [index, call] of middleCalls.entries()) {
@@ -257,15 +267,16 @@ for (const width of [100, 126, 154, 176]) {
     const expectedDestinationWidth = Math.min(52, remaining);
     assert.equal(call[0].src, assetContracts.middle.path);
     assert.equal(call[1], 0);
-    assert.equal(call[2], 29);
+    assert.equal(call[2], 50);
     assert.equal(call[3], 268 * expectedDestinationWidth / 52);
-    assert.equal(call[4], 97);
-    assert.equal(call[6], platform.y + 1, "only Ice MIDDLE receives the +1px Y offset");
-    assert.equal(call[7], expectedDestinationWidth);
+    assert.equal(call[4], 63);
+    assert.equal(call[5], platform.x + 24 + index * 52);
+    assert.equal(call[6], platform.y);
+    assert.equal(call[7], expectedDestinationWidth + 1);
     assert.equal(call[8], 32);
     if (remaining >= 52) {
       assert.equal(call[3], 268);
-      assert.equal(call[7], 52);
+      assert.equal(call[7], 53);
     }
   }
 
@@ -273,8 +284,15 @@ for (const width of [100, 126, 154, 176]) {
   assert.equal(platform.y + platform.h, 443.25);
   assert.equal(destinations[0].y + destinations[0].h, 449.25);
   assert.equal(destinations.at(-1).y + destinations.at(-1).h, 449.25);
-  assert.equal(449.25 - 443.25, 6, "Ice cap overhang contract remains unchanged");
+  assert.ok(destinations.every(destination => destination.y + destination.h === 449.25));
+  assert.equal(449.25 - 443.25, 6, "Ice overhang remains visual-only and exactly 6px");
 }
+
+assert.deepEqual(
+  Object.values(assetContracts).map(contract => [contract.source.y, contract.source.h]),
+  [[50, 63], [50, 63], [50, 63]],
+  "all three master segments must use one shared vertical source scale"
+);
 
 assert.equal(api.draw(fakeCanvasContext, {x: 0, y: 0, w: 126, h: 26}, 0), false);
 assert.equal(api.draw(fakeCanvasContext, {x: 0, y: 0, w: 47, h: 26, ice: true}, 0), false);

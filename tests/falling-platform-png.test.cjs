@@ -14,19 +14,22 @@ const assetContracts = Object.freeze({
   left: Object.freeze({
     path: "assets/platforms/falling_platform_left.png",
     canvas: [120, 130],
-    bounds: {x: 6, y: 31, w: 114, h: 68},
+    bounds: {x: 2, y: 24, w: 118, h: 77},
+    source: {x: 4, y: 26, w: 116, h: 77},
     drawWidth: 24
   }),
   middle: Object.freeze({
     path: "assets/platforms/falling_platform_middle.png",
     canvas: [260, 130],
-    bounds: {x: 0, y: 27, w: 260, h: 74},
+    bounds: {x: 0, y: 26, w: 260, h: 97},
+    source: {x: 0, y: 26, w: 260, h: 77},
     drawWidth: 52
   }),
   right: Object.freeze({
     path: "assets/platforms/falling_platform_right.png",
     canvas: [120, 130],
-    bounds: {x: 0, y: 34, w: 116, h: 58},
+    bounds: {x: 0, y: 23, w: 118, h: 80},
+    source: {x: 0, y: 26, w: 116, h: 77},
     drawWidth: 24
   })
 });
@@ -103,6 +106,16 @@ for (const contract of Object.values(assetContracts)) {
   assert.deepEqual([decoded.width, decoded.height], contract.canvas);
   assert.deepEqual(decoded.bounds, contract.bounds);
 }
+assert.deepEqual(
+  Object.values(assetContracts).map(contract => [contract.source.y, contract.source.h]),
+  [[26, 77], [26, 77], [26, 77]],
+  "all three master slices must use one shared vertical source zone"
+);
+assert.deepEqual(
+  Object.values(assetContracts).map(contract => contract.drawWidth),
+  [24, 52, 24],
+  "the nominal LEFT/MIDDLE/RIGHT segment widths must stay frozen"
+);
 
 const rendererSource = read("js/renderer.js");
 const assetStart = rendererSource.indexOf("  const FALLING_PLATFORM_ASSET_CONTRACT");
@@ -192,6 +205,7 @@ const rendererContext = vm.createContext({
 vm.runInContext(`${fallingRendererSource}
   globalThis.fallingPlatformTestApi = {
     contract: FALLING_PLATFORM_ASSET_CONTRACT,
+    seamOverlap: FALLING_PLATFORM_SEAM_OVERLAP,
     images: fallingPlatformImages,
     draw: drawFallingPlatformAsset,
     ready: areFallingPlatformAssetsReady,
@@ -205,10 +219,11 @@ assert.deepEqual(
   Object.fromEntries(Object.entries(assetContracts).map(([name, contract]) => [name, {
     path: contract.path,
     canvas: {w: contract.canvas[0], h: contract.canvas[1]},
-    source: contract.bounds,
+    source: contract.source,
     drawWidth: contract.drawWidth
   }]))
 );
+assert.equal(api.seamOverlap, 1);
 
 for (const width of [100, 126, 154, 176]) {
   const platform = {
@@ -227,10 +242,10 @@ for (const width of [100, 126, 154, 176]) {
 
   const expectedMiddleCount = Math.ceil((width - 48) / 52);
   assert.equal(drawCalls.length, expectedMiddleCount + 2);
-  assert.deepEqual(drawCalls[0].slice(1), [6, 31, 114, 68, drawX, 417.25, 24, 26]);
+  assert.deepEqual(drawCalls[0].slice(1), [4, 26, 116, 77, drawX, 417.25, 25, 26]);
   assert.deepEqual(
     drawCalls.at(-1).slice(1),
-    [0, 34, 116, 58, drawX + width - 24, 417.25, 24, 26]
+    [0, 26, 116, 77, drawX + width - 24, 417.25, 24, 26]
   );
 
   const destinations = drawCalls.map(call => ({x: call[5], y: call[6], w: call[7], h: call[8]}));
@@ -239,12 +254,9 @@ for (const width of [100, 126, 154, 176]) {
   assert.ok(destinations.every(destination => destination.y === 417.25));
   assert.ok(destinations.every(destination => destination.h === 26));
   for (let index = 1; index < destinations.length; index++) {
-    assert.ok(
-      Math.abs(destinations[index - 1].x + destinations[index - 1].w - destinations[index].x) < 1e-12,
-      `width ${width} must have no segment gap at index ${index}`
-    );
+    const overlap = destinations[index - 1].x + destinations[index - 1].w - destinations[index].x;
+    assert.equal(overlap, 1, `width ${width} must have a 1 px internal overlap at index ${index}`);
   }
-  assert.ok(Math.abs(destinations.reduce((sum, item) => sum + item.w, 0) - width) < 1e-12);
 
   const middleCalls = drawCalls.slice(1, -1);
   for (const [index, call] of middleCalls.entries()) {
@@ -253,14 +265,14 @@ for (const width of [100, 126, 154, 176]) {
     const expectedDestinationWidth = Math.min(52, remaining);
     assert.equal(call[0].src, assetContracts.middle.path);
     assert.equal(call[1], 0);
-    assert.equal(call[2], 27);
+    assert.equal(call[2], 26);
     assert.equal(call[3], 260 * expectedDestinationWidth / 52);
-    assert.equal(call[4], 74);
-    assert.equal(call[7], expectedDestinationWidth);
+    assert.equal(call[4], 77);
+    assert.equal(call[7], expectedDestinationWidth + 1);
     assert.equal(call[8], 26);
     if (!isFinal || remaining >= 52) {
       assert.equal(call[3], 260);
-      assert.equal(call[7], 52);
+      assert.equal(call[7], 53);
     }
   }
 }

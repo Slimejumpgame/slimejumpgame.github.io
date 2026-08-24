@@ -17,23 +17,24 @@
     left: Object.freeze({
       path: "assets/platforms/falling_platform_left.png",
       canvas: Object.freeze({w: 120, h: 130}),
-      source: Object.freeze({x: 6, y: 31, w: 114, h: 68}),
+      source: Object.freeze({x: 4, y: 26, w: 116, h: 77}),
       drawWidth: 24
     }),
     middle: Object.freeze({
       path: "assets/platforms/falling_platform_middle.png",
       canvas: Object.freeze({w: 260, h: 130}),
-      source: Object.freeze({x: 0, y: 27, w: 260, h: 74}),
+      source: Object.freeze({x: 0, y: 26, w: 260, h: 77}),
       drawWidth: 52
     }),
     right: Object.freeze({
       path: "assets/platforms/falling_platform_right.png",
       canvas: Object.freeze({w: 120, h: 130}),
-      source: Object.freeze({x: 0, y: 34, w: 116, h: 58}),
+      source: Object.freeze({x: 0, y: 26, w: 116, h: 77}),
       drawWidth: 24
     })
   });
   const FALLING_PLATFORM_DRAW_HEIGHT = 26;
+  const FALLING_PLATFORM_SEAM_OVERLAP = 1;
   const fallingPlatformImages = Object.fromEntries(
     Object.entries(FALLING_PLATFORM_ASSET_CONTRACT).map(([name, contract]) => {
       const image = new Image();
@@ -46,56 +47,27 @@
     left: Object.freeze({
       path: "assets/platforms/ice_platform_left.png",
       canvas: Object.freeze({w: 128, h: 168}),
-      source: Object.freeze({x: 2, y: 47, w: 126, h: 79}),
+      source: Object.freeze({x: 4, y: 50, w: 124, h: 63}),
       drawWidth: 24
     }),
     middle: Object.freeze({
       path: "assets/platforms/ice_platform_middle.png",
       canvas: Object.freeze({w: 268, h: 168}),
-      source: Object.freeze({x: 0, y: 29, w: 268, h: 97}),
+      source: Object.freeze({x: 0, y: 50, w: 268, h: 63}),
       drawWidth: 52
     }),
     right: Object.freeze({
       path: "assets/platforms/ice_platform_right.png",
       canvas: Object.freeze({w: 128, h: 168}),
-      source: Object.freeze({x: 0, y: 48, w: 128, h: 79}),
+      source: Object.freeze({x: 0, y: 50, w: 124, h: 63}),
       drawWidth: 24
     })
   });
   const ICE_PLATFORM_COLLISION_HEIGHT = 26;
   const ICE_PLATFORM_DRAW_HEIGHT = 32;
+  const ICE_PLATFORM_SEAM_OVERLAP = 1;
   const icePlatformImages = Object.fromEntries(
     Object.entries(ICE_PLATFORM_ASSET_CONTRACT).map(([name, contract]) => {
-      const image = new Image();
-      image.src = contract.path;
-      return [name, image];
-    })
-  );
-
-  const FADING_PLATFORM_ASSET_CONTRACT = Object.freeze({
-    left: Object.freeze({
-      path: "assets/platforms/fading_platform_left.png",
-      canvas: Object.freeze({w: 140, h: 150}),
-      source: Object.freeze({x: 75, y: 47, w: 65, h: 55}),
-      drawWidth: 24
-    }),
-    middle: Object.freeze({
-      path: "assets/platforms/fading_platform_middle.png",
-      canvas: Object.freeze({w: 280, h: 150}),
-      source: Object.freeze({x: 0, y: 47, w: 280, h: 55}),
-      drawWidth: 52
-    }),
-    right: Object.freeze({
-      path: "assets/platforms/fading_platform_right.png",
-      canvas: Object.freeze({w: 140, h: 150}),
-      source: Object.freeze({x: 0, y: 47, w: 65, h: 55}),
-      drawWidth: 24
-    })
-  });
-  const FADING_PLATFORM_DRAW_HEIGHT = 26;
-  const FADING_PLATFORM_SEAM_OVERLAP = 1;
-  const fadingPlatformImages = Object.fromEntries(
-    Object.entries(FADING_PLATFORM_ASSET_CONTRACT).map(([name, contract]) => {
       const image = new Image();
       image.src = contract.path;
       return [name, image];
@@ -611,7 +583,7 @@
       contract.left.source.h,
       drawX,
       destinationY,
-      contract.left.drawWidth,
+      contract.left.drawWidth + FALLING_PLATFORM_SEAM_OVERLAP,
       FALLING_PLATFORM_DRAW_HEIGHT
     );
 
@@ -632,7 +604,7 @@
         contract.middle.source.h,
         destinationX,
         destinationY,
-        destinationWidth,
+        destinationWidth + FALLING_PLATFORM_SEAM_OVERLAP,
         FALLING_PLATFORM_DRAW_HEIGHT
       );
       destinationX += destinationWidth;
@@ -688,7 +660,7 @@
       contract.left.source.h,
       drawX,
       destinationY,
-      contract.left.drawWidth,
+      contract.left.drawWidth + ICE_PLATFORM_SEAM_OVERLAP,
       ICE_PLATFORM_DRAW_HEIGHT
     );
 
@@ -708,8 +680,8 @@
         sourceWidth,
         contract.middle.source.h,
         destinationX,
-        destinationY + 1,
-        destinationWidth,
+        destinationY,
+        destinationWidth + ICE_PLATFORM_SEAM_OVERLAP,
         ICE_PLATFORM_DRAW_HEIGHT
       );
       destinationX += destinationWidth;
@@ -725,83 +697,6 @@
       destinationY,
       contract.right.drawWidth,
       ICE_PLATFORM_DRAW_HEIGHT
-    );
-    context.restore();
-    return true;
-  }
-
-  function areFadingPlatformAssetsReady() {
-    return Object.entries(FADING_PLATFORM_ASSET_CONTRACT).every(([name, contract]) => {
-      const image = fadingPlatformImages[name];
-      return (
-        image.complete &&
-        image.naturalWidth === contract.canvas.w &&
-        image.naturalHeight === contract.canvas.h
-      );
-    });
-  }
-
-  function drawFadingPlatformAsset(context, platform, drawX = platform.x) {
-    const contract = FADING_PLATFORM_ASSET_CONTRACT;
-    if (
-      !platform?.fade ||
-      platform.h !== FADING_PLATFORM_DRAW_HEIGHT ||
-      platform.w < contract.left.drawWidth + contract.right.drawWidth ||
-      !areFadingPlatformAssetsReady()
-    ) return false;
-
-    const destinationY = platform.y;
-    const middleStartX = drawX + contract.left.drawWidth;
-    const middleEndX = drawX + platform.w - contract.right.drawWidth;
-
-    context.save();
-    context.imageSmoothingEnabled = true;
-    context.imageSmoothingQuality = "high";
-    context.drawImage(
-      fadingPlatformImages.left,
-      contract.left.source.x,
-      contract.left.source.y,
-      contract.left.source.w,
-      contract.left.source.h,
-      drawX,
-      destinationY,
-      contract.left.drawWidth + FADING_PLATFORM_SEAM_OVERLAP,
-      FADING_PLATFORM_DRAW_HEIGHT
-    );
-
-    let destinationX = middleStartX;
-    while (destinationX < middleEndX) {
-      const destinationWidth = Math.min(
-        contract.middle.drawWidth,
-        middleEndX - destinationX
-      );
-      const sourceWidth = contract.middle.source.w * (
-        destinationWidth / contract.middle.drawWidth
-      );
-      context.drawImage(
-        fadingPlatformImages.middle,
-        contract.middle.source.x,
-        contract.middle.source.y,
-        sourceWidth,
-        contract.middle.source.h,
-        destinationX,
-        destinationY,
-        destinationWidth + FADING_PLATFORM_SEAM_OVERLAP,
-        FADING_PLATFORM_DRAW_HEIGHT
-      );
-      destinationX += destinationWidth;
-    }
-
-    context.drawImage(
-      fadingPlatformImages.right,
-      contract.right.source.x,
-      contract.right.source.y,
-      contract.right.source.w,
-      contract.right.source.h,
-      drawX + platform.w - contract.right.drawWidth,
-      destinationY,
-      contract.right.drawWidth,
-      FADING_PLATFORM_DRAW_HEIGHT
     );
     context.restore();
     return true;
@@ -868,6 +763,7 @@
       }
       let drawX = p.x;
       const standardPlatform = isStandardPlatform(p);
+      const biomeBasePlatform = standardPlatform || p.fade;
       let meadowAssetPlatform = false;
       if (
         p.fragile &&
@@ -893,13 +789,9 @@
       const iceAssetPlatform = Boolean(
         p.ice && drawIcePlatformAsset(ctx, p, drawX)
       );
-      const fadingAssetPlatform = Boolean(
-        p.fade && drawFadingPlatformAsset(ctx, p, drawX)
-      );
       meadowAssetPlatform = Boolean(
         !fallingAssetPlatform &&
         !iceAssetPlatform &&
-        !fadingAssetPlatform &&
         useMeadowAssets &&
         !p.lastBubbleSupport &&
         MEADOW_ASSET_VISUALS.drawPlatformBase(ctx, p, drawX, level.seed)
@@ -908,7 +800,6 @@
       if (
         !fallingAssetPlatform &&
         !iceAssetPlatform &&
-        !fadingAssetPlatform &&
         !meadowAssetPlatform
       ) {
         ctx.fillStyle = p.fragile
@@ -918,7 +809,7 @@
             : p.conveyor
               ? "#4a4f5b"
               : p.fade
-                ? "#584f87"
+                ? biome.platform.body
                 : p.ice
                   ? "#75bad1"
                   : p.spikePlatform
@@ -936,7 +827,7 @@
             : p.conveyor
               ? "#ffad45"
               : p.fade
-                ? "#d5b9ff"
+                ? biome.platform.top
                 : p.ice
                   ? "#e8fbff"
                   : p.spikePlatform
@@ -952,7 +843,7 @@
         ctx.fill();
       }
 
-      if (p.fade && !fadingAssetPlatform) {
+      if (p.fade) {
         ctx.strokeStyle = "rgba(230,215,255,0.8)";
         ctx.lineWidth = 2;
         ctx.setLineDash([8, 8]);
@@ -1074,7 +965,7 @@
         }
       }
 
-      if (standardPlatform && !meadowAssetPlatform) {
+      if (biomeBasePlatform && !meadowAssetPlatform) {
         drawStandardPlatformDetails(drawX, p.y, p.w, p.h, biome.platform);
       }
 
