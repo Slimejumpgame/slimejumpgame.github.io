@@ -303,10 +303,44 @@ const fakeCanvasContext = new Proxy({}, {
   }
 });
 
+const startGoalCategoryCoverage = new Set();
+const startDecorCounts = new Set();
+const goalDecorCounts = new Set();
+const renderedTreeVariants = new Set();
+const startGoalBackPlacement = Object.freeze({
+  treeRoundFlowering: {anchor: [204.5, 419], base: [132, 279], motifWidth: 329},
+  treeSaplingLeafy: {anchor: [157, 285], base: [109, 201], motifWidth: 207},
+  bushLayeredCluster: {anchor: [250.5, 356], base: [64, 437], motifWidth: 447},
+  bushTallLeafy: {anchor: [259.5, 430], base: [63, 452], motifWidth: 502},
+  grassTallFan: {anchor: [244, 279], base: [69, 413], motifWidth: 447},
+  grassWildArching: {anchor: [331.5, 341], base: [95, 568], motifWidth: 588},
+  mushroomsRedPair: {anchor: [188.5, 317], base: [48, 329], motifWidth: 349}
+});
+const startGoalLayoutSignature = (scene, role) => JSON.stringify(
+  [...scene.topBackDecor, ...scene.topFrontDecor]
+    .filter(item => item.role === role)
+    .map(item => ({
+      sprite: item.sprite,
+      layer: item.layer,
+      x: Number(((item.baselineX - item.platformX) / item.platformW).toFixed(5)),
+      y: item.baselineOffset,
+      width: item.nominalWidth
+    }))
+);
+const floatingLayoutSnapshot = scene => JSON.parse(JSON.stringify(
+  scene.topBackDecor.filter(item => item.role === "FLOATING")
+));
+
 for (const level of generatedLevels) {
   const before = JSON.stringify(geometrySnapshot(level));
   const scene = visualApi.getScene(level);
   assert.equal(scene, visualApi.getScene(level), "visual scene should be cached by level");
+  assert.notEqual(scene, visualApi.getScene(level, 1));
+  assert.equal(
+    visualApi.getScene(level, 1),
+    visualApi.getScene(level, 1),
+    "visual scenes should be cached by level and retry nonce"
+  );
   const floatingPlatforms = level.platforms.filter(platform => (
     visualApi.resolvePlatformRole(platform) === "FLOATING"
   ));
@@ -320,11 +354,17 @@ for (const level of generatedLevels) {
           : 4;
     return count + platformCount;
   }, 0);
-  assert.equal(scene.topBackDecor.length, 6 + expectedFloatingDecorCount);
-  assert.equal(scene.topFrontDecor.length, 8);
+  const retryScenes = [0, 1, 2].map(nonce => visualApi.getScene(level, nonce));
+  assert.equal(new Set(retryScenes.map(retryScene => (
+    startGoalLayoutSignature(retryScene, "START_PLATFORM")
+  ))).size, 3, "each retry must vary the start decoration");
+  assert.equal(new Set(retryScenes.map(retryScene => (
+    startGoalLayoutSignature(retryScene, "GOAL_TOWER")
+  ))).size, 3, "each retry must vary the goal decoration");
   assert.deepEqual(
-    [...new Set([...scene.topBackDecor, ...scene.topFrontDecor].map(item => item.category))].sort(),
-    ["BUSHES", "FLOWERS", "GRASS", "MUSHROOMS", "STONES", "TREES", "TUFTS"]
+    retryScenes.map(floatingLayoutSnapshot),
+    retryScenes.map(() => floatingLayoutSnapshot(scene)),
+    "retry variation must leave floating decoration byte-equivalent"
   );
   assert.ok(scene.topBackDecor.every(item => item.layer === "back"));
   assert.ok(scene.topFrontDecor.every(item => item.layer === "front"));
@@ -371,56 +411,94 @@ for (const level of generatedLevels) {
       }
     }
   }
-  assert.ok(
-    scene.topBackDecor
-      .filter(item => item.role !== "FLOATING")
-      .every(item => item.baselineOffset >= 1 && item.baselineOffset <= 2)
-  );
-  assert.ok(
-    scene.topFrontDecor.every(item => (
-      item.baselineOffset >= 9 && item.baselineOffset <= 11
-    ))
-  );
-  const startGoalItems = [...scene.topBackDecor, ...scene.topFrontDecor]
-    .filter(item => item.role !== "FLOATING");
-  assert.ok(
-    startGoalItems
-      .filter(item => item.category === "TREES" || item.category === "BUSHES")
-      .every(item => item.layer === "back")
-  );
-  assert.ok(
-    startGoalItems
-      .filter(item => ["FLOWERS", "MUSHROOMS", "STONES", "TUFTS"].includes(item.category))
-      .every(item => item.layer === "front")
-  );
-  const startGoalTrees = startGoalItems.filter(item => item.category === "TREES");
-  assert.equal(startGoalTrees.length, 2);
-  assert.ok(startGoalTrees.every(item => (
-    item.sprite === "treeRoundFlowering" &&
-    item.layer === "back" &&
-    item.baselineOffset === 2 &&
-    item.nominalWidth === 132
-  )));
-  assert.ok(startGoalTrees.every(item => {
-    const visibleHeight = 392 * (item.nominalWidth / 329);
-    const previousVisibleHeight = 392 * (88 / 329);
-    return Math.abs(visibleHeight - previousVisibleHeight * 1.5) < 1e-12;
-  }));
-  for (const role of ["START_PLATFORM", "GOAL_TOWER"]) {
-    assert.ok(startGoalItems.some(item => item.role === role && item.category === "TREES"));
+  for (const [nonce, retryScene] of retryScenes.entries()) {
+    assert.equal(retryScene.decorNonce, nonce);
+    assert.ok(retryScene.topBackDecor.every(item => item.layer === "back"));
+    assert.ok(retryScene.topFrontDecor.every(item => item.layer === "front"));
     assert.equal(
-      scene.topBackDecor.filter(item => item.role === role).length,
-      3
+      retryScene.topBackDecor.filter(item => item.role === "FLOATING").length,
+      expectedFloatingDecorCount
     );
-    assert.equal(
-      scene.topFrontDecor.filter(item => item.role === role).length,
-      4
+    assert.equal(retryScene.topFrontDecor.some(item => item.role === "FLOATING"), false);
+    const startGoalItems = [...retryScene.topBackDecor, ...retryScene.topFrontDecor]
+      .filter(item => item.role !== "FLOATING");
+    startGoalItems.forEach(item => startGoalCategoryCoverage.add(item.category));
+    assert.ok(
+      retryScene.topBackDecor
+        .filter(item => item.role !== "FLOATING")
+        .every(item => (
+          item.baselineOffset >= 1 && item.baselineOffset <= 2 &&
+          ["BUSHES", "GRASS", "MUSHROOMS", "TREES"].includes(item.category)
+        ))
     );
-  }
-  for (const item of [...scene.topBackDecor, ...scene.topFrontDecor]) {
-    assert.ok(item.baselineX >= item.platformX);
-    assert.ok(item.baselineX <= item.platformX + item.platformW);
-    assert.equal(item.baselineY, item.platformY + item.baselineOffset);
+    assert.ok(retryScene.topFrontDecor.every(item => (
+      item.baselineOffset >= 9 &&
+      item.baselineOffset <= 11 &&
+      item.category !== "TREES" &&
+      !("anchor" in item) &&
+      !("visibleBase" in item)
+    )));
+    assert.ok(
+      retryScene.topBackDecor
+        .filter(item => item.role === "FLOATING")
+        .every(item => !("anchor" in item) && !("visibleBase" in item))
+    );
+    for (const item of retryScene.topBackDecor.filter(item => item.role !== "FLOATING")) {
+      const placement = startGoalBackPlacement[item.sprite];
+      assert.ok(placement, `missing visible-base contract for ${item.sprite}`);
+      assert.deepEqual([item.anchor.x, item.anchor.y], placement.anchor);
+      assert.deepEqual(
+        [item.visibleBase.left, item.visibleBase.right],
+        placement.base
+      );
+      const scale = item.nominalWidth / placement.motifWidth;
+      const visibleBaseLeft = item.baselineX +
+        (item.visibleBase.left - item.anchor.x) * scale;
+      const visibleBaseRight = item.baselineX +
+        (item.visibleBase.right - item.anchor.x) * scale;
+      assert.ok(visibleBaseLeft >= item.platformX + 3 - 1e-9);
+      assert.ok(visibleBaseRight <= item.platformX + item.platformW - 3 + 1e-9);
+      assert.equal(item.baselineY, item.platformY + item.baselineOffset);
+    }
+    const startGoalTrees = startGoalItems.filter(item => item.category === "TREES");
+    startGoalTrees.forEach(item => renderedTreeVariants.add(item.sprite));
+    assert.ok(startGoalTrees.every(item => (
+      item.layer === "back" &&
+      item.baselineOffset >= 1 &&
+      item.baselineOffset <= 2 &&
+      (
+        (item.sprite === "treeRoundFlowering" && item.nominalWidth === 132) ||
+        (item.sprite === "treeSaplingLeafy" && item.nominalWidth === 60)
+      )
+    )));
+    for (const tree of startGoalTrees.filter(item => item.sprite === "treeRoundFlowering")) {
+      const visibleHeight = 392 * (tree.nominalWidth / 329);
+      const previousVisibleHeight = 392 * (88 / 329);
+      assert.ok(Math.abs(visibleHeight - previousVisibleHeight * 1.5) < 1e-12);
+    }
+    for (const role of ["START_PLATFORM", "GOAL_TOWER"]) {
+      const roleItems = startGoalItems.filter(item => item.role === role);
+      const backCount = roleItems.filter(item => item.layer === "back").length;
+      const frontCount = roleItems.filter(item => item.layer === "front").length;
+      assert.ok(backCount >= 2 && backCount <= 3);
+      assert.ok(frontCount >= 4 && frontCount <= 5);
+      assert.ok(roleItems.length >= 6 && roleItems.length <= 8);
+    }
+    const startCount = startGoalItems.filter(item => item.role === "START_PLATFORM").length;
+    const goalCount = startGoalItems.filter(item => item.role === "GOAL_TOWER").length;
+    startDecorCounts.add(startCount);
+    goalDecorCounts.add(goalCount);
+    assert.ok(goalCount >= startCount, "goal decor should be at least as lush as start decor");
+    assert.notEqual(
+      startGoalLayoutSignature(retryScene, "START_PLATFORM"),
+      startGoalLayoutSignature(retryScene, "GOAL_TOWER"),
+      "separate visual namespaces must keep start and goal distinct"
+    );
+    for (const item of [...retryScene.topBackDecor, ...retryScene.topFrontDecor]) {
+      assert.ok(item.baselineX >= item.platformX);
+      assert.ok(item.baselineX <= item.platformX + item.platformW);
+      assert.equal(item.baselineY, item.platformY + item.baselineOffset);
+    }
   }
   assert.deepEqual(
     JSON.parse(JSON.stringify(scene)),
@@ -450,6 +528,18 @@ for (const level of generatedLevels) {
     "asset rendering must not mutate level geometry or gameplay data"
   );
 }
+assert.deepEqual(
+  [...startGoalCategoryCoverage].sort(),
+  ["BUSHES", "FLOWERS", "GRASS", "MUSHROOMS", "STONES", "TREES", "TUFTS"],
+  "the retry layouts should exercise every available start/goal category"
+);
+assert.ok(startDecorCounts.size > 1, "start density should vary across levels and retries");
+assert.ok(goalDecorCounts.size > 1, "goal density should vary across levels and retries");
+assert.deepEqual(
+  [...renderedTreeVariants].sort(),
+  ["treeRoundFlowering", "treeSaplingLeafy"],
+  "both mapped tree variants should participate in retry layouts"
+);
 assert.equal(imageConstructionCount, 23, "draw calls must not construct additional images");
 assert.ok(drawCalls.length > 0);
 assert.ok(
@@ -489,7 +579,10 @@ function assertTopDecorLayer(items, drawLayer) {
   assert.equal(drawCalls.length, items.length);
   for (const [index, item] of items.entries()) {
     const call = drawCalls[index];
-    const [assetSuffix, source, anchor, motifWidth] = topDecorMappings[item.sprite];
+    const [assetSuffix, source, catalogAnchor, motifWidth] = topDecorMappings[item.sprite];
+    const anchor = item.anchor
+      ? [item.anchor.x, item.anchor.y]
+      : catalogAnchor;
     const scale = item.nominalWidth / motifWidth;
     assert.equal(call.length, 9);
     assert.equal(
@@ -514,6 +607,14 @@ function assertTopDecorLayer(items, drawLayer) {
 assertTopDecorLayer(
   previewScene.topBackDecor,
   visualApi.drawTopBackDecor
+);
+assertTopDecorLayer(
+  previewScene.topBackDecor.filter(item => item.role !== "FLOATING"),
+  visualApi.drawStartGoalBackDecor
+);
+assertTopDecorLayer(
+  previewScene.topBackDecor.filter(item => item.role === "FLOATING"),
+  visualApi.drawFloatingBackDecor
 );
 assertTopDecorLayer(
   previewScene.topFrontDecor,
@@ -873,7 +974,12 @@ const rendererPlatformContext = vm.createContext({
     drawPlatformBase: (context, platform, drawX, levelSeed) => {
       rendererBaseCalls.push({platform, drawX, levelSeed});
       return true;
-    }
+    },
+    resolvePlatformRole: platform => (
+      platform.h === 26 ? "FLOATING" :
+        platform.x === 0 ? "START_PLATFORM" :
+          platform.x === 1060 ? "GOAL_TOWER" : null
+    )
   },
   clamp: (value, min, max) => Math.max(min, Math.min(max, value)),
   ctx: rendererCanvasContext,
@@ -912,6 +1018,28 @@ assert.equal(
   "Last Bubble support must not enter the Meadow terrain contract"
 );
 assert.equal(JSON.stringify(rendererPlatformFixture), rendererPlatformSnapshot);
+rendererBaseCalls.length = 0;
+rendererPlatformContext.drawPlatformsForTest(
+  {platform: {body: "#000", top: "#fff"}},
+  true,
+  "without-floating"
+);
+assert.deepEqual(
+  rendererBaseCalls.map(call => call.platform.x),
+  [0, 1060],
+  "the first Meadow pass must exclude every floating platform body"
+);
+rendererBaseCalls.length = 0;
+rendererPlatformContext.drawPlatformsForTest(
+  {platform: {body: "#000", top: "#fff"}},
+  true,
+  "floating-only"
+);
+assert.deepEqual(
+  rendererBaseCalls.map(call => call.platform.x),
+  [420, 300, 320, 340, 360, 380, 400],
+  "the second Meadow pass must contain only floating platform bodies"
+);
 
 const guardStart = rendererSource.indexOf("  function isMeadowAssetVisualsActive");
 const guardEnd = rendererSource.indexOf("  function drawEarthPlatformDetail", guardStart);
@@ -934,7 +1062,32 @@ assert.equal(guardContext.guardForTest({id: "meadow"}), false);
 guardContext.tutorial = false;
 assert.equal(guardContext.guardForTest({id: "coast"}), false);
 
-assert.match(rendererSource, /function drawPlatforms\(biome, useMeadowAssets = false\)/);
+const decorAttemptStart = rendererSource.indexOf("  let meadowDecorAttemptLevel");
+const decorAttemptEnd = rendererSource.indexOf(
+  "  function drawEarthPlatformDetail",
+  decorAttemptStart
+);
+assert.ok(decorAttemptStart >= 0 && decorAttemptEnd > decorAttemptStart);
+const decorAttemptContext = vm.createContext({lives: 3, shots: 0});
+vm.runInContext(`${rendererSource.slice(decorAttemptStart, decorAttemptEnd)}
+  globalThis.getMeadowDecorAttemptNonceForTest = getMeadowDecorAttemptNonce;
+`, decorAttemptContext);
+const attemptLevelA = {};
+const attemptLevelB = {};
+assert.equal(decorAttemptContext.getMeadowDecorAttemptNonceForTest(attemptLevelA), 0);
+assert.equal(decorAttemptContext.getMeadowDecorAttemptNonceForTest(attemptLevelA), 0);
+decorAttemptContext.shots = 2;
+assert.equal(decorAttemptContext.getMeadowDecorAttemptNonceForTest(attemptLevelA), 0);
+decorAttemptContext.shots = 0;
+assert.equal(decorAttemptContext.getMeadowDecorAttemptNonceForTest(attemptLevelA), 1);
+decorAttemptContext.lives = 2;
+assert.equal(decorAttemptContext.getMeadowDecorAttemptNonceForTest(attemptLevelA), 2);
+assert.equal(decorAttemptContext.getMeadowDecorAttemptNonceForTest(attemptLevelB), 0);
+
+assert.match(
+  rendererSource,
+  /function drawPlatforms\(biome, useMeadowAssets = false, meadowPass = "all"\)/
+);
 assert.match(
   rendererSource,
   /!p\.lastBubbleSupport &&\s*MEADOW_ASSET_VISUALS\.drawPlatformBase/
@@ -957,7 +1110,11 @@ assert.match(rendererSource, /for \(const s of level\.spikes\) drawDeathZone\(s,
 assert.match(rendererSource, /drawTrajectory\(\);\s*drawPlayer\(\);/);
 assert.match(
   rendererSource,
-  /drawPlatforms\(biome, meadowAssetsActive\);[\s\S]*?drawTopBackDecor\(ctx, meadowScene\);[\s\S]*?drawGoal\(meadowAssetsActive\);[\s\S]*?drawPlayer\(\);[\s\S]*?drawTopFrontDecor\(ctx, meadowScene\);/
+  /drawPlatforms\(biome, true, "without-floating"\);[\s\S]*?drawStartGoalBackDecor\(ctx, meadowScene\);[\s\S]*?drawPlatforms\(biome, true, "floating-only"\);[\s\S]*?drawFloatingBackDecor\(ctx, meadowScene\);[\s\S]*?drawGoal\(meadowAssetsActive\);[\s\S]*?drawPlayer\(\);[\s\S]*?drawTopFrontDecor\(ctx, meadowScene\);/
+);
+assert.match(
+  rendererSource,
+  /MEADOW_ASSET_VISUALS\.getScene\(\s*meadowLevel,\s*getMeadowDecorAttemptNonce\(meadowLevel\)\s*\)/
 );
 const html = read("index.html");
 assert.match(

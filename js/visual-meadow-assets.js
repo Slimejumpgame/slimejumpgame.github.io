@@ -4,6 +4,8 @@
     const MEADOW_TOP_VARIANT_START = 0x53544152;
     const MEADOW_TOP_VARIANT_GOAL = 0x474f414c;
     const MEADOW_BODY_TOP_GOAL = 0x4254474c;
+    const MEADOW_TOP_DECOR_START = 0x44535441;
+    const MEADOW_TOP_DECOR_GOAL = 0x44474f41;
     const MEADOW_TOP_VARIANT_ASSET_NAMES = Object.freeze([
       "meadow_top_01",
       "meadow_top_02",
@@ -334,6 +336,15 @@
       return (value ^ (value >>> 16)) >>> 0;
     }
 
+    function createDecorRandom(levelSeed, salt, decorNonce) {
+      const nonceSalt = Math.imul((Number(decorNonce) || 0) >>> 0, 0x9e3779b1) >>> 0;
+      let state = hashVisualSeed(levelSeed, (salt ^ nonceSalt) >>> 0);
+      return () => {
+        state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+        return state / 4294967296;
+      };
+    }
+
     function getTopVariantSelection(levelSeed) {
       const startIndex = hashVisualSeed(
         levelSeed,
@@ -390,24 +401,162 @@
       Object.freeze({sprite: "stoneMossySingle", nominalWidth: 28}),
       Object.freeze({sprite: "bushLayeredCluster", nominalWidth: 32})
     ]);
-    const START_TOP_DECOR_PREVIEW = Object.freeze([
-      Object.freeze({sprite: "treeRoundFlowering", layer: "back", x: 28, baselineOffset: 2, nominalWidth: 132}),
-      Object.freeze({sprite: "bushLayeredCluster", layer: "back", x: 110, baselineOffset: 2}),
-      Object.freeze({sprite: "grassTallFan", layer: "back", x: 198, baselineOffset: 1}),
-      Object.freeze({sprite: "flowersLowMeadowMix", layer: "front", x: 45, baselineOffset: 10}),
-      Object.freeze({sprite: "tuftSimpleFan", layer: "front", x: 91, baselineOffset: 11}),
-      Object.freeze({sprite: "mushroomRedSingle", layer: "front", x: 133, baselineOffset: 9}),
-      Object.freeze({sprite: "stoneMossySingle", layer: "front", x: 190, baselineOffset: 10})
+    const START_GOAL_TREE_DECOR = Object.freeze([
+      Object.freeze({sprite: "treeRoundFlowering", layer: "back", nominalWidth: 132}),
+      Object.freeze({sprite: "treeSaplingLeafy", layer: "back", nominalWidth: 60})
     ]);
-    const GOAL_TOP_DECOR_PREVIEW = Object.freeze([
-      Object.freeze({sprite: "bushTallLeafy", layer: "back", x: 18, baselineOffset: 2}),
-      Object.freeze({sprite: "grassWildArching", layer: "back", x: 110, baselineOffset: 1}),
-      Object.freeze({sprite: "treeRoundFlowering", layer: "back", x: 212, baselineOffset: 2, nominalWidth: 132}),
-      Object.freeze({sprite: "flowersWhiteDaisy", layer: "front", x: 25, baselineOffset: 10}),
-      Object.freeze({sprite: "tuftBroadLeafFan", layer: "front", x: 75, baselineOffset: 11}),
-      Object.freeze({sprite: "stoneMossyFlat", layer: "front", x: 145, baselineOffset: 10}),
-      Object.freeze({sprite: "mushroomRedSingle", layer: "front", x: 202, baselineOffset: 9})
+    const START_GOAL_BACK_DECOR = Object.freeze([
+      Object.freeze({sprite: "bushLayeredCluster", layer: "back"}),
+      Object.freeze({sprite: "bushTallLeafy", layer: "back"}),
+      Object.freeze({sprite: "grassTallFan", layer: "back"}),
+      Object.freeze({sprite: "grassWildArching", layer: "back"}),
+      Object.freeze({sprite: "mushroomsRedPair", layer: "back"})
     ]);
+    const START_GOAL_BACK_PLACEMENT = Object.freeze({
+      treeRoundFlowering: Object.freeze({
+        anchor: Object.freeze({x: 204.5, y: 419}),
+        base: Object.freeze({left: 132, right: 279})
+      }),
+      treeSaplingLeafy: Object.freeze({
+        anchor: Object.freeze({x: 157, y: 285}),
+        base: Object.freeze({left: 109, right: 201})
+      }),
+      bushLayeredCluster: Object.freeze({
+        anchor: Object.freeze({x: 250.5, y: 356}),
+        base: Object.freeze({left: 64, right: 437})
+      }),
+      bushTallLeafy: Object.freeze({
+        anchor: Object.freeze({x: 259.5, y: 430}),
+        base: Object.freeze({left: 63, right: 452})
+      }),
+      grassTallFan: Object.freeze({
+        anchor: Object.freeze({x: 244, y: 279}),
+        base: Object.freeze({left: 69, right: 413})
+      }),
+      grassWildArching: Object.freeze({
+        anchor: Object.freeze({x: 331.5, y: 341}),
+        base: Object.freeze({left: 95, right: 568})
+      }),
+      mushroomsRedPair: Object.freeze({
+        anchor: Object.freeze({x: 188.5, y: 317}),
+        base: Object.freeze({left: 48, right: 329})
+      })
+    });
+    const START_GOAL_FRONT_DECOR = Object.freeze([
+      Object.freeze({sprite: "grassCompactFan", layer: "front"}),
+      Object.freeze({sprite: "flowersWhiteDaisy", layer: "front"}),
+      Object.freeze({sprite: "flowersLowMeadowMix", layer: "front"}),
+      Object.freeze({sprite: "mushroomRedSingle", layer: "front"}),
+      Object.freeze({sprite: "mushroomsRedPair", layer: "front", nominalWidth: 38}),
+      Object.freeze({sprite: "bushLayeredCluster", layer: "front", nominalWidth: 36}),
+      Object.freeze({sprite: "stoneMossySingle", layer: "front"}),
+      Object.freeze({sprite: "stoneMossyFlat", layer: "front"}),
+      Object.freeze({sprite: "tuftSimpleFan", layer: "front"}),
+      Object.freeze({sprite: "tuftBroadLeafFan", layer: "front"})
+    ]);
+
+    function randomInteger(random, minimum, maximum) {
+      return minimum + Math.floor(random() * (maximum - minimum + 1));
+    }
+
+    function takeRandomSpecifications(random, source, count) {
+      const available = [...source];
+      const selected = [];
+      while (selected.length < count && available.length > 0) {
+        selected.push(available.splice(randomInteger(random, 0, available.length - 1), 1)[0]);
+      }
+      return selected;
+    }
+
+    function positionStartGoalSpecifications(
+      role,
+      platform,
+      specifications,
+      layer,
+      random,
+      decorNonce
+    ) {
+      const count = specifications.length;
+      const ratios = layer === "back"
+        ? role === "START_PLATFORM"
+          ? {2: [0.18, 0.82], 3: [0.09, 0.50, 0.91]}[count]
+          : {2: [0.16, 0.84], 3: [0.08, 0.48, 0.92]}[count]
+        : {4: [0.14, 0.38, 0.63, 0.86], 5: [0.10, 0.30, 0.50, 0.70, 0.90]}[count];
+      const retryShift = (((Number(decorNonce) || 0) % 7) - 3) * 0.45;
+      return specifications.map((specification, index) => {
+        const jitter = (random() - 0.5) * (layer === "back" ? 8 : 6);
+        const roleShift = role === "START_PLATFORM" ? retryShift : -retryShift;
+        const backPlacement = layer === "back"
+          ? START_GOAL_BACK_PLACEMENT[specification.sprite]
+          : null;
+        const sprite = TOP_DECOR_SPRITES[specification.sprite];
+        const nominalWidth = specification.nominalWidth ?? sprite.nominalWidth;
+        const scale = nominalWidth / sprite.motifWidth;
+        const minimumX = backPlacement
+          ? 3 + (backPlacement.anchor.x - backPlacement.base.left) * scale
+          : 5;
+        const maximumX = backPlacement
+          ? platform.w - 3 - (backPlacement.base.right - backPlacement.anchor.x) * scale
+          : platform.w - 5;
+        const x = Math.max(
+          minimumX,
+          Math.min(maximumX, platform.w * ratios[index] + jitter + roleShift)
+        );
+        return {
+          ...specification,
+          x,
+          baselineOffset: layer === "back"
+            ? randomInteger(random, 1, 2)
+            : randomInteger(random, 9, 11),
+          ...(backPlacement
+            ? {anchor: backPlacement.anchor, visibleBase: backPlacement.base}
+            : {})
+        };
+      });
+    }
+
+    function createStartGoalDecorSpecifications(
+      role,
+      platform,
+      levelSeed,
+      decorNonce,
+      backCount,
+      frontCount
+    ) {
+      const salt = role === "START_PLATFORM"
+        ? MEADOW_TOP_DECOR_START
+        : MEADOW_TOP_DECOR_GOAL;
+      const random = createDecorRandom(levelSeed, salt, decorNonce);
+      const treeCycle = (
+        hashVisualSeed(levelSeed, salt) + ((Number(decorNonce) || 0) >>> 0)
+      ) % 3;
+      const includeTree = treeCycle !== 0;
+      const back = takeRandomSpecifications(
+        random,
+        START_GOAL_BACK_DECOR,
+        backCount - (includeTree ? 1 : 0)
+      );
+      if (includeTree) {
+        const tree = START_GOAL_TREE_DECOR[
+          randomInteger(random, 0, START_GOAL_TREE_DECOR.length - 1)
+        ];
+        const treeIndex = random() < 0.5 ? 0 : back.length;
+        back.splice(treeIndex, 0, tree);
+      }
+      const front = takeRandomSpecifications(
+        random,
+        START_GOAL_FRONT_DECOR,
+        frontCount
+      );
+      return [
+        ...positionStartGoalSpecifications(
+          role, platform, back, "back", random, decorNonce
+        ),
+        ...positionStartGoalSpecifications(
+          role, platform, front, "front", random, decorNonce
+        )
+      ];
+    }
 
     function getTopDecorPreviewLayer(role, specification) {
       if (role === "FLOATING") return "back";
@@ -434,22 +583,57 @@
         baselineX,
         baselineY: platform.y + baselineOffset,
         baselineOffset,
-        nominalWidth: specification.nominalWidth ?? sprite.nominalWidth
+        nominalWidth: specification.nominalWidth ?? sprite.nominalWidth,
+        ...(specification.anchor
+          ? {anchor: specification.anchor, visibleBase: specification.visibleBase}
+          : {})
       };
     }
 
-    function createTopDecorPreview(level) {
+    function createTopDecorPreview(level, decorNonce = 0) {
       const items = [];
       const platforms = Array.isArray(level?.platforms) ? level.platforms : [];
       const start = platforms.find(platform => resolvePlatformRole(platform) === "START_PLATFORM");
       const goal = platforms.find(platform => resolvePlatformRole(platform) === "GOAL_TOWER");
+      const levelSeed = level?.seed ?? 0;
+      const densityRandom = createDecorRandom(
+        levelSeed,
+        (MEADOW_TOP_DECOR_START ^ MEADOW_TOP_DECOR_GOAL) >>> 0,
+        decorNonce
+      );
+      const startBackCount = randomInteger(densityRandom, 2, 3);
+      const startFrontCount = 4;
+      const startTotal = startBackCount + startFrontCount;
+      const goalTotal = startTotal + randomInteger(densityRandom, 0, 1);
+      const goalBackCount = goalTotal === 6
+        ? 2
+        : goalTotal >= 8
+          ? 3
+          : randomInteger(densityRandom, 2, 3);
+      const goalFrontCount = goalTotal - goalBackCount;
       if (start) {
-        for (const specification of START_TOP_DECOR_PREVIEW) {
+        const specifications = createStartGoalDecorSpecifications(
+          "START_PLATFORM",
+          start,
+          levelSeed,
+          decorNonce,
+          startBackCount,
+          startFrontCount
+        );
+        for (const specification of specifications) {
           items.push(createTopDecorPreviewItem(start, "START_PLATFORM", specification));
         }
       }
       if (goal) {
-        for (const specification of GOAL_TOP_DECOR_PREVIEW) {
+        const specifications = createStartGoalDecorSpecifications(
+          "GOAL_TOWER",
+          goal,
+          levelSeed,
+          decorNonce,
+          goalBackCount,
+          goalFrontCount
+        );
+        for (const specification of specifications) {
           items.push(createTopDecorPreviewItem(goal, "GOAL_TOWER", specification));
         }
       }
@@ -490,22 +674,29 @@
       });
     }
 
-    function createScene(level) {
-      const topDecorPreview = createTopDecorPreview(level);
+    function createScene(level, decorNonce = 0) {
+      const topDecorPreview = createTopDecorPreview(level, decorNonce);
       return Object.freeze({
+        decorNonce,
         topBackDecor: topDecorPreview.back,
         topFrontDecor: topDecorPreview.front
       });
     }
 
-    function getScene(level) {
+    function getScene(level, decorNonce = 0) {
+      const normalizedNonce = (Number(decorNonce) || 0) >>> 0;
       if (!level || (typeof level !== "object" && typeof level !== "function")) {
-        return createScene(null);
+        return createScene(null, normalizedNonce);
       }
-      let scene = sceneCache.get(level);
+      let scenes = sceneCache.get(level);
+      if (!scenes) {
+        scenes = new Map();
+        sceneCache.set(level, scenes);
+      }
+      let scene = scenes.get(normalizedNonce);
       if (!scene) {
-        scene = createScene(level);
-        sceneCache.set(level, scene);
+        scene = createScene(level, normalizedNonce);
+        scenes.set(normalizedNonce, scene);
       }
       return scene;
     }
@@ -647,11 +838,12 @@
       context.imageSmoothingQuality = "high";
       for (const item of items) {
         const sprite = TOP_DECOR_SPRITES[item.sprite];
+        const anchor = item.anchor ?? sprite.anchor;
         const scale = item.nominalWidth / sprite.motifWidth;
         const destinationWidth = sprite.source.w * scale;
         const destinationHeight = sprite.source.h * scale;
-        const destinationX = item.baselineX - sprite.anchor.x * scale;
-        const destinationY = item.baselineY - sprite.anchor.y * scale;
+        const destinationX = item.baselineX - anchor.x * scale;
+        const destinationY = item.baselineY - anchor.y * scale;
         context.drawImage(
           assets[sprite.asset].image,
           sprite.source.x,
@@ -670,6 +862,20 @@
 
     function drawTopBackDecor(context, scene) {
       return drawTopDecorLayer(context, scene?.topBackDecor ?? []);
+    }
+
+    function drawStartGoalBackDecor(context, scene) {
+      return drawTopDecorLayer(
+        context,
+        (scene?.topBackDecor ?? []).filter(item => item.role !== "FLOATING")
+      );
+    }
+
+    function drawFloatingBackDecor(context, scene) {
+      return drawTopDecorLayer(
+        context,
+        (scene?.topBackDecor ?? []).filter(item => item.role === "FLOATING")
+      );
     }
 
     function drawTopFrontDecor(context, scene) {
@@ -807,6 +1013,8 @@
       resolvePlatformRole,
       drawBackground,
       drawTopBackDecor,
+      drawStartGoalBackDecor,
+      drawFloatingBackDecor,
       drawPlatformBase,
       drawPortal,
       drawTopFrontDecor
