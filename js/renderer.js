@@ -8,6 +8,11 @@
   const collectibleStarImage = new Image();
   collectibleStarImage.src = COLLECTIBLE_STAR_ASSET_PATH;
 
+  const BOUNCE_PAD_ASSET_PATH = "assets/gameplay/bounce_pad.png";
+  const BOUNCE_PAD_SOURCE_BOUNDS = Object.freeze({x: 0, y: 15, w: 256, h: 104});
+  const bouncePadImage = new Image();
+  bouncePadImage.src = BOUNCE_PAD_ASSET_PATH;
+
   const TUTORIAL_DRAG_HAND_RENDER_SIZE = 108;
   const TUTORIAL_DRAG_HAND_FINGERTIP_X_RATIO = 496 / 1254;
   const TUTORIAL_DRAG_HAND_FINGERTIP_Y_RATIO = 24 / 1254;
@@ -482,6 +487,52 @@
     ctx.restore();
   }
 
+  function drawCanvasBouncePadFallback(pad) {
+    ctx.fillStyle = "#47cde9";
+    roundedRect(pad.x, pad.y, pad.w, pad.h, 9);
+    ctx.fill();
+    ctx.fillStyle = "#d1fbff";
+    const triangleStartX = pad.x + pad.w / 2 - 16;
+    for (let triangleIndex = 0; triangleIndex < 2; triangleIndex++) {
+      const x = triangleStartX + triangleIndex * 18;
+      ctx.beginPath();
+      ctx.moveTo(x, pad.y + 20);
+      ctx.lineTo(x + 7, pad.y + 8);
+      ctx.lineTo(x + 14, pad.y + 20);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  function drawBouncePads() {
+    for (const pad of currentLevel().pads) {
+      ctx.save();
+      ctx.shadowColor = "#4ddcff";
+      ctx.shadowBlur = 18;
+      if (
+        bouncePadImage.complete &&
+        bouncePadImage.naturalWidth > 0 &&
+        bouncePadImage.naturalHeight > 0
+      ) {
+        const source = BOUNCE_PAD_SOURCE_BOUNDS;
+        ctx.drawImage(
+          bouncePadImage,
+          source.x,
+          source.y,
+          source.w,
+          source.h,
+          pad.x,
+          pad.y,
+          pad.w,
+          pad.h
+        );
+      } else {
+        drawCanvasBouncePadFallback(pad);
+      }
+      ctx.restore();
+    }
+  }
+
   function drawPlatforms(biome, useMeadowAssets = false, meadowPass = "all") {
     const level = currentLevel();
     const platforms = getPlatforms();
@@ -704,27 +755,6 @@
     }
 
     if (meadowPass === "without-floating") return;
-
-    for (const pad of level.pads) {
-      ctx.save();
-      ctx.shadowColor = "#4ddcff";
-      ctx.shadowBlur = 18;
-      ctx.fillStyle = "#47cde9";
-      roundedRect(pad.x, pad.y, pad.w, pad.h, 9);
-      ctx.fill();
-      ctx.fillStyle = "#d1fbff";
-      const triangleStartX = pad.x + pad.w / 2 - 16;
-      for (let triangleIndex = 0; triangleIndex < 2; triangleIndex++) {
-        const x = triangleStartX + triangleIndex * 18;
-        ctx.beginPath();
-        ctx.moveTo(x, pad.y + 20);
-        ctx.lineTo(x + 7, pad.y + 8);
-        ctx.lineTo(x + 14, pad.y + 20);
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.restore();
-    }
 
     for (const s of level.spikes) drawDeathZone(s, biome);
   }
@@ -2890,8 +2920,10 @@
       MEADOW_ASSET_VISUALS.drawStartGoalBackDecor(ctx, meadowScene);
       drawPlatforms(biome, true, "floating-only");
       MEADOW_ASSET_VISUALS.drawFloatingBackDecor(ctx, meadowScene);
+      drawBouncePads();
     } else {
       drawPlatforms(biome, false);
+      drawBouncePads();
     }
     drawGoal(meadowAssetsActive);
     if (meadowAssetsActive) {
