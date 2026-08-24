@@ -14,7 +14,7 @@ const assetContracts = Object.freeze({
   left: Object.freeze({
     path: "assets/platforms/falling_platform_left.png",
     canvas: [120, 130],
-    bounds: {x: 1, y: 32, w: 116, h: 67},
+    bounds: {x: 6, y: 31, w: 114, h: 68},
     drawWidth: 24
   }),
   middle: Object.freeze({
@@ -26,7 +26,7 @@ const assetContracts = Object.freeze({
   right: Object.freeze({
     path: "assets/platforms/falling_platform_right.png",
     canvas: [120, 130],
-    bounds: {x: 0, y: 34, w: 119, h: 58},
+    bounds: {x: 0, y: 34, w: 116, h: 58},
     drawWidth: 24
   })
 });
@@ -227,10 +227,10 @@ for (const width of [100, 126, 154, 176]) {
 
   const expectedMiddleCount = Math.ceil((width - 48) / 52);
   assert.equal(drawCalls.length, expectedMiddleCount + 2);
-  assert.deepEqual(drawCalls[0].slice(1), [1, 32, 116, 67, drawX, 417.25, 24, 26]);
+  assert.deepEqual(drawCalls[0].slice(1), [6, 31, 114, 68, drawX, 417.25, 24, 26]);
   assert.deepEqual(
     drawCalls.at(-1).slice(1),
-    [0, 34, 119, 58, drawX + width - 24, 417.25, 24, 26]
+    [0, 34, 116, 58, drawX + width - 24, 417.25, 24, 26]
   );
 
   const destinations = drawCalls.map(call => ({x: call[5], y: call[6], w: call[7], h: call[8]}));

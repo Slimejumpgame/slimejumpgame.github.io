@@ -17,7 +17,7 @@
     left: Object.freeze({
       path: "assets/platforms/falling_platform_left.png",
       canvas: Object.freeze({w: 120, h: 130}),
-      source: Object.freeze({x: 1, y: 32, w: 116, h: 67}),
+      source: Object.freeze({x: 6, y: 31, w: 114, h: 68}),
       drawWidth: 24
     }),
     middle: Object.freeze({
@@ -29,7 +29,7 @@
     right: Object.freeze({
       path: "assets/platforms/falling_platform_right.png",
       canvas: Object.freeze({w: 120, h: 130}),
-      source: Object.freeze({x: 0, y: 34, w: 119, h: 58}),
+      source: Object.freeze({x: 0, y: 34, w: 116, h: 58}),
       drawWidth: 24
     })
   });
