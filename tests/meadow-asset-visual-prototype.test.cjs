@@ -791,7 +791,7 @@ function capturePortalGlow(visualTime) {
   assert.equal(drawCalls.length, 1);
   assert.deepEqual(drawCalls[0].slice(1, 5), [24, 50, 712, 755]);
   assert.deepEqual(drawCalls[0].slice(5, 9), portalDestination);
-  assert.deepEqual(radialGradientCalls, [[0, 0, 0, 0, 0, 54]]);
+  assert.deepEqual(radialGradientCalls, [[0, 0, 0, 0, 0, 60]]);
   assert.equal(radialGradientStops.length, 1);
   assert.deepEqual(radialGradientStops[0].map(stop => stop[0]), [0, 0.42, 1]);
   assert.ok(canvasOperationCalls.some(call => (
@@ -800,10 +800,10 @@ function capturePortalGlow(visualTime) {
     Math.abs(call[2] - (portalDestination[1] + 191 * 0.49)) < 1e-12
   )));
   assert.ok(canvasOperationCalls.some(call => (
-    call[0] === "scale" && Math.abs(call[1] - 38 / 54) < 1e-12 && call[2] === 1
+    call[0] === "scale" && Math.abs(call[1] - 44 / 60) < 1e-12 && call[2] === 1
   )));
   assert.ok(canvasOperationCalls.some(call => (
-    call[0] === "arc" && call[1] === 0 && call[2] === 0 && call[3] === 54
+    call[0] === "arc" && call[1] === 0 && call[2] === 0 && call[3] === 60
   )));
   assert.ok(canvasPropertyWrites.some(write => (
     write[0] === "globalCompositeOperation" && write[1] === "screen"
@@ -812,12 +812,16 @@ function capturePortalGlow(visualTime) {
   assert.ok(alphaMatch);
   return Number(alphaMatch[1]);
 }
-assert.ok(Math.abs(capturePortalGlow(1.65) - 0.10) < 1e-12);
-assert.ok(Math.abs(capturePortalGlow(0.55) - 0.17) < 1e-12);
-assert.ok(portalDestination[0] + 180 * 0.48 - 38 >= portalDestination[0]);
-assert.ok(portalDestination[0] + 180 * 0.48 + 38 <= portalDestination[0] + 180);
-assert.ok(portalDestination[1] + 191 * 0.49 - 54 >= portalDestination[1]);
-assert.ok(portalDestination[1] + 191 * 0.49 + 54 <= portalDestination[1] + 191);
+const portalGlowMinimum = capturePortalGlow(1.65);
+const portalGlowMaximum = capturePortalGlow(0.55);
+assert.ok(Math.abs(portalGlowMinimum - 0.12) < 1e-12);
+assert.ok(Math.abs(portalGlowMaximum - 0.68) < 1e-12);
+assert.ok(portalGlowMaximum - portalGlowMinimum >= 0.56 - 1e-12);
+assert.ok(Math.abs(capturePortalGlow(0.55) - portalGlowMaximum) < 1e-12);
+assert.ok(portalDestination[0] + 180 * 0.48 - 44 >= portalDestination[0]);
+assert.ok(portalDestination[0] + 180 * 0.48 + 44 <= portalDestination[0] + 180);
+assert.ok(portalDestination[1] + 191 * 0.49 - 60 >= portalDestination[1]);
+assert.ok(portalDestination[1] + 191 * 0.49 + 60 <= portalDestination[1] + 191);
 assert.equal(
   portalDestination[1] -
     (portalGoalFixture.y + portalGoalFixture.h + 15 - portalDestination[3]),

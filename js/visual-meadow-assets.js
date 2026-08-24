@@ -374,8 +374,8 @@
     const GOAL_SEAM_COVER_EDGE_INSET = 3;
     const GOAL_SEAM_COVER_BASELINE_OFFSET = 11;
     const PORTAL_GLOW_PERIOD_SECONDS = 2.2;
-    const PORTAL_GLOW_ALPHA_MINIMUM = 0.10;
-    const PORTAL_GLOW_ALPHA_MAXIMUM = 0.17;
+    const PORTAL_GLOW_ALPHA_MINIMUM = 0.12;
+    const PORTAL_GLOW_ALPHA_MAXIMUM = 0.68;
     const PORTAL_VISUAL_Y_OFFSET = 10;
     const OPTIONAL_ASSET_NAMES = Object.freeze([
       "background_clouds_back",
@@ -1243,15 +1243,15 @@
       ) / 2;
       const glowAlpha = PORTAL_GLOW_ALPHA_MINIMUM +
         (PORTAL_GLOW_ALPHA_MAXIMUM - PORTAL_GLOW_ALPHA_MINIMUM) * pulse;
-      const glowRadius = 54;
+      const glowRadius = 60;
       const glow = context.createRadialGradient(0, 0, 0, 0, 0, glowRadius);
       glow.addColorStop(0, `rgba(235,215,255,${glowAlpha})`);
-      glow.addColorStop(0.42, `rgba(190,128,255,${glowAlpha * 0.62})`);
+      glow.addColorStop(0.42, `rgba(190,128,255,${glowAlpha * 0.70})`);
       glow.addColorStop(1, "rgba(137,70,230,0)");
 
       context.save();
       context.translate(x + width * 0.48, y + height * 0.49);
-      context.scale(38 / glowRadius, 1);
+      context.scale(44 / glowRadius, 1);
       context.globalCompositeOperation = "screen";
       context.fillStyle = glow;
       context.beginPath();
