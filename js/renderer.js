@@ -74,6 +74,20 @@
     })
   );
 
+  const SPIKE_PLATFORM_ASSET_CONTRACT = Object.freeze({
+    path: "assets/platforms/spike_platform_spike.png",
+    canvas: Object.freeze({w: 256, h: 320}),
+    source: Object.freeze({x: 14, y: 12, w: 228, h: 299})
+  });
+  const SPIKE_PLATFORM_FULL_DRAW_HEIGHT = 26;
+  const SPIKE_PLATFORM_FULL_DRAW_WIDTH =
+    SPIKE_PLATFORM_FULL_DRAW_HEIGHT *
+    SPIKE_PLATFORM_ASSET_CONTRACT.source.w /
+    SPIKE_PLATFORM_ASSET_CONTRACT.source.h;
+  const SPIKE_PLATFORM_BASELINE_OFFSET = 6;
+  const spikePlatformImage = new Image();
+  spikePlatformImage.src = SPIKE_PLATFORM_ASSET_CONTRACT.path;
+
   const TUTORIAL_DRAG_HAND_RENDER_SIZE = 108;
   const TUTORIAL_DRAG_HAND_FINGERTIP_X_RATIO = 496 / 1254;
   const TUTORIAL_DRAG_HAND_FINGERTIP_Y_RATIO = 24 / 1254;
@@ -719,6 +733,52 @@
     }
   }
 
+  function isSpikePlatformAssetReady() {
+    const contract = SPIKE_PLATFORM_ASSET_CONTRACT;
+    return (
+      spikePlatformImage.complete &&
+      spikePlatformImage.naturalWidth === contract.canvas.w &&
+      spikePlatformImage.naturalHeight === contract.canvas.h
+    );
+  }
+
+  function drawSpikePlatformAsset(context, platform, drawX, count, step) {
+    if (
+      !platform?.spikePlatform ||
+      !isSpikePlatformAssetReady() ||
+      count < 1 ||
+      step <= 0
+    ) return false;
+
+    const extension = clamp(platform.spikeData?.extension ?? 0, 0, 1);
+    if (extension <= 0.02) return true;
+
+    const source = SPIKE_PLATFORM_ASSET_CONTRACT.source;
+    const visibleSourceHeight = source.h * extension;
+    const visibleDrawHeight = SPIKE_PLATFORM_FULL_DRAW_HEIGHT * extension;
+    const baselineY = platform.y + SPIKE_PLATFORM_BASELINE_OFFSET;
+
+    context.save();
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    for (let i = 0; i < count; i++) {
+      const centerX = drawX + (i + 0.5) * step;
+      context.drawImage(
+        spikePlatformImage,
+        source.x,
+        source.y,
+        source.w,
+        visibleSourceHeight,
+        centerX - SPIKE_PLATFORM_FULL_DRAW_WIDTH / 2,
+        baselineY - visibleDrawHeight,
+        SPIKE_PLATFORM_FULL_DRAW_WIDTH,
+        visibleDrawHeight
+      );
+    }
+    context.restore();
+    return true;
+  }
+
   function drawBouncePads() {
     for (const pad of currentLevel().pads) {
       ctx.save();
@@ -763,7 +823,7 @@
       }
       let drawX = p.x;
       const standardPlatform = isStandardPlatform(p);
-      const biomeBasePlatform = standardPlatform || p.fade;
+      const biomeBasePlatform = standardPlatform || p.fade || p.spikePlatform;
       let meadowAssetPlatform = false;
       if (
         p.fragile &&
@@ -813,7 +873,7 @@
                 : p.ice
                   ? "#75bad1"
                   : p.spikePlatform
-                    ? "#5b4e58"
+                    ? biome.platform.body
                     : standardPlatform
                       ? biome.platform.body
                       : "#3c5872";
@@ -831,16 +891,16 @@
                 : p.ice
                   ? "#e8fbff"
                   : p.spikePlatform
-                    ? (p.spikeData.dangerous
-                        ? "#ff705d"
-                        : p.spikeData.warning
-                          ? "#ffc15c"
-                          : "#d98a69")
+                    ? biome.platform.top
                     : standardPlatform
                       ? biome.platform.top
                       : "#77c68a";
         roundedRect(drawX, p.y, p.w, Math.min(12, p.h), 8);
         ctx.fill();
+      }
+
+      if (p.spikePlatform && !meadowAssetPlatform) {
+        drawStandardPlatformDetails(drawX, p.y, p.w, p.h, biome.platform);
       }
 
       if (p.fade) {
@@ -871,41 +931,51 @@
 
       if (p.spikePlatform) {
         const spikeData = p.spikeData;
+        const count = Math.max(3, Math.floor(p.w / 25));
+        const step = p.w / count;
 
         // Dunkle Schlitze zeigen auch im sicheren Zustand klar, dass hier etwas
         // aus der Plattform herausfahren kann.
         ctx.fillStyle = "rgba(43,27,32,0.82)";
-        const slotSpacing = 24;
-        for (let x = drawX + 15; x < drawX + p.w - 8; x += slotSpacing) {
-          roundedRect(x - 6, p.y + 4, 12, 5, 2.5);
+        const slotWidth = Math.min(
+          step - 4,
+          SPIKE_PLATFORM_FULL_DRAW_WIDTH + 2
+        );
+        for (let i = 0; i < count; i++) {
+          const cellCenterX = drawX + (i + 0.5) * step;
+          roundedRect(cellCenterX - slotWidth / 2, p.y + 4, slotWidth, 5, 2.5);
           ctx.fill();
         }
 
         if (spikeData.warning && !spikeData.dangerous) {
           const pulse = 0.38 + (Math.sin(worldTime * 15) + 1) * 0.22;
+          ctx.save();
+          ctx.shadowColor = "rgba(255,196,86,0.90)";
+          ctx.shadowBlur = 12;
           ctx.fillStyle = `rgba(255,196,86,${pulse})`;
           roundedRect(drawX + 3, p.y + 1, p.w - 6, 9, 6);
           ctx.fill();
+          ctx.restore();
         }
 
         if (spikeData.extension > 0.02) {
           const spikeHeight = 25 * spikeData.extension;
-          const count = Math.max(3, Math.floor(p.w / 25));
-          const step = p.w / count;
-          ctx.fillStyle = "#dce8ed";
-          ctx.strokeStyle = spikeData.dangerous ? "#ff6d57" : "#d58a67";
-          ctx.lineWidth = 2.5;
-          for (let i = 0; i < count; i++) {
-            const left = drawX + i * step + 2;
-            const right = drawX + (i + 1) * step - 2;
-            const center = (left + right) / 2;
-            ctx.beginPath();
-            ctx.moveTo(left, p.y + 6);
-            ctx.lineTo(center, p.y + 5 - spikeHeight);
-            ctx.lineTo(right, p.y + 6);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
+          if (!drawSpikePlatformAsset(ctx, p, drawX, count, step)) {
+            ctx.fillStyle = "#dce8ed";
+            ctx.strokeStyle = spikeData.dangerous ? "#ff6d57" : "#d58a67";
+            ctx.lineWidth = 2.5;
+            for (let i = 0; i < count; i++) {
+              const left = drawX + i * step + 2;
+              const right = drawX + (i + 1) * step - 2;
+              const center = (left + right) / 2;
+              ctx.beginPath();
+              ctx.moveTo(left, p.y + 6);
+              ctx.lineTo(center, p.y + 5 - spikeHeight);
+              ctx.lineTo(right, p.y + 6);
+              ctx.closePath();
+              ctx.fill();
+              ctx.stroke();
+            }
           }
         }
       }
@@ -965,7 +1035,7 @@
         }
       }
 
-      if (biomeBasePlatform && !meadowAssetPlatform) {
+      if (biomeBasePlatform && !p.spikePlatform && !meadowAssetPlatform) {
         drawStandardPlatformDetails(drawX, p.y, p.w, p.h, biome.platform);
       }
 

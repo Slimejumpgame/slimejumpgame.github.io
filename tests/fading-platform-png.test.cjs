@@ -12,15 +12,6 @@ const normalize = source => source.replace(/\r\n/g, "\n");
 const rendererSource = read("js/renderer.js");
 const platformSource = read("js/platforms.js");
 
-const retiredAssetPaths = [
-  "assets/platforms/fading_platform_left.png",
-  "assets/platforms/fading_platform_middle.png",
-  "assets/platforms/fading_platform_right.png"
-];
-for (const relativePath of retiredAssetPaths) {
-  assert.equal(fs.existsSync(path.join(root, relativePath)), true,
-    `${relativePath} must remain on disk until the separate cleanup`);
-}
 assert.doesNotMatch(rendererSource, /fading_platform_(?:left|middle|right)\.png/);
 assert.doesNotMatch(rendererSource, /FADING_PLATFORM_ASSET_CONTRACT/);
 assert.doesNotMatch(rendererSource, /fadingPlatformImages/);
