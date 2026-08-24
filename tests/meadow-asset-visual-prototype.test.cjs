@@ -38,12 +38,27 @@ for (const relativePath of protectedFiles) {
 
 const assetExpectations = Object.freeze({
   "assets/environments/meadow/background/meadow_background.png": [1672, 941],
-  "assets/environments/meadow/decor/meadow_decor.png": [1448, 1086],
   "assets/environments/meadow/platforms/floating_left.png": [112, 127],
   "assets/environments/meadow/platforms/floating_middle.png": [300, 127],
   "assets/environments/meadow/platforms/floating_right.png": [108, 127],
-  "assets/environments/meadow/platforms/meadow_top.png": [2048, 745],
+  "assets/environments/meadow/platforms/meadow_top_01.png": [2048, 745],
+  "assets/environments/meadow/platforms/meadow_top_02.png": [2048, 745],
+  "assets/environments/meadow/platforms/meadow_top_03.png": [2048, 745],
+  "assets/environments/meadow/platforms/meadow_top_04.png": [2048, 745],
+  "assets/environments/meadow/platforms/meadow_top_05.png": [2048, 745],
+  "assets/environments/meadow/platforms/meadow_top_06.png": [2048, 745],
+  "assets/environments/meadow/platforms/meadow_body_top_01.png": [2048, 745],
+  "assets/environments/meadow/platforms/meadow_body_top_02.png": [2048, 745],
+  "assets/environments/meadow/platforms/meadow_body_top_03.png": [2048, 745],
+  "assets/environments/meadow/platforms/meadow_body_top_04.png": [2048, 745],
   "assets/environments/meadow/platforms/meadow_body_base.png": [2081, 758],
+  "assets/environments/meadow/decor/top/meadow_decor_top_grass_set_01.png": [1448, 1086],
+  "assets/environments/meadow/decor/top/meadow_decor_top_flowers_set_01.png": [1536, 1024],
+  "assets/environments/meadow/decor/top/meadow_decor_top_mushrooms_set_01.png": [1536, 1024],
+  "assets/environments/meadow/decor/top/meadow_decor_top_bushes_set_01.png": [1448, 1086],
+  "assets/environments/meadow/decor/top/meadow_decor_top_stones_set_01.png": [1536, 1024],
+  "assets/environments/meadow/decor/top/meadow_decor_top_tufts_set_01.png": [1536, 1024],
+  "assets/environments/meadow/decor/top/meadow_decor_top_trees_set_01.png": [1448, 1086],
   "assets/environments/meadow/portal/meadow_portal_props.png": [1448, 1086]
 });
 const assetHashesBefore = new Map();
@@ -163,23 +178,48 @@ class FakeImage {
   }
 }
 
-const visualContext = vm.createContext({Image: FakeImage, Promise});
+let visualMathRandomCalls = 0;
+const visualMath = Object.create(Math);
+visualMath.random = () => {
+  visualMathRandomCalls += 1;
+  return 0.5;
+};
+const visualContext = vm.createContext({Image: FakeImage, Math: visualMath, Promise});
 vm.runInContext(`${read("js/visual-meadow-assets.js")}
   globalThis.meadowAssetVisualsForTest = MEADOW_ASSET_VISUALS;
 `, visualContext, {filename: "js/visual-meadow-assets.js"});
 const visualApi = visualContext.meadowAssetVisualsForTest;
-assert.equal(imageConstructionCount, 8, "assets must be constructed once at module load");
+assert.equal(
+  imageConstructionCount,
+  23,
+  "the loader must construct all base assets, platform variants and top-decor sheets once"
+);
 assert.equal(visualApi.areAllReady(), true);
 assert.deepEqual(
   JSON.parse(JSON.stringify(visualApi.getStatus().paths)),
   {
     background: "assets/environments/meadow/background/meadow_background.png",
-    decor: "assets/environments/meadow/decor/meadow_decor.png",
     floating_left: "assets/environments/meadow/platforms/floating_left.png",
     floating_middle: "assets/environments/meadow/platforms/floating_middle.png",
     floating_right: "assets/environments/meadow/platforms/floating_right.png",
-    meadow_top: "assets/environments/meadow/platforms/meadow_top.png",
+    meadow_top_01: "assets/environments/meadow/platforms/meadow_top_01.png",
+    meadow_top_02: "assets/environments/meadow/platforms/meadow_top_02.png",
+    meadow_top_03: "assets/environments/meadow/platforms/meadow_top_03.png",
+    meadow_top_04: "assets/environments/meadow/platforms/meadow_top_04.png",
+    meadow_top_05: "assets/environments/meadow/platforms/meadow_top_05.png",
+    meadow_top_06: "assets/environments/meadow/platforms/meadow_top_06.png",
+    meadow_body_top_01: "assets/environments/meadow/platforms/meadow_body_top_01.png",
+    meadow_body_top_02: "assets/environments/meadow/platforms/meadow_body_top_02.png",
+    meadow_body_top_03: "assets/environments/meadow/platforms/meadow_body_top_03.png",
+    meadow_body_top_04: "assets/environments/meadow/platforms/meadow_body_top_04.png",
     meadow_body_base: "assets/environments/meadow/platforms/meadow_body_base.png",
+    decor_top_grass: "assets/environments/meadow/decor/top/meadow_decor_top_grass_set_01.png",
+    decor_top_flowers: "assets/environments/meadow/decor/top/meadow_decor_top_flowers_set_01.png",
+    decor_top_mushrooms: "assets/environments/meadow/decor/top/meadow_decor_top_mushrooms_set_01.png",
+    decor_top_bushes: "assets/environments/meadow/decor/top/meadow_decor_top_bushes_set_01.png",
+    decor_top_stones: "assets/environments/meadow/decor/top/meadow_decor_top_stones_set_01.png",
+    decor_top_tufts: "assets/environments/meadow/decor/top/meadow_decor_top_tufts_set_01.png",
+    decor_top_trees: "assets/environments/meadow/decor/top/meadow_decor_top_trees_set_01.png",
     portal: "assets/environments/meadow/portal/meadow_portal_props.png"
   }
 );
@@ -195,27 +235,58 @@ assert.deepEqual(meadowManifest.platforms.contract, {
   start: {
     width: 235,
     height: 80,
-    topHeight: 20,
-    topSourceHeight: 176,
+    topMode: "proportional-width-clip",
     bodyHeight: 48,
     bodyOverlap: 1,
-    lastBodyMode: "crop"
+    bodyOverflow: "clip"
   },
   goal: {
     width: 220,
     topHeight: 80,
     bodyHeight: 48,
     bodyOverlap: 1,
-    lastBodyMode: "crop"
+    lastBodyMode: "full-row-clip"
   }
 });
 assert.deepEqual(Object.keys(meadowManifest.platforms.slots), [
   "floating_left",
   "floating_middle",
   "floating_right",
-  "meadow_top",
+  "meadow_top_variants",
+  "meadow_body_top_variants",
   "meadow_body_base"
 ]);
+assert.deepEqual(
+  meadowManifest.platforms.slots.meadow_top_variants,
+  Array.from({length: 6}, (_, index) => ({
+    asset: `meadow_top_0${index + 1}`,
+    w: 2048,
+    h: 745
+  }))
+);
+assert.deepEqual(meadowManifest.platforms.topVariantSelection, {
+  startSalt: 0x53544152,
+  goalSalt: 0x474f414c,
+  mode: "start-index-plus-goal-from-remaining-five"
+});
+assert.deepEqual(
+  meadowManifest.platforms.slots.meadow_body_top_variants,
+  [
+    {trimTop: 0, trimRight: 0, trimBottom: 3, trimLeft: 3, source: {x: 3, y: 0, w: 2045, h: 742}},
+    {trimTop: 1, trimRight: 0, trimBottom: 4, trimLeft: 0, source: {x: 0, y: 1, w: 2048, h: 740}},
+    {trimTop: 1, trimRight: 0, trimBottom: 2, trimLeft: 0, source: {x: 0, y: 1, w: 2048, h: 742}},
+    {trimTop: 0, trimRight: 3, trimBottom: 3, trimLeft: 0, source: {x: 0, y: 0, w: 2045, h: 742}}
+  ].map((variant, index) => ({
+    asset: `meadow_body_top_0${index + 1}`,
+    w: 2048,
+    h: 745,
+    ...variant
+  }))
+);
+assert.deepEqual(meadowManifest.platforms.bodyTopVariantSelection, {
+  goalSalt: 0x4254474c,
+  mode: "goal-index"
+});
 
 const drawCalls = [];
 const fakeCanvasContext = new Proxy({}, {
@@ -236,8 +307,121 @@ for (const level of generatedLevels) {
   const before = JSON.stringify(geometrySnapshot(level));
   const scene = visualApi.getScene(level);
   assert.equal(scene, visualApi.getScene(level), "visual scene should be cached by level");
-  assert.equal(scene.backDecor.length, 5);
-  assert.equal(scene.foregroundDecor.length, 3);
+  const floatingPlatforms = level.platforms.filter(platform => (
+    visualApi.resolvePlatformRole(platform) === "FLOATING"
+  ));
+  const expectedFloatingDecorCount = floatingPlatforms.reduce((count, platform, index) => {
+    const platformCount = platform.w < 108
+      ? index % 2 === 0 ? 1 : 2
+      : platform.w < 132
+        ? 2
+        : platform.w < 165
+          ? 3
+          : 4;
+    return count + platformCount;
+  }, 0);
+  assert.equal(scene.topBackDecor.length, 6 + expectedFloatingDecorCount);
+  assert.equal(scene.topFrontDecor.length, 8);
+  assert.deepEqual(
+    [...new Set([...scene.topBackDecor, ...scene.topFrontDecor].map(item => item.category))].sort(),
+    ["BUSHES", "FLOWERS", "GRASS", "MUSHROOMS", "STONES", "TREES", "TUFTS"]
+  );
+  assert.ok(scene.topBackDecor.every(item => item.layer === "back"));
+  assert.ok(scene.topFrontDecor.every(item => item.layer === "front"));
+  assert.ok(
+    scene.topBackDecor
+      .filter(item => item.role === "FLOATING")
+      .every(item => item.baselineOffset === 2)
+  );
+  assert.equal(
+    scene.topFrontDecor.some(item => item.role === "FLOATING"),
+    false,
+    "floating platforms must remain back-decor only in the preview"
+  );
+  for (const [index, platform] of floatingPlatforms.entries()) {
+    const platformDecor = scene.topBackDecor.filter(item => (
+      item.role === "FLOATING" &&
+      item.platformX === platform.x &&
+      item.platformY === platform.y &&
+      item.platformW === platform.w
+    ));
+    const expectedCount = platform.w < 108
+      ? index % 2 === 0 ? 1 : 2
+      : platform.w < 132
+        ? 2
+        : platform.w < 165
+          ? 3
+          : 4;
+    assert.equal(platformDecor.length, expectedCount);
+    assert.ok(platformDecor.length >= 1 && platformDecor.length <= 4);
+    if (platform.w >= 108) assert.ok(platformDecor.length >= 2);
+    assert.ok(platformDecor.every(item => item.category !== "TREES"));
+    const ordered = [...platformDecor].sort((left, right) => left.baselineX - right.baselineX);
+    if (ordered.length > 1) {
+      const firstRatio = (ordered[0].baselineX - platform.x) / platform.w;
+      const lastRatio = (ordered.at(-1).baselineX - platform.x) / platform.w;
+      assert.ok(firstRatio <= 0.280000001);
+      assert.ok(lastRatio >= 0.719999999);
+      for (let itemIndex = 1; itemIndex < ordered.length; itemIndex++) {
+        const previous = ordered[itemIndex - 1];
+        const current = ordered[itemIndex];
+        const visibleGap = current.baselineX - previous.baselineX -
+          (previous.nominalWidth + current.nominalWidth) / 2;
+        assert.ok(visibleGap >= 4, `floating decor overlap: ${visibleGap}`);
+      }
+    }
+  }
+  assert.ok(
+    scene.topBackDecor
+      .filter(item => item.role !== "FLOATING")
+      .every(item => item.baselineOffset >= 1 && item.baselineOffset <= 2)
+  );
+  assert.ok(
+    scene.topFrontDecor.every(item => (
+      item.baselineOffset >= 9 && item.baselineOffset <= 11
+    ))
+  );
+  const startGoalItems = [...scene.topBackDecor, ...scene.topFrontDecor]
+    .filter(item => item.role !== "FLOATING");
+  assert.ok(
+    startGoalItems
+      .filter(item => item.category === "TREES" || item.category === "BUSHES")
+      .every(item => item.layer === "back")
+  );
+  assert.ok(
+    startGoalItems
+      .filter(item => ["FLOWERS", "MUSHROOMS", "STONES", "TUFTS"].includes(item.category))
+      .every(item => item.layer === "front")
+  );
+  const startGoalTrees = startGoalItems.filter(item => item.category === "TREES");
+  assert.equal(startGoalTrees.length, 2);
+  assert.ok(startGoalTrees.every(item => (
+    item.sprite === "treeRoundFlowering" &&
+    item.layer === "back" &&
+    item.baselineOffset === 2 &&
+    item.nominalWidth === 132
+  )));
+  assert.ok(startGoalTrees.every(item => {
+    const visibleHeight = 392 * (item.nominalWidth / 329);
+    const previousVisibleHeight = 392 * (88 / 329);
+    return Math.abs(visibleHeight - previousVisibleHeight * 1.5) < 1e-12;
+  }));
+  for (const role of ["START_PLATFORM", "GOAL_TOWER"]) {
+    assert.ok(startGoalItems.some(item => item.role === role && item.category === "TREES"));
+    assert.equal(
+      scene.topBackDecor.filter(item => item.role === role).length,
+      3
+    );
+    assert.equal(
+      scene.topFrontDecor.filter(item => item.role === role).length,
+      4
+    );
+  }
+  for (const item of [...scene.topBackDecor, ...scene.topFrontDecor]) {
+    assert.ok(item.baselineX >= item.platformX);
+    assert.ok(item.baselineX <= item.platformX + item.platformW);
+    assert.equal(item.baselineY, item.platformY + item.baselineOffset);
+  }
   assert.deepEqual(
     JSON.parse(JSON.stringify(scene)),
     JSON.parse(JSON.stringify(visualApi.getScene(JSON.parse(JSON.stringify(level))))),
@@ -245,7 +429,6 @@ for (const level of generatedLevels) {
   );
   for (let frame = 0; frame < 12; frame++) {
     assert.equal(visualApi.drawBackground(fakeCanvasContext, 1280, 720), true);
-    assert.equal(visualApi.drawBackDecor(fakeCanvasContext, scene), true);
     for (const platform of level.platforms) {
       assert.equal(
         visualApi.drawPlatformBase(
@@ -257,8 +440,9 @@ for (const level of generatedLevels) {
         true
       );
     }
+    assert.equal(visualApi.drawTopBackDecor(fakeCanvasContext, scene), true);
     assert.equal(visualApi.drawPortal(fakeCanvasContext, level.goal), true);
-    assert.equal(visualApi.drawForegroundDecor(fakeCanvasContext, scene), true);
+    assert.equal(visualApi.drawTopFrontDecor(fakeCanvasContext, scene), true);
   }
   assert.equal(
     JSON.stringify(geometrySnapshot(level)),
@@ -266,11 +450,74 @@ for (const level of generatedLevels) {
     "asset rendering must not mutate level geometry or gameplay data"
   );
 }
-assert.equal(imageConstructionCount, 8, "draw calls must not construct additional images");
+assert.equal(imageConstructionCount, 23, "draw calls must not construct additional images");
 assert.ok(drawCalls.length > 0);
 assert.ok(
   drawCalls.every(call => call.length === 5 || call.length === 9),
   "asset draws must use standalone-image or source-slice overloads"
+);
+
+const topDecorMappings = {
+  grassCompactFan: ["grass", [208, 104, 320, 224], [162, 202], 256],
+  grassTallFan: ["grass", [816, 16, 496, 320], [247.5, 291], 447],
+  grassWildArching: ["grass", [736, 320, 656, 384], [327, 354], 588],
+  flowersWhiteDaisy: ["flowers", [48, 64, 416, 384], [204, 343], 342],
+  flowersLowMeadowMix: ["flowers", [448, 528, 608, 432], [301, 379], 532],
+  mushroomRedSingle: ["mushrooms", [112, 176, 336, 288], [164.5, 251], 261],
+  mushroomsRedPair: ["mushrooms", [544, 112, 416, 352], [207.5, 317], 349],
+  bushLayeredCluster: ["bushes", [544, 320, 496, 400], [248.5, 364], 447],
+  bushTallLeafy: ["bushes", [0, 336, 560, 464], [280, 440], 502],
+  stoneMossySingle: ["stones", [176, 64, 368, 288], [182, 235], 286],
+  stoneMossyFlat: ["stones", [80, 368, 672, 288], [335.5, 246], 591],
+  tuftSimpleFan: ["tufts", [32, 208, 416, 288], [205.5, 250], 357],
+  tuftBroadLeafFan: ["tufts", [480, 176, 576, 336], [287.5, 287], 511],
+  treeSaplingLeafy: ["trees", [64, 144, 288, 320], [146.5, 298], 207],
+  treeRoundFlowering: ["trees", [960, 16, 416, 464], [204.5, 428], 329]
+};
+const previewFixture = {
+  seed: 91,
+  platforms: [
+    {x: 0, y: 640, w: 235, h: 80},
+    {x: 420, y: 360, w: 170, h: 26},
+    {x: 1060, y: 370, w: 220, h: 350}
+  ]
+};
+const previewScene = visualApi.getScene(previewFixture);
+function assertTopDecorLayer(items, drawLayer) {
+  drawCalls.length = 0;
+  assert.equal(drawLayer(fakeCanvasContext, previewScene), true);
+  assert.equal(drawCalls.length, items.length);
+  for (const [index, item] of items.entries()) {
+    const call = drawCalls[index];
+    const [assetSuffix, source, anchor, motifWidth] = topDecorMappings[item.sprite];
+    const scale = item.nominalWidth / motifWidth;
+    assert.equal(call.length, 9);
+    assert.equal(
+      call[0].src,
+      `assets/environments/meadow/decor/top/meadow_decor_top_${assetSuffix}_set_01.png`
+    );
+    assert.deepEqual(call.slice(1, 5), source);
+    assert.ok(
+      Math.abs(call[7] / source[2] - call[8] / source[3]) < 1e-12,
+      "top decor must scale uniformly"
+    );
+    assert.equal(call[7], source[2] * scale);
+    assert.equal(call[8], source[3] * scale);
+    assert.ok(Math.abs(call[5] + anchor[0] * scale - item.baselineX) < 1e-9);
+    assert.ok(Math.abs(call[6] + anchor[1] * scale - item.baselineY) < 1e-9);
+    assert.ok(
+      source[2] > motifWidth,
+      `${item.sprite} must retain deliberate transparent horizontal padding`
+    );
+  }
+}
+assertTopDecorLayer(
+  previewScene.topBackDecor,
+  visualApi.drawTopBackDecor
+);
+assertTopDecorLayer(
+  previewScene.topFrontDecor,
+  visualApi.drawTopFrontDecor
 );
 
 function assertDrawBounds(platform, calls) {
@@ -311,62 +558,218 @@ assert.ok(Math.abs(23 / 112 - 26 / 127) < 0.002);
 assert.ok(Math.abs(22 / 108 - 26 / 127) < 0.002);
 
 const startPlatform = {x: 0, y: 640, w: 235, h: 80};
+const startTopHeight = startPlatform.w * (745 / 2048);
+const topVariantAssetPaths = Array.from(
+  {length: 6},
+  (_, index) => `assets/environments/meadow/platforms/meadow_top_0${index + 1}.png`
+);
 drawCalls.length = 0;
-assert.equal(visualApi.drawPlatformBase(fakeCanvasContext, startPlatform), true);
-assert.equal(drawCalls.length, 3, "the start platform must use two body rows and one top crop");
-assertDrawBounds(startPlatform, drawCalls);
+assert.equal(visualApi.drawPlatformBase(fakeCanvasContext, startPlatform, startPlatform.x, 0), true);
+assert.equal(drawCalls.length, 2, "the start platform must use one full body row and one full top layer");
 assert.equal(drawCalls[0][0].src, "assets/environments/meadow/platforms/meadow_body_base.png");
-assert.deepEqual(drawCalls[0].slice(1), [1, 1, 2079, 756, 0, 659, 235, 48]);
-assert.equal(drawCalls[1][0].src, "assets/environments/meadow/platforms/meadow_body_base.png");
-assert.deepEqual(drawCalls[1].slice(1), [1, 1, 2079, 220.5, 0, 706, 235, 14]);
-assert.equal(drawCalls[2][0].src, "assets/environments/meadow/platforms/meadow_top.png");
-assert.deepEqual(drawCalls[2].slice(1), [0, 0, 2048, 176, 0, 640, 235, 20]);
+assert.deepEqual(
+  drawCalls[0].slice(1),
+  [1, 1, 2079, 756, 0, 640 + startTopHeight - 1, 235, 48]
+);
+assert.ok(
+  drawCalls[0][6] >= startPlatform.y + startPlatform.h,
+  "the full body row may overflow below the clipped start target"
+);
+assert.equal(
+  drawCalls[1][0].src,
+  topVariantAssetPaths[visualApi.getTopVariantSelection(0).startIndex]
+);
+assert.ok(
+  drawCalls.every(call => !call[0].src.includes("meadow_body_top_")),
+  "the start composition must not use a goal body-top variant"
+);
+assert.deepEqual(drawCalls[1].slice(1), [0, 640, 235, startTopHeight]);
+assert.equal(drawCalls[1][3] / 2048, drawCalls[1][4] / 745, "the start top must scale proportionally");
+assert.ok(drawCalls[1][2] + drawCalls[1][4] > startPlatform.y + startPlatform.h);
 
-const goalTopAsset = "assets/environments/meadow/platforms/meadow_top.png";
 const goalBodyAsset = "assets/environments/meadow/platforms/meadow_body_base.png";
 const goalBodySource = [1, 1, 2079, 756];
+const goalBodyTopY = 79;
+const bodyTopVariantSources = [
+  [3, 0, 2045, 742],
+  [0, 1, 2048, 740],
+  [0, 1, 2048, 742],
+  [0, 0, 2045, 742]
+];
+const bodyTopVariantAssetPaths = Array.from(
+  {length: 4},
+  (_, index) => `assets/environments/meadow/platforms/meadow_body_top_0${index + 1}.png`
+);
 
-function assertGoalComposition(platform, seed, expectedBodyDraws) {
+function assertGoalComposition(platform, seed, expectedBaseDraws) {
+  const bodyTopSelection = visualApi.getBodyTopVariantSelection(seed);
+  const bodyTopSource = bodyTopVariantSources[bodyTopSelection.goalIndex];
+  const goalBodyTopHeight = 220 * (bodyTopSource[3] / bodyTopSource[2]);
+  const goalBaseStartY = goalBodyTopY + goalBodyTopHeight - 1;
   drawCalls.length = 0;
   assert.equal(
     visualApi.drawPlatformBase(fakeCanvasContext, platform, platform.x, seed),
     true
   );
-  assert.equal(drawCalls.length, expectedBodyDraws + 1);
-  assertDrawBounds(platform, drawCalls);
+  assert.equal(drawCalls.length, expectedBaseDraws + 2);
 
   const topCapCall = drawCalls.at(-1);
   assert.equal(topCapCall.length, 5);
-  assert.equal(topCapCall[0].src, goalTopAsset);
+  assert.equal(
+    topCapCall[0].src,
+    topVariantAssetPaths[visualApi.getTopVariantSelection(seed).goalIndex]
+  );
   assert.deepEqual(topCapCall.slice(1, 5), [platform.x, platform.y, 220, 80]);
 
-  const bodyCalls = drawCalls.slice(0, -1);
-  const lastBodyY = platform.y + 79 + (bodyCalls.length - 1) * 47;
+  const bodyTopCall = drawCalls.at(-2);
+  assert.equal(bodyTopCall.length, 9);
   assert.equal(
-    bodyCalls.at(-1)[8],
-    platform.y + platform.h - lastBodyY,
-    "the final body row must be cropped to the exact remaining height"
+    bodyTopCall[0].src,
+    bodyTopVariantAssetPaths[bodyTopSelection.goalIndex]
   );
-  for (const [rowIndex, call] of bodyCalls.entries()) {
+  assert.deepEqual(
+    bodyTopCall.slice(1),
+    [
+      ...bodyTopSource,
+      platform.x, platform.y + goalBodyTopY, 220, goalBodyTopHeight
+    ]
+  );
+  assert.equal(bodyTopCall[7] / bodyTopCall[3], bodyTopCall[8] / bodyTopCall[4]);
+
+  const baseCalls = drawCalls.slice(0, -2);
+  assert.equal(baseCalls.length, expectedBaseDraws);
+  assertDrawBounds(platform, [topCapCall]);
+  if (baseCalls.length === 0) {
+    assert.ok(bodyTopCall[6] + bodyTopCall[8] > platform.y + platform.h);
+  } else {
+    const lastBodyY = platform.y + goalBaseStartY + (baseCalls.length - 1) * 47;
+    assert.ok(lastBodyY < platform.y + platform.h);
+    assert.ok(
+      lastBodyY + 48 >= platform.y + platform.h,
+      "the existing platform clip must cut the final full base row at the block bottom"
+    );
+  }
+  for (const [rowIndex, call] of baseCalls.entries()) {
     const [, sourceX, sourceY, sourceWidth, sourceHeight,
       destinationX, destinationY, destinationWidth, destinationHeight] = call;
     assert.equal(call[0].src, goalBodyAsset);
     assert.deepEqual([sourceX, sourceY, sourceWidth], goalBodySource.slice(0, 3));
-    assert.ok(sourceHeight > 0 && sourceHeight <= goalBodySource[3]);
-    assert.ok(Math.abs(sourceHeight / goalBodySource[3] - destinationHeight / 48) < 1e-9);
+    assert.equal(sourceHeight, goalBodySource[3]);
     assert.equal(destinationX, platform.x);
     assert.equal(destinationWidth, 220);
-    assert.equal(destinationY, platform.y + 79 + rowIndex * 47);
-    assert.ok(destinationHeight > 0 && destinationHeight <= 48);
-    if (rowIndex < bodyCalls.length - 1) assert.equal(destinationHeight, 48);
+    assert.equal(destinationY, platform.y + goalBaseStartY + rowIndex * 47);
+    assert.equal(destinationHeight, 48);
   }
 }
 
-assertGoalComposition({x: 1060, y: 570, w: 220, h: 150}, 7, 2);
-assertGoalComposition({x: 1060, y: 470, w: 220, h: 250}, 9, 4);
-assertGoalComposition({x: 1060, y: 370, w: 220, h: 350}, 11, 6);
-assertGoalComposition({x: 1060, y: 270, w: 220, h: 450}, 12, 8);
-assertGoalComposition({x: 1060, y: 185, w: 220, h: 535}, 13, 10);
+assertGoalComposition({x: 1060, y: 570, w: 220, h: 150}, 7, 0);
+assertGoalComposition({x: 1060, y: 470, w: 220, h: 250}, 9, 2);
+assertGoalComposition({x: 1060, y: 370, w: 220, h: 350}, 11, 5);
+assertGoalComposition({x: 1060, y: 270, w: 220, h: 450}, 12, 7);
+assertGoalComposition({x: 1060, y: 185, w: 220, h: 535}, 13, 9);
+
+const bodyTopVariantSweepSeeds = [0, 1, 2, 3].map(goalIndex => {
+  for (let seed = 0; seed < 4096; seed++) {
+    if (visualApi.getBodyTopVariantSelection(seed).goalIndex === goalIndex) return seed;
+  }
+  throw new Error(`missing sweep seed for body-top variant ${goalIndex}`);
+});
+let sweptGoalHeightCount = 0;
+for (const seed of bodyTopVariantSweepSeeds) {
+  const bodyTopSelection = visualApi.getBodyTopVariantSelection(seed);
+  const bodyTopSource = bodyTopVariantSources[bodyTopSelection.goalIndex];
+  const bodyTopHeight = 220 * (bodyTopSource[3] / bodyTopSource[2]);
+  const firstBaseY = goalBodyTopY + bodyTopHeight - 1;
+  for (let height = 150; height <= 535; height++) {
+    const platform = {x: 1060, y: 720 - height, w: 220, h: height};
+    const blockBottom = platform.y + platform.h;
+    drawCalls.length = 0;
+    assert.equal(visualApi.drawPlatformBase(fakeCanvasContext, platform, platform.x, seed), true);
+    const baseCalls = drawCalls.slice(0, -2);
+    for (const [rowIndex, call] of baseCalls.entries()) {
+      assert.deepEqual(call.slice(1, 5), goalBodySource);
+      assert.equal(call[5], platform.x);
+      assert.equal(call[6], platform.y + firstBaseY + rowIndex * 47);
+      assert.equal(call[7], 220);
+      assert.equal(call[8], 48);
+      if (rowIndex > 0) {
+        const previous = baseCalls[rowIndex - 1];
+        assert.equal(previous[6] + previous[8] - call[6], 1);
+      }
+    }
+    if (baseCalls.length > 0) {
+      const finalCall = baseCalls.at(-1);
+      assert.ok(finalCall[6] < blockBottom);
+      assert.ok(finalCall[6] + finalCall[8] >= blockBottom);
+    }
+    sweptGoalHeightCount += 1;
+  }
+}
+assert.equal(sweptGoalHeightCount, 4 * (535 - 150 + 1));
+
+const reachableStartVariants = new Set();
+const reachableGoalVariants = new Set();
+const reachablePairs = new Set();
+const reachableBodyTopVariants = new Set();
+for (let seed = 0; seed < 1000; seed++) {
+  const selection = JSON.parse(JSON.stringify(visualApi.getTopVariantSelection(seed)));
+  const repeat = JSON.parse(JSON.stringify(visualApi.getTopVariantSelection(seed)));
+  const bodyTopSelection = JSON.parse(
+    JSON.stringify(visualApi.getBodyTopVariantSelection(seed))
+  );
+  const bodyTopRepeat = JSON.parse(
+    JSON.stringify(visualApi.getBodyTopVariantSelection(seed))
+  );
+  assert.deepEqual(repeat, selection, `top selection must be deterministic for seed ${seed}`);
+  assert.deepEqual(
+    bodyTopRepeat,
+    bodyTopSelection,
+    `body-top selection must be deterministic for seed ${seed}`
+  );
+  assert.notEqual(selection.startIndex, selection.goalIndex, `start/goal collision for seed ${seed}`);
+  assert.equal(selection.startAsset, `meadow_top_0${selection.startIndex + 1}`);
+  assert.equal(selection.goalAsset, `meadow_top_0${selection.goalIndex + 1}`);
+  assert.equal(
+    bodyTopSelection.goalAsset,
+    `meadow_body_top_0${bodyTopSelection.goalIndex + 1}`
+  );
+
+  drawCalls.length = 0;
+  assert.equal(visualApi.drawPlatformBase(fakeCanvasContext, startPlatform, 0, seed), true);
+  const renderedStartTop = drawCalls.at(-1)[0].src;
+  drawCalls.length = 0;
+  assert.equal(
+    visualApi.drawPlatformBase(
+      fakeCanvasContext,
+      {x: 1060, y: 570, w: 220, h: 150},
+      1060,
+      seed
+    ),
+    true
+  );
+  const renderedGoalTop = drawCalls.at(-1)[0].src;
+  const renderedBodyTops = drawCalls.filter(call =>
+    call[0].src.includes("meadow_body_top_")
+  );
+  assert.equal(renderedStartTop, topVariantAssetPaths[selection.startIndex]);
+  assert.equal(renderedGoalTop, topVariantAssetPaths[selection.goalIndex]);
+  assert.notEqual(renderedStartTop, renderedGoalTop);
+  assert.equal(renderedBodyTops.length, 1);
+  assert.equal(
+    renderedBodyTops[0][0].src,
+    bodyTopVariantAssetPaths[bodyTopSelection.goalIndex]
+  );
+
+  reachableStartVariants.add(selection.startIndex);
+  reachableGoalVariants.add(selection.goalIndex);
+  reachablePairs.add(`${selection.startIndex}:${selection.goalIndex}`);
+  reachableBodyTopVariants.add(bodyTopSelection.goalIndex);
+}
+assert.deepEqual([...reachableStartVariants].sort(), [0, 1, 2, 3, 4, 5]);
+assert.deepEqual([...reachableGoalVariants].sort(), [0, 1, 2, 3, 4, 5]);
+assert.equal(reachablePairs.size, 30, "all ordered distinct start/goal pairs must be reachable");
+assert.deepEqual([...reachableBodyTopVariants].sort(), [0, 1, 2, 3]);
+assert.equal(visualMathRandomCalls, 0, "Meadow visual selection and preview must not consume Math.random");
 
 assert.equal(visualApi.resolvePlatformRole(startPlatform), "START_PLATFORM");
 assert.equal(
@@ -428,6 +831,11 @@ const standardPlatformSource = visualSource.slice(
 assert.doesNotMatch(standardPlatformSource, /fillRect|#65432d/);
 assert.doesNotMatch(standardPlatformSource, /\.rotate\(|\.scale\(/);
 assert.doesNotMatch(visualSource, /FLOATING_[123]/);
+const topDecorPreviewSource = visualSource.slice(
+  visualSource.indexOf("    const TOP_DECOR_SPRITES"),
+  visualSource.indexOf("    function traceRoundedRect")
+);
+assert.doesNotMatch(topDecorPreviewSource, /Math\.random\(/);
 
 const rendererSource = read("js/renderer.js");
 const rendererPlatformStart = rendererSource.indexOf("  function drawPlatforms(");
@@ -547,6 +955,10 @@ for (const mechanicFlag of [
 }
 assert.match(rendererSource, /for \(const s of level\.spikes\) drawDeathZone\(s, biome\);/);
 assert.match(rendererSource, /drawTrajectory\(\);\s*drawPlayer\(\);/);
+assert.match(
+  rendererSource,
+  /drawPlatforms\(biome, meadowAssetsActive\);[\s\S]*?drawTopBackDecor\(ctx, meadowScene\);[\s\S]*?drawGoal\(meadowAssetsActive\);[\s\S]*?drawPlayer\(\);[\s\S]*?drawTopFrontDecor\(ctx, meadowScene\);/
+);
 const html = read("index.html");
 assert.match(
   html,

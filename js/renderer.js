@@ -2815,10 +2815,10 @@
     if (!meadowAssetsActive || !MEADOW_ASSET_VISUALS.drawBackground(ctx, W, H)) {
       drawBackground(biome);
     }
-    if (meadowAssetsActive) {
-      MEADOW_ASSET_VISUALS.drawBackDecor(ctx, meadowScene);
-    }
     drawPlatforms(biome, meadowAssetsActive);
+    if (meadowAssetsActive) {
+      MEADOW_ASSET_VISUALS.drawTopBackDecor(ctx, meadowScene);
+    }
     drawGoal(meadowAssetsActive);
     drawStars();
     drawEnemies();
@@ -2826,7 +2826,7 @@
     drawPlayer();
     drawParticles();
     if (meadowAssetsActive) {
-      MEADOW_ASSET_VISUALS.drawForegroundDecor(ctx, meadowScene);
+      MEADOW_ASSET_VISUALS.drawTopFrontDecor(ctx, meadowScene);
     }
     drawTutorialDragHand();
     drawTutorialHeadline();
