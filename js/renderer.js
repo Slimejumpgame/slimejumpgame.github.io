@@ -13,6 +13,35 @@
   const bouncePadImage = new Image();
   bouncePadImage.src = BOUNCE_PAD_ASSET_PATH;
 
+  const FALLING_PLATFORM_ASSET_CONTRACT = Object.freeze({
+    left: Object.freeze({
+      path: "assets/platforms/falling_platform_left.png",
+      canvas: Object.freeze({w: 120, h: 130}),
+      source: Object.freeze({x: 1, y: 32, w: 116, h: 67}),
+      drawWidth: 24
+    }),
+    middle: Object.freeze({
+      path: "assets/platforms/falling_platform_middle.png",
+      canvas: Object.freeze({w: 260, h: 130}),
+      source: Object.freeze({x: 0, y: 27, w: 260, h: 74}),
+      drawWidth: 52
+    }),
+    right: Object.freeze({
+      path: "assets/platforms/falling_platform_right.png",
+      canvas: Object.freeze({w: 120, h: 130}),
+      source: Object.freeze({x: 0, y: 34, w: 119, h: 58}),
+      drawWidth: 24
+    })
+  });
+  const FALLING_PLATFORM_DRAW_HEIGHT = 26;
+  const fallingPlatformImages = Object.fromEntries(
+    Object.entries(FALLING_PLATFORM_ASSET_CONTRACT).map(([name, contract]) => {
+      const image = new Image();
+      image.src = contract.path;
+      return [name, image];
+    })
+  );
+
   const TUTORIAL_DRAG_HAND_RENDER_SIZE = 108;
   const TUTORIAL_DRAG_HAND_FINGERTIP_X_RATIO = 496 / 1254;
   const TUTORIAL_DRAG_HAND_FINGERTIP_Y_RATIO = 24 / 1254;
@@ -487,6 +516,83 @@
     ctx.restore();
   }
 
+  function areFallingPlatformAssetsReady() {
+    return Object.entries(FALLING_PLATFORM_ASSET_CONTRACT).every(([name, contract]) => {
+      const image = fallingPlatformImages[name];
+      return (
+        image.complete &&
+        image.naturalWidth === contract.canvas.w &&
+        image.naturalHeight === contract.canvas.h
+      );
+    });
+  }
+
+  function drawFallingPlatformAsset(context, platform, drawX = platform.x) {
+    const contract = FALLING_PLATFORM_ASSET_CONTRACT;
+    if (
+      !platform?.fragile ||
+      platform.h !== FALLING_PLATFORM_DRAW_HEIGHT ||
+      platform.w < contract.left.drawWidth + contract.right.drawWidth ||
+      !areFallingPlatformAssetsReady()
+    ) return false;
+
+    const destinationY = platform.y;
+    const middleStartX = drawX + contract.left.drawWidth;
+    const middleEndX = drawX + platform.w - contract.right.drawWidth;
+
+    context.save();
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    context.drawImage(
+      fallingPlatformImages.left,
+      contract.left.source.x,
+      contract.left.source.y,
+      contract.left.source.w,
+      contract.left.source.h,
+      drawX,
+      destinationY,
+      contract.left.drawWidth,
+      FALLING_PLATFORM_DRAW_HEIGHT
+    );
+
+    let destinationX = middleStartX;
+    while (destinationX < middleEndX) {
+      const destinationWidth = Math.min(
+        contract.middle.drawWidth,
+        middleEndX - destinationX
+      );
+      const sourceWidth = contract.middle.source.w * (
+        destinationWidth / contract.middle.drawWidth
+      );
+      context.drawImage(
+        fallingPlatformImages.middle,
+        contract.middle.source.x,
+        contract.middle.source.y,
+        sourceWidth,
+        contract.middle.source.h,
+        destinationX,
+        destinationY,
+        destinationWidth,
+        FALLING_PLATFORM_DRAW_HEIGHT
+      );
+      destinationX += destinationWidth;
+    }
+
+    context.drawImage(
+      fallingPlatformImages.right,
+      contract.right.source.x,
+      contract.right.source.y,
+      contract.right.source.w,
+      contract.right.source.h,
+      drawX + platform.w - contract.right.drawWidth,
+      destinationY,
+      contract.right.drawWidth,
+      FALLING_PLATFORM_DRAW_HEIGHT
+    );
+    context.restore();
+    return true;
+  }
+
   function drawCanvasBouncePadFallback(pad) {
     ctx.fillStyle = "#47cde9";
     roundedRect(pad.x, pad.y, pad.w, pad.h, 9);
@@ -567,13 +673,17 @@
 
       ctx.save();
       if (p.fade) ctx.globalAlpha = p.fadeData.opacity;
+      const fallingAssetPlatform = Boolean(
+        p.fragile && drawFallingPlatformAsset(ctx, p, drawX)
+      );
       meadowAssetPlatform = Boolean(
+        !fallingAssetPlatform &&
         useMeadowAssets &&
         !p.lastBubbleSupport &&
         MEADOW_ASSET_VISUALS.drawPlatformBase(ctx, p, drawX, level.seed)
       );
 
-      if (!meadowAssetPlatform) {
+      if (!fallingAssetPlatform && !meadowAssetPlatform) {
         ctx.fillStyle = p.fragile
           ? "#815142"
           : p.moving
@@ -722,7 +832,13 @@
           ctx.arc(x, p.y + Math.min(20, p.h * 0.67), 5, 0, Math.PI * 2);
           ctx.fill();
         }
-      } else if (!p.fade && !p.ice && !p.spikePlatform && !meadowAssetPlatform) {
+      } else if (
+        !p.fade &&
+        !p.ice &&
+        !p.spikePlatform &&
+        !fallingAssetPlatform &&
+        !meadowAssetPlatform
+      ) {
         ctx.fillStyle = "rgba(0,0,0,0.16)";
         for (let x = drawX + 18; x < drawX + p.w - 8; x += 38) {
           ctx.beginPath();
@@ -736,16 +852,18 @@
       }
 
       if (p.fragile) {
-        ctx.strokeStyle = "rgba(65,26,20,0.78)";
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(drawX + p.w * 0.28, p.y + 3);
-        ctx.lineTo(drawX + p.w * 0.38, p.y + 13);
-        ctx.lineTo(drawX + p.w * 0.33, p.y + 23);
-        ctx.moveTo(drawX + p.w * 0.67, p.y + 2);
-        ctx.lineTo(drawX + p.w * 0.58, p.y + 12);
-        ctx.lineTo(drawX + p.w * 0.64, p.y + 23);
-        ctx.stroke();
+        if (!fallingAssetPlatform) {
+          ctx.strokeStyle = "rgba(65,26,20,0.78)";
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(drawX + p.w * 0.28, p.y + 3);
+          ctx.lineTo(drawX + p.w * 0.38, p.y + 13);
+          ctx.lineTo(drawX + p.w * 0.33, p.y + 23);
+          ctx.moveTo(drawX + p.w * 0.67, p.y + 2);
+          ctx.lineTo(drawX + p.w * 0.58, p.y + 12);
+          ctx.lineTo(drawX + p.w * 0.64, p.y + 23);
+          ctx.stroke();
+        }
         drawAnchorStepWarningBorder(p.fallingPlatform, drawX);
       }
 
