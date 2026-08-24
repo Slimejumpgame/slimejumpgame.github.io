@@ -47,19 +47,19 @@
     left: Object.freeze({
       path: "assets/platforms/ice_platform_left.png",
       canvas: Object.freeze({w: 128, h: 168}),
-      source: Object.freeze({x: 4, y: 50, w: 124, h: 63}),
+      source: Object.freeze({x: 0, y: 31, w: 128, h: 103}),
       drawWidth: 24
     }),
     middle: Object.freeze({
       path: "assets/platforms/ice_platform_middle.png",
       canvas: Object.freeze({w: 268, h: 168}),
-      source: Object.freeze({x: 0, y: 50, w: 268, h: 63}),
+      source: Object.freeze({x: 0, y: 31, w: 268, h: 103}),
       drawWidth: 52
     }),
     right: Object.freeze({
       path: "assets/platforms/ice_platform_right.png",
       canvas: Object.freeze({w: 128, h: 168}),
-      source: Object.freeze({x: 0, y: 50, w: 124, h: 63}),
+      source: Object.freeze({x: 0, y: 31, w: 128, h: 103}),
       drawWidth: 24
     })
   });

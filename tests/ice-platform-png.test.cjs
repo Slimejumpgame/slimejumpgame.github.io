@@ -14,22 +14,22 @@ const assetContracts = Object.freeze({
   left: Object.freeze({
     path: "assets/platforms/ice_platform_left.png",
     canvas: [128, 168],
-    bounds: {x: 4, y: 50, w: 124, h: 63},
-    source: {x: 4, y: 50, w: 124, h: 63},
+    bounds: {x: 0, y: 31, w: 128, h: 97},
+    source: {x: 0, y: 31, w: 128, h: 103},
     drawWidth: 24
   }),
   middle: Object.freeze({
     path: "assets/platforms/ice_platform_middle.png",
     canvas: [268, 168],
-    bounds: {x: 0, y: 3, w: 268, h: 110},
-    source: {x: 0, y: 50, w: 268, h: 63},
+    bounds: {x: 0, y: 30, w: 268, h: 133},
+    source: {x: 0, y: 31, w: 268, h: 103},
     drawWidth: 52
   }),
   right: Object.freeze({
     path: "assets/platforms/ice_platform_right.png",
     canvas: [128, 168],
-    bounds: {x: 0, y: 17, w: 124, h: 94},
-    source: {x: 0, y: 50, w: 124, h: 63},
+    bounds: {x: 0, y: 31, w: 128, h: 103},
+    source: {x: 0, y: 31, w: 128, h: 103},
     drawWidth: 24
   })
 });
@@ -232,11 +232,11 @@ for (const width of [100, 126, 154, 176]) {
   assert.equal(drawCalls.length, expectedMiddleCount + 2);
   assert.deepEqual(
     drawCalls[0].slice(1),
-    [4, 50, 124, 63, platform.x, platform.y, 25, 32]
+    [0, 31, 128, 103, platform.x, platform.y, 25, 32]
   );
   assert.deepEqual(
     drawCalls.at(-1).slice(1),
-    [0, 50, 124, 63, platform.x + width - 24, platform.y, 24, 32]
+    [0, 31, 128, 103, platform.x + width - 24, platform.y, 24, 32]
   );
 
   const destinations = drawCalls.map(call => ({x: call[5], y: call[6], w: call[7], h: call[8]}));
@@ -267,9 +267,9 @@ for (const width of [100, 126, 154, 176]) {
     const expectedDestinationWidth = Math.min(52, remaining);
     assert.equal(call[0].src, assetContracts.middle.path);
     assert.equal(call[1], 0);
-    assert.equal(call[2], 50);
+    assert.equal(call[2], 31);
     assert.equal(call[3], 268 * expectedDestinationWidth / 52);
-    assert.equal(call[4], 63);
+    assert.equal(call[4], 103);
     assert.equal(call[5], platform.x + 24 + index * 52);
     assert.equal(call[6], platform.y);
     assert.equal(call[7], expectedDestinationWidth + 1);
@@ -290,8 +290,8 @@ for (const width of [100, 126, 154, 176]) {
 
 assert.deepEqual(
   Object.values(assetContracts).map(contract => [contract.source.y, contract.source.h]),
-  [[50, 63], [50, 63], [50, 63]],
-  "all three master segments must use one shared vertical source scale"
+  [[31, 103], [31, 103], [31, 103]],
+  "all three master segments must align their material top and use one shared source height"
 );
 
 assert.equal(api.draw(fakeCanvasContext, {x: 0, y: 0, w: 126, h: 26}, 0), false);
