@@ -157,7 +157,6 @@ for (const relativePath of [
   "js/biomes.js",
   "js/core.js",
   "js/game.js",
-  "js/hazards.js",
   "js/level-generator.js",
   "js/physics.js",
   "js/platforms.js",

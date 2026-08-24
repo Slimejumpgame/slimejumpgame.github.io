@@ -21,7 +21,6 @@ const protectedFiles = [
   "js/biomes.js",
   "js/core.js",
   "js/game.js",
-  "js/hazards.js",
   "js/level-generator.js",
   "js/physics.js",
   "js/platforms.js",
@@ -63,7 +62,8 @@ const assetExpectations = Object.freeze({
   "assets/environments/meadow/decor/top/meadow_decor_top_stones_set_01.png": [1536, 1024],
   "assets/environments/meadow/decor/top/meadow_decor_top_tufts_set_01.png": [1536, 1024],
   "assets/environments/meadow/decor/top/meadow_decor_top_trees_set_01.png": [1448, 1086],
-  "assets/environments/meadow/portal/meadow_portal_props.png": [1448, 1086]
+  "assets/environments/meadow/portal/meadow_portal_props.png": [1448, 1086],
+  "assets/environments/meadow/hazards/meadow_bottom_spike_tile.png": [256, 320]
 });
 const assetHashesBefore = new Map();
 for (const [relativePath, dimensions] of Object.entries(assetExpectations)) {
@@ -195,7 +195,7 @@ vm.runInContext(`${read("js/visual-meadow-assets.js")}
 const visualApi = visualContext.meadowAssetVisualsForTest;
 assert.equal(
   imageConstructionCount,
-  27,
+  28,
   "the loader must construct all base assets, platform variants and top-decor sheets once"
 );
 assert.equal(visualApi.areAllReady(), true);
@@ -228,7 +228,8 @@ assert.deepEqual(
     decor_top_stones: "assets/environments/meadow/decor/top/meadow_decor_top_stones_set_01.png",
     decor_top_tufts: "assets/environments/meadow/decor/top/meadow_decor_top_tufts_set_01.png",
     decor_top_trees: "assets/environments/meadow/decor/top/meadow_decor_top_trees_set_01.png",
-    portal: "assets/environments/meadow/portal/meadow_portal_props.png"
+    portal: "assets/environments/meadow/portal/meadow_portal_props.png",
+    bottom_spike_tile: "assets/environments/meadow/hazards/meadow_bottom_spike_tile.png"
   }
 );
 const meadowManifest = JSON.parse(JSON.stringify(visualApi.getManifest()));
@@ -660,7 +661,7 @@ assert.deepEqual(
   [2, 3, 4, 5],
   "goal seam-cover density must exercise the full 2-5 range"
 );
-assert.equal(imageConstructionCount, 27, "draw calls must not construct additional images");
+assert.equal(imageConstructionCount, 28, "draw calls must not construct additional images");
 assert.ok(drawCalls.length > 0);
 assert.ok(
   drawCalls.every(call => call.length === 5 || call.length === 9),

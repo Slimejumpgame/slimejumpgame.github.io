@@ -54,7 +54,8 @@
       decor_top_stones: "assets/environments/meadow/decor/top/meadow_decor_top_stones_set_01.png",
       decor_top_tufts: "assets/environments/meadow/decor/top/meadow_decor_top_tufts_set_01.png",
       decor_top_trees: "assets/environments/meadow/decor/top/meadow_decor_top_trees_set_01.png",
-      portal: "assets/environments/meadow/portal/meadow_portal_props.png"
+      portal: "assets/environments/meadow/portal/meadow_portal_props.png",
+      bottom_spike_tile: "assets/environments/meadow/hazards/meadow_bottom_spike_tile.png"
     });
     const SOURCE_SIZES = Object.freeze({
       background: Object.freeze({w: 1672, h: 941}),
@@ -83,7 +84,8 @@
       decor_top_stones: Object.freeze({w: 1536, h: 1024}),
       decor_top_tufts: Object.freeze({w: 1536, h: 1024}),
       decor_top_trees: Object.freeze({w: 1448, h: 1086}),
-      portal: Object.freeze({w: 1448, h: 1086})
+      portal: Object.freeze({w: 1448, h: 1086}),
+      bottom_spike_tile: Object.freeze({w: 256, h: 320})
     });
     const TOP_DECOR_SPRITES = Object.freeze({
       grassCompactFan: Object.freeze({
@@ -377,9 +379,11 @@
     const PORTAL_GLOW_ALPHA_MINIMUM = 0.12;
     const PORTAL_GLOW_ALPHA_MAXIMUM = 0.68;
     const PORTAL_VISUAL_Y_OFFSET = 10;
+    const BOTTOM_SPIKE_SOURCE = Object.freeze({x: 10, y: 13, w: 235, h: 297});
     const OPTIONAL_ASSET_NAMES = Object.freeze([
       "background_clouds_back",
-      "background_clouds_front"
+      "background_clouds_front",
+      "bottom_spike_tile"
     ]);
     const CLOUD_BACK_DRIFT_AMPLITUDE = 15;
     const CLOUD_BACK_DRIFT_PERIOD_SECONDS = 22;
@@ -1219,6 +1223,29 @@
       return true;
     }
 
+    function drawBottomSpikeHazard(context, rect, count, step) {
+      if (!isReady("bottom_spike_tile")) return false;
+
+      context.save();
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+      for (let i = 0; i < count; i++) {
+        context.drawImage(
+          assets.bottom_spike_tile.image,
+          BOTTOM_SPIKE_SOURCE.x,
+          BOTTOM_SPIKE_SOURCE.y,
+          BOTTOM_SPIKE_SOURCE.w,
+          BOTTOM_SPIKE_SOURCE.h,
+          rect.x + i * step,
+          rect.y,
+          step,
+          rect.h
+        );
+      }
+      context.restore();
+      return true;
+    }
+
     function drawPortal(context, goal, visualTime = 0) {
       if (!isReady("portal")) return false;
       const width = 180;
@@ -1310,6 +1337,7 @@
       drawStartGoalBackDecor,
       drawFloatingBackDecor,
       drawPlatformBase,
+      drawBottomSpikeHazard,
       drawGoalSeamCoverProps,
       drawPortal,
       drawGoalTopForeground,

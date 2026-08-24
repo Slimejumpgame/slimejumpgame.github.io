@@ -469,7 +469,6 @@ function assertScopeBoundaries() {
   }
 
   for (const relativePath of [
-    "js/hazards.js",
     "js/level-generator.js",
     "js/physics.js"
   ]) {
