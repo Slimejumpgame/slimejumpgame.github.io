@@ -1293,6 +1293,7 @@ const rendererPlatformContext = vm.createContext({
   drawAnchorStepWarningBorder: () => {},
   drawDeathZone: () => {},
   drawFallingPlatformAsset: (context, platform) => platform.fragile === true,
+  drawIcePlatformAsset: (context, platform) => platform.ice === true,
   drawGhostStepFadeOutline: () => {},
   drawStandardPlatformDetails: () => {},
   getFallingPlatformActivationDelay: () => 1,
@@ -1311,13 +1312,13 @@ rendererPlatformContext.drawPlatformsForTest(
   {platform: {body: "#000", top: "#fff"}},
   true
 );
-assert.equal(rendererBaseCalls.length, 8);
+assert.equal(rendererBaseCalls.length, 7);
 assert.deepEqual(
   rendererBaseCalls.map(call => Boolean(
     call.platform.moving || call.platform.fragile || call.platform.conveyor ||
     call.platform.fade || call.platform.ice || call.platform.spikePlatform
   )),
-  [false, false, false, true, true, true, true, true]
+  [false, false, false, true, true, true, true]
 );
 assert.equal(
   rendererBaseCalls.some(call => call.platform.lastBubbleSupport),
@@ -1344,8 +1345,8 @@ rendererPlatformContext.drawPlatformsForTest(
 );
 assert.deepEqual(
   rendererBaseCalls.map(call => call.platform.x),
-  [420, 300, 340, 360, 380, 400],
-  "the second Meadow pass must exclude the global Falling special asset"
+  [420, 300, 340, 360, 400],
+  "the second Meadow pass must exclude the global Falling and Ice special assets"
 );
 
 const guardStart = rendererSource.indexOf("  function isMeadowAssetVisualsActive");

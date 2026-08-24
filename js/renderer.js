@@ -42,6 +42,36 @@
     })
   );
 
+  const ICE_PLATFORM_ASSET_CONTRACT = Object.freeze({
+    left: Object.freeze({
+      path: "assets/platforms/ice_platform_left.png",
+      canvas: Object.freeze({w: 128, h: 168}),
+      source: Object.freeze({x: 2, y: 47, w: 126, h: 79}),
+      drawWidth: 24
+    }),
+    middle: Object.freeze({
+      path: "assets/platforms/ice_platform_middle.png",
+      canvas: Object.freeze({w: 268, h: 168}),
+      source: Object.freeze({x: 0, y: 29, w: 268, h: 97}),
+      drawWidth: 52
+    }),
+    right: Object.freeze({
+      path: "assets/platforms/ice_platform_right.png",
+      canvas: Object.freeze({w: 128, h: 168}),
+      source: Object.freeze({x: 0, y: 48, w: 128, h: 79}),
+      drawWidth: 24
+    })
+  });
+  const ICE_PLATFORM_COLLISION_HEIGHT = 26;
+  const ICE_PLATFORM_DRAW_HEIGHT = 32;
+  const icePlatformImages = Object.fromEntries(
+    Object.entries(ICE_PLATFORM_ASSET_CONTRACT).map(([name, contract]) => {
+      const image = new Image();
+      image.src = contract.path;
+      return [name, image];
+    })
+  );
+
   const TUTORIAL_DRAG_HAND_RENDER_SIZE = 108;
   const TUTORIAL_DRAG_HAND_FINGERTIP_X_RATIO = 496 / 1254;
   const TUTORIAL_DRAG_HAND_FINGERTIP_Y_RATIO = 24 / 1254;
@@ -593,6 +623,83 @@
     return true;
   }
 
+  function areIcePlatformAssetsReady() {
+    return Object.entries(ICE_PLATFORM_ASSET_CONTRACT).every(([name, contract]) => {
+      const image = icePlatformImages[name];
+      return (
+        image.complete &&
+        image.naturalWidth === contract.canvas.w &&
+        image.naturalHeight === contract.canvas.h
+      );
+    });
+  }
+
+  function drawIcePlatformAsset(context, platform, drawX = platform.x) {
+    const contract = ICE_PLATFORM_ASSET_CONTRACT;
+    if (
+      !platform?.ice ||
+      platform.h !== ICE_PLATFORM_COLLISION_HEIGHT ||
+      platform.w < contract.left.drawWidth + contract.right.drawWidth ||
+      !areIcePlatformAssetsReady()
+    ) return false;
+
+    const destinationY = platform.y;
+    const middleStartX = drawX + contract.left.drawWidth;
+    const middleEndX = drawX + platform.w - contract.right.drawWidth;
+
+    context.save();
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    context.drawImage(
+      icePlatformImages.left,
+      contract.left.source.x,
+      contract.left.source.y,
+      contract.left.source.w,
+      contract.left.source.h,
+      drawX,
+      destinationY,
+      contract.left.drawWidth,
+      ICE_PLATFORM_DRAW_HEIGHT
+    );
+
+    let destinationX = middleStartX;
+    while (destinationX < middleEndX) {
+      const destinationWidth = Math.min(
+        contract.middle.drawWidth,
+        middleEndX - destinationX
+      );
+      const sourceWidth = contract.middle.source.w * (
+        destinationWidth / contract.middle.drawWidth
+      );
+      context.drawImage(
+        icePlatformImages.middle,
+        contract.middle.source.x,
+        contract.middle.source.y,
+        sourceWidth,
+        contract.middle.source.h,
+        destinationX,
+        destinationY,
+        destinationWidth,
+        ICE_PLATFORM_DRAW_HEIGHT
+      );
+      destinationX += destinationWidth;
+    }
+
+    context.drawImage(
+      icePlatformImages.right,
+      contract.right.source.x,
+      contract.right.source.y,
+      contract.right.source.w,
+      contract.right.source.h,
+      drawX + platform.w - contract.right.drawWidth,
+      destinationY,
+      contract.right.drawWidth,
+      ICE_PLATFORM_DRAW_HEIGHT
+    );
+    context.restore();
+    return true;
+  }
+
   function drawCanvasBouncePadFallback(pad) {
     ctx.fillStyle = "#47cde9";
     roundedRect(pad.x, pad.y, pad.w, pad.h, 9);
@@ -676,14 +783,18 @@
       const fallingAssetPlatform = Boolean(
         p.fragile && drawFallingPlatformAsset(ctx, p, drawX)
       );
+      const iceAssetPlatform = Boolean(
+        p.ice && drawIcePlatformAsset(ctx, p, drawX)
+      );
       meadowAssetPlatform = Boolean(
         !fallingAssetPlatform &&
+        !iceAssetPlatform &&
         useMeadowAssets &&
         !p.lastBubbleSupport &&
         MEADOW_ASSET_VISUALS.drawPlatformBase(ctx, p, drawX, level.seed)
       );
 
-      if (!fallingAssetPlatform && !meadowAssetPlatform) {
+      if (!fallingAssetPlatform && !iceAssetPlatform && !meadowAssetPlatform) {
         ctx.fillStyle = p.fragile
           ? "#815142"
           : p.moving
@@ -740,7 +851,7 @@
         ctx.fill();
       }
 
-      if (p.ice) {
+      if (p.ice && !iceAssetPlatform) {
         ctx.strokeStyle = "rgba(255,255,255,0.82)";
         ctx.lineWidth = 2;
         for (let x = drawX + 18; x < drawX + p.w - 10; x += 34) {
