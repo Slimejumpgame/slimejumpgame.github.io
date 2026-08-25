@@ -120,15 +120,19 @@ assert.deepEqual(
 const rendererSource = read("js/renderer.js");
 const assetStart = rendererSource.indexOf("  const FALLING_PLATFORM_ASSET_CONTRACT");
 const assetEnd = rendererSource.indexOf("  const TUTORIAL_DRAG_HAND_RENDER_SIZE", assetStart);
+const helperStart = rendererSource.indexOf("  function drawSpecialPlatformOuterCapExtensions");
+const helperEnd = rendererSource.indexOf("  function areFallingPlatformAssetsReady", helperStart);
 const drawStart = rendererSource.indexOf("  function areFallingPlatformAssetsReady");
 const drawEnd = rendererSource.indexOf("  function drawCanvasBouncePadFallback", drawStart);
 const platformsStart = rendererSource.indexOf("  function drawPlatforms(");
 const platformsEnd = rendererSource.indexOf("  function drawGoal(", platformsStart);
 assert.ok(assetStart >= 0 && assetEnd > assetStart);
+assert.ok(helperStart >= 0 && helperEnd > helperStart);
 assert.ok(drawStart >= 0 && drawEnd > drawStart);
 assert.ok(platformsStart >= 0 && platformsEnd > platformsStart);
 const fallingRendererSource = [
   rendererSource.slice(assetStart, assetEnd),
+  rendererSource.slice(helperStart, helperEnd),
   rendererSource.slice(drawStart, drawEnd),
   rendererSource.slice(platformsStart, platformsEnd)
 ].join("\n");
@@ -160,7 +164,7 @@ const canvasCalls = [];
 const fakeCanvasContext = new Proxy({}, {
   get(target, property) {
     if (property === "drawImage") return (...args) => drawCalls.push(args);
-    if (["fill", "stroke", "moveTo", "lineTo"].includes(property)) {
+    if (["fill", "stroke", "moveTo", "lineTo", "beginPath", "rect", "clip"].includes(property)) {
       return (...args) => canvasCalls.push([property, ...args]);
     }
     if (!(property in target)) target[property] = () => {};
@@ -207,6 +211,9 @@ vm.runInContext(`${fallingRendererSource}
   globalThis.fallingPlatformTestApi = {
     contract: FALLING_PLATFORM_ASSET_CONTRACT,
     seamOverlap: FALLING_PLATFORM_SEAM_OVERLAP,
+    edgeOverhang: SPECIAL_PLATFORM_EDGE_OVERHANG,
+    bodyHeight: SPECIAL_PLATFORM_BODY_DRAW_HEIGHT,
+    bodyTopOffset: SPECIAL_PLATFORM_BODY_TOP_OFFSET,
     images: fallingPlatformImages,
     draw: drawFallingPlatformAsset,
     ready: areFallingPlatformAssetsReady,
@@ -225,8 +232,11 @@ assert.deepEqual(
   }]))
 );
 assert.equal(api.seamOverlap, 1);
+assert.equal(api.edgeOverhang, 1);
+assert.equal(api.bodyHeight, 28);
+assert.equal(api.bodyTopOffset, -1);
 
-for (const width of [100, 126, 154, 176]) {
+for (const width of [100, 126, 138, 154, 176]) {
   const platform = {
     x: 310,
     y: 417.25,
@@ -238,28 +248,51 @@ for (const width of [100, 126, 154, 176]) {
   const before = JSON.stringify(platform);
   const drawX = platform.x + 3.375;
   drawCalls.length = 0;
+  canvasCalls.length = 0;
   assert.equal(api.draw(fakeCanvasContext, platform, drawX), true);
   assert.equal(JSON.stringify(platform), before, "visual drawing must not mutate collision data");
 
   const expectedMiddleCount = Math.ceil((width - 48) / 52);
-  assert.equal(drawCalls.length, expectedMiddleCount + 2);
-  assert.deepEqual(drawCalls[0].slice(1), [4, 26, 116, 77, drawX, 417.25, 25, 26]);
+  assert.equal(drawCalls.length, expectedMiddleCount + 4);
   assert.deepEqual(
-    drawCalls.at(-1).slice(1),
-    [0, 26, 116, 77, drawX + width - 24, 417.25, 24, 26]
+    drawCalls[0].slice(1),
+    [4, 26, 116, 77, drawX - 1, 416.25, 25, 28]
+  );
+  assert.deepEqual(
+    drawCalls[1].slice(1),
+    [0, 26, 116, 77, drawX + width - 23, 416.25, 24, 28]
+  );
+  assert.deepEqual(
+    canvasCalls.filter(call => call[0] === "rect"),
+    [
+      ["rect", drawX - 1, 416.25, 1, 28],
+      ["rect", drawX + width, 416.25, 1, 28]
+    ],
+    "only the two outer 1px cap strips may extend beyond platform.w"
   );
 
-  const destinations = drawCalls.map(call => ({x: call[5], y: call[6], w: call[7], h: call[8]}));
+  const mainDrawCalls = drawCalls.slice(2);
+  assert.deepEqual(mainDrawCalls[0].slice(1), [4, 26, 116, 77, drawX, 416.25, 25, 28]);
+  assert.deepEqual(
+    mainDrawCalls.at(-1).slice(1),
+    [0, 26, 116, 77, drawX + width - 24, 416.25, 24, 28]
+  );
+  const destinations = mainDrawCalls.map(call => (
+    {x: call[5], y: call[6], w: call[7], h: call[8]}
+  ));
   assert.equal(destinations[0].x, drawX);
   assert.equal(destinations.at(-1).x + destinations.at(-1).w, drawX + width);
-  assert.ok(destinations.every(destination => destination.y === 417.25));
-  assert.ok(destinations.every(destination => destination.h === 26));
+  assert.ok(destinations.every(destination => destination.y === 416.25));
+  assert.ok(destinations.every(destination => destination.h === 28));
+  assert.equal((drawX + width + 1) - (drawX - 1), width + 2);
+  assert.equal(destinations[0].y, platform.y - 1);
+  assert.equal(destinations[0].y + destinations[0].h, platform.y + platform.h + 1);
   for (let index = 1; index < destinations.length; index++) {
     const overlap = destinations[index - 1].x + destinations[index - 1].w - destinations[index].x;
     assert.equal(overlap, 1, `width ${width} must have a 1 px internal overlap at index ${index}`);
   }
 
-  const middleCalls = drawCalls.slice(1, -1);
+  const middleCalls = mainDrawCalls.slice(1, -1);
   for (const [index, call] of middleCalls.entries()) {
     const isFinal = index === middleCalls.length - 1;
     const remaining = width - 48 - index * 52;
@@ -270,7 +303,7 @@ for (const width of [100, 126, 154, 176]) {
     assert.equal(call[3], 260 * expectedDestinationWidth / 52);
     assert.equal(call[4], 77);
     assert.equal(call[7], expectedDestinationWidth + 1);
-    assert.equal(call[8], 26);
+    assert.equal(call[8], 28);
     if (!isFinal || remaining >= 52) {
       assert.equal(call[3], 260);
       assert.equal(call[7], 53);
@@ -333,8 +366,9 @@ meadowBaseCalls = 0;
 anchorWarningCalls = 0;
 api.drawPlatforms({platform: {body: "#000", top: "#fff"}}, true);
 const expectedWobbleX = fallingFixture.x + Math.sin(1.25 * 42) * (1.2 + 0.5 * 3.4);
-assert.ok(Math.abs(drawCalls[0][5] - expectedWobbleX) < 1e-12);
-assert.ok(drawCalls.every(call => call[6] === fallingFixture.fallingPlatform.currentY));
+assert.ok(Math.abs(drawCalls[0][5] - (expectedWobbleX - 1)) < 1e-12);
+assert.ok(Math.abs(drawCalls[2][5] - expectedWobbleX) < 1e-12);
+assert.ok(drawCalls.every(call => call[6] === fallingFixture.fallingPlatform.currentY - 1));
 assert.equal(meadowBaseCalls, 0, "Meadow must not draw its floating base behind the Falling PNG");
 assert.equal(anchorWarningCalls, 1, "Anchor-Step warning hook must remain active");
 assert.equal(canvasCalls.filter(call => call[0] === "stroke").length, 0);
@@ -345,7 +379,8 @@ canvasCalls.length = 0;
 meadowBaseCalls = 0;
 anchorWarningCalls = 0;
 api.drawPlatforms({platform: {body: "#000", top: "#fff"}}, false);
-assert.ok(Math.abs(drawCalls[0][5] - expectedWobbleX) < 1e-12);
+assert.ok(Math.abs(drawCalls[0][5] - (expectedWobbleX - 1)) < 1e-12);
+assert.ok(Math.abs(drawCalls[2][5] - expectedWobbleX) < 1e-12);
 assert.equal(meadowBaseCalls, 0);
 assert.equal(anchorWarningCalls, 1);
 assert.equal(canvasCalls.filter(call => call[0] === "stroke").length, 0);

@@ -118,15 +118,19 @@ for (const contract of Object.values(assetContracts)) {
 const rendererSource = read("js/renderer.js");
 const assetStart = rendererSource.indexOf("  const ICE_PLATFORM_ASSET_CONTRACT");
 const assetEnd = rendererSource.indexOf("  const TUTORIAL_DRAG_HAND_RENDER_SIZE", assetStart);
+const helperStart = rendererSource.indexOf("  function drawSpecialPlatformOuterCapExtensions");
+const helperEnd = rendererSource.indexOf("  function areFallingPlatformAssetsReady", helperStart);
 const drawStart = rendererSource.indexOf("  function areIcePlatformAssetsReady");
 const drawEnd = rendererSource.indexOf("  function drawCanvasBouncePadFallback", drawStart);
 const platformsStart = rendererSource.indexOf("  function drawPlatforms(");
 const platformsEnd = rendererSource.indexOf("  function drawGoal(", platformsStart);
 assert.ok(assetStart >= 0 && assetEnd > assetStart);
+assert.ok(helperStart >= 0 && helperEnd > helperStart);
 assert.ok(drawStart >= 0 && drawEnd > drawStart);
 assert.ok(platformsStart >= 0 && platformsEnd > platformsStart);
 const iceRendererSource = [
   rendererSource.slice(assetStart, assetEnd),
+  rendererSource.slice(helperStart, helperEnd),
   rendererSource.slice(drawStart, drawEnd),
   rendererSource.slice(platformsStart, platformsEnd)
 ].join("\n");
@@ -158,7 +162,7 @@ const canvasCalls = [];
 const fakeCanvasContext = new Proxy({}, {
   get(target, property) {
     if (property === "drawImage") return (...args) => drawCalls.push(args);
-    if (["fill", "stroke", "moveTo", "lineTo"].includes(property)) {
+    if (["fill", "stroke", "moveTo", "lineTo", "beginPath", "rect", "clip"].includes(property)) {
       return (...args) => canvasCalls.push([property, ...args]);
     }
     if (!(property in target)) target[property] = () => {};
@@ -203,6 +207,11 @@ vm.runInContext(`${iceRendererSource}
   globalThis.icePlatformTestApi = {
     contract: ICE_PLATFORM_ASSET_CONTRACT,
     seamOverlap: ICE_PLATFORM_SEAM_OVERLAP,
+    edgeOverhang: SPECIAL_PLATFORM_EDGE_OVERHANG,
+    bodyHeight: SPECIAL_PLATFORM_BODY_DRAW_HEIGHT,
+    bodyTopOffset: SPECIAL_PLATFORM_BODY_TOP_OFFSET,
+    bodySourceTop: ICE_PLATFORM_BODY_SOURCE_TOP,
+    bodySourceBottom: ICE_PLATFORM_BODY_SOURCE_BOTTOM,
     images: icePlatformImages,
     draw: drawIcePlatformAsset,
     ready: areIcePlatformAssetsReady,
@@ -212,6 +221,11 @@ vm.runInContext(`${iceRendererSource}
 const api = rendererContext.icePlatformTestApi;
 assert.equal(api.ready(), true);
 assert.equal(api.seamOverlap, 1);
+assert.equal(api.edgeOverhang, 1);
+assert.equal(api.bodyHeight, 28);
+assert.equal(api.bodyTopOffset, -1);
+assert.equal(api.bodySourceTop, 2);
+assert.equal(api.bodySourceBottom, 103 * (26 / 32));
 assert.deepEqual(
   JSON.parse(JSON.stringify(api.contract)),
   Object.fromEntries(Object.entries(assetContracts).map(([name, contract]) => [name, {
@@ -222,29 +236,77 @@ assert.deepEqual(
   }]))
 );
 
-for (const width of [100, 126, 154, 176]) {
+for (const width of [100, 126, 138, 154, 176]) {
   const platform = {x: 310.125, y: 417.25, w: width, h: 26, ice: true, iceData: {}};
   const before = JSON.stringify(platform);
   drawCalls.length = 0;
+  canvasCalls.length = 0;
   assert.equal(api.draw(fakeCanvasContext, platform), true);
   assert.equal(JSON.stringify(platform), before, "visual drawing must not mutate collision data");
 
   const expectedMiddleCount = Math.ceil((width - 48) / 52);
-  assert.equal(drawCalls.length, expectedMiddleCount + 2);
+  const passDrawCount = expectedMiddleCount + 4;
+  const bodySourceBottom = 103 * (26 / 32);
+  const bodyScale = 28 / (bodySourceBottom - 2);
+  const bodyClipY = platform.y - 1;
+  const bodyImageY = bodyClipY - 2 * bodyScale;
+  const bodyImageHeight = 103 * bodyScale;
+  const bodyBottomY = platform.y + 27;
+  const overhangScale = 32 / 103;
+  const overhangImageY = bodyBottomY - bodySourceBottom * overhangScale;
+  const overhangImageHeight = 103 * overhangScale;
+  const overhangClipHeight = (103 - bodySourceBottom) * overhangScale;
+  assert.equal(drawCalls.length, passDrawCount * 2);
   assert.deepEqual(
     drawCalls[0].slice(1),
-    [0, 31, 128, 103, platform.x, platform.y, 25, 32]
+    [0, 31, 128, 103, platform.x - 1, bodyImageY, 25, bodyImageHeight]
   );
   assert.deepEqual(
-    drawCalls.at(-1).slice(1),
-    [0, 31, 128, 103, platform.x + width - 24, platform.y, 24, 32]
+    drawCalls[1].slice(1),
+    [0, 31, 128, 103, platform.x + width - 23, bodyImageY, 24, bodyImageHeight]
+  );
+  assert.deepEqual(
+    canvasCalls.filter(call => call[0] === "rect"),
+    [
+      ["rect", platform.x - 1, bodyClipY, width + 2, 28],
+      ["rect", platform.x - 1, bodyImageY, 1, bodyImageHeight],
+      ["rect", platform.x + width, bodyImageY, 1, bodyImageHeight],
+      ["rect", platform.x - 1, bodyBottomY, width + 2, overhangClipHeight],
+      ["rect", platform.x - 1, overhangImageY, 1, overhangImageHeight],
+      ["rect", platform.x + width, overhangImageY, 1, overhangImageHeight]
+    ]
   );
 
-  const destinations = drawCalls.map(call => ({x: call[5], y: call[6], w: call[7], h: call[8]}));
+  const bodyMainDraws = drawCalls.slice(2, passDrawCount);
+  const overhangDraws = drawCalls.slice(passDrawCount);
+  const overhangMainDraws = overhangDraws.slice(2);
+  assert.deepEqual(
+    bodyMainDraws[0].slice(1),
+    [0, 31, 128, 103, platform.x, bodyImageY, 25, bodyImageHeight]
+  );
+  assert.deepEqual(
+    bodyMainDraws.at(-1).slice(1),
+    [0, 31, 128, 103, platform.x + width - 24, bodyImageY, 24, bodyImageHeight]
+  );
+  assert.deepEqual(
+    overhangDraws[0].slice(1),
+    [0, 31, 128, 103, platform.x - 1, overhangImageY, 25, overhangImageHeight]
+  );
+  assert.deepEqual(
+    overhangMainDraws.at(-1).slice(1),
+    [
+      0, 31, 128, 103,
+      platform.x + width - 24, overhangImageY, 24, overhangImageHeight
+    ]
+  );
+
+  const destinations = bodyMainDraws.map(call => (
+    {x: call[5], y: call[6], w: call[7], h: call[8]}
+  ));
   assert.equal(destinations[0].x, platform.x);
   assert.equal(destinations.at(-1).x + destinations.at(-1).w, platform.x + width);
-  assert.ok(destinations.every(destination => destination.y === platform.y));
-  assert.ok(destinations.every(destination => destination.h === 32));
+  assert.ok(destinations.every(destination => destination.y === bodyImageY));
+  assert.ok(destinations.every(destination => destination.h === bodyImageHeight));
   for (let index = 1; index < destinations.length; index++) {
     assert.equal(
       destinations[index - 1].x + destinations[index - 1].w - destinations[index].x,
@@ -261,32 +323,41 @@ for (const width of [100, 126, 154, 176]) {
     destination.x >= platform.x &&
     destination.x + destination.w <= platform.x + width
   )), "no overlapped segment may exceed the outer platform bounds");
+  assert.equal((platform.x + width + 1) - (platform.x - 1), width + 2);
+  assert.equal(bodyClipY, platform.y - 1);
+  assert.equal(bodyClipY + 28, platform.y + platform.h + 1);
+  assert.ok(overhangClipHeight > 0);
+  assert.ok(bodyBottomY + overhangClipHeight > platform.y + platform.h + 1);
 
-  const middleCalls = drawCalls.slice(1, -1);
-  for (const [index, call] of middleCalls.entries()) {
-    const remaining = width - 48 - index * 52;
-    const expectedDestinationWidth = Math.min(52, remaining);
-    assert.equal(call[0].src, assetContracts.middle.path);
-    assert.equal(call[1], 0);
-    assert.equal(call[2], 31);
-    assert.equal(call[3], 268 * expectedDestinationWidth / 52);
-    assert.equal(call[4], 103);
-    assert.equal(call[5], platform.x + 24 + index * 52);
-    assert.equal(call[6], platform.y);
-    assert.equal(call[7], expectedDestinationWidth + 1);
-    assert.equal(call[8], 32);
-    if (remaining >= 52) {
-      assert.equal(call[3], 268);
-      assert.equal(call[7], 53);
+  for (const [passIndex, passDraws] of [bodyMainDraws, overhangMainDraws].entries()) {
+    const middleCalls = passDraws.slice(1, -1);
+    for (const [index, call] of middleCalls.entries()) {
+      const remaining = width - 48 - index * 52;
+      const expectedDestinationWidth = Math.min(52, remaining);
+      assert.equal(call[0].src, assetContracts.middle.path);
+      assert.equal(call[1], 0);
+      assert.equal(call[2], 31);
+      assert.equal(call[3], 268 * expectedDestinationWidth / 52);
+      assert.equal(call[4], 103);
+      assert.equal(call[5], platform.x + 24 + index * 52);
+      assert.equal(call[6], passIndex === 0 ? bodyImageY : overhangImageY);
+      assert.equal(call[7], expectedDestinationWidth + 1);
+      assert.equal(call[8], passIndex === 0 ? bodyImageHeight : overhangImageHeight);
+      if (remaining >= 52) {
+        assert.equal(call[3], 268);
+        assert.equal(call[7], 53);
+      }
     }
   }
 
   assert.equal(platform.h, 26);
   assert.equal(platform.y + platform.h, 443.25);
-  assert.equal(destinations[0].y + destinations[0].h, 449.25);
-  assert.equal(destinations.at(-1).y + destinations.at(-1).h, 449.25);
-  assert.ok(destinations.every(destination => destination.y + destination.h === 449.25));
-  assert.equal(449.25 - 443.25, 6, "Ice overhang remains visual-only and exactly 6px");
+  assert.equal(bodyBottomY, 444.25);
+  assert.equal(overhangImageY + overhangImageHeight, bodyBottomY + overhangClipHeight);
+  assert.ok(
+    Math.abs(overhangClipHeight - 6) < 1e-12,
+    "the intentional lower Ice zone must retain its previous 6px visual scale"
+  );
 }
 
 assert.deepEqual(

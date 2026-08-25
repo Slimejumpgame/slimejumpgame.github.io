@@ -116,15 +116,19 @@ for (const contract of Object.values(assetContracts)) {
 const rendererSource = read("js/renderer.js");
 const assetStart = rendererSource.indexOf("  const CONVEYOR_PLATFORM_ASSET_CONTRACT");
 const assetEnd = rendererSource.indexOf("  const SPIKE_PLATFORM_ASSET_CONTRACT", assetStart);
+const helperStart = rendererSource.indexOf("  function drawSpecialPlatformOuterCapExtensions");
+const helperEnd = rendererSource.indexOf("  function areFallingPlatformAssetsReady", helperStart);
 const drawStart = rendererSource.indexOf("  function areConveyorPlatformAssetsReady");
 const drawEnd = rendererSource.indexOf("  function drawPlatforms(", drawStart);
 const platformsStart = drawEnd;
 const platformsEnd = rendererSource.indexOf("  function drawGoal(", platformsStart);
 assert.ok(assetStart >= 0 && assetEnd > assetStart);
+assert.ok(helperStart >= 0 && helperEnd > helperStart);
 assert.ok(drawStart >= 0 && drawEnd > drawStart);
 assert.ok(platformsStart >= 0 && platformsEnd > platformsStart);
 const fixtureSource = [
   rendererSource.slice(assetStart, assetEnd),
+  rendererSource.slice(helperStart, helperEnd),
   rendererSource.slice(drawStart, drawEnd),
   rendererSource.slice(platformsStart, platformsEnd)
 ].join("\n");
@@ -249,6 +253,9 @@ vm.runInContext(`${fixtureSource}
   globalThis.conveyorPlatformTestApi = {
     contract: CONVEYOR_PLATFORM_ASSET_CONTRACT,
     drawHeight: CONVEYOR_PLATFORM_DRAW_HEIGHT,
+    bodyHeight: SPECIAL_PLATFORM_BODY_DRAW_HEIGHT,
+    bodyTopOffset: SPECIAL_PLATFORM_BODY_TOP_OFFSET,
+    edgeOverhang: SPECIAL_PLATFORM_EDGE_OVERHANG,
     seamOverlap: CONVEYOR_PLATFORM_SEAM_OVERLAP,
     beltChannel: CONVEYOR_PLATFORM_BELT_CHANNEL,
     images: conveyorPlatformImages,
@@ -261,6 +268,9 @@ vm.runInContext(`${fixtureSource}
 const api = rendererContext.conveyorPlatformTestApi;
 assert.equal(api.ready(), true);
 assert.equal(api.drawHeight, 26);
+assert.equal(api.bodyHeight, 28);
+assert.equal(api.bodyTopOffset, -1);
+assert.equal(api.edgeOverhang, 1);
 assert.equal(api.seamOverlap, 1);
 assert.deepEqual(JSON.parse(JSON.stringify(api.beltChannel)), {
   top: 7,
@@ -290,7 +300,7 @@ function resetEvents() {
   Object.assign(state, {fillStyle: "", strokeStyle: "", globalAlpha: 1});
 }
 
-for (const width of [100, 126, 154, 176]) {
+for (const width of [100, 126, 138, 154, 176]) {
   const platform = {
     x: 310.125,
     y: 417.25,
@@ -306,19 +316,37 @@ for (const width of [100, 126, 154, 176]) {
   assert.equal(JSON.stringify(platform), snapshot);
   const draws = events.filter(event => event.type === "drawImage").map(event => event.args);
   const expectedMiddleCount = Math.ceil((width - 48) / 52);
-  assert.equal(draws.length, expectedMiddleCount + 2);
+  assert.equal(draws.length, expectedMiddleCount + 4);
   assert.deepEqual(draws[0].slice(1), [
-    0, 240, 320, 476, platform.x, platform.y, 25, 26
+    0, 240, 320, 476, platform.x - 1, platform.y - 1, 25, 28
   ]);
-  assert.deepEqual(draws.at(-1).slice(1), [
-    0, 240, 320, 476, platform.x + width - 24, platform.y, 24, 26
+  assert.deepEqual(draws[1].slice(1), [
+    0, 240, 320, 476, platform.x + width - 23, platform.y - 1, 24, 28
   ]);
+  assert.deepEqual(
+    events.filter(event => event.type === "rect").map(event => event.args),
+    [
+      [platform.x - 1, platform.y - 1, 1, 28],
+      [platform.x + width, platform.y - 1, 1, 28]
+    ]
+  );
 
-  const destinations = draws.map(call => ({x: call[5], y: call[6], w: call[7], h: call[8]}));
-  assert.ok(destinations.every(destination => destination.y === platform.y));
-  assert.ok(destinations.every(destination => destination.h === 26));
+  const mainDraws = draws.slice(2);
+  assert.deepEqual(mainDraws[0].slice(1), [
+    0, 240, 320, 476, platform.x, platform.y - 1, 25, 28
+  ]);
+  assert.deepEqual(mainDraws.at(-1).slice(1), [
+    0, 240, 320, 476, platform.x + width - 24, platform.y - 1, 24, 28
+  ]);
+  const destinations = mainDraws.map(call => (
+    {x: call[5], y: call[6], w: call[7], h: call[8]}
+  ));
+  assert.ok(destinations.every(destination => destination.y === platform.y - 1));
+  assert.ok(destinations.every(destination => destination.h === 28));
   assert.equal(destinations[0].x, platform.x);
   assert.equal(destinations.at(-1).x + destinations.at(-1).w, platform.x + width);
+  assert.equal((platform.x + width + 1) - (platform.x - 1), width + 2);
+  assert.equal(destinations[0].y + destinations[0].h, platform.y + platform.h + 1);
   for (let index = 1; index < destinations.length; index++) {
     assert.equal(
       destinations[index - 1].x + destinations[index - 1].w - destinations[index].x,
@@ -335,7 +363,7 @@ for (const width of [100, 126, 154, 176]) {
     destination.x + destination.w <= platform.x + width
   )));
 
-  const middleCalls = draws.slice(1, -1);
+  const middleCalls = mainDraws.slice(1, -1);
   for (const [index, call] of middleCalls.entries()) {
     const remaining = width - 48 - index * 52;
     const destinationWidth = Math.min(52, remaining);
@@ -344,9 +372,9 @@ for (const width of [100, 126, 154, 176]) {
     assert.equal(call[3], 1408 * (destinationWidth / 52));
     assert.equal(call[4], 476);
     assert.equal(call[5], platform.x + 24 + index * 52);
-    assert.equal(call[6], platform.y);
+    assert.equal(call[6], platform.y - 1);
     assert.equal(call[7], destinationWidth + 1);
-    assert.equal(call[8], 26);
+    assert.equal(call[8], 28);
   }
 }
 
@@ -366,14 +394,15 @@ const leftFacingDraws = events
   .map(event => event.args);
 assert.deepEqual(leftFacingDraws[0].slice(1), [
   0, 240, 320, 476,
-  leftFacingPlatform.x, leftFacingPlatform.y, 25, 26
+  leftFacingPlatform.x - 1, leftFacingPlatform.y - 1, 25, 28
 ]);
-assert.deepEqual(leftFacingDraws.at(-1).slice(1), [
+assert.deepEqual(leftFacingDraws[1].slice(1), [
   0, 240, 320, 476,
-  leftFacingPlatform.x + leftFacingPlatform.w - 24,
-  leftFacingPlatform.y, 24, 26
+  leftFacingPlatform.x + leftFacingPlatform.w - 23,
+  leftFacingPlatform.y - 1, 24, 28
 ]);
-const leftFacingMiddleDraws = leftFacingDraws.slice(1, -1);
+const leftFacingMainDraws = leftFacingDraws.slice(2);
+const leftFacingMiddleDraws = leftFacingMainDraws.slice(1, -1);
 assert.deepEqual(leftFacingMiddleDraws.map(call => call.slice(1, 5)), [
   [0, 228, 1408, 476],
   [704, 228, 704, 476]
@@ -410,7 +439,16 @@ assert.equal(events.some(event => event.type === "arc"), false,
   "legacy static Canvas rollers must not duplicate the PNG rollers");
 assert.deepEqual(
   events.filter(event => event.type === "rect").map(event => event.args),
-  [[conveyorFixture.x + 24, conveyorFixture.y + 7, conveyorFixture.w - 48, 9]],
+  [
+    [conveyorFixture.x - 1, conveyorFixture.y - 1, 1, 28],
+    [conveyorFixture.x + conveyorFixture.w, conveyorFixture.y - 1, 1, 28],
+    [
+      conveyorFixture.x + 24,
+      conveyorFixture.y - 1 + 7 * (28 / 26),
+      conveyorFixture.w - 48,
+      9 * (28 / 26)
+    ]
+  ],
   "animation must clip exactly to the dark Middle channel"
 );
 const rightMoveEvents = events.filter(event => event.type === "moveTo");

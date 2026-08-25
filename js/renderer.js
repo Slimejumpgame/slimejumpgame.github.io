@@ -73,6 +73,12 @@
       return [name, image];
     })
   );
+  // Robust Ice alpha starts at source-local row 2. The old 26/32 body ratio
+  // leaves the intentional lower 6px Icicle zone at its original scale.
+  const ICE_PLATFORM_BODY_SOURCE_TOP = 2;
+  const ICE_PLATFORM_BODY_SOURCE_BOTTOM =
+    ICE_PLATFORM_ASSET_CONTRACT.middle.source.h *
+    ICE_PLATFORM_COLLISION_HEIGHT / ICE_PLATFORM_DRAW_HEIGHT;
 
   const CONVEYOR_PLATFORM_ASSET_CONTRACT = Object.freeze({
     left: Object.freeze({
@@ -110,6 +116,10 @@
       return [name, image];
     })
   );
+
+  const SPECIAL_PLATFORM_EDGE_OVERHANG = 1;
+  const SPECIAL_PLATFORM_BODY_TOP_OFFSET = -1;
+  const SPECIAL_PLATFORM_BODY_DRAW_HEIGHT = 28;
 
   const SPIKE_PLATFORM_ASSET_CONTRACT = Object.freeze({
     path: "assets/platforms/spike_platform_spike.png",
@@ -599,6 +609,47 @@
     ctx.restore();
   }
 
+  function drawSpecialPlatformOuterCapExtensions(
+    context,
+    images,
+    contract,
+    seamOverlap,
+    drawX,
+    platformWidth,
+    destinationY,
+    destinationHeight
+  ) {
+    const edge = SPECIAL_PLATFORM_EDGE_OVERHANG;
+    context.save();
+    context.beginPath();
+    context.rect(drawX - edge, destinationY, edge, destinationHeight);
+    context.rect(drawX + platformWidth, destinationY, edge, destinationHeight);
+    context.clip();
+    context.drawImage(
+      images.left,
+      contract.left.source.x,
+      contract.left.source.y,
+      contract.left.source.w,
+      contract.left.source.h,
+      drawX - edge,
+      destinationY,
+      contract.left.drawWidth + seamOverlap,
+      destinationHeight
+    );
+    context.drawImage(
+      images.right,
+      contract.right.source.x,
+      contract.right.source.y,
+      contract.right.source.w,
+      contract.right.source.h,
+      drawX + platformWidth - contract.right.drawWidth + edge,
+      destinationY,
+      contract.right.drawWidth,
+      destinationHeight
+    );
+    context.restore();
+  }
+
   function areFallingPlatformAssetsReady() {
     return Object.entries(FALLING_PLATFORM_ASSET_CONTRACT).every(([name, contract]) => {
       const image = fallingPlatformImages[name];
@@ -619,13 +670,23 @@
       !areFallingPlatformAssetsReady()
     ) return false;
 
-    const destinationY = platform.y;
+    const destinationY = platform.y + SPECIAL_PLATFORM_BODY_TOP_OFFSET;
     const middleStartX = drawX + contract.left.drawWidth;
     const middleEndX = drawX + platform.w - contract.right.drawWidth;
 
     context.save();
     context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = "high";
+    drawSpecialPlatformOuterCapExtensions(
+      context,
+      fallingPlatformImages,
+      contract,
+      FALLING_PLATFORM_SEAM_OVERLAP,
+      drawX,
+      platform.w,
+      destinationY,
+      SPECIAL_PLATFORM_BODY_DRAW_HEIGHT
+    );
     context.drawImage(
       fallingPlatformImages.left,
       contract.left.source.x,
@@ -635,7 +696,7 @@
       drawX,
       destinationY,
       contract.left.drawWidth + FALLING_PLATFORM_SEAM_OVERLAP,
-      FALLING_PLATFORM_DRAW_HEIGHT
+      SPECIAL_PLATFORM_BODY_DRAW_HEIGHT
     );
 
     let destinationX = middleStartX;
@@ -656,7 +717,7 @@
         destinationX,
         destinationY,
         destinationWidth + FALLING_PLATFORM_SEAM_OVERLAP,
-        FALLING_PLATFORM_DRAW_HEIGHT
+        SPECIAL_PLATFORM_BODY_DRAW_HEIGHT
       );
       destinationX += destinationWidth;
     }
@@ -670,7 +731,7 @@
       drawX + platform.w - contract.right.drawWidth,
       destinationY,
       contract.right.drawWidth,
-      FALLING_PLATFORM_DRAW_HEIGHT
+      SPECIAL_PLATFORM_BODY_DRAW_HEIGHT
     );
     context.restore();
     return true;
@@ -696,59 +757,107 @@
       !areIcePlatformAssetsReady()
     ) return false;
 
-    const destinationY = platform.y;
     const middleStartX = drawX + contract.left.drawWidth;
     const middleEndX = drawX + platform.w - contract.right.drawWidth;
+
+    const bodySourceHeight = ICE_PLATFORM_BODY_SOURCE_BOTTOM - ICE_PLATFORM_BODY_SOURCE_TOP;
+    const bodyScale = SPECIAL_PLATFORM_BODY_DRAW_HEIGHT / bodySourceHeight;
+    const bodyClipY = platform.y + SPECIAL_PLATFORM_BODY_TOP_OFFSET;
+    const bodyImageY = bodyClipY - ICE_PLATFORM_BODY_SOURCE_TOP * bodyScale;
+    const bodyImageHeight = contract.middle.source.h * bodyScale;
+    const bodyBottomY = bodyClipY + SPECIAL_PLATFORM_BODY_DRAW_HEIGHT;
+
+    const overhangScale = ICE_PLATFORM_DRAW_HEIGHT / contract.middle.source.h;
+    const overhangImageY = bodyBottomY - ICE_PLATFORM_BODY_SOURCE_BOTTOM * overhangScale;
+    const overhangImageHeight = contract.middle.source.h * overhangScale;
+    const overhangClipHeight =
+      (contract.middle.source.h - ICE_PLATFORM_BODY_SOURCE_BOTTOM) * overhangScale;
+
+    const drawIceTiles = (destinationY, destinationHeight) => {
+      drawSpecialPlatformOuterCapExtensions(
+        context,
+        icePlatformImages,
+        contract,
+        ICE_PLATFORM_SEAM_OVERLAP,
+        drawX,
+        platform.w,
+        destinationY,
+        destinationHeight
+      );
+      context.drawImage(
+        icePlatformImages.left,
+        contract.left.source.x,
+        contract.left.source.y,
+        contract.left.source.w,
+        contract.left.source.h,
+        drawX,
+        destinationY,
+        contract.left.drawWidth + ICE_PLATFORM_SEAM_OVERLAP,
+        destinationHeight
+      );
+
+      let destinationX = middleStartX;
+      while (destinationX < middleEndX) {
+        const destinationWidth = Math.min(
+          contract.middle.drawWidth,
+          middleEndX - destinationX
+        );
+        const sourceWidth = contract.middle.source.w * (
+          destinationWidth / contract.middle.drawWidth
+        );
+        context.drawImage(
+          icePlatformImages.middle,
+          contract.middle.source.x,
+          contract.middle.source.y,
+          sourceWidth,
+          contract.middle.source.h,
+          destinationX,
+          destinationY,
+          destinationWidth + ICE_PLATFORM_SEAM_OVERLAP,
+          destinationHeight
+        );
+        destinationX += destinationWidth;
+      }
+
+      context.drawImage(
+        icePlatformImages.right,
+        contract.right.source.x,
+        contract.right.source.y,
+        contract.right.source.w,
+        contract.right.source.h,
+        drawX + platform.w - contract.right.drawWidth,
+        destinationY,
+        contract.right.drawWidth,
+        destinationHeight
+      );
+    };
 
     context.save();
     context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = "high";
-    context.drawImage(
-      icePlatformImages.left,
-      contract.left.source.x,
-      contract.left.source.y,
-      contract.left.source.w,
-      contract.left.source.h,
-      drawX,
-      destinationY,
-      contract.left.drawWidth + ICE_PLATFORM_SEAM_OVERLAP,
-      ICE_PLATFORM_DRAW_HEIGHT
+    context.save();
+    context.beginPath();
+    context.rect(
+      drawX - SPECIAL_PLATFORM_EDGE_OVERHANG,
+      bodyClipY,
+      platform.w + SPECIAL_PLATFORM_EDGE_OVERHANG * 2,
+      SPECIAL_PLATFORM_BODY_DRAW_HEIGHT
     );
+    context.clip();
+    drawIceTiles(bodyImageY, bodyImageHeight);
+    context.restore();
 
-    let destinationX = middleStartX;
-    while (destinationX < middleEndX) {
-      const destinationWidth = Math.min(
-        contract.middle.drawWidth,
-        middleEndX - destinationX
-      );
-      const sourceWidth = contract.middle.source.w * (
-        destinationWidth / contract.middle.drawWidth
-      );
-      context.drawImage(
-        icePlatformImages.middle,
-        contract.middle.source.x,
-        contract.middle.source.y,
-        sourceWidth,
-        contract.middle.source.h,
-        destinationX,
-        destinationY,
-        destinationWidth + ICE_PLATFORM_SEAM_OVERLAP,
-        ICE_PLATFORM_DRAW_HEIGHT
-      );
-      destinationX += destinationWidth;
-    }
-
-    context.drawImage(
-      icePlatformImages.right,
-      contract.right.source.x,
-      contract.right.source.y,
-      contract.right.source.w,
-      contract.right.source.h,
-      drawX + platform.w - contract.right.drawWidth,
-      destinationY,
-      contract.right.drawWidth,
-      ICE_PLATFORM_DRAW_HEIGHT
+    context.save();
+    context.beginPath();
+    context.rect(
+      drawX - SPECIAL_PLATFORM_EDGE_OVERHANG,
+      bodyBottomY,
+      platform.w + SPECIAL_PLATFORM_EDGE_OVERHANG * 2,
+      overhangClipHeight
     );
+    context.clip();
+    drawIceTiles(overhangImageY, overhangImageHeight);
+    context.restore();
     context.restore();
     return true;
   }
@@ -865,7 +974,7 @@
       !areConveyorPlatformAssetsReady()
     ) return false;
 
-    const destinationY = platform.y;
+    const destinationY = platform.y + SPECIAL_PLATFORM_BODY_TOP_OFFSET;
     const middleStartX = drawX + contract.left.drawWidth;
     const middleEndX = drawX + platform.w - contract.right.drawWidth;
     const direction = Math.sign(platform.conveyorSpeed) || 1;
@@ -873,6 +982,16 @@
     context.save();
     context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = "high";
+    drawSpecialPlatformOuterCapExtensions(
+      context,
+      conveyorPlatformImages,
+      contract,
+      CONVEYOR_PLATFORM_SEAM_OVERLAP,
+      drawX,
+      platform.w,
+      destinationY,
+      SPECIAL_PLATFORM_BODY_DRAW_HEIGHT
+    );
     context.drawImage(
       conveyorPlatformImages.left,
       contract.left.source.x,
@@ -882,7 +1001,7 @@
       drawX,
       destinationY,
       contract.left.drawWidth + CONVEYOR_PLATFORM_SEAM_OVERLAP,
-      CONVEYOR_PLATFORM_DRAW_HEIGHT
+      SPECIAL_PLATFORM_BODY_DRAW_HEIGHT
     );
 
     let destinationX = middleStartX;
@@ -912,7 +1031,7 @@
         destinationX,
         destinationY,
         drawWidth,
-        CONVEYOR_PLATFORM_DRAW_HEIGHT
+        SPECIAL_PLATFORM_BODY_DRAW_HEIGHT
       );
       if (direction < 0) context.restore();
       destinationX += destinationWidth;
@@ -927,7 +1046,7 @@
       drawX + platform.w - contract.right.drawWidth,
       destinationY,
       contract.right.drawWidth,
-      CONVEYOR_PLATFORM_DRAW_HEIGHT
+      SPECIAL_PLATFORM_BODY_DRAW_HEIGHT
     );
     context.restore();
     return true;
@@ -949,12 +1068,15 @@
     ) % channel.stripeSpacing;
     const middleStartX = drawX + contract.left.drawWidth;
     const middleWidth = platform.w - contract.left.drawWidth - contract.right.drawWidth;
-    const channelTop = platform.y + channel.top;
-    const channelBottom = channelTop + channel.height;
+    const destinationScaleY = SPECIAL_PLATFORM_BODY_DRAW_HEIGHT / CONVEYOR_PLATFORM_DRAW_HEIGHT;
+    const channelTop =
+      platform.y + SPECIAL_PLATFORM_BODY_TOP_OFFSET + channel.top * destinationScaleY;
+    const channelHeight = channel.height * destinationScaleY;
+    const channelBottom = channelTop + channelHeight;
 
     context.save();
     context.beginPath();
-    context.rect(middleStartX, channelTop, middleWidth, channel.height);
+    context.rect(middleStartX, channelTop, middleWidth, channelHeight);
     context.clip();
     context.fillStyle = "rgba(188,198,210,0.42)";
 
