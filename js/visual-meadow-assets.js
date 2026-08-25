@@ -63,9 +63,9 @@
       background_clouds_back: Object.freeze({w: 1280, h: 720}),
       background_landscape: Object.freeze({w: 1280, h: 720}),
       background_clouds_front: Object.freeze({w: 1280, h: 720}),
-      floating_left: Object.freeze({w: 112, h: 127}),
-      floating_middle: Object.freeze({w: 300, h: 127}),
-      floating_right: Object.freeze({w: 108, h: 127}),
+      floating_left: Object.freeze({w: 128, h: 128}),
+      floating_middle: Object.freeze({w: 256, h: 128}),
+      floating_right: Object.freeze({w: 128, h: 128}),
       meadow_top_01: Object.freeze({w: 2048, h: 745}),
       meadow_top_02: Object.freeze({w: 2048, h: 745}),
       meadow_top_03: Object.freeze({w: 2048, h: 745}),
@@ -222,9 +222,18 @@
     const PLATFORM_VISUAL_CONTRACT = Object.freeze({
       floating: Object.freeze({
         height: 26,
-        leftWidth: 23,
-        rightWidth: 22,
-        middleMode: "horizontal-scale-or-crop"
+        leftWidth: 26,
+        middleTileWidth: 52,
+        middleTileAdvance: 51,
+        rightWidth: 26,
+        middleMode: "repeat-source-crop",
+        contentFit: Object.freeze({
+          alphaThreshold: 8,
+          bodyRowMinimumCoverage: 0.5,
+          topOverhang: 2,
+          bottomOverhang: 3,
+          mode: "shared-robust-alpha-body-band"
+        })
       }),
       start: Object.freeze({
         width: 235,
@@ -246,9 +255,24 @@
     // from the renderer. Future biome manifests can provide the same logical
     // slots with different artwork.
     const PLATFORM_SLOTS = Object.freeze({
-      floating_left: Object.freeze({asset: "floating_left", w: 112, h: 127}),
-      floating_middle: Object.freeze({asset: "floating_middle", w: 300, h: 127}),
-      floating_right: Object.freeze({asset: "floating_right", w: 108, h: 127}),
+      floating_left: Object.freeze({
+        asset: "floating_left",
+        w: 128,
+        h: 128,
+        source: Object.freeze({x: 0, y: 0, w: 128, h: 128})
+      }),
+      floating_middle: Object.freeze({
+        asset: "floating_middle",
+        w: 256,
+        h: 128,
+        source: Object.freeze({x: 0, y: 0, w: 256, h: 128})
+      }),
+      floating_right: Object.freeze({
+        asset: "floating_right",
+        w: 128,
+        h: 128,
+        source: Object.freeze({x: 0, y: 0, w: 128, h: 128})
+      }),
       meadow_top_variants: Object.freeze(
         MEADOW_TOP_VARIANT_ASSET_NAMES.map(asset => Object.freeze({asset, w: 2048, h: 745}))
       ),
@@ -392,11 +416,112 @@
     const CLOUD_FRONT_DRIFT_PHASE = Math.PI / 3;
     const assets = {};
     const sceneCache = new WeakMap();
+    const floatingAlphaProfiles = {};
+    let floatingContentFit = null;
+
+    function createFloatingContentFit(sourceZones) {
+      const contract = PLATFORM_VISUAL_CONTRACT.floating.contentFit;
+      return Object.freeze({
+        analyzed: true,
+        alphaThreshold: contract.alphaThreshold,
+        bodyRowMinimumCoverage: contract.bodyRowMinimumCoverage,
+        topOverhang: contract.topOverhang,
+        bottomOverhang: contract.bottomOverhang,
+        topDecorSource: Object.freeze({...sourceZones.topDecorSource}),
+        bodySource: Object.freeze({...sourceZones.bodySource}),
+        bottomDecorSource: Object.freeze({...sourceZones.bottomDecorSource})
+      });
+    }
+
+    function findLongestCoveredRowRun(rowCounts, minimumCount) {
+      let bestStart = -1;
+      let bestEnd = -1;
+      let runStart = -1;
+      for (let y = 0; y <= rowCounts.length; y++) {
+        const covered = y < rowCounts.length && rowCounts[y] >= minimumCount;
+        if (covered && runStart < 0) runStart = y;
+        if (!covered && runStart >= 0) {
+          if (bestStart < 0 || y - runStart > bestEnd - bestStart) {
+            bestStart = runStart;
+            bestEnd = y;
+          }
+          runStart = -1;
+        }
+      }
+      return bestStart >= 0 ? Object.freeze({start: bestStart, end: bestEnd}) : null;
+    }
+
+    function analyzeFloatingAlpha(image, slot) {
+      if (typeof document === "undefined" || !document.createElement) return null;
+      try {
+        const surface = document.createElement("canvas");
+        surface.width = slot.w;
+        surface.height = slot.h;
+        const context = surface.getContext("2d", {willReadFrequently: true});
+        if (!context) return null;
+        context.clearRect(0, 0, slot.w, slot.h);
+        context.drawImage(image, 0, 0, slot.w, slot.h);
+        const pixels = context.getImageData(0, 0, slot.w, slot.h).data;
+        const rowCounts = Array(slot.h).fill(0);
+        let robustTop = slot.h;
+        let robustBottom = -1;
+        const alphaThreshold = PLATFORM_VISUAL_CONTRACT.floating.contentFit.alphaThreshold;
+        for (let y = 0; y < slot.h; y++) {
+          for (let x = 0; x < slot.w; x++) {
+            if (pixels[(y * slot.w + x) * 4 + 3] <= alphaThreshold) continue;
+            rowCounts[y] += 1;
+            robustTop = Math.min(robustTop, y);
+            robustBottom = Math.max(robustBottom, y);
+          }
+        }
+        if (robustBottom < robustTop) return null;
+        const minimumCount = Math.ceil(
+          slot.w * PLATFORM_VISUAL_CONTRACT.floating.contentFit.bodyRowMinimumCoverage
+        );
+        const bodyRun = findLongestCoveredRowRun(rowCounts, minimumCount);
+        if (!bodyRun) return null;
+        return Object.freeze({
+          robustTop,
+          robustBottom: robustBottom + 1,
+          bodyTop: bodyRun.start,
+          bodyBottom: bodyRun.end
+        });
+      } catch {
+        return null;
+      }
+    }
+
+    function updateFloatingContentFit() {
+      const profiles = FLOATING_SLOT_NAMES.map(name => floatingAlphaProfiles[name]);
+      if (profiles.some(profile => !profile)) return;
+      const bodyTop = Math.max(...profiles.map(profile => profile.bodyTop));
+      const bodyBottom = Math.min(...profiles.map(profile => profile.bodyBottom));
+      if (bodyBottom <= bodyTop) return;
+      const robustTop = Math.min(...profiles.map(profile => profile.robustTop));
+      const robustBottom = Math.max(...profiles.map(profile => profile.robustBottom));
+      floatingContentFit = createFloatingContentFit({
+        topDecorSource: {y: robustTop, h: Math.max(0, bodyTop - robustTop)},
+        bodySource: {y: bodyTop, h: bodyBottom - bodyTop},
+        bottomDecorSource: {
+          y: bodyBottom,
+          h: Math.max(0, robustBottom - bodyBottom)
+        }
+      });
+    }
 
     function loadAsset(name, path) {
       const image = new Image();
       const ready = new Promise(resolve => {
-        image.onload = () => resolve(true);
+        image.onload = () => {
+          if (FLOATING_SLOT_NAMES.includes(name)) {
+            const profile = analyzeFloatingAlpha(image, PLATFORM_SLOTS[name]);
+            if (profile) {
+              floatingAlphaProfiles[name] = profile;
+              updateFloatingContentFit();
+            }
+          }
+          resolve(true);
+        };
         image.onerror = () => resolve(false);
       });
       image.decoding = "async";
@@ -1138,39 +1263,102 @@
       return true;
     }
 
+    function drawFloatingContentFitSegment(
+      context,
+      image,
+      sourceX,
+      sourceWidth,
+      destinationX,
+      destinationWidth,
+      platformY
+    ) {
+      const contract = PLATFORM_VISUAL_CONTRACT.floating;
+      const zones = [
+        {
+          source: floatingContentFit.topDecorSource,
+          y: platformY - floatingContentFit.topOverhang,
+          h: floatingContentFit.topOverhang
+        },
+        {
+          source: floatingContentFit.bodySource,
+          y: platformY,
+          h: contract.height
+        },
+        {
+          source: floatingContentFit.bottomDecorSource,
+          y: platformY + contract.height,
+          h: floatingContentFit.bottomOverhang
+        }
+      ];
+      for (const zone of zones) {
+        if (zone.source.h <= 0 || zone.h <= 0) continue;
+        context.drawImage(
+          image,
+          sourceX,
+          zone.source.y,
+          sourceWidth,
+          zone.source.h,
+          destinationX,
+          zone.y,
+          destinationWidth,
+          zone.h
+        );
+      }
+    }
+
     function drawFloatingPlatform(context, platform, drawX) {
       const contract = PLATFORM_VISUAL_CONTRACT.floating;
-      const leftWidth = Math.min(contract.leftWidth, platform.w / 2);
-      const rightWidth = Math.min(
-        contract.rightWidth,
-        platform.w - leftWidth
-      );
-      const middleWidth = platform.w - leftWidth - rightWidth;
-      const seamOverlap = Math.min(
-        FLOATING_SEAM_OVERLAP,
-        Math.max(0, middleWidth / 2)
-      );
-      const left = assets[PLATFORM_SLOTS.floating_left.asset].image;
-      const middle = assets[PLATFORM_SLOTS.floating_middle.asset].image;
-      const right = assets[PLATFORM_SLOTS.floating_right.asset].image;
+      const capWidth = Math.min(contract.leftWidth, platform.w / 2);
+      const leftSlot = PLATFORM_SLOTS.floating_left;
+      const middleSlot = PLATFORM_SLOTS.floating_middle;
+      const rightSlot = PLATFORM_SLOTS.floating_right;
+      const left = assets[leftSlot.asset].image;
+      const middle = assets[middleSlot.asset].image;
+      const right = assets[rightSlot.asset].image;
 
-      context.drawImage(
-        middle,
-        drawX + leftWidth - seamOverlap,
-        platform.y,
-        middleWidth + seamOverlap * 2,
-        contract.height
-      );
-      context.drawImage(
+      if (platform.w > contract.leftWidth + contract.rightWidth) {
+        const middleStartX = drawX + contract.leftWidth - FLOATING_SEAM_OVERLAP;
+        const middleEndX = drawX + platform.w - contract.rightWidth +
+          FLOATING_SEAM_OVERLAP;
+        let destinationX = middleStartX;
+
+        while (destinationX < middleEndX) {
+          const remainingWidth = middleEndX - destinationX;
+          const destinationWidth = Math.min(contract.middleTileWidth, remainingWidth);
+          const sourceWidth = middleSlot.source.w * (
+            destinationWidth / contract.middleTileWidth
+          );
+          drawFloatingContentFitSegment(
+            context,
+            middle,
+            middleSlot.source.x,
+            sourceWidth,
+            destinationX,
+            destinationWidth,
+            platform.y
+          );
+          if (destinationWidth >= remainingWidth) break;
+          destinationX += contract.middleTileAdvance;
+        }
+      }
+
+      drawFloatingContentFitSegment(
+        context,
         left,
-        drawX, platform.y, leftWidth, contract.height
+        leftSlot.source.x,
+        leftSlot.source.w,
+        drawX,
+        capWidth,
+        platform.y
       );
-      context.drawImage(
+      drawFloatingContentFitSegment(
+        context,
         right,
-        drawX + platform.w - rightWidth,
-        platform.y,
-        rightWidth,
-        contract.height
+        rightSlot.source.x,
+        rightSlot.source.w,
+        drawX + platform.w - capWidth,
+        capWidth,
+        platform.y
       );
     }
 
@@ -1187,6 +1375,7 @@
         if (!FLOATING_SLOT_NAMES.every(slotName =>
           isReady(PLATFORM_SLOTS[slotName].asset)
         )) return false;
+        if (!floatingContentFit) return false;
       } else if (role === "START_PLATFORM") {
         if (
           !isReady(topSlot.asset) ||
@@ -1201,8 +1390,10 @@
       }
 
       context.save();
-      traceRoundedRect(context, drawX, platform.y, platform.w, platform.h, 10);
-      context.clip();
+      if (role !== "FLOATING") {
+        traceRoundedRect(context, drawX, platform.y, platform.w, platform.h, 10);
+        context.clip();
+      }
       context.imageSmoothingEnabled = true;
       context.imageSmoothingQuality = "high";
       if (role === "GOAL_TOWER") {
@@ -1317,7 +1508,8 @@
         paths: ASSET_PATHS,
         loaded: Object.freeze(
           Object.fromEntries(Object.keys(ASSET_PATHS).map(name => [name, isReady(name)]))
-        )
+        ),
+        floatingContentFit
       });
     }
 

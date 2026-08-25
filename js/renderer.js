@@ -998,6 +998,7 @@
       const standardPlatform = isStandardPlatform(p);
       const biomeBasePlatform = standardPlatform || p.fade || p.spikePlatform;
       let meadowAssetPlatform = false;
+      let coastAssetPlatform = false;
       if (
         p.fragile &&
         p.fallingPlatform.triggered &&
@@ -1033,12 +1034,21 @@
         !p.lastBubbleSupport &&
         MEADOW_ASSET_VISUALS.drawPlatformBase(ctx, p, drawX, level.seed)
       );
+      coastAssetPlatform = Boolean(
+        !p.fragile &&
+        !p.ice &&
+        !p.conveyor &&
+        biome.id === "coast" &&
+        !p.lastBubbleSupport &&
+        COAST_ASSET_VISUALS.drawPlatformBase(ctx, p, drawX)
+      );
+      const biomeAssetPlatform = meadowAssetPlatform || coastAssetPlatform;
 
       if (
         !fallingAssetPlatform &&
         !iceAssetPlatform &&
         !conveyorAssetPlatform &&
-        !meadowAssetPlatform
+        !biomeAssetPlatform
       ) {
         ctx.fillStyle = p.fragile
           ? "#815142"
@@ -1077,7 +1087,7 @@
         ctx.fill();
       }
 
-      if (p.spikePlatform && !meadowAssetPlatform) {
+      if (p.spikePlatform && !biomeAssetPlatform) {
         drawStandardPlatformDetails(drawX, p.y, p.w, p.h, biome.platform);
       }
 
@@ -1090,7 +1100,7 @@
         ctx.setLineDash([]);
       }
 
-      if (p.moving && meadowAssetPlatform) {
+      if (p.moving && biomeAssetPlatform) {
         ctx.fillStyle = "rgba(167,210,255,0.62)";
         roundedRect(drawX + 3, p.y + 2, p.w - 6, 7, 5);
         ctx.fill();
@@ -1207,7 +1217,7 @@
         !p.ice &&
         !p.spikePlatform &&
         !fallingAssetPlatform &&
-        !meadowAssetPlatform
+        !biomeAssetPlatform
       ) {
         ctx.fillStyle = "rgba(0,0,0,0.16)";
         for (let x = drawX + 18; x < drawX + p.w - 8; x += 38) {
@@ -1217,7 +1227,7 @@
         }
       }
 
-      if (biomeBasePlatform && !p.spikePlatform && !meadowAssetPlatform) {
+      if (biomeBasePlatform && !p.spikePlatform && !biomeAssetPlatform) {
         drawStandardPlatformDetails(drawX, p.y, p.w, p.h, biome.platform);
       }
 

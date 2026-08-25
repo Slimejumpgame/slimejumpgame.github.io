@@ -41,9 +41,9 @@ const assetExpectations = Object.freeze({
   "assets/environments/meadow/background/meadow_background_clouds_back.png": [1280, 720],
   "assets/environments/meadow/background/meadow_background_landscape.png": [1280, 720],
   "assets/environments/meadow/background/meadow_background_clouds_front.png": [1280, 720],
-  "assets/environments/meadow/platforms/floating_left.png": [112, 127],
-  "assets/environments/meadow/platforms/floating_middle.png": [300, 127],
-  "assets/environments/meadow/platforms/floating_right.png": [108, 127],
+  "assets/environments/meadow/platforms/floating_left.png": [128, 128],
+  "assets/environments/meadow/platforms/floating_middle.png": [256, 128],
+  "assets/environments/meadow/platforms/floating_right.png": [128, 128],
   "assets/environments/meadow/platforms/meadow_top_01.png": [2048, 745],
   "assets/environments/meadow/platforms/meadow_top_02.png": [2048, 745],
   "assets/environments/meadow/platforms/meadow_top_03.png": [2048, 745],
@@ -159,6 +159,21 @@ for (let levelNumber = 1; levelNumber <= 10; levelNumber++) {
 }
 
 let imageConstructionCount = 0;
+function createFamilyBAlphaFixture(width) {
+  const height = 128;
+  const pixels = Buffer.alloc(width * height * 4);
+  for (let y = 24; y <= 102; y++) pixels[(y * width) * 4 + 3] = 255;
+  for (let y = 34; y <= 84; y++) {
+    for (let x = 0; x < width; x++) pixels[(y * width + x) * 4 + 3] = 255;
+  }
+  return pixels;
+}
+const familyBAlphaFixtures = Object.freeze({
+  "assets/environments/meadow/platforms/floating_left.png": createFamilyBAlphaFixture(128),
+  "assets/environments/meadow/platforms/floating_middle.png": createFamilyBAlphaFixture(256),
+  "assets/environments/meadow/platforms/floating_right.png": createFamilyBAlphaFixture(128)
+});
+
 class FakeImage {
   constructor() {
     imageConstructionCount += 1;
@@ -171,9 +186,11 @@ class FakeImage {
 
   set src(value) {
     this._src = value;
+    const dimensions = assetExpectations[value] || [1, 1];
     this.complete = true;
-    this.naturalWidth = 1;
-    this.naturalHeight = 1;
+    this.naturalWidth = dimensions[0];
+    this.naturalHeight = dimensions[1];
+    this.pixelData = familyBAlphaFixtures[value];
     this.onload?.();
   }
 
@@ -182,13 +199,38 @@ class FakeImage {
   }
 }
 
+const fakeDocument = {
+  createElement(type) {
+    assert.equal(type, "canvas");
+    let drawnImage = null;
+    return {
+      getContext() {
+        return {
+          clearRect() {},
+          drawImage(image) {
+            drawnImage = image;
+          },
+          getImageData() {
+            return {data: drawnImage.pixelData};
+          }
+        };
+      }
+    };
+  }
+};
+
 let visualMathRandomCalls = 0;
 const visualMath = Object.create(Math);
 visualMath.random = () => {
   visualMathRandomCalls += 1;
   return 0.5;
 };
-const visualContext = vm.createContext({Image: FakeImage, Math: visualMath, Promise});
+const visualContext = vm.createContext({
+  Image: FakeImage,
+  Math: visualMath,
+  Promise,
+  document: fakeDocument
+});
 vm.runInContext(`${read("js/visual-meadow-assets.js")}
   globalThis.meadowAssetVisualsForTest = MEADOW_ASSET_VISUALS;
 `, visualContext, {filename: "js/visual-meadow-assets.js"});
@@ -237,9 +279,18 @@ assert.equal(meadowManifest.biome, "meadow");
 assert.deepEqual(meadowManifest.platforms.contract, {
   floating: {
     height: 26,
-    leftWidth: 23,
-    rightWidth: 22,
-    middleMode: "horizontal-scale-or-crop"
+    leftWidth: 26,
+    middleTileWidth: 52,
+    middleTileAdvance: 51,
+    rightWidth: 26,
+    middleMode: "repeat-source-crop",
+    contentFit: {
+      alphaThreshold: 8,
+      bodyRowMinimumCoverage: 0.5,
+      topOverhang: 2,
+      bottomOverhang: 3,
+      mode: "shared-robust-alpha-body-band"
+    }
   },
   start: {
     width: 235,
@@ -265,6 +316,24 @@ assert.deepEqual(Object.keys(meadowManifest.platforms.slots), [
   "meadow_body_top_variants",
   "meadow_body_base"
 ]);
+assert.deepEqual(meadowManifest.platforms.slots.floating_left, {
+  asset: "floating_left",
+  w: 128,
+  h: 128,
+  source: {x: 0, y: 0, w: 128, h: 128}
+});
+assert.deepEqual(meadowManifest.platforms.slots.floating_middle, {
+  asset: "floating_middle",
+  w: 256,
+  h: 128,
+  source: {x: 0, y: 0, w: 256, h: 128}
+});
+assert.deepEqual(meadowManifest.platforms.slots.floating_right, {
+  asset: "floating_right",
+  w: 128,
+  h: 128,
+  source: {x: 0, y: 0, w: 128, h: 128}
+});
 assert.deepEqual(
   meadowManifest.platforms.slots.meadow_top_variants,
   Array.from({length: 6}, (_, index) => ({
@@ -941,28 +1010,88 @@ function assertDrawBounds(platform, calls) {
 }
 
 const floatingAssetPaths = [
-  "assets/environments/meadow/platforms/floating_middle.png",
   "assets/environments/meadow/platforms/floating_left.png",
   "assets/environments/meadow/platforms/floating_right.png"
 ];
-for (const width of [100, 138, 176]) {
+for (const [width, expectedMiddleCount] of [[100, 1], [138, 2], [176, 3]]) {
   const floatingPlatform = {x: 420, y: 310, w: width, h: 26};
+  const platformSnapshot = JSON.stringify(floatingPlatform);
   drawCalls.length = 0;
   assert.equal(visualApi.drawPlatformBase(fakeCanvasContext, floatingPlatform), true);
-  assert.equal(drawCalls.length, 3, "floating platforms must use left/middle/right draws");
-  assertDrawBounds(floatingPlatform, drawCalls);
-  assert.ok(drawCalls.every(call => call.length === 5));
-  assert.deepEqual(drawCalls.map(call => call[0].src), floatingAssetPaths);
-  const destinations = drawCalls.map(call => call.slice(1, 5));
-  assert.deepEqual(destinations[0], [442, 310, width - 43, 26]);
-  assert.deepEqual(destinations[1], [420, 310, 23, 26]);
-  assert.deepEqual(destinations[2], [420 + width - 22, 310, 22, 26]);
-  assert.equal(destinations[1][0] + destinations[1][2] - destinations[0][0], 1);
-  assert.equal(destinations[0][0] + destinations[0][2] - destinations[2][0], 1);
-  assert.equal(destinations[2][0] + destinations[2][2], floatingPlatform.x + width);
+  assert.equal(JSON.stringify(floatingPlatform), platformSnapshot);
+  assert.ok(drawCalls.every(call => call.length === 9));
+
+  const segments = Array.from({length: drawCalls.length / 3}, (_, index) => (
+    drawCalls.slice(index * 3, index * 3 + 3)
+  ));
+  const middleSegments = segments.slice(0, -2);
+  const leftSegment = segments.at(-2);
+  const rightSegment = segments.at(-1);
+  assert.equal(middleSegments.length, expectedMiddleCount);
+  assert.deepEqual([leftSegment[0][0].src, rightSegment[0][0].src], floatingAssetPaths);
+  assert.ok(middleSegments.every(calls => calls.every(call => (
+    call[0].src === "assets/environments/meadow/platforms/floating_middle.png"
+  ))));
+  assert.deepEqual(leftSegment.map(call => call.slice(1)), [
+    [0, 24, 128, 10, 420, 308, 26, 2],
+    [0, 34, 128, 51, 420, 310, 26, 26],
+    [0, 85, 128, 18, 420, 336, 26, 3]
+  ]);
+  assert.deepEqual(rightSegment.map(call => call.slice(1)), [
+    [0, 24, 128, 10, 420 + width - 26, 308, 26, 2],
+    [0, 34, 128, 51, 420 + width - 26, 310, 26, 26],
+    [0, 85, 128, 18, 420 + width - 26, 336, 26, 3]
+  ]);
+  assert.ok(segments.every(calls => (
+    calls.every(call => call[5] >= floatingPlatform.x && (
+      call[5] + call[7] <= floatingPlatform.x + floatingPlatform.w
+    ))
+  )));
+
+  const middleStartX = 420 + 26 - 1;
+  const middleEndX = 420 + width - 26 + 1;
+  assert.equal(middleSegments[0][0][5], middleStartX);
+  assert.equal(
+    middleSegments.at(-1)[0][5] + middleSegments.at(-1)[0][7],
+    middleEndX
+  );
+  for (const [index, calls] of middleSegments.entries()) {
+    const call = calls[0];
+    const destinationWidth = call[7];
+    assert.deepEqual(calls.map(item => item[2]), [24, 34, 85]);
+    assert.deepEqual(calls.map(item => item[4]), [10, 51, 18]);
+    assert.deepEqual(calls.map(item => item[6]), [308, 310, 336]);
+    assert.deepEqual(calls.map(item => item[8]), [2, 26, 3]);
+    assert.ok(calls.every(item => item[3] === 256 * destinationWidth / 52));
+    assert.ok(destinationWidth <= 52);
+    if (index < middleSegments.length - 1) {
+      assert.equal(destinationWidth, 52);
+      assert.equal(middleSegments[index + 1][0][5] - call[5], 51);
+      assert.equal(call[5] + destinationWidth - middleSegments[index + 1][0][5], 1);
+    }
+  }
+  assert.equal(leftSegment[0][5] + leftSegment[0][7] - middleSegments[0][0][5], 1);
+  assert.equal(
+    middleSegments.at(-1)[0][5] + middleSegments.at(-1)[0][7] - rightSegment[0][5],
+    1
+  );
 }
-assert.ok(Math.abs(23 / 112 - 26 / 127) < 0.002);
-assert.ok(Math.abs(22 / 108 - 26 / 127) < 0.002);
+assert.equal(26 / 128, 52 / 256);
+
+const narrowFloatingPlatform = {x: 420, y: 310, w: 40, h: 26};
+drawCalls.length = 0;
+assert.equal(visualApi.drawPlatformBase(fakeCanvasContext, narrowFloatingPlatform), true);
+assert.equal(drawCalls.length, 6, "narrow floating platforms must use two three-zone caps");
+assert.deepEqual(drawCalls.slice(0, 3).map(call => call.slice(1)), [
+  [0, 24, 128, 10, 420, 308, 20, 2],
+  [0, 34, 128, 51, 420, 310, 20, 26],
+  [0, 85, 128, 18, 420, 336, 20, 3]
+]);
+assert.deepEqual(drawCalls.slice(3).map(call => call.slice(1)), [
+  [0, 24, 128, 10, 440, 308, 20, 2],
+  [0, 34, 128, 51, 440, 310, 20, 26],
+  [0, 85, 128, 18, 440, 336, 20, 3]
+]);
 
 const startPlatform = {x: 0, y: 640, w: 235, h: 80};
 const startTopHeight = startPlatform.w * (745 / 2048);
@@ -1194,15 +1323,10 @@ for (const specialPlatform of [
   assert.equal(visualApi.resolvePlatformRole(specialPlatform), "FLOATING");
   drawCalls.length = 0;
   assert.equal(visualApi.drawPlatformBase(fakeCanvasContext, specialPlatform, specialPlatform.x, 41), true);
-  assert.equal(drawCalls.length, 3, "each special must reuse the full floating composition");
-  assert.ok(drawCalls.every(call => call.length === 5));
-  assert.deepEqual(drawCalls.map(call => call[0].src), floatingAssetPaths);
-  assert.deepEqual(drawCalls.map(call => call[4]), [26, 26, 26]);
-  assert.equal(drawCalls[0][3], specialPlatform.w - 43);
-  assert.equal(drawCalls[1][3], 23);
-  assert.equal(drawCalls[2][3], 22);
-  assert.equal(drawCalls[1][1] + drawCalls[1][3] - drawCalls[0][1], 1);
-  assert.equal(drawCalls[0][1] + drawCalls[0][3] - drawCalls[2][1], 1);
+  assert.equal(drawCalls.length, 12, "each special must reuse four three-zone segments");
+  assert.ok(drawCalls.every(call => call.length === 9));
+  assert.deepEqual(drawCalls.slice(-6).filter((_, index) => index % 3 === 0).map(call => call[0].src), floatingAssetPaths);
+  assert.deepEqual(drawCalls.map(call => call[8]), [2, 26, 3, 2, 26, 3, 2, 26, 3, 2, 26, 3]);
 }
 
 drawCalls.length = 0;
