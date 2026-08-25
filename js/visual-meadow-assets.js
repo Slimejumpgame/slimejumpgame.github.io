@@ -48,7 +48,7 @@
       decor_top_stones: "assets/environments/meadow/decor/top/meadow_decor_top_stones_set_01.png",
       decor_top_tufts: "assets/environments/meadow/decor/top/meadow_decor_top_tufts_set_01.png",
       decor_top_trees: "assets/environments/meadow/decor/top/meadow_decor_top_trees_set_01.png",
-      portal: "assets/environments/meadow/portal/meadow_portal_props.png",
+      portal: "assets/environments/meadow/portal/meadow_goal_portal.png",
       bottom_spike_tile: "assets/environments/meadow/hazards/meadow_bottom_spike_tile.png"
     });
     const SOURCE_SIZES = Object.freeze({
@@ -78,7 +78,7 @@
       decor_top_stones: Object.freeze({w: 1536, h: 1024}),
       decor_top_tufts: Object.freeze({w: 1536, h: 1024}),
       decor_top_trees: Object.freeze({w: 1448, h: 1086}),
-      portal: Object.freeze({w: 1448, h: 1086}),
+      portal: Object.freeze({w: 256, h: 272}),
       bottom_spike_tile: Object.freeze({w: 256, h: 320})
     });
     const TOP_DECOR_SPRITES = Object.freeze({
@@ -87,6 +87,7 @@
         category: "GRASS",
         source: Object.freeze({x: 208, y: 104, w: 320, h: 224}),
         anchor: Object.freeze({x: 162, y: 202}),
+        visibleBounds: Object.freeze({x: 37, y: 30, w: 248, h: 164}),
         motifWidth: 256,
         nominalWidth: 34
       }),
@@ -95,6 +96,9 @@
         category: "GRASS",
         source: Object.freeze({x: 816, y: 16, w: 496, h: 320}),
         anchor: Object.freeze({x: 247.5, y: 291}),
+        standingAnchor: Object.freeze({x: 244, y: 279}),
+        visibleBounds: Object.freeze({x: 29, y: 24, w: 441, h: 256}),
+        visibleBase: Object.freeze({left: 69, right: 413}),
         motifWidth: 447,
         nominalWidth: 62
       }),
@@ -103,6 +107,9 @@
         category: "GRASS",
         source: Object.freeze({x: 736, y: 320, w: 656, h: 384}),
         anchor: Object.freeze({x: 327, y: 354}),
+        standingAnchor: Object.freeze({x: 331.5, y: 341}),
+        visibleBounds: Object.freeze({x: 40, y: 20, w: 578, h: 322}),
+        visibleBase: Object.freeze({left: 95, right: 568}),
         motifWidth: 588,
         nominalWidth: 78
       }),
@@ -111,6 +118,7 @@
         category: "FLOWERS",
         source: Object.freeze({x: 48, y: 64, w: 416, h: 384}),
         anchor: Object.freeze({x: 204, y: 343}),
+        visibleBounds: Object.freeze({x: 35, y: 47, w: 337, h: 298}),
         motifWidth: 342,
         nominalWidth: 46
       }),
@@ -119,6 +127,7 @@
         category: "FLOWERS",
         source: Object.freeze({x: 448, y: 528, w: 608, h: 432}),
         anchor: Object.freeze({x: 301, y: 379}),
+        visibleBounds: Object.freeze({x: 43, y: 37, w: 519, h: 346}),
         motifWidth: 532,
         nominalWidth: 60
       }),
@@ -127,6 +136,7 @@
         category: "MUSHROOMS",
         source: Object.freeze({x: 112, y: 176, w: 336, h: 288}),
         anchor: Object.freeze({x: 164.5, y: 251}),
+        visibleBounds: Object.freeze({x: 37, y: 35, w: 255, h: 218}),
         motifWidth: 261,
         nominalWidth: 34
       }),
@@ -135,6 +145,9 @@
         category: "MUSHROOMS",
         source: Object.freeze({x: 544, y: 112, w: 416, h: 352}),
         anchor: Object.freeze({x: 207.5, y: 317}),
+        standingAnchor: Object.freeze({x: 188.5, y: 317}),
+        visibleBounds: Object.freeze({x: 36, y: 40, w: 339, h: 279}),
+        visibleBase: Object.freeze({left: 48, right: 329}),
         motifWidth: 349,
         nominalWidth: 48
       }),
@@ -143,6 +156,9 @@
         category: "BUSHES",
         source: Object.freeze({x: 544, y: 320, w: 496, h: 400}),
         anchor: Object.freeze({x: 248.5, y: 364}),
+        standingAnchor: Object.freeze({x: 250.5, y: 356}),
+        visibleBounds: Object.freeze({x: 29, y: 35, w: 436, h: 323}),
+        visibleBase: Object.freeze({left: 64, right: 437}),
         motifWidth: 447,
         nominalWidth: 66
       }),
@@ -151,6 +167,9 @@
         category: "BUSHES",
         source: Object.freeze({x: 0, y: 336, w: 560, h: 464}),
         anchor: Object.freeze({x: 280, y: 440}),
+        standingAnchor: Object.freeze({x: 259.5, y: 430}),
+        visibleBounds: Object.freeze({x: 33, y: 30, w: 492, h: 404}),
+        visibleBase: Object.freeze({left: 63, right: 452}),
         motifWidth: 502,
         nominalWidth: 68
       }),
@@ -159,6 +178,7 @@
         category: "STONES",
         source: Object.freeze({x: 176, y: 64, w: 368, h: 288}),
         anchor: Object.freeze({x: 182, y: 235}),
+        visibleBounds: Object.freeze({x: 43, y: 41, w: 280, h: 196}),
         motifWidth: 286,
         nominalWidth: 32
       }),
@@ -167,6 +187,7 @@
         category: "STONES",
         source: Object.freeze({x: 80, y: 368, w: 672, h: 288}),
         anchor: Object.freeze({x: 335.5, y: 246}),
+        visibleBounds: Object.freeze({x: 43, y: 37, w: 587, h: 210}),
         motifWidth: 591,
         nominalWidth: 60
       }),
@@ -175,6 +196,7 @@
         category: "TUFTS",
         source: Object.freeze({x: 32, y: 208, w: 416, h: 288}),
         anchor: Object.freeze({x: 205.5, y: 250}),
+        visibleBounds: Object.freeze({x: 33, y: 45, w: 344, h: 207}),
         motifWidth: 357,
         nominalWidth: 32
       }),
@@ -183,6 +205,7 @@
         category: "TUFTS",
         source: Object.freeze({x: 480, y: 176, w: 576, h: 336}),
         anchor: Object.freeze({x: 287.5, y: 287}),
+        visibleBounds: Object.freeze({x: 35, y: 48, w: 501, h: 241}),
         motifWidth: 511,
         nominalWidth: 48
       }),
@@ -191,6 +214,9 @@
         category: "TREES",
         source: Object.freeze({x: 64, y: 144, w: 288, h: 320}),
         anchor: Object.freeze({x: 146.5, y: 298}),
+        standingAnchor: Object.freeze({x: 157, y: 285}),
+        visibleBounds: Object.freeze({x: 46, y: 34, w: 200, h: 252}),
+        visibleBase: Object.freeze({left: 109, right: 201}),
         motifWidth: 207,
         nominalWidth: 32
       }),
@@ -199,6 +225,9 @@
         category: "TREES",
         source: Object.freeze({x: 960, y: 16, w: 416, h: 464}),
         anchor: Object.freeze({x: 204.5, y: 428}),
+        standingAnchor: Object.freeze({x: 204.5, y: 419}),
+        visibleBounds: Object.freeze({x: 48, y: 43, w: 317, h: 377}),
+        visibleBase: Object.freeze({left: 132, right: 279}),
         motifWidth: 329,
         nominalWidth: 59
       })
@@ -206,6 +235,7 @@
     const TOP_DECOR_ASSET_NAMES = Object.freeze(
       [...new Set(Object.values(TOP_DECOR_SPRITES).map(sprite => sprite.asset))]
     );
+    const TOP_DECOR_SPRITE_NAMES = Object.freeze(Object.keys(TOP_DECOR_SPRITES));
     const TOP_DECOR_PREVIEW_CONTRACT = Object.freeze({
       floatingBaseline: 2,
       startGoalBackMinimum: 1,
@@ -318,77 +348,16 @@
         })
       })
     });
-    const PORTAL_SPRITE = Object.freeze({x: 24, y: 50, w: 712, h: 755});
-    const GOAL_SEAM_COVER_SPRITES = Object.freeze({
-      portalLantern: Object.freeze({
-        source: Object.freeze({x: 752, y: 512, w: 232, h: 312}),
-        anchor: Object.freeze({x: 119, y: 289}),
-        visibleBase: Object.freeze({left: 28, right: 210}),
-        motifWidth: 195,
-        motifHeight: 269,
-        nominalWidth: 32,
-        selectionWeight: 1
-      }),
-      portalFlowerClump: Object.freeze({
-        source: Object.freeze({x: 992, y: 624, w: 256, h: 200}),
-        anchor: Object.freeze({x: 115.5, y: 173}),
-        visibleBase: Object.freeze({left: 15, right: 216}),
-        motifWidth: 219,
-        motifHeight: 146,
-        nominalWidth: 26,
-        selectionWeight: 1
-      }),
-      portalShortWoodPost: Object.freeze({
-        source: Object.freeze({x: 1248, y: 552, w: 200, h: 272}),
-        anchor: Object.freeze({x: 97, y: 248}),
-        visibleBase: Object.freeze({left: 16, right: 178}),
-        motifWidth: 168,
-        motifHeight: 224,
-        nominalWidth: 23,
-        selectionWeight: 1
-      }),
-      portalMossStoneMushrooms: Object.freeze({
-        source: Object.freeze({x: 16, y: 832, w: 336, h: 224}),
-        anchor: Object.freeze({x: 172, y: 196}),
-        visibleBase: Object.freeze({left: 44, right: 300}),
-        motifWidth: 289,
-        motifHeight: 171,
-        nominalWidth: 30,
-        selectionWeight: 1
-      }),
-      portalStoneGrassClump: Object.freeze({
-        source: Object.freeze({x: 352, y: 848, w: 320, h: 208}),
-        anchor: Object.freeze({x: 176.5, y: 176}),
-        visibleBase: Object.freeze({left: 89, right: 264}),
-        motifWidth: 267,
-        motifHeight: 153,
-        nominalWidth: 30,
-        selectionWeight: 1
-      }),
-      portalFallenLog: Object.freeze({
-        source: Object.freeze({x: 672, y: 832, w: 400, h: 224}),
-        anchor: Object.freeze({x: 197.5, y: 199}),
-        visibleBase: Object.freeze({left: 35, right: 360}),
-        motifWidth: 357,
-        motifHeight: 176,
-        nominalWidth: 38,
-        selectionWeight: 0.25
-      }),
-      portalTreeStump: Object.freeze({
-        source: Object.freeze({x: 1072, y: 832, w: 376, h: 224}),
-        anchor: Object.freeze({x: 173.5, y: 196}),
-        visibleBase: Object.freeze({left: 26, right: 321}),
-        motifWidth: 314,
-        motifHeight: 171,
-        nominalWidth: 32,
-        selectionWeight: 1
-      })
-    });
-    const GOAL_SEAM_COVER_NAMES = Object.freeze(
-      Object.keys(GOAL_SEAM_COVER_SPRITES)
-    );
+    const PORTAL_SOURCE = Object.freeze({x: 9, y: 21, w: 239, h: 248});
+    const PORTAL_DESTINATION_WIDTH = 180;
+    const PORTAL_DESTINATION_HEIGHT =
+      PORTAL_SOURCE.h * PORTAL_DESTINATION_WIDTH / PORTAL_SOURCE.w;
+    const PORTAL_LEGACY_REFERENCE_WIDTH = 180;
+    const PORTAL_LEGACY_REFERENCE_HEIGHT = 191;
+    const PORTAL_CONTENT_Y_OFFSET = 2.703876527;
     const GOAL_SEAM_COVER_EDGE_INSET = 3;
     const GOAL_SEAM_COVER_BASELINE_OFFSET = 11;
+    const GOAL_SEAM_COVER_MINIMUM_GAP = 1;
     const PORTAL_GLOW_PERIOD_SECONDS = 2.2;
     const PORTAL_GLOW_ALPHA_MINIMUM = 0.12;
     const PORTAL_GLOW_ALPHA_MAXIMUM = 0.68;
@@ -627,36 +596,6 @@
       Object.freeze({sprite: "grassWildArching", layer: "back"}),
       Object.freeze({sprite: "mushroomsRedPair", layer: "back"})
     ]);
-    const START_GOAL_BACK_PLACEMENT = Object.freeze({
-      treeRoundFlowering: Object.freeze({
-        anchor: Object.freeze({x: 204.5, y: 419}),
-        base: Object.freeze({left: 132, right: 279})
-      }),
-      treeSaplingLeafy: Object.freeze({
-        anchor: Object.freeze({x: 157, y: 285}),
-        base: Object.freeze({left: 109, right: 201})
-      }),
-      bushLayeredCluster: Object.freeze({
-        anchor: Object.freeze({x: 250.5, y: 356}),
-        base: Object.freeze({left: 64, right: 437})
-      }),
-      bushTallLeafy: Object.freeze({
-        anchor: Object.freeze({x: 259.5, y: 430}),
-        base: Object.freeze({left: 63, right: 452})
-      }),
-      grassTallFan: Object.freeze({
-        anchor: Object.freeze({x: 244, y: 279}),
-        base: Object.freeze({left: 69, right: 413})
-      }),
-      grassWildArching: Object.freeze({
-        anchor: Object.freeze({x: 331.5, y: 341}),
-        base: Object.freeze({left: 95, right: 568})
-      }),
-      mushroomsRedPair: Object.freeze({
-        anchor: Object.freeze({x: 188.5, y: 317}),
-        base: Object.freeze({left: 48, right: 329})
-      })
-    });
     const START_GOAL_FRONT_DECOR = Object.freeze([
       Object.freeze({sprite: "grassCompactFan", layer: "front"}),
       Object.freeze({sprite: "flowersWhiteDaisy", layer: "front"}),
@@ -683,17 +622,48 @@
       return selected;
     }
 
-    function takeWeightedGoalSeamCoverNames(random, count) {
-      const available = [...GOAL_SEAM_COVER_NAMES];
+    function getDecorStandingAnchor(sprite) {
+      return sprite.standingAnchor ?? sprite.anchor;
+    }
+
+    function getDecorVisibleBase(sprite) {
+      if (sprite.visibleBase) return sprite.visibleBase;
+      return Object.freeze({
+        left: sprite.visibleBounds.x,
+        right: sprite.visibleBounds.x + sprite.visibleBounds.w - 1
+      });
+    }
+
+    function getGoalSeamDecorProfile(name) {
+      const sprite = TOP_DECOR_SPRITES[name];
+      const anchor = getDecorStandingAnchor(sprite);
+      const visibleBase = getDecorVisibleBase(sprite);
+      const scale = sprite.nominalWidth / sprite.motifWidth;
+      const visibleWidth = sprite.visibleBounds.w * scale;
+      const visibleHeight = sprite.visibleBounds.h * scale;
+      const sizeScore = Math.max(1, visibleWidth / 38, visibleHeight / 30);
+      return Object.freeze({
+        name,
+        sprite,
+        anchor,
+        visibleBase,
+        scale,
+        visibleHeight,
+        selectionWeight: 1 / Math.pow(sizeScore, 1.6)
+      });
+    }
+
+    function takeWeightedGoalSeamDecorNames(random, count) {
+      const available = [...TOP_DECOR_SPRITE_NAMES];
       const selected = [];
       while (selected.length < count && available.length > 0) {
         const totalWeight = available.reduce((total, name) => (
-          total + GOAL_SEAM_COVER_SPRITES[name].selectionWeight
+          total + getGoalSeamDecorProfile(name).selectionWeight
         ), 0);
         let targetWeight = random() * totalWeight;
         let selectedIndex = available.length - 1;
         for (let index = 0; index < available.length; index++) {
-          targetWeight -= GOAL_SEAM_COVER_SPRITES[available[index]].selectionWeight;
+          targetWeight -= getGoalSeamDecorProfile(available[index]).selectionWeight;
           if (targetWeight <= 0) {
             selectedIndex = index;
             break;
@@ -719,45 +689,83 @@
         decorNonce
       );
       const count = randomInteger(random, 2, 5);
-      const selected = takeWeightedGoalSeamCoverNames(random, count);
+      const selected = takeWeightedGoalSeamDecorNames(random, count);
       const slotRatios = getGoalSeamCoverSlotRatios(count);
       const rankedSlots = [...slotRatios].sort((left, right) => (
         Math.abs(right - 0.5) - Math.abs(left - 0.5)
       ));
-      const rankedProps = [...selected].sort((left, right) => (
-        GOAL_SEAM_COVER_SPRITES[right].motifHeight *
-          GOAL_SEAM_COVER_SPRITES[right].nominalWidth /
-          GOAL_SEAM_COVER_SPRITES[right].motifWidth -
-        GOAL_SEAM_COVER_SPRITES[left].motifHeight *
-          GOAL_SEAM_COVER_SPRITES[left].nominalWidth /
-          GOAL_SEAM_COVER_SPRITES[left].motifWidth
-      ));
-      const items = rankedProps.map((spriteName, index) => {
-        const sprite = GOAL_SEAM_COVER_SPRITES[spriteName];
-        const scale = sprite.nominalWidth / sprite.motifWidth;
-        const minimumX = GOAL_SEAM_COVER_EDGE_INSET +
-          (sprite.anchor.x - sprite.visibleBase.left) * scale;
-        const maximumX = goalPlatform.w - GOAL_SEAM_COVER_EDGE_INSET -
-          (sprite.visibleBase.right - sprite.anchor.x) * scale;
-        const desiredX = goalPlatform.w * rankedSlots[index] + (random() - 0.5);
-        const x = Math.max(minimumX, Math.min(maximumX, desiredX));
+      const rankedProps = selected
+        .map(getGoalSeamDecorProfile)
+        .sort((left, right) => right.visibleHeight - left.visibleHeight);
+      const positioned = rankedProps.map((profile, index) => ({
+        profile,
+        slotRatio: rankedSlots[index],
+        desiredCenter: goalPlatform.x +
+          goalPlatform.w * rankedSlots[index] + (random() - 0.5)
+      })).sort((left, right) => left.desiredCenter - right.desiredCenter);
+      const leftEdge = goalPlatform.x + GOAL_SEAM_COVER_EDGE_INSET;
+      const rightEdge = goalPlatform.x + goalPlatform.w - GOAL_SEAM_COVER_EDGE_INSET;
+      for (const item of positioned) {
+        item.baseFootprintWidth =
+          (item.profile.visibleBase.right - item.profile.visibleBase.left) *
+          item.profile.scale;
+      }
+      let fitScale = 1;
+      for (let index = 0; index < positioned.length; index++) {
+        const item = positioned[index];
+        if (item.baseFootprintWidth > 0) {
+          fitScale = Math.min(
+            fitScale,
+            2 * (item.desiredCenter - leftEdge) / item.baseFootprintWidth,
+            2 * (rightEdge - item.desiredCenter) / item.baseFootprintWidth
+          );
+        }
+        if (index === 0) continue;
+        const previous = positioned[index - 1];
+        const combinedHalfWidth =
+          (previous.baseFootprintWidth + item.baseFootprintWidth) / 2;
+        if (combinedHalfWidth <= 0) continue;
+        fitScale = Math.min(
+          fitScale,
+          (item.desiredCenter - previous.desiredCenter - GOAL_SEAM_COVER_MINIMUM_GAP) /
+            combinedHalfWidth
+        );
+      }
+      fitScale = Math.max(0, fitScale);
+      const drafts = positioned.map(item => {
+        const {profile} = item;
+        const scale = profile.scale * fitScale;
+        const leftExtent = (profile.anchor.x - profile.visibleBase.left) * scale;
+        const rightExtent = (profile.visibleBase.right - profile.anchor.x) * scale;
+        const footprintWidth = leftExtent + rightExtent;
         return {
-          sprite: spriteName,
+          ...item,
+          scale,
+          leftExtent,
+          rightExtent,
+          footprintWidth,
+          left: item.desiredCenter - footprintWidth / 2
+        };
+      });
+      const items = drafts.map(draft => {
+        const {profile} = draft;
+        return {
+          sprite: profile.name,
+          category: profile.sprite.category,
           role: "GOAL_TOWER",
           layer: "goal-seam-cover",
           platformX: goalPlatform.x,
           platformY: goalPlatform.y,
           platformW: goalPlatform.w,
           platformH: goalPlatform.h,
-          baselineX: goalPlatform.x + x,
+          baselineX: draft.left + draft.leftExtent,
           baselineY: goalPlatform.y + GOAL_SEAM_COVER_BASELINE_OFFSET,
           baselineOffset: GOAL_SEAM_COVER_BASELINE_OFFSET,
-          nominalWidth: sprite.nominalWidth,
-          anchor: sprite.anchor,
-          visibleBase: sprite.visibleBase
+          nominalWidth: profile.sprite.nominalWidth * fitScale,
+          anchor: profile.anchor,
+          visibleBase: profile.visibleBase
         };
       });
-      items.sort((left, right) => left.baselineX - right.baselineX);
       return freezeItems(items);
     }
 
@@ -779,17 +787,16 @@
       return specifications.map((specification, index) => {
         const jitter = (random() - 0.5) * (layer === "back" ? 8 : 6);
         const roleShift = role === "START_PLATFORM" ? retryShift : -retryShift;
-        const backPlacement = layer === "back"
-          ? START_GOAL_BACK_PLACEMENT[specification.sprite]
-          : null;
         const sprite = TOP_DECOR_SPRITES[specification.sprite];
+        const backAnchor = layer === "back" ? sprite.standingAnchor : null;
+        const backBase = backAnchor ? getDecorVisibleBase(sprite) : null;
         const nominalWidth = specification.nominalWidth ?? sprite.nominalWidth;
         const scale = nominalWidth / sprite.motifWidth;
-        const minimumX = backPlacement
-          ? 3 + (backPlacement.anchor.x - backPlacement.base.left) * scale
+        const minimumX = backAnchor
+          ? 3 + (backAnchor.x - backBase.left) * scale
           : 5;
-        const maximumX = backPlacement
-          ? platform.w - 3 - (backPlacement.base.right - backPlacement.anchor.x) * scale
+        const maximumX = backAnchor
+          ? platform.w - 3 - (backBase.right - backAnchor.x) * scale
           : platform.w - 5;
         const x = Math.max(
           minimumX,
@@ -801,8 +808,8 @@
           baselineOffset: layer === "back"
             ? randomInteger(random, 1, 2)
             : randomInteger(random, 9, 11),
-          ...(backPlacement
-            ? {anchor: backPlacement.anchor, visibleBase: backPlacement.base}
+          ...(backAnchor
+            ? {anchor: backAnchor, visibleBase: backBase}
             : {})
         };
       });
@@ -1249,28 +1256,7 @@
     }
 
     function drawGoalSeamCoverProps(context, scene) {
-      if (!isReady("portal")) return false;
-      const items = scene?.goalSeamCoverProps ?? [];
-      context.save();
-      context.imageSmoothingEnabled = true;
-      context.imageSmoothingQuality = "high";
-      for (const item of items) {
-        const sprite = GOAL_SEAM_COVER_SPRITES[item.sprite];
-        const scale = item.nominalWidth / sprite.motifWidth;
-        context.drawImage(
-          assets.portal.image,
-          sprite.source.x,
-          sprite.source.y,
-          sprite.source.w,
-          sprite.source.h,
-          item.baselineX - sprite.anchor.x * scale,
-          item.baselineY - sprite.anchor.y * scale,
-          sprite.source.w * scale,
-          sprite.source.h * scale
-        );
-      }
-      context.restore();
-      return true;
+      return drawTopDecorLayer(context, scene?.goalSeamCoverProps ?? []);
     }
 
     function drawFloatingContentFitSegment(
@@ -1450,10 +1436,11 @@
 
     function drawPortal(context, goal, visualTime = 0) {
       if (!isReady("portal")) return false;
-      const width = 180;
-      const height = 191;
-      const x = goal.x + goal.w / 2 - width / 2;
-      const y = goal.y + goal.h + 15 - height + PORTAL_VISUAL_Y_OFFSET;
+      const legacyX = goal.x + goal.w / 2 - PORTAL_LEGACY_REFERENCE_WIDTH / 2;
+      const legacyY = goal.y + goal.h + 15 - PORTAL_LEGACY_REFERENCE_HEIGHT +
+        PORTAL_VISUAL_Y_OFFSET;
+      const x = legacyX;
+      const y = legacyY + PORTAL_CONTENT_Y_OFFSET;
 
       context.save();
       context.imageSmoothingEnabled = true;
@@ -1462,8 +1449,8 @@
       context.shadowBlur = 16;
       context.drawImage(
         assets.portal.image,
-        PORTAL_SPRITE.x, PORTAL_SPRITE.y, PORTAL_SPRITE.w, PORTAL_SPRITE.h,
-        x, y, width, height
+        PORTAL_SOURCE.x, PORTAL_SOURCE.y, PORTAL_SOURCE.w, PORTAL_SOURCE.h,
+        x, y, PORTAL_DESTINATION_WIDTH, PORTAL_DESTINATION_HEIGHT
       );
       context.restore();
 
@@ -1479,7 +1466,10 @@
       glow.addColorStop(1, "rgba(137,70,230,0)");
 
       context.save();
-      context.translate(x + width * 0.48, y + height * 0.49);
+      context.translate(
+        legacyX + PORTAL_LEGACY_REFERENCE_WIDTH * 0.48,
+        legacyY + PORTAL_LEGACY_REFERENCE_HEIGHT * 0.49
+      );
       context.scale(44 / glowRadius, 1);
       context.globalCompositeOperation = "screen";
       context.fillStyle = glow;
