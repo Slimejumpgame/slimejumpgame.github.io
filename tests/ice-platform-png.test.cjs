@@ -184,6 +184,7 @@ const rendererContext = vm.createContext({
   ctx: fakeCanvasContext,
   currentLevel: () => ({seed: 73, pads: [], spikes: []}),
   drawAnchorStepWarningBorder: () => {},
+  drawConveyorPlatformAsset: () => false,
   drawDeathZone: () => {},
   drawFallingPlatformAsset: () => false,
   drawGhostStepFadeOutline: () => {},

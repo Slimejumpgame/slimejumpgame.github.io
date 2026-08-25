@@ -189,6 +189,7 @@ const rendererContext = vm.createContext({
   drawAnchorStepWarningBorder: () => {
     anchorWarningCalls++;
   },
+  drawConveyorPlatformAsset: () => false,
   drawDeathZone: () => {},
   drawGhostStepFadeOutline: () => {},
   drawStandardPlatformDetails: () => {},

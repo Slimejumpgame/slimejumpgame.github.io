@@ -74,6 +74,43 @@
     })
   );
 
+  const CONVEYOR_PLATFORM_ASSET_CONTRACT = Object.freeze({
+    left: Object.freeze({
+      path: "assets/platforms/conveyor_left.png",
+      canvas: Object.freeze({w: 320, h: 1024}),
+      source: Object.freeze({x: 0, y: 240, w: 320, h: 476}),
+      drawWidth: 24
+    }),
+    middle: Object.freeze({
+      path: "assets/platforms/conveyor_middle.png",
+      canvas: Object.freeze({w: 1408, h: 1024}),
+      source: Object.freeze({x: 0, y: 228, w: 1408, h: 476}),
+      drawWidth: 52
+    }),
+    right: Object.freeze({
+      path: "assets/platforms/conveyor_right.png",
+      canvas: Object.freeze({w: 320, h: 1024}),
+      source: Object.freeze({x: 0, y: 240, w: 320, h: 476}),
+      drawWidth: 24
+    })
+  });
+  const CONVEYOR_PLATFORM_DRAW_HEIGHT = 26;
+  const CONVEYOR_PLATFORM_SEAM_OVERLAP = 1;
+  const CONVEYOR_PLATFORM_BELT_CHANNEL = Object.freeze({
+    top: 7,
+    height: 9,
+    stripeSpacing: 32,
+    stripeWidth: 4,
+    stripeLean: 6
+  });
+  const conveyorPlatformImages = Object.fromEntries(
+    Object.entries(CONVEYOR_PLATFORM_ASSET_CONTRACT).map(([name, contract]) => {
+      const image = new Image();
+      image.src = contract.path;
+      return [name, image];
+    })
+  );
+
   const SPIKE_PLATFORM_ASSET_CONTRACT = Object.freeze({
     path: "assets/platforms/spike_platform_spike.png",
     canvas: Object.freeze({w: 256, h: 320}),
@@ -808,6 +845,142 @@
     }
   }
 
+  function areConveyorPlatformAssetsReady() {
+    return Object.entries(CONVEYOR_PLATFORM_ASSET_CONTRACT).every(([name, contract]) => {
+      const image = conveyorPlatformImages[name];
+      return (
+        image.complete &&
+        image.naturalWidth === contract.canvas.w &&
+        image.naturalHeight === contract.canvas.h
+      );
+    });
+  }
+
+  function drawConveyorPlatformAsset(context, platform, drawX = platform.x) {
+    const contract = CONVEYOR_PLATFORM_ASSET_CONTRACT;
+    if (
+      !platform?.conveyor ||
+      platform.h !== CONVEYOR_PLATFORM_DRAW_HEIGHT ||
+      platform.w < contract.left.drawWidth + contract.right.drawWidth ||
+      !areConveyorPlatformAssetsReady()
+    ) return false;
+
+    const destinationY = platform.y;
+    const middleStartX = drawX + contract.left.drawWidth;
+    const middleEndX = drawX + platform.w - contract.right.drawWidth;
+    const direction = Math.sign(platform.conveyorSpeed) || 1;
+
+    context.save();
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    context.drawImage(
+      conveyorPlatformImages.left,
+      contract.left.source.x,
+      contract.left.source.y,
+      contract.left.source.w,
+      contract.left.source.h,
+      drawX,
+      destinationY,
+      contract.left.drawWidth + CONVEYOR_PLATFORM_SEAM_OVERLAP,
+      CONVEYOR_PLATFORM_DRAW_HEIGHT
+    );
+
+    let destinationX = middleStartX;
+    while (destinationX < middleEndX) {
+      const destinationWidth = Math.min(
+        contract.middle.drawWidth,
+        middleEndX - destinationX
+      );
+      const sourceWidth = contract.middle.source.w * (
+        destinationWidth / contract.middle.drawWidth
+      );
+      const sourceX = direction < 0
+        ? contract.middle.source.x + contract.middle.source.w - sourceWidth
+        : contract.middle.source.x;
+      const drawWidth = destinationWidth + CONVEYOR_PLATFORM_SEAM_OVERLAP;
+      if (direction < 0) {
+        context.save();
+        context.translate(destinationX * 2 + drawWidth, 0);
+        context.scale(-1, 1);
+      }
+      context.drawImage(
+        conveyorPlatformImages.middle,
+        sourceX,
+        contract.middle.source.y,
+        sourceWidth,
+        contract.middle.source.h,
+        destinationX,
+        destinationY,
+        drawWidth,
+        CONVEYOR_PLATFORM_DRAW_HEIGHT
+      );
+      if (direction < 0) context.restore();
+      destinationX += destinationWidth;
+    }
+
+    context.drawImage(
+      conveyorPlatformImages.right,
+      contract.right.source.x,
+      contract.right.source.y,
+      contract.right.source.w,
+      contract.right.source.h,
+      drawX + platform.w - contract.right.drawWidth,
+      destinationY,
+      contract.right.drawWidth,
+      CONVEYOR_PLATFORM_DRAW_HEIGHT
+    );
+    context.restore();
+    return true;
+  }
+
+  function drawConveyorPlatformBeltOverlay(context, platform, drawX = platform.x) {
+    const contract = CONVEYOR_PLATFORM_ASSET_CONTRACT;
+    const channel = CONVEYOR_PLATFORM_BELT_CHANNEL;
+    if (
+      !platform?.conveyor ||
+      platform.h !== CONVEYOR_PLATFORM_DRAW_HEIGHT ||
+      platform.w <= contract.left.drawWidth + contract.right.drawWidth
+    ) return false;
+
+    const direction = Math.sign(platform.conveyorSpeed) || 1;
+    const beltOffset = (
+      worldTime * Math.abs(platform.conveyorSpeed) * 0.72 +
+      platform.conveyorData.phase
+    ) % channel.stripeSpacing;
+    const middleStartX = drawX + contract.left.drawWidth;
+    const middleWidth = platform.w - contract.left.drawWidth - contract.right.drawWidth;
+    const channelTop = platform.y + channel.top;
+    const channelBottom = channelTop + channel.height;
+
+    context.save();
+    context.beginPath();
+    context.rect(middleStartX, channelTop, middleWidth, channel.height);
+    context.clip();
+    context.fillStyle = "rgba(188,198,210,0.42)";
+
+    for (
+      let x = middleStartX - channel.stripeSpacing * 2 + beltOffset * direction;
+      x < middleStartX + middleWidth + channel.stripeSpacing * 2;
+      x += channel.stripeSpacing
+    ) {
+      const topLeft = direction > 0
+        ? x - channel.stripeWidth / 2
+        : x + channel.stripeLean - channel.stripeWidth / 2;
+      const bottomLeft = direction > 0
+        ? x + channel.stripeLean - channel.stripeWidth / 2
+        : x - channel.stripeWidth / 2;
+      context.beginPath();
+      context.moveTo(topLeft, channelTop);
+      context.lineTo(topLeft + channel.stripeWidth, channelTop);
+      context.lineTo(bottomLeft + channel.stripeWidth, channelBottom);
+      context.lineTo(bottomLeft, channelBottom);
+      context.closePath();
+      context.fill();
+    }
+    context.restore();
+    return true;
+  }
+
   function drawPlatforms(biome, useMeadowAssets = false, meadowPass = "all") {
     const level = currentLevel();
     const platforms = getPlatforms();
@@ -849,9 +1022,13 @@
       const iceAssetPlatform = Boolean(
         p.ice && drawIcePlatformAsset(ctx, p, drawX)
       );
+      const conveyorAssetPlatform = Boolean(
+        p.conveyor && drawConveyorPlatformAsset(ctx, p, drawX)
+      );
       meadowAssetPlatform = Boolean(
         !fallingAssetPlatform &&
         !iceAssetPlatform &&
+        !conveyorAssetPlatform &&
         useMeadowAssets &&
         !p.lastBubbleSupport &&
         MEADOW_ASSET_VISUALS.drawPlatformBase(ctx, p, drawX, level.seed)
@@ -860,6 +1037,7 @@
       if (
         !fallingAssetPlatform &&
         !iceAssetPlatform &&
+        !conveyorAssetPlatform &&
         !meadowAssetPlatform
       ) {
         ctx.fillStyle = p.fragile
@@ -981,44 +1159,48 @@
       }
 
       if (p.conveyor) {
-        const direction = Math.sign(p.conveyorSpeed) || 1;
-        const spacing = 31;
-        const beltOffset = (
-          worldTime * Math.abs(p.conveyorSpeed) * 0.72 +
-          p.conveyorData.phase
-        ) % spacing;
+        if (conveyorAssetPlatform) {
+          drawConveyorPlatformBeltOverlay(ctx, p, drawX);
+        } else {
+          const direction = Math.sign(p.conveyorSpeed) || 1;
+          const spacing = 31;
+          const beltOffset = (
+            worldTime * Math.abs(p.conveyorSpeed) * 0.72 +
+            p.conveyorData.phase
+          ) % spacing;
 
-        ctx.save();
-        roundedRect(drawX + 2, p.y + 1, p.w - 4, Math.min(11, p.h - 2), 7);
-        ctx.clip();
-        ctx.strokeStyle = "rgba(255,255,255,0.88)";
-        ctx.lineWidth = 3;
-        ctx.lineCap = "round";
+          ctx.save();
+          roundedRect(drawX + 2, p.y + 1, p.w - 4, Math.min(11, p.h - 2), 7);
+          ctx.clip();
+          ctx.strokeStyle = "rgba(255,255,255,0.88)";
+          ctx.lineWidth = 3;
+          ctx.lineCap = "round";
 
-        for (
-          let x = drawX - spacing * 2 + beltOffset * direction;
-          x < drawX + p.w + spacing * 2;
-          x += spacing
-        ) {
-          ctx.beginPath();
-          if (direction > 0) {
-            ctx.moveTo(x - 7, p.y + 3);
-            ctx.lineTo(x, p.y + 6);
-            ctx.lineTo(x - 7, p.y + 9);
-          } else {
-            ctx.moveTo(x + 7, p.y + 3);
-            ctx.lineTo(x, p.y + 6);
-            ctx.lineTo(x + 7, p.y + 9);
+          for (
+            let x = drawX - spacing * 2 + beltOffset * direction;
+            x < drawX + p.w + spacing * 2;
+            x += spacing
+          ) {
+            ctx.beginPath();
+            if (direction > 0) {
+              ctx.moveTo(x - 7, p.y + 3);
+              ctx.lineTo(x, p.y + 6);
+              ctx.lineTo(x - 7, p.y + 9);
+            } else {
+              ctx.moveTo(x + 7, p.y + 3);
+              ctx.lineTo(x, p.y + 6);
+              ctx.lineTo(x + 7, p.y + 9);
+            }
+            ctx.stroke();
           }
-          ctx.stroke();
-        }
-        ctx.restore();
+          ctx.restore();
 
-        ctx.fillStyle = "rgba(15,18,24,0.7)";
-        for (let x = drawX + 15; x < drawX + p.w - 8; x += 30) {
-          ctx.beginPath();
-          ctx.arc(x, p.y + Math.min(20, p.h * 0.67), 5, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.fillStyle = "rgba(15,18,24,0.7)";
+          for (let x = drawX + 15; x < drawX + p.w - 8; x += 30) {
+            ctx.beginPath();
+            ctx.arc(x, p.y + Math.min(20, p.h * 0.67), 5, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
       } else if (
         !p.fade &&
