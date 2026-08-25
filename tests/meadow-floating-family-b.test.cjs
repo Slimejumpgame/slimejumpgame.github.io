@@ -149,7 +149,8 @@ const fakeDocument = {
 };
 
 const context = vm.createContext({Image: FakeImage, Math, Promise, document: fakeDocument});
-vm.runInContext(`${read("js/visual-meadow-assets.js")}
+vm.runInContext(`${read("js/visual-platform-kit.js")}
+${read("js/visual-meadow-assets.js")}
   globalThis.meadowFloatingTestApi = MEADOW_ASSET_VISUALS;
 `, context, {filename: "meadow-floating-family-b-fixture.js"});
 const api = context.meadowFloatingTestApi;
@@ -333,7 +334,8 @@ const syntheticContext = vm.createContext({
   Promise,
   document: fakeDocument
 });
-vm.runInContext(`${read("js/visual-meadow-assets.js")}
+vm.runInContext(`${read("js/visual-platform-kit.js")}
+${read("js/visual-meadow-assets.js")}
   globalThis.syntheticFamilyBApi = MEADOW_ASSET_VISUALS;
 `, syntheticContext, {filename: "synthetic-family-b-fixture.js"});
 assert.deepEqual(
@@ -376,7 +378,8 @@ class FakeCoastImage {
 }
 
 const coastContext = vm.createContext({Image: FakeCoastImage});
-vm.runInContext(`${read("js/visual-coast-assets.js")}
+vm.runInContext(`${read("js/visual-platform-kit.js")}
+${read("js/visual-coast-assets.js")}
   globalThis.coastSmokeTestApi = COAST_ASSET_VISUALS;
 `, coastContext, {filename: "coast-floating-smoke-fixture.js"});
 const coastApi = coastContext.coastSmokeTestApi;
@@ -388,16 +391,17 @@ const coastCanvasContext = {
   }
 };
 const coastPlatform = {x: 420.25, y: 310.5, w: 138, h: 26};
-assert.equal(coastApi.areAllReady(), true);
-assert.equal(coastApi.drawPlatformBase(coastCanvasContext, coastPlatform), true);
-assert.ok(coastDrawCalls.length >= 3);
-const coastLeftCall = coastDrawCalls.at(-2);
-const coastRightCall = coastDrawCalls.at(-1);
-assert.equal(coastLeftCall[0].src, "assets/environments/coast/platforms/coast_floating_left.png");
-assert.equal(coastRightCall[0].src, "assets/environments/coast/platforms/coast_floating_right.png");
-assert.ok(Math.abs(coastLeftCall[5] - coastPlatform.x) < 1e-12);
-assert.ok(Math.abs(
-  coastRightCall[5] + coastRightCall[7] - (coastPlatform.x + coastPlatform.w)
-) < 1e-12);
+const coastStatus = JSON.parse(JSON.stringify(coastApi.getStatus()));
+assert.equal(coastApi.areAllReady(), false);
+assert.equal(coastStatus.familyBReady, false);
+assert.deepEqual(coastStatus.expectedNativeSizes.coast_floating_left, {w: 128, h: 128});
+assert.deepEqual(coastStatus.expectedNativeSizes.coast_floating_middle, {w: 256, h: 128});
+assert.deepEqual(coastStatus.expectedNativeSizes.coast_floating_right, {w: 128, h: 128});
+assert.equal(coastApi.drawPlatformBase(coastCanvasContext, coastPlatform), false);
+assert.equal(
+  coastDrawCalls.length,
+  0,
+  "invalid old Coast files must leave rendering to the vector fallback"
+);
 
 console.log("meadow floating Family-B contract: ok");

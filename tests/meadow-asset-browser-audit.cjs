@@ -122,7 +122,7 @@ async function auditViewport(cdp, viewport) {
       loaded,
       status: MEADOW_ASSET_VISUALS.getStatus(),
       state,
-      menuGuard: isMeadowAssetVisualsActive(getBiomeForLevel(1)),
+      menuGuard: Boolean(getActiveBiomePlatformVisuals(getBiomeForLevel(1))),
       menuVisible: !ui.menu.classList.contains("hidden")
     };
   })()`);
@@ -301,7 +301,7 @@ async function auditViewport(cdp, viewport) {
     };
     const canvasRect = canvas.getBoundingClientRect();
     return {
-      active: isMeadowAssetVisualsActive(getBiomeForLevel(1)),
+      active: Boolean(getActiveBiomePlatformVisuals(getBiomeForLevel(1))),
       assets: MEADOW_ASSET_VISUALS.getStatus(),
       topOverlaySelection: MEADOW_ASSET_VISUALS.getTopOverlaySelection(generatedLevel.seed),
       bodyOverlaySelection: MEADOW_ASSET_VISUALS.getBodyOverlaySelection(
@@ -949,7 +949,7 @@ async function auditViewport(cdp, viewport) {
       state = "gamePaused";
       draw();
       return {
-        active: isMeadowAssetVisualsActive(getBiomeForLevel(1)),
+        active: Boolean(getActiveBiomePlatformVisuals(getBiomeForLevel(1))),
         tutorialStage: isTutorialStage(),
         goal: {...generatedLevel.goal},
         stars: generatedLevel.stars.length
@@ -994,7 +994,7 @@ async function auditViewport(cdp, viewport) {
       return {
         loaded,
         devMode: DEV_MODE,
-        active: isMeadowAssetVisualsActive(getBiomeForLevel(1)),
+        active: Boolean(getActiveBiomePlatformVisuals(getBiomeForLevel(1))),
         platforms: generatedLevel.platforms.map(platform => ({...platform})),
         standingAlignment: {
           feetY: player.y + player.r,

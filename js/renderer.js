@@ -435,14 +435,15 @@
     );
   }
 
-  function isMeadowAssetVisualsActive(biome) {
-    return (
-      biome?.id === "meadow" &&
-      state !== "menu" &&
-      typeof isTutorialStage === "function" &&
-      !isTutorialStage() &&
-      typeof MEADOW_ASSET_VISUALS !== "undefined"
-    );
+  function getActiveBiomePlatformVisuals(biome) {
+    if (
+      !biome?.id ||
+      state === "menu" ||
+      typeof isTutorialStage !== "function" ||
+      isTutorialStage() ||
+      typeof BIOME_PLATFORM_VISUALS === "undefined"
+    ) return null;
+    return BIOME_PLATFORM_VISUALS.resolve(biome.id);
   }
 
   let meadowDecorAttemptLevel = null;
@@ -1176,24 +1177,23 @@
     return true;
   }
 
-  function drawPlatforms(biome, useMeadowAssets = false, meadowPass = "all") {
+  function drawPlatforms(biome, platformVisuals = null, platformPass = "all") {
     const level = currentLevel();
     const platforms = getPlatforms();
 
     for (const p of platforms) {
-      if (useMeadowAssets && meadowPass !== "all") {
-        const isFloatingMeadowPlatform =
-          MEADOW_ASSET_VISUALS.resolvePlatformRole(p) === "FLOATING";
+      if (platformVisuals && platformPass !== "all") {
+        const isFloatingKitPlatform =
+          platformVisuals.resolvePlatformRole(p) === "FLOATING";
         if (
-          (meadowPass === "without-floating" && isFloatingMeadowPlatform) ||
-          (meadowPass === "floating-only" && !isFloatingMeadowPlatform)
+          (platformPass === "without-floating" && isFloatingKitPlatform) ||
+          (platformPass === "floating-only" && !isFloatingKitPlatform)
         ) continue;
       }
       let drawX = p.x;
       const standardPlatform = isStandardPlatform(p);
       const biomeBasePlatform = standardPlatform || p.fade || p.spikePlatform;
-      let meadowAssetPlatform = false;
-      let coastAssetPlatform = false;
+      let biomeAssetPlatform = false;
       if (
         p.fragile &&
         p.fallingPlatform.triggered &&
@@ -1221,23 +1221,14 @@
       const conveyorAssetPlatform = Boolean(
         p.conveyor && drawConveyorPlatformAsset(ctx, p, drawX)
       );
-      meadowAssetPlatform = Boolean(
+      biomeAssetPlatform = Boolean(
         !fallingAssetPlatform &&
         !iceAssetPlatform &&
         !conveyorAssetPlatform &&
-        useMeadowAssets &&
+        platformVisuals &&
         !p.lastBubbleSupport &&
-        MEADOW_ASSET_VISUALS.drawPlatformBase(ctx, p, drawX, level.seed)
+        platformVisuals.drawPlatformBase(ctx, p, drawX, level.seed)
       );
-      coastAssetPlatform = Boolean(
-        !p.fragile &&
-        !p.ice &&
-        !p.conveyor &&
-        biome.id === "coast" &&
-        !p.lastBubbleSupport &&
-        COAST_ASSET_VISUALS.drawPlatformBase(ctx, p, drawX)
-      );
-      const biomeAssetPlatform = meadowAssetPlatform || coastAssetPlatform;
 
       if (
         !fallingAssetPlatform &&
@@ -1447,30 +1438,36 @@
       ctx.restore();
     }
 
-    if (meadowPass === "without-floating") return;
+    if (platformPass === "without-floating") return;
 
     for (const s of level.spikes) drawDeathZone(s, biome);
   }
 
-  function drawGoal(useMeadowAssets = false) {
+  function drawGoal(platformVisuals = null) {
     const level = currentLevel();
     const g = level.goal;
-    const meadowGoalPlatform = useMeadowAssets
+    const assetGoalPlatform = platformVisuals
       ? level.platforms.find(platform => (
-        MEADOW_ASSET_VISUALS.resolvePlatformRole(platform) === "GOAL_TOWER"
+        platformVisuals.resolvePlatformRole(platform) === "GOAL_TOWER"
       ))
       : null;
-    const meadowAssetPortal = Boolean(
-      useMeadowAssets && MEADOW_ASSET_VISUALS.drawPortal(ctx, g, worldTime)
+    const biomeAssetPortal = Boolean(
+      platformVisuals &&
+      typeof platformVisuals.drawPortal === "function" &&
+      platformVisuals.drawPortal(ctx, g, worldTime)
     );
-    if (meadowAssetPortal && meadowGoalPlatform) {
-      MEADOW_ASSET_VISUALS.drawGoalTopForeground(
+    if (
+      biomeAssetPortal &&
+      assetGoalPlatform &&
+      typeof platformVisuals.drawGoalTopForeground === "function"
+    ) {
+      platformVisuals.drawGoalTopForeground(
         ctx,
-        meadowGoalPlatform,
+        assetGoalPlatform,
         level.seed
       );
     }
-    if (!meadowAssetPortal) {
+    if (!biomeAssetPortal) {
       const pulse = 1 + Math.sin(worldTime * 4) * 0.06;
       ctx.save();
       ctx.translate(g.x + g.w / 2, g.y + g.h / 2);
@@ -4003,39 +4000,40 @@
     ctx.translate(sx, sy);
 
     const biome = getBiomeForLevel(levelIndex + 1);
-    const meadowAssetsActive = isMeadowAssetVisualsActive(biome);
-    const meadowLevel = meadowAssetsActive ? currentLevel() : null;
-    const meadowScene = meadowAssetsActive
-      ? MEADOW_ASSET_VISUALS.getScene(
-        meadowLevel,
-        getMeadowDecorAttemptNonce(meadowLevel)
+    const biomePlatformVisuals = getActiveBiomePlatformVisuals(biome);
+    const biomeVisualLevel = biomePlatformVisuals ? currentLevel() : null;
+    const biomeVisualScene = typeof biomePlatformVisuals?.getScene === "function"
+      ? biomePlatformVisuals.getScene(
+        biomeVisualLevel,
+        getMeadowDecorAttemptNonce(biomeVisualLevel)
       )
       : null;
-    if (!meadowAssetsActive || !MEADOW_ASSET_VISUALS.drawBackground(ctx, W, H, worldTime)) {
+    const assetBackgroundDrawn = Boolean(
+      biomePlatformVisuals &&
+      typeof biomePlatformVisuals.drawBackground === "function" &&
+      biomePlatformVisuals.drawBackground(ctx, W, H, worldTime)
+    );
+    if (!assetBackgroundDrawn) {
       drawBackground(biome);
     }
-    if (meadowAssetsActive) {
-      drawPlatforms(biome, true, "without-floating");
-      MEADOW_ASSET_VISUALS.drawStartGoalBackDecor(ctx, meadowScene);
-      drawPlatforms(biome, true, "floating-only");
-      MEADOW_ASSET_VISUALS.drawFloatingBackDecor(ctx, meadowScene);
+    if (biomePlatformVisuals) {
+      drawPlatforms(biome, biomePlatformVisuals, "without-floating");
+      biomePlatformVisuals.drawStartGoalBackDecor?.(ctx, biomeVisualScene);
+      drawPlatforms(biome, biomePlatformVisuals, "floating-only");
+      biomePlatformVisuals.drawFloatingBackDecor?.(ctx, biomeVisualScene);
       drawBouncePads();
     } else {
-      drawPlatforms(biome, false);
+      drawPlatforms(biome);
       drawBouncePads();
     }
-    drawGoal(meadowAssetsActive);
-    if (meadowAssetsActive) {
-      MEADOW_ASSET_VISUALS.drawGoalSeamCoverProps(ctx, meadowScene);
-    }
+    drawGoal(biomePlatformVisuals);
+    biomePlatformVisuals?.drawGoalSeamCoverProps?.(ctx, biomeVisualScene);
     drawStars();
     drawEnemies();
     drawTrajectory();
     drawPlayer();
     drawParticles();
-    if (meadowAssetsActive) {
-      MEADOW_ASSET_VISUALS.drawTopFrontDecor(ctx, meadowScene);
-    }
+    biomePlatformVisuals?.drawTopFrontDecor?.(ctx, biomeVisualScene);
     drawTutorialDragHand();
     drawTutorialHeadline();
 

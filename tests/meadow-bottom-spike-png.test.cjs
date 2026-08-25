@@ -99,7 +99,8 @@ class FakeImage {
 }
 
 const visualContext = vm.createContext({Image: FakeImage, Math, Promise});
-vm.runInContext(`${read("js/visual-meadow-assets.js")}
+vm.runInContext(`${read("js/visual-platform-kit.js")}
+${read("js/visual-meadow-assets.js")}
 globalThis.spikeVisualApi = MEADOW_ASSET_VISUALS;
 `, visualContext, {filename: "meadow-spike-visual-fixture.js"});
 const visualApi = visualContext.spikeVisualApi;

@@ -376,7 +376,10 @@ for (const useMeadowAssets of [false, true]) {
   drawCalls.length = 0;
   canvasCalls.length = 0;
   meadowBaseCalls = 0;
-  api.drawPlatforms({platform: {body: "#000", top: "#fff"}}, useMeadowAssets);
+  api.drawPlatforms(
+    {platform: {body: "#000", top: "#fff"}},
+    useMeadowAssets ? rendererContext.MEADOW_ASSET_VISUALS : null
+  );
   assert.ok(drawCalls.length > 0, "global Ice PNG must render in every biome path");
   assert.equal(meadowBaseCalls, 0, "Meadow/biome base must not render behind valid Ice PNGs");
   assert.equal(canvasCalls.filter(call => call[0] === "stroke").length, 0,
@@ -388,7 +391,10 @@ api.images.middle.naturalWidth = 0;
 drawCalls.length = 0;
 canvasCalls.length = 0;
 meadowBaseCalls = 0;
-api.drawPlatforms({platform: {body: "#000", top: "#fff"}}, true);
+api.drawPlatforms(
+  {platform: {body: "#000", top: "#fff"}},
+  rendererContext.MEADOW_ASSET_VISUALS
+);
 assert.equal(drawCalls.length, 0, "an incomplete set must never render partially");
 assert.equal(meadowBaseCalls, 1, "Meadow fallback must remain available");
 assert.ok(canvasCalls.some(call => call[0] === "stroke"),

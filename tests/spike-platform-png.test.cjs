@@ -336,7 +336,7 @@ const spikeFixture = {
 platforms = [spikeFixture];
 
 resetEvents();
-api.drawPlatforms(biome, true);
+api.drawPlatforms(biome, rendererContext.MEADOW_ASSET_VISUALS);
 assert.equal(events.filter(event => event.type === "meadowBase").length, 1,
   "Meadow Spike Platform must use the normal Meadow floating base");
 assert.equal(events.filter(event => event.type === "biomeDetails").length, 0);
@@ -456,8 +456,7 @@ for (const relativePath of [
   "js/level-generator.js",
   "js/physics.js",
   "js/platforms.js",
-  "js/player.js",
-  "js/visual-meadow-assets.js"
+  "js/player.js"
 ]) {
   const headSource = execFileSync("git", ["show", `HEAD:${relativePath}`], {
     cwd: root,

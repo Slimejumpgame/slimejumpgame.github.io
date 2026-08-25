@@ -190,14 +190,19 @@ const fixture = vm.createContext({
   Promise,
   document: fakeDocument
 });
-vm.runInContext(`${read("js/visual-meadow-assets.js")}
+vm.runInContext(`${read("js/visual-platform-kit.js")}
+${read("js/visual-meadow-assets.js")}
   globalThis.familyATestApi = MEADOW_ASSET_VISUALS;
 `, fixture, {filename: "meadow-family-a-v2-fixture.js"});
 const api = fixture.familyATestApi;
 const manifest = JSON.parse(JSON.stringify(api.getManifest()));
+const delegatedPlatformManifest = JSON.parse(JSON.stringify(
+  api.getPlatformKit().getManifest()
+));
 const paths = JSON.parse(JSON.stringify(api.getStatus().paths));
 
 assert.equal(api.areAllReady(), true);
+assert.deepEqual(delegatedPlatformManifest, manifest.platforms);
 assert.deepEqual(manifest.platforms.contract.start, {
   width: 235,
   height: 80,

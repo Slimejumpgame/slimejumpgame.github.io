@@ -155,7 +155,7 @@ function resetDrawAudit() {
 
 platforms = [fadeFixture];
 resetDrawAudit();
-api.drawPlatforms(biome, true);
+api.drawPlatforms(biome, context.MEADOW_ASSET_VISUALS);
 assert.equal(meadowBaseCalls.length, 1,
   "Meadow Fading must use the normal Meadow floating base renderer");
 assert.deepEqual(meadowBaseCalls[0], {
@@ -209,7 +209,7 @@ assert.ok(events.some(event => (
 
 meadowAssetsReady = false;
 resetDrawAudit();
-api.drawPlatforms(biome, true);
+api.drawPlatforms(biome, context.MEADOW_ASSET_VISUALS);
 assert.equal(meadowBaseCalls.length, 1);
 assert.deepEqual(
   events.filter(event => event.type === "fill").map(event => event.style),
@@ -229,7 +229,7 @@ const movingFixture = {
 };
 platforms = [movingFixture];
 resetDrawAudit();
-api.drawPlatforms(biome, true);
+api.drawPlatforms(biome, context.MEADOW_ASSET_VISUALS);
 assert.equal(meadowBaseCalls.length, 1,
   "Moving and Fading must share the normal Meadow platform-base route");
 assert.ok(events.some(event => (

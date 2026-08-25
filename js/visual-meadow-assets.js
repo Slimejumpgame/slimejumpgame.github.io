@@ -20,7 +20,6 @@
       "meadow_overlay_body_02",
       "meadow_overlay_body_03"
     ]);
-    const FAMILY_A_SOURCE = Object.freeze({x: 0, y: 0, w: 352, h: 128});
     const TOP_DECOR_GRID_CONTRACT = Object.freeze({
       sheet: Object.freeze({w: 1536, h: 1024}),
       columns: 3,
@@ -209,110 +208,62 @@
       startGoalFrontMinimum: 9,
       startGoalFrontMaximum: 11
     });
-    const PLATFORM_VISUAL_CONTRACT = Object.freeze({
-      floating: Object.freeze({
-        height: 26,
-        leftWidth: 26,
-        middleTileWidth: 52,
-        middleTileAdvance: 51,
-        rightWidth: 26,
-        middleMode: "repeat-source-crop",
-        contentFit: Object.freeze({
-          alphaThreshold: 8,
-          bodyRowMinimumCoverage: 0.5,
-          topOverhang: 2,
-          bottomOverhang: 3,
-          mode: "shared-robust-alpha-body-band"
-        })
-      }),
-      start: Object.freeze({
-        width: 235,
-        height: 80,
-        topMode: "proportional-width-clip",
-        overflow: "clip"
-      }),
-      goal: Object.freeze({
-        width: 220,
-        topHeight: 80,
-        bodyRowHeight: 80,
-        bodyOverlap: 1,
-        bodyRowStep: 79,
-        lastBodyMode: "proportional-source-crop",
-        bodyOverlayMode: "single-bottom-aligned-body-clip"
-      })
-    });
-    // Keep the platform-kit slots declarative so future biome manifests can
-    // provide the same logical base/overlay structure with different artwork.
-    const PLATFORM_SLOTS = Object.freeze({
-      floating_left: Object.freeze({
-        asset: "floating_left",
-        w: 128,
-        h: 128,
-        source: Object.freeze({x: 0, y: 0, w: 128, h: 128})
-      }),
-      floating_middle: Object.freeze({
-        asset: "floating_middle",
-        w: 256,
-        h: 128,
-        source: Object.freeze({x: 0, y: 0, w: 256, h: 128})
-      }),
-      floating_right: Object.freeze({
-        asset: "floating_right",
-        w: 128,
-        h: 128,
-        source: Object.freeze({x: 0, y: 0, w: 128, h: 128})
-      }),
-      meadow_top_base: Object.freeze({asset: "meadow_top_base", w: 352, h: 128}),
-      meadow_body_base: Object.freeze({
-        asset: "meadow_body_base",
-        w: 352,
-        h: 128
-      }),
-      meadow_top_overlays: Object.freeze(
-        MEADOW_TOP_OVERLAY_ASSET_NAMES.map(asset => Object.freeze({asset, w: 352, h: 128}))
-      ),
-      meadow_body_overlays: Object.freeze(
-        MEADOW_BODY_OVERLAY_ASSET_NAMES.map(asset => Object.freeze({asset, w: 352, h: 128}))
-      )
-    });
-    const MEADOW_PLATFORM_KIT = Object.freeze({
-      familyA: Object.freeze({
-        source: FAMILY_A_SOURCE,
-        topBase: PLATFORM_SLOTS.meadow_top_base,
-        bodyBase: PLATFORM_SLOTS.meadow_body_base,
-        topOverlays: PLATFORM_SLOTS.meadow_top_overlays,
-        bodyOverlays: PLATFORM_SLOTS.meadow_body_overlays
-      }),
-      familyB: Object.freeze({
-        left: PLATFORM_SLOTS.floating_left,
-        middle: PLATFORM_SLOTS.floating_middle,
-        right: PLATFORM_SLOTS.floating_right
-      })
-    });
-    const FLOATING_SLOT_NAMES = Object.freeze([
+    const PLATFORM_ASSET_NAMES = Object.freeze([
       "floating_left",
       "floating_middle",
-      "floating_right"
+      "floating_right",
+      "meadow_top_base",
+      "meadow_body_base",
+      ...MEADOW_TOP_OVERLAY_ASSET_NAMES,
+      ...MEADOW_BODY_OVERLAY_ASSET_NAMES
     ]);
-    const FLOATING_SEAM_OVERLAP = 1;
+    const meadowPlatformKit = createPlatformVisualKit({
+      biome: "meadow",
+      familyA: Object.freeze({
+        topBase: Object.freeze({
+          asset: "meadow_top_base",
+          path: ASSET_PATHS.meadow_top_base
+        }),
+        bodyBase: Object.freeze({
+          asset: "meadow_body_base",
+          path: ASSET_PATHS.meadow_body_base
+        }),
+        topOverlays: Object.freeze(MEADOW_TOP_OVERLAY_ASSET_NAMES.map(asset => (
+          Object.freeze({asset, path: ASSET_PATHS[asset]})
+        ))),
+        bodyOverlays: Object.freeze(MEADOW_BODY_OVERLAY_ASSET_NAMES.map(asset => (
+          Object.freeze({asset, path: ASSET_PATHS[asset]})
+        )))
+      }),
+      familyB: Object.freeze({
+        left: Object.freeze({asset: "floating_left", path: ASSET_PATHS.floating_left}),
+        middle: Object.freeze({
+          asset: "floating_middle",
+          path: ASSET_PATHS.floating_middle
+        }),
+        right: Object.freeze({asset: "floating_right", path: ASSET_PATHS.floating_right})
+      }),
+      slotNames: Object.freeze({
+        topBase: "meadow_top_base",
+        bodyBase: "meadow_body_base",
+        topOverlays: "meadow_top_overlays",
+        bodyOverlays: "meadow_body_overlays",
+        floatingLeft: "floating_left",
+        floatingMiddle: "floating_middle",
+        floatingRight: "floating_right"
+      }),
+      salts: Object.freeze({
+        topStart: MEADOW_TOP_OVERLAY_START,
+        topGoal: MEADOW_TOP_OVERLAY_GOAL,
+        bodyGoal: MEADOW_BODY_OVERLAY_GOAL
+      }),
+      outlineStyle: "rgba(46,72,28,0.62)"
+    });
     const MEADOW_ASSET_MANIFEST = Object.freeze({
       biome: "meadow",
       paths: ASSET_PATHS,
       sourceSizes: SOURCE_SIZES,
-      platforms: Object.freeze({
-        contract: PLATFORM_VISUAL_CONTRACT,
-        slots: PLATFORM_SLOTS,
-        kit: MEADOW_PLATFORM_KIT,
-        topOverlaySelection: Object.freeze({
-          startSalt: MEADOW_TOP_OVERLAY_START,
-          goalSalt: MEADOW_TOP_OVERLAY_GOAL,
-          mode: "independent-salts-shift-goal-on-collision"
-        }),
-        bodyOverlaySelection: Object.freeze({
-          goalSalt: MEADOW_BODY_OVERLAY_GOAL,
-          mode: "single-goal-overlay"
-        })
-      }),
+      platforms: meadowPlatformKit.getManifest(),
       decor: Object.freeze({
         gridV2: Object.freeze({
           contract: TOP_DECOR_GRID_CONTRACT,
@@ -357,9 +308,7 @@
     const CLOUD_FRONT_DRIFT_PHASE = Math.PI / 3;
     const assets = {};
     const sceneCache = new WeakMap();
-    const floatingAlphaProfiles = {};
     const decorAlphaProfiles = {};
-    let floatingContentFit = null;
 
     function analyzeRobustDecorComponent(pixels, width, height) {
       const contract = TOP_DECOR_GRID_CONTRACT;
@@ -477,107 +426,10 @@
       }
     }
 
-    function createFloatingContentFit(sourceZones) {
-      const contract = PLATFORM_VISUAL_CONTRACT.floating.contentFit;
-      return Object.freeze({
-        analyzed: true,
-        alphaThreshold: contract.alphaThreshold,
-        bodyRowMinimumCoverage: contract.bodyRowMinimumCoverage,
-        topOverhang: contract.topOverhang,
-        bottomOverhang: contract.bottomOverhang,
-        topDecorSource: Object.freeze({...sourceZones.topDecorSource}),
-        bodySource: Object.freeze({...sourceZones.bodySource}),
-        bottomDecorSource: Object.freeze({...sourceZones.bottomDecorSource})
-      });
-    }
-
-    function findLongestCoveredRowRun(rowCounts, minimumCount) {
-      let bestStart = -1;
-      let bestEnd = -1;
-      let runStart = -1;
-      for (let y = 0; y <= rowCounts.length; y++) {
-        const covered = y < rowCounts.length && rowCounts[y] >= minimumCount;
-        if (covered && runStart < 0) runStart = y;
-        if (!covered && runStart >= 0) {
-          if (bestStart < 0 || y - runStart > bestEnd - bestStart) {
-            bestStart = runStart;
-            bestEnd = y;
-          }
-          runStart = -1;
-        }
-      }
-      return bestStart >= 0 ? Object.freeze({start: bestStart, end: bestEnd}) : null;
-    }
-
-    function analyzeFloatingAlpha(image, slot) {
-      if (typeof document === "undefined" || !document.createElement) return null;
-      try {
-        const surface = document.createElement("canvas");
-        surface.width = slot.w;
-        surface.height = slot.h;
-        const context = surface.getContext("2d", {willReadFrequently: true});
-        if (!context) return null;
-        context.clearRect(0, 0, slot.w, slot.h);
-        context.drawImage(image, 0, 0, slot.w, slot.h);
-        const pixels = context.getImageData(0, 0, slot.w, slot.h).data;
-        const rowCounts = Array(slot.h).fill(0);
-        let robustTop = slot.h;
-        let robustBottom = -1;
-        const alphaThreshold = PLATFORM_VISUAL_CONTRACT.floating.contentFit.alphaThreshold;
-        for (let y = 0; y < slot.h; y++) {
-          for (let x = 0; x < slot.w; x++) {
-            if (pixels[(y * slot.w + x) * 4 + 3] <= alphaThreshold) continue;
-            rowCounts[y] += 1;
-            robustTop = Math.min(robustTop, y);
-            robustBottom = Math.max(robustBottom, y);
-          }
-        }
-        if (robustBottom < robustTop) return null;
-        const minimumCount = Math.ceil(
-          slot.w * PLATFORM_VISUAL_CONTRACT.floating.contentFit.bodyRowMinimumCoverage
-        );
-        const bodyRun = findLongestCoveredRowRun(rowCounts, minimumCount);
-        if (!bodyRun) return null;
-        return Object.freeze({
-          robustTop,
-          robustBottom: robustBottom + 1,
-          bodyTop: bodyRun.start,
-          bodyBottom: bodyRun.end
-        });
-      } catch {
-        return null;
-      }
-    }
-
-    function updateFloatingContentFit() {
-      const profiles = FLOATING_SLOT_NAMES.map(name => floatingAlphaProfiles[name]);
-      if (profiles.some(profile => !profile)) return;
-      const bodyTop = Math.max(...profiles.map(profile => profile.bodyTop));
-      const bodyBottom = Math.min(...profiles.map(profile => profile.bodyBottom));
-      if (bodyBottom <= bodyTop) return;
-      const robustTop = Math.min(...profiles.map(profile => profile.robustTop));
-      const robustBottom = Math.max(...profiles.map(profile => profile.robustBottom));
-      floatingContentFit = createFloatingContentFit({
-        topDecorSource: {y: robustTop, h: Math.max(0, bodyTop - robustTop)},
-        bodySource: {y: bodyTop, h: bodyBottom - bodyTop},
-        bottomDecorSource: {
-          y: bodyBottom,
-          h: Math.max(0, robustBottom - bodyBottom)
-        }
-      });
-    }
-
     function loadAsset(name, path) {
       const image = new Image();
       const ready = new Promise(resolve => {
         image.onload = () => {
-          if (FLOATING_SLOT_NAMES.includes(name)) {
-            const profile = analyzeFloatingAlpha(image, PLATFORM_SLOTS[name]);
-            if (profile) {
-              floatingAlphaProfiles[name] = profile;
-              updateFloatingContentFit();
-            }
-          }
           const decorSpriteNames = TOP_DECOR_SPRITE_NAMES_BY_ASSET[name];
           if (decorSpriteNames) analyzeDecorGridAsset(image, decorSpriteNames);
           resolve(true);
@@ -590,16 +442,20 @@
     }
 
     for (const [name, path] of Object.entries(ASSET_PATHS)) {
-      loadAsset(name, path);
+      if (!PLATFORM_ASSET_NAMES.includes(name)) loadAsset(name, path);
     }
 
-    const readyPromise = Promise.all(
-      Object.entries(assets).map(([name, asset]) => (
+    const readyPromise = Promise.all([
+      meadowPlatformKit.whenReady(),
+      ...Object.entries(assets).map(([name, asset]) => (
         asset.ready.then(loaded => OPTIONAL_ASSET_NAMES.includes(name) || loaded)
       ))
-    ).then(results => results.every(Boolean));
+    ]).then(results => results.every(Boolean));
 
     function isReady(name) {
+      if (PLATFORM_ASSET_NAMES.includes(name)) {
+        return meadowPlatformKit.isAssetReady(name);
+      }
       const image = assets[name]?.image;
       return Boolean(image?.complete && image.naturalWidth > 0 && image.naturalHeight > 0);
     }
@@ -631,47 +487,11 @@
     }
 
     function getTopOverlaySelection(levelSeed) {
-      const startIndex = hashVisualSeed(
-        levelSeed,
-        MEADOW_TOP_OVERLAY_START
-      ) % MEADOW_TOP_OVERLAY_ASSET_NAMES.length;
-      let goalIndex = hashVisualSeed(
-        levelSeed,
-        MEADOW_TOP_OVERLAY_GOAL
-      ) % MEADOW_TOP_OVERLAY_ASSET_NAMES.length;
-      if (goalIndex === startIndex) {
-        goalIndex = (goalIndex + 1) % MEADOW_TOP_OVERLAY_ASSET_NAMES.length;
-      }
-      return Object.freeze({
-        startIndex,
-        goalIndex,
-        startAsset: MEADOW_TOP_OVERLAY_ASSET_NAMES[startIndex],
-        goalAsset: MEADOW_TOP_OVERLAY_ASSET_NAMES[goalIndex]
-      });
-    }
-
-    function getTopOverlaySlot(role, levelSeed) {
-      const selection = getTopOverlaySelection(levelSeed);
-      const index = role === "START_PLATFORM"
-        ? selection.startIndex
-        : selection.goalIndex;
-      return PLATFORM_SLOTS.meadow_top_overlays[index];
+      return meadowPlatformKit.getTopOverlaySelection(levelSeed);
     }
 
     function getBodyOverlaySelection(levelSeed) {
-      const goalIndex = hashVisualSeed(
-        levelSeed,
-        MEADOW_BODY_OVERLAY_GOAL
-      ) % MEADOW_BODY_OVERLAY_ASSET_NAMES.length;
-      return Object.freeze({
-        goalIndex,
-        goalAsset: MEADOW_BODY_OVERLAY_ASSET_NAMES[goalIndex]
-      });
-    }
-
-    function getBodyOverlaySlot(levelSeed) {
-      const selection = getBodyOverlaySelection(levelSeed);
-      return PLATFORM_SLOTS.meadow_body_overlays[selection.goalIndex];
+      return meadowPlatformKit.getBodyOverlaySelection(levelSeed);
     }
 
     function freezeItems(items) {
@@ -1142,17 +962,6 @@
       return scene;
     }
 
-    function traceRoundedRect(context, x, y, w, h, radius) {
-      const r = Math.min(radius, w / 2, h / 2);
-      context.beginPath();
-      context.moveTo(x + r, y);
-      context.arcTo(x + w, y, x + w, y + h, r);
-      context.arcTo(x + w, y + h, x, y + h, r);
-      context.arcTo(x, y + h, x, y, r);
-      context.arcTo(x, y, x + w, y, r);
-      context.closePath();
-    }
-
     function drawBackgroundLayer(context, name, width, height, offsetX = 0) {
       if (!isReady(name)) return false;
       const source = SOURCE_SIZES[name];
@@ -1217,127 +1026,7 @@
     }
 
     function resolvePlatformRole(platform) {
-      if (!platform || platform.lastBubbleSupport) return null;
-      if (
-        platform.x === 0 &&
-        platform.w === PLATFORM_VISUAL_CONTRACT.start.width &&
-        platform.h === PLATFORM_VISUAL_CONTRACT.start.height
-      ) return "START_PLATFORM";
-      if (
-        platform.x === 1060 &&
-        platform.w === PLATFORM_VISUAL_CONTRACT.goal.width &&
-        platform.h >= PLATFORM_VISUAL_CONTRACT.goal.topHeight
-      ) return "GOAL_TOWER";
-      if (platform.h === PLATFORM_VISUAL_CONTRACT.floating.height) {
-        return "FLOATING";
-      }
-      return null;
-    }
-
-    function drawFamilyALayer(
-      context,
-      slot,
-      destinationX,
-      destinationY,
-      destinationWidth,
-      destinationHeight,
-      sourceHeight = FAMILY_A_SOURCE.h
-    ) {
-      context.drawImage(
-        assets[slot.asset].image,
-        FAMILY_A_SOURCE.x,
-        FAMILY_A_SOURCE.y,
-        FAMILY_A_SOURCE.w,
-        sourceHeight,
-        destinationX,
-        destinationY,
-        destinationWidth,
-        destinationHeight
-      );
-    }
-
-    function drawGoalPlatform(context, platform, drawX, topOverlaySlot, bodyOverlaySlot) {
-      const contract = PLATFORM_VISUAL_CONTRACT.goal;
-      const blockBottom = platform.y + platform.h;
-      const bodyStartY = platform.y + contract.topHeight - contract.bodyOverlap;
-      const topSlot = PLATFORM_SLOTS.meadow_top_base;
-      const bodySlot = PLATFORM_SLOTS.meadow_body_base;
-
-      drawFamilyALayer(
-        context,
-        topSlot,
-        drawX,
-        platform.y,
-        platform.w,
-        contract.topHeight
-      );
-      drawFamilyALayer(
-        context,
-        topOverlaySlot,
-        drawX,
-        platform.y,
-        platform.w,
-        contract.topHeight
-      );
-
-      for (let destinationY = bodyStartY; destinationY < blockBottom;) {
-        const destinationHeight = Math.min(
-          contract.bodyRowHeight,
-          blockBottom - destinationY
-        );
-        const sourceHeight = destinationHeight * FAMILY_A_SOURCE.h /
-          contract.bodyRowHeight;
-        drawFamilyALayer(
-          context,
-          bodySlot,
-          drawX,
-          destinationY,
-          platform.w,
-          destinationHeight,
-          sourceHeight
-        );
-        if (destinationY + destinationHeight >= blockBottom) break;
-        destinationY += contract.bodyRowStep;
-      }
-
-      context.save();
-      context.beginPath();
-      context.rect(
-        drawX,
-        bodyStartY,
-        platform.w,
-        Math.max(0, blockBottom - bodyStartY)
-      );
-      context.clip();
-      drawFamilyALayer(
-        context,
-        bodyOverlaySlot,
-        drawX,
-        blockBottom - contract.bodyRowHeight,
-        platform.w,
-        contract.bodyRowHeight
-      );
-      context.restore();
-    }
-
-    function drawStartPlatform(context, platform, drawX, topOverlaySlot) {
-      const topHeight = platform.w * (FAMILY_A_SOURCE.h / FAMILY_A_SOURCE.w);
-      drawFamilyALayer(
-        context,
-        PLATFORM_SLOTS.meadow_top_base,
-        drawX,
-        platform.y,
-        platform.w,
-        topHeight
-      );
-      drawFamilyALayer(
-        context,
-        topOverlaySlot,
-        drawX,
-        platform.y,
-        platform.w,
-        topHeight
-      );
+      return meadowPlatformKit.resolvePlatformRole(platform);
     }
 
     function drawTopDecorLayer(context, items) {
@@ -1395,156 +1084,13 @@
       return drawTopDecorLayer(context, scene?.goalSeamCoverProps ?? []);
     }
 
-    function drawFloatingContentFitSegment(
-      context,
-      image,
-      sourceX,
-      sourceWidth,
-      destinationX,
-      destinationWidth,
-      platformY
-    ) {
-      const contract = PLATFORM_VISUAL_CONTRACT.floating;
-      const zones = [
-        {
-          source: floatingContentFit.topDecorSource,
-          y: platformY - floatingContentFit.topOverhang,
-          h: floatingContentFit.topOverhang
-        },
-        {
-          source: floatingContentFit.bodySource,
-          y: platformY,
-          h: contract.height
-        },
-        {
-          source: floatingContentFit.bottomDecorSource,
-          y: platformY + contract.height,
-          h: floatingContentFit.bottomOverhang
-        }
-      ];
-      for (const zone of zones) {
-        if (zone.source.h <= 0 || zone.h <= 0) continue;
-        context.drawImage(
-          image,
-          sourceX,
-          zone.source.y,
-          sourceWidth,
-          zone.source.h,
-          destinationX,
-          zone.y,
-          destinationWidth,
-          zone.h
-        );
-      }
-    }
-
-    function drawFloatingPlatform(context, platform, drawX) {
-      const contract = PLATFORM_VISUAL_CONTRACT.floating;
-      const capWidth = Math.min(contract.leftWidth, platform.w / 2);
-      const leftSlot = PLATFORM_SLOTS.floating_left;
-      const middleSlot = PLATFORM_SLOTS.floating_middle;
-      const rightSlot = PLATFORM_SLOTS.floating_right;
-      const left = assets[leftSlot.asset].image;
-      const middle = assets[middleSlot.asset].image;
-      const right = assets[rightSlot.asset].image;
-
-      if (platform.w > contract.leftWidth + contract.rightWidth) {
-        const middleStartX = drawX + contract.leftWidth - FLOATING_SEAM_OVERLAP;
-        const middleEndX = drawX + platform.w - contract.rightWidth +
-          FLOATING_SEAM_OVERLAP;
-        let destinationX = middleStartX;
-
-        while (destinationX < middleEndX) {
-          const remainingWidth = middleEndX - destinationX;
-          const destinationWidth = Math.min(contract.middleTileWidth, remainingWidth);
-          const sourceWidth = middleSlot.source.w * (
-            destinationWidth / contract.middleTileWidth
-          );
-          drawFloatingContentFitSegment(
-            context,
-            middle,
-            middleSlot.source.x,
-            sourceWidth,
-            destinationX,
-            destinationWidth,
-            platform.y
-          );
-          if (destinationWidth >= remainingWidth) break;
-          destinationX += contract.middleTileAdvance;
-        }
-      }
-
-      drawFloatingContentFitSegment(
-        context,
-        left,
-        leftSlot.source.x,
-        leftSlot.source.w,
-        drawX,
-        capWidth,
-        platform.y
-      );
-      drawFloatingContentFitSegment(
-        context,
-        right,
-        rightSlot.source.x,
-        rightSlot.source.w,
-        drawX + platform.w - capWidth,
-        capWidth,
-        platform.y
-      );
-    }
-
     function drawPlatformBase(context, platform, drawX = platform.x, levelSeed = 0) {
-      const role = resolvePlatformRole(platform);
-      if (!role) return false;
-      const topOverlaySlot = role === "START_PLATFORM" || role === "GOAL_TOWER"
-        ? getTopOverlaySlot(role, levelSeed)
-        : null;
-      const bodyOverlaySlot = role === "GOAL_TOWER"
-        ? getBodyOverlaySlot(levelSeed)
-        : null;
-      if (role === "FLOATING") {
-        if (!FLOATING_SLOT_NAMES.every(slotName =>
-          isReady(PLATFORM_SLOTS[slotName].asset)
-        )) return false;
-        if (!floatingContentFit) return false;
-      } else if (role === "START_PLATFORM") {
-        if (
-          !isReady(PLATFORM_SLOTS.meadow_top_base.asset) ||
-          !isReady(topOverlaySlot.asset)
-        ) return false;
-      } else if (role === "GOAL_TOWER") {
-        if (
-          !isReady(PLATFORM_SLOTS.meadow_top_base.asset) ||
-          !isReady(topOverlaySlot.asset) ||
-          !isReady(PLATFORM_SLOTS.meadow_body_base.asset) ||
-          !isReady(bodyOverlaySlot.asset)
-        ) return false;
-      }
-
-      context.save();
-      if (role !== "FLOATING") {
-        traceRoundedRect(context, drawX, platform.y, platform.w, platform.h, 10);
-        context.clip();
-      }
-      context.imageSmoothingEnabled = true;
-      context.imageSmoothingQuality = "high";
-      if (role === "GOAL_TOWER") {
-        drawGoalPlatform(context, platform, drawX, topOverlaySlot, bodyOverlaySlot);
-      } else if (role === "FLOATING") {
-        drawFloatingPlatform(context, platform, drawX);
-      } else {
-        drawStartPlatform(context, platform, drawX, topOverlaySlot);
-      }
-      context.restore();
-
-      context.save();
-      context.strokeStyle = "rgba(46,72,28,0.62)";
-      context.lineWidth = 1.5;
-      traceRoundedRect(context, drawX + 0.75, platform.y + 0.75, platform.w - 1.5, platform.h - 1.5, 9);
-      context.stroke();
-      context.restore();
-      return true;
+      return meadowPlatformKit.drawPlatformBase(
+        context,
+        platform,
+        drawX,
+        levelSeed
+      );
     }
 
     function drawBottomSpikeHazard(context, rect, count, step) {
@@ -1617,36 +1163,7 @@
     }
 
     function drawGoalTopForeground(context, platform, levelSeed = 0) {
-      if (resolvePlatformRole(platform) !== "GOAL_TOWER") return false;
-      const topSlot = PLATFORM_SLOTS.meadow_top_base;
-      const topOverlaySlot = getTopOverlaySlot("GOAL_TOWER", levelSeed);
-      if (!isReady(topSlot.asset) || !isReady(topOverlaySlot.asset)) return false;
-
-      context.save();
-      traceRoundedRect(context, platform.x, platform.y, platform.w, platform.h, 10);
-      context.clip();
-      context.imageSmoothingEnabled = true;
-      context.imageSmoothingQuality = "high";
-      // Repeat the same base/overlay pair so the existing portal-foot occlusion
-      // keeps the exact Goal-top appearance and deterministic selection.
-      drawFamilyALayer(
-        context,
-        topSlot,
-        platform.x,
-        platform.y,
-        platform.w,
-        PLATFORM_VISUAL_CONTRACT.goal.topHeight
-      );
-      drawFamilyALayer(
-        context,
-        topOverlaySlot,
-        platform.x,
-        platform.y,
-        platform.w,
-        PLATFORM_VISUAL_CONTRACT.goal.topHeight
-      );
-      context.restore();
-      return true;
+      return meadowPlatformKit.drawGoalTopForeground(context, platform, levelSeed);
     }
 
     function getStatus() {
@@ -1656,7 +1173,8 @@
         loaded: Object.freeze(
           Object.fromEntries(Object.keys(ASSET_PATHS).map(name => [name, isReady(name)]))
         ),
-        floatingContentFit,
+        floatingContentFit: meadowPlatformKit.getStatus().floatingContentFit,
+        platformKit: meadowPlatformKit.getStatus(),
         decorAlphaProfiles: Object.freeze({...decorAlphaProfiles})
       });
     }
@@ -1672,6 +1190,7 @@
       getManifest,
       getTopOverlaySelection,
       getBodyOverlaySelection,
+      getPlatformKit: () => meadowPlatformKit,
       getScene,
       resolvePlatformRole,
       drawBackground,
@@ -1686,3 +1205,5 @@
       drawTopFrontDecor
     });
   })();
+
+  BIOME_PLATFORM_VISUALS.register("meadow", MEADOW_ASSET_VISUALS);

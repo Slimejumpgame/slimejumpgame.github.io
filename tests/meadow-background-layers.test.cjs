@@ -25,6 +25,7 @@ for (const [relativePath, expectedColorType] of Object.entries(layerAssets)) {
 }
 
 const visualSource = read("js/visual-meadow-assets.js");
+const platformKitSource = read("js/visual-platform-kit.js");
 const rendererSource = read("js/renderer.js");
 
 function loadVisuals(failedAssetSuffixes = []) {
@@ -40,9 +41,16 @@ function loadVisuals(failedAssetSuffixes = []) {
     set src(value) {
       this._src = value;
       const failed = failedAssetSuffixes.some(suffix => value.endsWith(suffix));
+      const platformSize = value.endsWith("floating_middle.png")
+        ? [256, 128]
+        : value.endsWith("floating_left.png") || value.endsWith("floating_right.png")
+          ? [128, 128]
+          : value.includes("/platforms/")
+            ? [352, 128]
+            : [1280, 720];
       this.complete = true;
-      this.naturalWidth = failed ? 0 : 1280;
-      this.naturalHeight = failed ? 0 : 720;
+      this.naturalWidth = failed ? 0 : platformSize[0];
+      this.naturalHeight = failed ? 0 : platformSize[1];
       (failed ? this.onerror : this.onload)?.();
     }
 
@@ -56,7 +64,8 @@ function loadVisuals(failedAssetSuffixes = []) {
     throw new Error("background rendering must not consume Math.random()");
   };
   const context = vm.createContext({Image: FakeImage, Math: math, Promise});
-  vm.runInContext(`${visualSource}
+  vm.runInContext(`${platformKitSource}
+    ${visualSource}
     globalThis.backgroundVisualsForTest = MEADOW_ASSET_VISUALS;
   `, context, {filename: "meadow-background-layers-fixture.js"});
   return context.backgroundVisualsForTest;
@@ -143,7 +152,7 @@ assert.equal(captureBackground(canvasFallback, 4).result, false);
 
 assert.match(
   rendererSource,
-  /drawBackground\(ctx, W, H, worldTime\)[\s\S]*?drawPlatforms\(biome, true, "without-floating"\)/
+  /biomePlatformVisuals\.drawBackground\(ctx, W, H, worldTime\)[\s\S]*?drawPlatforms\(biome, biomePlatformVisuals, "without-floating"\)/
 );
 assert.doesNotMatch(
   visualSource.slice(

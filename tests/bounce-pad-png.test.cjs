@@ -148,7 +148,7 @@ assert.deepEqual(pad, {x: 100, y: 200, w: 60, h: 28});
 
 assert.match(
   rendererSource,
-  /drawPlatforms\(biome, true, "floating-only"\);[\s\S]*?drawFloatingBackDecor\(ctx, meadowScene\);[\s\S]*?drawBouncePads\(\);[\s\S]*?drawGoal\(meadowAssetsActive\);/
+  /drawPlatforms\(biome, biomePlatformVisuals, "floating-only"\);[\s\S]*?drawFloatingBackDecor\?\.\(ctx, biomeVisualScene\);[\s\S]*?drawBouncePads\(\);[\s\S]*?drawGoal\(biomePlatformVisuals\);/
 );
 
 const normalize = source => source.replace(/\r\n/g, "\n");
@@ -157,8 +157,7 @@ for (const relativePath of [
   "js/level-generator.js",
   "js/physics.js",
   "js/player.js",
-  "js/platforms.js",
-  "js/visual-meadow-assets.js"
+  "js/platforms.js"
 ]) {
   const current = fs.readFileSync(path.join(root, relativePath), "utf8");
   const baseline = execFileSync("git", ["show", `HEAD:${relativePath}`], {

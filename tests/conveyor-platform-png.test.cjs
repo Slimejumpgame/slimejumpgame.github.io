@@ -430,7 +430,10 @@ const conveyorFixture = {
 };
 platforms = [conveyorFixture];
 resetEvents();
-api.drawPlatforms({platform: {body: "#123", top: "#456"}}, true);
+api.drawPlatforms(
+  {platform: {body: "#123", top: "#456"}},
+  rendererContext.MEADOW_ASSET_VISUALS
+);
 assert.ok(events.some(event => event.type === "drawImage"));
 assert.equal(meadowBaseCalls, 0, "valid Conveyor assets must replace the Meadow base");
 assert.equal(events.some(event => event.type === "stroke"), false,
@@ -464,7 +467,10 @@ assert.ok(events.some(event => (
 const rightStripeXAtFirstTime = rightMoveEvents[0].args[0];
 rendererContext.worldTime = 1.3;
 resetEvents();
-api.drawPlatforms({platform: {body: "#123", top: "#456"}}, true);
+api.drawPlatforms(
+  {platform: {body: "#123", top: "#456"}},
+  rendererContext.MEADOW_ASSET_VISUALS
+);
 const rightStripeXAtSecondTime = events.find(event => event.type === "moveTo").args[0];
 assert.ok(rightStripeXAtSecondTime > rightStripeXAtFirstTime,
   "right-facing stripe animation must move right");
@@ -472,7 +478,10 @@ assert.ok(rightStripeXAtSecondTime > rightStripeXAtFirstTime,
 conveyorFixture.conveyorSpeed = -42;
 rendererContext.worldTime = 1.25;
 resetEvents();
-api.drawPlatforms({platform: {body: "#123", top: "#456"}}, true);
+api.drawPlatforms(
+  {platform: {body: "#123", top: "#456"}},
+  rendererContext.MEADOW_ASSET_VISUALS
+);
 const leftMoveEvents = events.filter(event => event.type === "moveTo");
 const leftLineEvents = events.filter(event => event.type === "lineTo");
 assert.ok(
@@ -482,7 +491,10 @@ assert.ok(
 const leftStripeXAtFirstTime = leftMoveEvents[0].args[0];
 rendererContext.worldTime = 1.3;
 resetEvents();
-api.drawPlatforms({platform: {body: "#123", top: "#456"}}, true);
+api.drawPlatforms(
+  {platform: {body: "#123", top: "#456"}},
+  rendererContext.MEADOW_ASSET_VISUALS
+);
 const leftStripeXAtSecondTime = events.find(event => event.type === "moveTo").args[0];
 assert.ok(leftStripeXAtSecondTime < leftStripeXAtFirstTime,
   "left-facing stripe animation must move left");
@@ -500,7 +512,10 @@ assert.equal(events.some(event => event.type === "rect"), false,
   "new Middle-channel overlay must not run in the fallback path");
 
 resetEvents();
-api.drawPlatforms({platform: {body: "#123", top: "#456"}}, true);
+api.drawPlatforms(
+  {platform: {body: "#123", top: "#456"}},
+  rendererContext.MEADOW_ASSET_VISUALS
+);
 assert.equal(events.some(event => event.type === "drawImage"), false);
 assert.equal(meadowBaseCalls, 1, "Meadow fallback must remain complete");
 api.images.middle.naturalWidth = assetContracts.middle.canvas[0];
@@ -548,8 +563,7 @@ for (const relativePath of [
   "js/level-generator.js",
   "js/physics.js",
   "js/platforms.js",
-  "js/player.js",
-  "js/visual-meadow-assets.js"
+  "js/player.js"
 ]) {
   const headSource = execFileSync("git", ["show", `HEAD:${relativePath}`], {
     cwd: root,

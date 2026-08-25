@@ -338,7 +338,10 @@ assert.equal(JSON.stringify(otherPlatformTypes), otherPlatformSnapshot);
 
 drawCalls.length = 0;
 meadowBaseCalls = 0;
-api.drawPlatforms({platform: {body: "#000", top: "#fff"}}, true);
+api.drawPlatforms(
+  {platform: {body: "#000", top: "#fff"}},
+  rendererContext.MEADOW_ASSET_VISUALS
+);
 assert.equal(drawCalls.length, 0, "Meadow platform types must not use Falling assets");
 assert.equal(meadowBaseCalls, otherPlatformTypes.length);
 assert.equal(JSON.stringify(otherPlatformTypes), otherPlatformSnapshot);
@@ -364,7 +367,10 @@ drawCalls.length = 0;
 canvasCalls.length = 0;
 meadowBaseCalls = 0;
 anchorWarningCalls = 0;
-api.drawPlatforms({platform: {body: "#000", top: "#fff"}}, true);
+api.drawPlatforms(
+  {platform: {body: "#000", top: "#fff"}},
+  rendererContext.MEADOW_ASSET_VISUALS
+);
 const expectedWobbleX = fallingFixture.x + Math.sin(1.25 * 42) * (1.2 + 0.5 * 3.4);
 assert.ok(Math.abs(drawCalls[0][5] - (expectedWobbleX - 1)) < 1e-12);
 assert.ok(Math.abs(drawCalls[2][5] - expectedWobbleX) < 1e-12);
@@ -390,7 +396,10 @@ drawCalls.length = 0;
 canvasCalls.length = 0;
 meadowBaseCalls = 0;
 anchorWarningCalls = 0;
-api.drawPlatforms({platform: {body: "#000", top: "#fff"}}, true);
+api.drawPlatforms(
+  {platform: {body: "#000", top: "#fff"}},
+  rendererContext.MEADOW_ASSET_VISUALS
+);
 assert.equal(drawCalls.length, 0, "an incomplete set must never render partially");
 assert.equal(meadowBaseCalls, 1, "Meadow fallback must remain available");
 assert.equal(canvasCalls.filter(call => call[0] === "stroke").length, 1);
