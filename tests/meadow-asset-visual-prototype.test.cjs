@@ -61,13 +61,13 @@ const assetExpectations = Object.freeze({
   "assets/environments/meadow/platforms/meadow_overlay_body_01.png": [352, 128],
   "assets/environments/meadow/platforms/meadow_overlay_body_02.png": [352, 128],
   "assets/environments/meadow/platforms/meadow_overlay_body_03.png": [352, 128],
-  "assets/environments/meadow/decor/top/meadow_decor_top_grass_set_01.png": [1448, 1086],
+  "assets/environments/meadow/decor/top/meadow_decor_top_grass_set_01.png": [1536, 1024],
   "assets/environments/meadow/decor/top/meadow_decor_top_flowers_set_01.png": [1536, 1024],
   "assets/environments/meadow/decor/top/meadow_decor_top_mushrooms_set_01.png": [1536, 1024],
-  "assets/environments/meadow/decor/top/meadow_decor_top_bushes_set_01.png": [1448, 1086],
+  "assets/environments/meadow/decor/top/meadow_decor_top_bushes_set_01.png": [1536, 1024],
   "assets/environments/meadow/decor/top/meadow_decor_top_stones_set_01.png": [1536, 1024],
   "assets/environments/meadow/decor/top/meadow_decor_top_tufts_set_01.png": [1536, 1024],
-  "assets/environments/meadow/decor/top/meadow_decor_top_trees_set_01.png": [1448, 1086],
+  "assets/environments/meadow/decor/top/meadow_decor_top_trees_set_01.png": [1536, 1024],
   "assets/environments/meadow/portal/meadow_goal_portal.png": [256, 272],
   "assets/environments/meadow/hazards/meadow_bottom_spike_tile.png": [256, 320]
 });
@@ -83,9 +83,9 @@ for (const [relativePath, dimensions] of Object.entries(assetExpectations)) {
 }
 
 function decodeRgba8Png(bytes) {
-  assert.equal(bytes.readUInt8(24), 8, "portal PNG must use eight-bit channels");
-  assert.equal(bytes.readUInt8(25), 6, "portal PNG must be RGBA");
-  assert.equal(bytes.readUInt8(28), 0, "portal PNG must be non-interlaced");
+  assert.equal(bytes.readUInt8(24), 8, "PNG must use eight-bit channels");
+  assert.equal(bytes.readUInt8(25), 6, "PNG must be RGBA");
+  assert.equal(bytes.readUInt8(28), 0, "PNG must be non-interlaced");
   const width = bytes.readUInt32BE(16);
   const height = bytes.readUInt32BE(20);
   const idat = [];
@@ -153,6 +153,154 @@ assert.deepEqual(
   [256, 272]
 );
 assert.deepEqual(getAlphaBounds(decodedPortalAsset, 8), {x: 9, y: 21, w: 239, h: 248});
+
+const decorGridDefinitions = Object.freeze([
+  {category: "GRASS", prefix: "grass", asset: "decor_top_grass", roles: ["COMPACT", "WIDE", "LARGE", "WIDE", "LARGE", "LARGE"]},
+  {category: "FLOWERS", prefix: "flower", asset: "decor_top_flowers", roles: Array(6).fill("STANDARD")},
+  {category: "MUSHROOMS", prefix: "mushroom", asset: "decor_top_mushrooms", roles: Array(6).fill("STANDARD")},
+  {category: "BUSHES", prefix: "bush", asset: "decor_top_bushes", roles: Array(6).fill("LARGE")},
+  {category: "STONES", prefix: "stone", asset: "decor_top_stones", roles: ["COMPACT", "WIDE", "WIDE", "WIDE", "WIDE", "WIDE"]},
+  {category: "TUFTS", prefix: "tuft", asset: "decor_top_tufts", roles: Array(6).fill("STANDARD")},
+  {category: "TREES", prefix: "tree", asset: "decor_top_trees", roles: ["WIDE", "HERO", "HERO", "HERO", "HERO", "HERO"]}
+].map(definition => Object.freeze({
+  ...definition,
+  path: `assets/environments/meadow/decor/top/meadow_decor_top_${
+    definition.asset.slice("decor_top_".length)
+  }_set_01.png`,
+  sprites: Object.freeze(Array.from(
+    {length: 6},
+    (_, index) => `${definition.prefix}${String(index + 1).padStart(2, "0")}`
+  )),
+  roles: Object.freeze(definition.roles)
+})));
+const decodedDecorGridAssets = Object.freeze(Object.fromEntries(
+  decorGridDefinitions.map(definition => {
+    const decoded = decodeRgba8Png(fs.readFileSync(path.join(root, definition.path)));
+    assert.deepEqual([decoded.width, decoded.height], [1536, 1024]);
+    let transparentPixels = 0;
+    let visiblePixels = 0;
+    for (let offset = 3; offset < decoded.pixels.length; offset += 4) {
+      if (decoded.pixels[offset] === 0) transparentPixels += 1;
+      else visiblePixels += 1;
+    }
+    assert.ok(transparentPixels > 0, `${definition.path} must contain true transparency`);
+    assert.ok(visiblePixels > 0, `${definition.path} must contain visible RGBA content`);
+    return [definition.asset, decoded];
+  })
+));
+
+function getSlotAlphaBounds(image, slotIndex, threshold) {
+  const sourceX = slotIndex % 3 * 512;
+  const sourceY = Math.floor(slotIndex / 3) * 512;
+  let left = 512;
+  let top = 512;
+  let right = -1;
+  let bottom = -1;
+  for (let y = 0; y < 512; y++) {
+    for (let x = 0; x < 512; x++) {
+      const alpha = image.pixels[
+        ((sourceY + y) * image.width + sourceX + x) * 4 + 3
+      ];
+      if (alpha <= threshold) continue;
+      left = Math.min(left, x);
+      top = Math.min(top, y);
+      right = Math.max(right, x);
+      bottom = Math.max(bottom, y);
+    }
+  }
+  return {x: left, y: top, w: right - left + 1, h: bottom - top + 1};
+}
+
+function getSlotRobustProfile(image, slotIndex) {
+  const sourceX = slotIndex % 3 * 512;
+  const sourceY = Math.floor(slotIndex / 3) * 512;
+  const visited = new Uint8Array(512 * 512);
+  const queue = new Int32Array(512 * 512);
+  let best = null;
+  for (let start = 0; start < visited.length; start++) {
+    const startX = start % 512;
+    const startY = Math.floor(start / 512);
+    const startAlpha = image.pixels[
+      ((sourceY + startY) * image.width + sourceX + startX) * 4 + 3
+    ];
+    if (visited[start] || startAlpha <= 8) continue;
+    let head = 0;
+    let tail = 0;
+    let count = 0;
+    let left = 512;
+    let right = -1;
+    let top = 512;
+    let bottom = -1;
+    let baseLeft = 512;
+    let baseRight = -1;
+    let contactPixelCount = 0;
+    let baselinePixelCount = 0;
+    visited[start] = 1;
+    queue[tail++] = start;
+    while (head < tail) {
+      const pixelIndex = queue[head++];
+      const x = pixelIndex % 512;
+      const y = Math.floor(pixelIndex / 512);
+      count += 1;
+      left = Math.min(left, x);
+      right = Math.max(right, x);
+      top = Math.min(top, y);
+      bottom = Math.max(bottom, y);
+      if (y >= 432 && y <= 456) {
+        baseLeft = Math.min(baseLeft, x);
+        baseRight = Math.max(baseRight, x);
+        contactPixelCount += 1;
+      }
+      if (y === 448) baselinePixelCount += 1;
+      for (let offsetY = -1; offsetY <= 1; offsetY++) {
+        for (let offsetX = -1; offsetX <= 1; offsetX++) {
+          if (offsetX === 0 && offsetY === 0) continue;
+          const neighborX = x + offsetX;
+          const neighborY = y + offsetY;
+          if (
+            neighborX < 0 || neighborX >= 512 ||
+            neighborY < 0 || neighborY >= 512
+          ) continue;
+          const neighborIndex = neighborY * 512 + neighborX;
+          const neighborAlpha = image.pixels[
+            ((sourceY + neighborY) * image.width + sourceX + neighborX) * 4 + 3
+          ];
+          if (visited[neighborIndex] || neighborAlpha <= 8) continue;
+          visited[neighborIndex] = 1;
+          queue[tail++] = neighborIndex;
+        }
+      }
+    }
+    if (!best || count > best.robustPixelCount) {
+      const hasContact = contactPixelCount > 0;
+      best = {
+        visibleBounds: {x: left, y: top, w: right - left + 1, h: bottom - top + 1},
+        visibleBase: {
+          left: hasContact ? baseLeft : left,
+          right: hasContact ? baseRight : right
+        },
+        robustPixelCount: count,
+        contactPixelCount,
+        baselinePixelCount
+      };
+    }
+  }
+  return best;
+}
+
+const decorGridProfiles = Object.freeze(Object.fromEntries(
+  decorGridDefinitions.flatMap(definition => definition.sprites.map((name, slotIndex) => {
+    const image = decodedDecorGridAssets[definition.asset];
+    const alpha0 = getSlotAlphaBounds(image, slotIndex, 0);
+    const alpha8 = getSlotAlphaBounds(image, slotIndex, 8);
+    assert.ok(alpha0.w > 0 && alpha0.h > 0, `${name} must contain one visible motif`);
+    assert.ok(alpha8.w > 0 && alpha8.h > 0, `${name} must contain robust alpha`);
+    const profile = getSlotRobustProfile(image, slotIndex);
+    assert.ok(profile.contactPixelCount > 0, `${name} must contact the fixed Y432..456 band`);
+    assert.ok(profile.baselinePixelCount > 0, `${name} must cross the fixed Y448 baseline`);
+    return [name, Object.freeze(profile)];
+  }))
+));
 
 function createMathFixture(randomValue) {
   const math = Object.create(Math);
@@ -268,7 +416,10 @@ class FakeImage {
     this.complete = true;
     this.naturalWidth = dimensions[0];
     this.naturalHeight = dimensions[1];
-    this.pixelData = familyBAlphaFixtures[value];
+    const decorDefinition = decorGridDefinitions.find(definition => definition.path === value);
+    this.pixelData = decorDefinition
+      ? decodedDecorGridAssets[decorDefinition.asset].pixels
+      : familyBAlphaFixtures[value];
     this.onload?.();
   }
 
@@ -281,19 +432,36 @@ const fakeDocument = {
   createElement(type) {
     assert.equal(type, "canvas");
     let drawnImage = null;
-    return {
+    const surface = {
+      width: 0,
+      height: 0,
       getContext() {
         return {
           clearRect() {},
           drawImage(image) {
             drawnImage = image;
           },
-          getImageData() {
-            return {data: drawnImage.pixelData};
+          getImageData(x = 0, y = 0, width = surface.width, height = surface.height) {
+            if (
+              x === 0 && y === 0 &&
+              width === drawnImage.naturalWidth && height === drawnImage.naturalHeight
+            ) return {data: drawnImage.pixelData};
+            const cropped = Buffer.alloc(width * height * 4);
+            for (let row = 0; row < height; row++) {
+              const sourceStart = ((y + row) * drawnImage.naturalWidth + x) * 4;
+              drawnImage.pixelData.copy(
+                cropped,
+                row * width * 4,
+                sourceStart,
+                sourceStart + width * 4
+              );
+            }
+            return {data: cropped};
           }
         };
       }
     };
+    return surface;
   }
 };
 
@@ -355,6 +523,77 @@ assert.deepEqual(
 const meadowManifest = JSON.parse(JSON.stringify(visualApi.getManifest()));
 assert.equal(meadowManifest.biome, "meadow");
 assert.deepEqual(meadowManifest.sourceSizes.portal, {w: 256, h: 272});
+for (const definition of decorGridDefinitions) {
+  assert.deepEqual(meadowManifest.sourceSizes[definition.asset], {w: 1536, h: 1024});
+}
+const decorSpriteNamesByCategory = Object.freeze(Object.fromEntries(
+  decorGridDefinitions.map(definition => [definition.category, definition.sprites])
+));
+const allDecorGridSpriteNames = Object.freeze(decorGridDefinitions.flatMap(
+  definition => definition.sprites
+));
+const mushroomGridSpriteNames = decorSpriteNamesByCategory.MUSHROOMS;
+assert.deepEqual(meadowManifest.decor.gridV2, {
+  contract: {
+    sheet: {w: 1536, h: 1024},
+    columns: 3,
+    rows: 2,
+    slot: {w: 512, h: 512},
+    anchor: {x: 256, y: 448},
+    motifWidth: 448,
+    alphaThreshold: 8,
+    contactBand: {top: 432, bottom: 456},
+    safeArea: {
+      robust: {left: 32, top: 32, right: 479, bottom: 448},
+      robustFringeBottom: 456,
+      faintAlphaBottom: 460
+    }
+  },
+  roleWidths: {
+    GRASS: {COMPACT: 34, WIDE: 62, LARGE: 78},
+    FLOWERS: {COMPACT: 34, STANDARD: 52},
+    MUSHROOMS: {COMPACT: 30, STANDARD: 40},
+    BUSHES: {COMPACT: 34, LARGE: 66},
+    STONES: {COMPACT: 32, WIDE: 60},
+    TUFTS: {COMPACT: 32, STANDARD: 40},
+    TREES: {WIDE: 60, HERO: 132}
+  },
+  sheets: Object.fromEntries(decorGridDefinitions.map(definition => [
+    definition.category,
+    {
+      asset: definition.asset,
+      sprites: definition.sprites,
+      slotRoles: definition.roles
+    }
+  ]))
+});
+for (const definition of decorGridDefinitions) {
+  const sheet = meadowManifest.decor.gridV2.sheets[definition.category];
+  assert.equal(sheet.sprites.length, 6);
+  assert.deepEqual(sheet.sprites, definition.sprites);
+  assert.deepEqual(sheet.slotRoles, definition.roles);
+}
+assert.equal(allDecorGridSpriteNames.length, 42);
+assert.equal(new Set(allDecorGridSpriteNames).size, 42);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(visualApi.getStatus().decorAlphaProfiles)),
+  decorGridProfiles
+);
+assert.ok(Object.values(decorGridProfiles).every(profile => (
+  profile.contactPixelCount > 0 && profile.baselinePixelCount > 0
+)));
+for (const name of decorSpriteNamesByCategory.TREES) {
+  const profile = decorGridProfiles[name];
+  const trunkFootprintWidth = profile.visibleBase.right - profile.visibleBase.left + 1;
+  assert.ok(
+    trunkFootprintWidth < profile.visibleBounds.w * 0.65,
+    `${name} edge-clamping must use its trunk/base, not its full crown`
+  );
+}
+assert.deepEqual(
+  Object.keys(visualApi.getStatus().decorAlphaProfiles).sort(),
+  [...allDecorGridSpriteNames].sort()
+);
 assert.deepEqual(meadowManifest.platforms.contract, {
   floating: {
     height: 26,
@@ -489,37 +728,35 @@ const startGoalCategoryCoverage = new Set();
 const startDecorCounts = new Set();
 const goalDecorCounts = new Set();
 const renderedTreeVariants = new Set();
+const floatingMushroomCoverage = new Set();
+const startGoalMushroomCoverage = new Set();
 const goalSeamCoverCoverage = new Set();
 const goalSeamCoverCounts = new Set();
-const goalSeamDecorMappings = Object.freeze({
-  grassCompactFan: {anchor: [162, 202], base: [37, 284], motifWidth: 256, nominalWidth: 34, visibleWidth: 248, visibleHeight: 164},
-  grassTallFan: {anchor: [244, 279], base: [69, 413], motifWidth: 447, nominalWidth: 62, visibleWidth: 441, visibleHeight: 256},
-  grassWildArching: {anchor: [331.5, 341], base: [95, 568], motifWidth: 588, nominalWidth: 78, visibleWidth: 578, visibleHeight: 322},
-  flowersWhiteDaisy: {anchor: [204, 343], base: [35, 371], motifWidth: 342, nominalWidth: 46, visibleWidth: 337, visibleHeight: 298},
-  flowersLowMeadowMix: {anchor: [301, 379], base: [43, 561], motifWidth: 532, nominalWidth: 60, visibleWidth: 519, visibleHeight: 346},
-  mushroomRedSingle: {anchor: [164.5, 251], base: [37, 291], motifWidth: 261, nominalWidth: 34, visibleWidth: 255, visibleHeight: 218},
-  mushroomsRedPair: {anchor: [188.5, 317], base: [48, 329], motifWidth: 349, nominalWidth: 48, visibleWidth: 339, visibleHeight: 279},
-  bushLayeredCluster: {anchor: [250.5, 356], base: [64, 437], motifWidth: 447, nominalWidth: 66, visibleWidth: 436, visibleHeight: 323},
-  bushTallLeafy: {anchor: [259.5, 430], base: [63, 452], motifWidth: 502, nominalWidth: 68, visibleWidth: 492, visibleHeight: 404},
-  stoneMossySingle: {anchor: [182, 235], base: [43, 322], motifWidth: 286, nominalWidth: 32, visibleWidth: 280, visibleHeight: 196},
-  stoneMossyFlat: {anchor: [335.5, 246], base: [43, 629], motifWidth: 591, nominalWidth: 60, visibleWidth: 587, visibleHeight: 210},
-  tuftSimpleFan: {anchor: [205.5, 250], base: [33, 376], motifWidth: 357, nominalWidth: 32, visibleWidth: 344, visibleHeight: 207},
-  tuftBroadLeafFan: {anchor: [287.5, 287], base: [35, 535], motifWidth: 511, nominalWidth: 48, visibleWidth: 501, visibleHeight: 241},
-  treeSaplingLeafy: {anchor: [157, 285], base: [109, 201], motifWidth: 207, nominalWidth: 32, visibleWidth: 200, visibleHeight: 252},
-  treeRoundFlowering: {anchor: [204.5, 419], base: [132, 279], motifWidth: 329, nominalWidth: 59, visibleWidth: 317, visibleHeight: 377}
-});
+const goalSeamDecorMappings = Object.freeze(Object.fromEntries(
+  decorGridDefinitions.flatMap(definition => definition.sprites.map((name, index) => {
+    const profile = decorGridProfiles[name];
+    const sizeRole = definition.roles[index];
+    return [name, {
+      anchor: [256, 448],
+      base: [profile.visibleBase.left, profile.visibleBase.right],
+      motifWidth: 448,
+      nominalWidth: meadowManifest.decor.gridV2.roleWidths[definition.category][sizeRole],
+      sizeRole,
+      visibleWidth: profile.visibleBounds.w,
+      visibleHeight: profile.visibleBounds.h
+    }];
+  }))
+));
 const normalGoalSeamDecorNames = Object.freeze(Object.keys(goalSeamDecorMappings));
 let smallGoalSeamSelections = 0;
 let largeGoalSeamSelections = 0;
-const startGoalBackPlacement = Object.freeze({
-  treeRoundFlowering: {anchor: [204.5, 419], base: [132, 279], motifWidth: 329},
-  treeSaplingLeafy: {anchor: [157, 285], base: [109, 201], motifWidth: 207},
-  bushLayeredCluster: {anchor: [250.5, 356], base: [64, 437], motifWidth: 447},
-  bushTallLeafy: {anchor: [259.5, 430], base: [63, 452], motifWidth: 502},
-  grassTallFan: {anchor: [244, 279], base: [69, 413], motifWidth: 447},
-  grassWildArching: {anchor: [331.5, 341], base: [95, 568], motifWidth: 588},
-  mushroomsRedPair: {anchor: [188.5, 317], base: [48, 329], motifWidth: 349}
-});
+const startGoalBackPlacement = Object.freeze(Object.fromEntries(
+  normalGoalSeamDecorNames.map(name => [name, {
+    anchor: goalSeamDecorMappings[name].anchor,
+    base: goalSeamDecorMappings[name].base,
+    motifWidth: 448
+  }])
+));
 const startGoalLayoutSignature = (scene, role) => JSON.stringify(
   [...scene.topBackDecor, ...scene.topFrontDecor]
     .filter(item => item.role === role)
@@ -610,6 +847,11 @@ for (const level of generatedLevels) {
     assert.ok(platformDecor.length >= 1 && platformDecor.length <= 4);
     if (platform.w >= 108) assert.ok(platformDecor.length >= 2);
     assert.ok(platformDecor.every(item => item.category !== "TREES"));
+    for (const item of platformDecor.filter(item => item.category === "MUSHROOMS")) {
+      floatingMushroomCoverage.add(item.sprite);
+      assert.equal(item.nominalWidth, 30);
+      assert.equal(item.baselineY, item.platformY + 2);
+    }
     const ordered = [...platformDecor].sort((left, right) => left.baselineX - right.baselineX);
     if (ordered.length > 1) {
       const firstRatio = (ordered[0].baselineX - platform.x) / platform.w;
@@ -653,6 +895,7 @@ for (const level of generatedLevels) {
       assert.equal(item.platformW, goalPlatform.w);
       assert.equal(item.baselineOffset, 11);
       assert.equal(item.baselineY, goalPlatform.y + 11);
+      assert.equal(item.sizeRole, mapping.sizeRole);
       assert.ok(item.nominalWidth > 0 && item.nominalWidth <= mapping.nominalWidth + 1e-12);
       assert.deepEqual([item.anchor.x, item.anchor.y], mapping.anchor);
       assert.deepEqual(
@@ -692,6 +935,10 @@ for (const level of generatedLevels) {
     }
     const startGoalItems = [...retryScene.topBackDecor, ...retryScene.topFrontDecor]
       .filter(item => item.role !== "FLOATING");
+    for (const item of startGoalItems.filter(item => item.category === "MUSHROOMS")) {
+      startGoalMushroomCoverage.add(item.sprite);
+      assert.equal(item.nominalWidth, 40);
+    }
     startGoalItems.forEach(item => startGoalCategoryCoverage.add(item.category));
     assert.ok(
       retryScene.topBackDecor
@@ -736,16 +983,23 @@ for (const level of generatedLevels) {
       item.layer === "back" &&
       item.baselineOffset >= 1 &&
       item.baselineOffset <= 2 &&
-      (
-        (item.sprite === "treeRoundFlowering" && item.nominalWidth === 132) ||
-        (item.sprite === "treeSaplingLeafy" && item.nominalWidth === 60)
+      item.nominalWidth === (
+        item.sprite === decorSpriteNamesByCategory.TREES[0] ? 60 : 132
       )
     )));
-    for (const tree of startGoalTrees.filter(item => item.sprite === "treeRoundFlowering")) {
-      const visibleHeight = 392 * (tree.nominalWidth / 329);
-      const previousVisibleHeight = 392 * (88 / 329);
-      assert.ok(Math.abs(visibleHeight - previousVisibleHeight * 1.5) < 1e-12);
+    for (const tree of startGoalTrees.filter(item => (
+      item.sprite !== decorSpriteNamesByCategory.TREES[0]
+    ))) {
+      const visibleHeight = decorGridProfiles[tree.sprite].visibleBounds.h *
+        (tree.nominalWidth / 448);
+      assert.ok(visibleHeight >= 120, `${tree.sprite} must retain a hero-tree silhouette`);
     }
+    assert.ok(startGoalItems.filter(item => (
+      item.category === "BUSHES" && item.layer === "back"
+    )).every(item => item.nominalWidth === 66));
+    assert.ok(startGoalItems.filter(item => (
+      item.category === "BUSHES" && item.layer === "front"
+    )).every(item => item.nominalWidth === 34));
     for (const role of ["START_PLATFORM", "GOAL_TOWER"]) {
       const roleItems = startGoalItems.filter(item => item.role === role);
       const backCount = roleItems.filter(item => item.layer === "back").length;
@@ -765,6 +1019,15 @@ for (const level of generatedLevels) {
       "separate visual namespaces must keep start and goal distinct"
     );
     for (const item of [...retryScene.topBackDecor, ...retryScene.topFrontDecor]) {
+      assert.ok(
+        item.sizeRole in meadowManifest.decor.gridV2.roleWidths[item.category],
+        `${item.sprite} must use a generic category size role`
+      );
+      assert.equal(
+        item.nominalWidth,
+        meadowManifest.decor.gridV2.roleWidths[item.category][item.sizeRole],
+        `${item.sprite} runtime width must come from its size role`
+      );
       assert.ok(item.baselineX >= item.platformX);
       assert.ok(item.baselineX <= item.platformX + item.platformW);
       assert.equal(item.baselineY, item.platformY + item.baselineOffset);
@@ -815,16 +1078,32 @@ assert.ok(startDecorCounts.size > 1, "start density should vary across levels an
 assert.ok(goalDecorCounts.size > 1, "goal density should vary across levels and retries");
 assert.deepEqual(
   [...renderedTreeVariants].sort(),
-  ["treeRoundFlowering", "treeSaplingLeafy"],
-  "both mapped tree variants should participate in retry layouts"
+  [...decorSpriteNamesByCategory.TREES].sort(),
+  "all six fixed-grid tree variants should participate in retry layouts"
 );
+assert.deepEqual(
+  [...floatingMushroomCoverage].sort(),
+  mushroomGridSpriteNames,
+  "all six fixed-grid Mushroom variants should participate in deterministic floating layouts"
+);
+assert.deepEqual(
+  [...startGoalMushroomCoverage].sort(),
+  mushroomGridSpriteNames,
+  "all six fixed-grid Mushroom variants should participate in Start/Goal layouts"
+);
+for (let seed = 0; seed < 2000 && goalSeamCoverCoverage.size < 42; seed++) {
+  const sweepScene = visualApi.getScene({
+    seed: 10000 + seed,
+    platforms: [{x: 1060, y: 370, w: 220, h: 350}]
+  }, seed % 11);
+  sweepScene.goalSeamCoverProps.forEach(item => goalSeamCoverCoverage.add(item.sprite));
+}
 assert.deepEqual(
   [...goalSeamCoverCoverage].sort(),
   [...normalGoalSeamDecorNames].sort(),
-  "every normal Meadow decor sprite, including both trees, must be eligible at the goal seam"
+  "all 42 Meadow grid sprites must be eligible at the goal seam"
 );
-assert.ok(goalSeamCoverCoverage.has("treeSaplingLeafy"));
-assert.ok(goalSeamCoverCoverage.has("treeRoundFlowering"));
+assert.ok(decorSpriteNamesByCategory.TREES.every(name => goalSeamCoverCoverage.has(name)));
 const goalSeamSizeScore = mapping => {
   const scale = mapping.nominalWidth / mapping.motifWidth;
   return Math.max(
@@ -857,23 +1136,17 @@ assert.ok(
   "asset draws must use standalone-image or source-slice overloads"
 );
 
-const topDecorMappings = {
-  grassCompactFan: ["grass", [208, 104, 320, 224], [162, 202], 256],
-  grassTallFan: ["grass", [816, 16, 496, 320], [247.5, 291], 447],
-  grassWildArching: ["grass", [736, 320, 656, 384], [327, 354], 588],
-  flowersWhiteDaisy: ["flowers", [48, 64, 416, 384], [204, 343], 342],
-  flowersLowMeadowMix: ["flowers", [448, 528, 608, 432], [301, 379], 532],
-  mushroomRedSingle: ["mushrooms", [112, 176, 336, 288], [164.5, 251], 261],
-  mushroomsRedPair: ["mushrooms", [544, 112, 416, 352], [207.5, 317], 349],
-  bushLayeredCluster: ["bushes", [544, 320, 496, 400], [248.5, 364], 447],
-  bushTallLeafy: ["bushes", [0, 336, 560, 464], [280, 440], 502],
-  stoneMossySingle: ["stones", [176, 64, 368, 288], [182, 235], 286],
-  stoneMossyFlat: ["stones", [80, 368, 672, 288], [335.5, 246], 591],
-  tuftSimpleFan: ["tufts", [32, 208, 416, 288], [205.5, 250], 357],
-  tuftBroadLeafFan: ["tufts", [480, 176, 576, 336], [287.5, 287], 511],
-  treeSaplingLeafy: ["trees", [64, 144, 288, 320], [146.5, 298], 207],
-  treeRoundFlowering: ["trees", [960, 16, 416, 464], [204.5, 428], 329]
-};
+const topDecorMappings = Object.fromEntries(decorGridDefinitions.flatMap(
+  definition => definition.sprites.map((name, index) => [
+    name,
+    [
+      definition.asset.slice("decor_top_".length),
+      [index % 3 * 512, Math.floor(index / 3) * 512, 512, 512],
+      [256, 448],
+      448
+    ]
+  ])
+));
 const previewFixture = {
   seed: 91,
   platforms: [
@@ -925,6 +1198,28 @@ function assertTopDecorLayer(items, drawLayer) {
       `${item.sprite} must retain deliberate transparent horizontal padding`
     );
   }
+}
+for (const [name, mapping] of Object.entries(topDecorMappings)) {
+  const nominalWidth = goalSeamDecorMappings[name].nominalWidth;
+  const item = {
+    sprite: name,
+    baselineX: 300,
+    baselineY: 200,
+    nominalWidth
+  };
+  drawCalls.length = 0;
+  assert.equal(visualApi.drawTopBackDecor(fakeCanvasContext, {topBackDecor: [item]}), true);
+  assert.equal(drawCalls.length, 1);
+  const call = drawCalls[0];
+  const scale = nominalWidth / 448;
+  assert.deepEqual(call.slice(1, 5), mapping[1]);
+  assert.deepEqual(mapping[1].slice(2), [512, 512]);
+  assert.deepEqual(mapping[2], [256, 448]);
+  assert.equal(mapping[3], 448);
+  assert.equal(call[7], 512 * scale);
+  assert.equal(call[8], 512 * scale);
+  assert.ok(Math.abs(call[5] + 256 * scale - item.baselineX) < 1e-9);
+  assert.ok(Math.abs(call[6] + 448 * scale - item.baselineY) < 1e-9);
 }
 assertTopDecorLayer(
   previewScene.topBackDecor,
@@ -1450,6 +1745,17 @@ const topDecorPreviewSource = visualSource.slice(
   visualSource.indexOf("    function traceRoundedRect")
 );
 assert.doesNotMatch(topDecorPreviewSource, /Math\.random\(/);
+assert.doesNotMatch(topDecorPreviewSource, /mushroomRedSingle|mushroomsRedPair/);
+assert.doesNotMatch(
+  topDecorPreviewSource,
+  /standingAnchor|grassCompactFan|grassTallFan|grassWildArching|flowersWhiteDaisy|flowersLowMeadowMix|bushLayeredCluster|bushTallLeafy|stoneMossySingle|stoneMossyFlat|tuftSimpleFan|tuftBroadLeafFan|treeSaplingLeafy|treeRoundFlowering/
+);
+assert.match(visualSource, /function createDecorGridSprite\(category, slotIndex\)/);
+assert.match(visualSource, /x: slotIndex % contract\.columns \* contract\.slot\.w/);
+assert.match(visualSource, /y: Math\.floor\(slotIndex \/ contract\.columns\) \* contract\.slot\.h/);
+assert.match(visualSource, /anchor: contract\.anchor/);
+assert.match(visualSource, /const backAnchor = layer === "back" \? sprite\.anchor : null/);
+assert.match(visualSource, /const anchor = sprite\.anchor/);
 
 const rendererSource = read("js/renderer.js");
 const rendererPlatformStart = rendererSource.indexOf("  function drawPlatforms(");

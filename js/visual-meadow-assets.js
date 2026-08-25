@@ -21,6 +21,110 @@
       "meadow_overlay_body_03"
     ]);
     const FAMILY_A_SOURCE = Object.freeze({x: 0, y: 0, w: 352, h: 128});
+    const TOP_DECOR_GRID_CONTRACT = Object.freeze({
+      sheet: Object.freeze({w: 1536, h: 1024}),
+      columns: 3,
+      rows: 2,
+      slot: Object.freeze({w: 512, h: 512}),
+      anchor: Object.freeze({x: 256, y: 448}),
+      motifWidth: 448,
+      alphaThreshold: 8,
+      contactBand: Object.freeze({top: 432, bottom: 456}),
+      safeArea: Object.freeze({
+        robust: Object.freeze({left: 32, top: 32, right: 479, bottom: 448}),
+        robustFringeBottom: 456,
+        faintAlphaBottom: 460
+      })
+    });
+    const TOP_DECOR_ROLE_WIDTHS = Object.freeze({
+      GRASS: Object.freeze({COMPACT: 34, WIDE: 62, LARGE: 78}),
+      FLOWERS: Object.freeze({COMPACT: 34, STANDARD: 52}),
+      MUSHROOMS: Object.freeze({COMPACT: 30, STANDARD: 40}),
+      BUSHES: Object.freeze({COMPACT: 34, LARGE: 66}),
+      STONES: Object.freeze({COMPACT: 32, WIDE: 60}),
+      TUFTS: Object.freeze({COMPACT: 32, STANDARD: 40}),
+      TREES: Object.freeze({WIDE: 60, HERO: 132})
+    });
+
+    function createDecorSpriteNames(prefix) {
+      return Object.freeze(Array.from(
+        {length: 6},
+        (_, index) => `${prefix}${String(index + 1).padStart(2, "0")}`
+      ));
+    }
+
+    const TOP_DECOR_GRID_CATEGORIES = Object.freeze({
+      GRASS: Object.freeze({
+        asset: "decor_top_grass",
+        sprites: createDecorSpriteNames("grass"),
+        slotRoles: Object.freeze(["COMPACT", "WIDE", "LARGE", "WIDE", "LARGE", "LARGE"])
+      }),
+      FLOWERS: Object.freeze({
+        asset: "decor_top_flowers",
+        sprites: createDecorSpriteNames("flower"),
+        slotRoles: Object.freeze(Array(6).fill("STANDARD"))
+      }),
+      MUSHROOMS: Object.freeze({
+        asset: "decor_top_mushrooms",
+        sprites: createDecorSpriteNames("mushroom"),
+        slotRoles: Object.freeze(Array(6).fill("STANDARD"))
+      }),
+      BUSHES: Object.freeze({
+        asset: "decor_top_bushes",
+        sprites: createDecorSpriteNames("bush"),
+        slotRoles: Object.freeze(Array(6).fill("LARGE"))
+      }),
+      STONES: Object.freeze({
+        asset: "decor_top_stones",
+        sprites: createDecorSpriteNames("stone"),
+        slotRoles: Object.freeze(["COMPACT", "WIDE", "WIDE", "WIDE", "WIDE", "WIDE"])
+      }),
+      TUFTS: Object.freeze({
+        asset: "decor_top_tufts",
+        sprites: createDecorSpriteNames("tuft"),
+        slotRoles: Object.freeze(Array(6).fill("STANDARD"))
+      }),
+      TREES: Object.freeze({
+        asset: "decor_top_trees",
+        sprites: createDecorSpriteNames("tree"),
+        slotRoles: Object.freeze(["WIDE", "HERO", "HERO", "HERO", "HERO", "HERO"])
+      })
+    });
+    const GRASS_DECOR_SPRITE_NAMES = TOP_DECOR_GRID_CATEGORIES.GRASS.sprites;
+    const FLOWER_DECOR_SPRITE_NAMES = TOP_DECOR_GRID_CATEGORIES.FLOWERS.sprites;
+    const MUSHROOM_DECOR_SPRITE_NAMES = TOP_DECOR_GRID_CATEGORIES.MUSHROOMS.sprites;
+    const BUSH_DECOR_SPRITE_NAMES = TOP_DECOR_GRID_CATEGORIES.BUSHES.sprites;
+    const STONE_DECOR_SPRITE_NAMES = TOP_DECOR_GRID_CATEGORIES.STONES.sprites;
+    const TUFT_DECOR_SPRITE_NAMES = TOP_DECOR_GRID_CATEGORIES.TUFTS.sprites;
+    const TREE_DECOR_SPRITE_NAMES = TOP_DECOR_GRID_CATEGORIES.TREES.sprites;
+
+    function getDecorRoleWidth(category, sizeRole) {
+      return TOP_DECOR_ROLE_WIDTHS[category][sizeRole];
+    }
+
+    function createDecorGridSprite(category, slotIndex) {
+      const contract = TOP_DECOR_GRID_CONTRACT;
+      const categoryContract = TOP_DECOR_GRID_CATEGORIES[category];
+      const sizeRole = categoryContract.slotRoles[slotIndex];
+      return Object.freeze({
+        asset: categoryContract.asset,
+        category,
+        source: Object.freeze({
+          x: slotIndex % contract.columns * contract.slot.w,
+          y: Math.floor(slotIndex / contract.columns) * contract.slot.h,
+          w: contract.slot.w,
+          h: contract.slot.h
+        }),
+        anchor: contract.anchor,
+        alphaProfile: categoryContract.sprites[slotIndex],
+        visibleBounds: Object.freeze({x: 32, y: 32, w: 448, h: 425}),
+        visibleBase: Object.freeze({left: 32, right: 479}),
+        motifWidth: contract.motifWidth,
+        sizeRole,
+        nominalWidth: getDecorRoleWidth(category, sizeRole)
+      });
+    }
+
     const ASSET_PATHS = Object.freeze({
       background: "assets/environments/meadow/background/meadow_background.png",
       background_sky_base: "assets/environments/meadow/background/meadow_background_sky_base.png",
@@ -71,171 +175,33 @@
       meadow_overlay_body_01: Object.freeze({w: 352, h: 128}),
       meadow_overlay_body_02: Object.freeze({w: 352, h: 128}),
       meadow_overlay_body_03: Object.freeze({w: 352, h: 128}),
-      decor_top_grass: Object.freeze({w: 1448, h: 1086}),
+      decor_top_grass: Object.freeze({w: 1536, h: 1024}),
       decor_top_flowers: Object.freeze({w: 1536, h: 1024}),
       decor_top_mushrooms: Object.freeze({w: 1536, h: 1024}),
-      decor_top_bushes: Object.freeze({w: 1448, h: 1086}),
+      decor_top_bushes: Object.freeze({w: 1536, h: 1024}),
       decor_top_stones: Object.freeze({w: 1536, h: 1024}),
       decor_top_tufts: Object.freeze({w: 1536, h: 1024}),
-      decor_top_trees: Object.freeze({w: 1448, h: 1086}),
+      decor_top_trees: Object.freeze({w: 1536, h: 1024}),
       portal: Object.freeze({w: 256, h: 272}),
       bottom_spike_tile: Object.freeze({w: 256, h: 320})
     });
-    const TOP_DECOR_SPRITES = Object.freeze({
-      grassCompactFan: Object.freeze({
-        asset: "decor_top_grass",
-        category: "GRASS",
-        source: Object.freeze({x: 208, y: 104, w: 320, h: 224}),
-        anchor: Object.freeze({x: 162, y: 202}),
-        visibleBounds: Object.freeze({x: 37, y: 30, w: 248, h: 164}),
-        motifWidth: 256,
-        nominalWidth: 34
-      }),
-      grassTallFan: Object.freeze({
-        asset: "decor_top_grass",
-        category: "GRASS",
-        source: Object.freeze({x: 816, y: 16, w: 496, h: 320}),
-        anchor: Object.freeze({x: 247.5, y: 291}),
-        standingAnchor: Object.freeze({x: 244, y: 279}),
-        visibleBounds: Object.freeze({x: 29, y: 24, w: 441, h: 256}),
-        visibleBase: Object.freeze({left: 69, right: 413}),
-        motifWidth: 447,
-        nominalWidth: 62
-      }),
-      grassWildArching: Object.freeze({
-        asset: "decor_top_grass",
-        category: "GRASS",
-        source: Object.freeze({x: 736, y: 320, w: 656, h: 384}),
-        anchor: Object.freeze({x: 327, y: 354}),
-        standingAnchor: Object.freeze({x: 331.5, y: 341}),
-        visibleBounds: Object.freeze({x: 40, y: 20, w: 578, h: 322}),
-        visibleBase: Object.freeze({left: 95, right: 568}),
-        motifWidth: 588,
-        nominalWidth: 78
-      }),
-      flowersWhiteDaisy: Object.freeze({
-        asset: "decor_top_flowers",
-        category: "FLOWERS",
-        source: Object.freeze({x: 48, y: 64, w: 416, h: 384}),
-        anchor: Object.freeze({x: 204, y: 343}),
-        visibleBounds: Object.freeze({x: 35, y: 47, w: 337, h: 298}),
-        motifWidth: 342,
-        nominalWidth: 46
-      }),
-      flowersLowMeadowMix: Object.freeze({
-        asset: "decor_top_flowers",
-        category: "FLOWERS",
-        source: Object.freeze({x: 448, y: 528, w: 608, h: 432}),
-        anchor: Object.freeze({x: 301, y: 379}),
-        visibleBounds: Object.freeze({x: 43, y: 37, w: 519, h: 346}),
-        motifWidth: 532,
-        nominalWidth: 60
-      }),
-      mushroomRedSingle: Object.freeze({
-        asset: "decor_top_mushrooms",
-        category: "MUSHROOMS",
-        source: Object.freeze({x: 112, y: 176, w: 336, h: 288}),
-        anchor: Object.freeze({x: 164.5, y: 251}),
-        visibleBounds: Object.freeze({x: 37, y: 35, w: 255, h: 218}),
-        motifWidth: 261,
-        nominalWidth: 34
-      }),
-      mushroomsRedPair: Object.freeze({
-        asset: "decor_top_mushrooms",
-        category: "MUSHROOMS",
-        source: Object.freeze({x: 544, y: 112, w: 416, h: 352}),
-        anchor: Object.freeze({x: 207.5, y: 317}),
-        standingAnchor: Object.freeze({x: 188.5, y: 317}),
-        visibleBounds: Object.freeze({x: 36, y: 40, w: 339, h: 279}),
-        visibleBase: Object.freeze({left: 48, right: 329}),
-        motifWidth: 349,
-        nominalWidth: 48
-      }),
-      bushLayeredCluster: Object.freeze({
-        asset: "decor_top_bushes",
-        category: "BUSHES",
-        source: Object.freeze({x: 544, y: 320, w: 496, h: 400}),
-        anchor: Object.freeze({x: 248.5, y: 364}),
-        standingAnchor: Object.freeze({x: 250.5, y: 356}),
-        visibleBounds: Object.freeze({x: 29, y: 35, w: 436, h: 323}),
-        visibleBase: Object.freeze({left: 64, right: 437}),
-        motifWidth: 447,
-        nominalWidth: 66
-      }),
-      bushTallLeafy: Object.freeze({
-        asset: "decor_top_bushes",
-        category: "BUSHES",
-        source: Object.freeze({x: 0, y: 336, w: 560, h: 464}),
-        anchor: Object.freeze({x: 280, y: 440}),
-        standingAnchor: Object.freeze({x: 259.5, y: 430}),
-        visibleBounds: Object.freeze({x: 33, y: 30, w: 492, h: 404}),
-        visibleBase: Object.freeze({left: 63, right: 452}),
-        motifWidth: 502,
-        nominalWidth: 68
-      }),
-      stoneMossySingle: Object.freeze({
-        asset: "decor_top_stones",
-        category: "STONES",
-        source: Object.freeze({x: 176, y: 64, w: 368, h: 288}),
-        anchor: Object.freeze({x: 182, y: 235}),
-        visibleBounds: Object.freeze({x: 43, y: 41, w: 280, h: 196}),
-        motifWidth: 286,
-        nominalWidth: 32
-      }),
-      stoneMossyFlat: Object.freeze({
-        asset: "decor_top_stones",
-        category: "STONES",
-        source: Object.freeze({x: 80, y: 368, w: 672, h: 288}),
-        anchor: Object.freeze({x: 335.5, y: 246}),
-        visibleBounds: Object.freeze({x: 43, y: 37, w: 587, h: 210}),
-        motifWidth: 591,
-        nominalWidth: 60
-      }),
-      tuftSimpleFan: Object.freeze({
-        asset: "decor_top_tufts",
-        category: "TUFTS",
-        source: Object.freeze({x: 32, y: 208, w: 416, h: 288}),
-        anchor: Object.freeze({x: 205.5, y: 250}),
-        visibleBounds: Object.freeze({x: 33, y: 45, w: 344, h: 207}),
-        motifWidth: 357,
-        nominalWidth: 32
-      }),
-      tuftBroadLeafFan: Object.freeze({
-        asset: "decor_top_tufts",
-        category: "TUFTS",
-        source: Object.freeze({x: 480, y: 176, w: 576, h: 336}),
-        anchor: Object.freeze({x: 287.5, y: 287}),
-        visibleBounds: Object.freeze({x: 35, y: 48, w: 501, h: 241}),
-        motifWidth: 511,
-        nominalWidth: 48
-      }),
-      treeSaplingLeafy: Object.freeze({
-        asset: "decor_top_trees",
-        category: "TREES",
-        source: Object.freeze({x: 64, y: 144, w: 288, h: 320}),
-        anchor: Object.freeze({x: 146.5, y: 298}),
-        standingAnchor: Object.freeze({x: 157, y: 285}),
-        visibleBounds: Object.freeze({x: 46, y: 34, w: 200, h: 252}),
-        visibleBase: Object.freeze({left: 109, right: 201}),
-        motifWidth: 207,
-        nominalWidth: 32
-      }),
-      treeRoundFlowering: Object.freeze({
-        asset: "decor_top_trees",
-        category: "TREES",
-        source: Object.freeze({x: 960, y: 16, w: 416, h: 464}),
-        anchor: Object.freeze({x: 204.5, y: 428}),
-        standingAnchor: Object.freeze({x: 204.5, y: 419}),
-        visibleBounds: Object.freeze({x: 48, y: 43, w: 317, h: 377}),
-        visibleBase: Object.freeze({left: 132, right: 279}),
-        motifWidth: 329,
-        nominalWidth: 59
-      })
-    });
+    const TOP_DECOR_SPRITES = Object.freeze(Object.fromEntries(
+      Object.entries(TOP_DECOR_GRID_CATEGORIES).flatMap(([category, categoryContract]) => (
+        categoryContract.sprites.map((name, index) => [
+          name,
+          createDecorGridSprite(category, index)
+        ])
+      ))
+    ));
     const TOP_DECOR_ASSET_NAMES = Object.freeze(
       [...new Set(Object.values(TOP_DECOR_SPRITES).map(sprite => sprite.asset))]
     );
     const TOP_DECOR_SPRITE_NAMES = Object.freeze(Object.keys(TOP_DECOR_SPRITES));
+    const TOP_DECOR_SPRITE_NAMES_BY_ASSET = Object.freeze(Object.fromEntries(
+      Object.values(TOP_DECOR_GRID_CATEGORIES).map(categoryContract => (
+        [categoryContract.asset, categoryContract.sprites]
+      ))
+    ));
     const TOP_DECOR_PREVIEW_CONTRACT = Object.freeze({
       floatingBaseline: 2,
       startGoalBackMinimum: 1,
@@ -346,6 +312,22 @@
           goalSalt: MEADOW_BODY_OVERLAY_GOAL,
           mode: "single-goal-overlay"
         })
+      }),
+      decor: Object.freeze({
+        gridV2: Object.freeze({
+          contract: TOP_DECOR_GRID_CONTRACT,
+          roleWidths: TOP_DECOR_ROLE_WIDTHS,
+          sheets: Object.freeze(Object.fromEntries(
+            Object.entries(TOP_DECOR_GRID_CATEGORIES).map(([category, categoryContract]) => [
+              category,
+              Object.freeze({
+                asset: categoryContract.asset,
+                sprites: categoryContract.sprites,
+                slotRoles: categoryContract.slotRoles
+              })
+            ])
+          ))
+        })
       })
     });
     const PORTAL_SOURCE = Object.freeze({x: 9, y: 21, w: 239, h: 248});
@@ -376,7 +358,124 @@
     const assets = {};
     const sceneCache = new WeakMap();
     const floatingAlphaProfiles = {};
+    const decorAlphaProfiles = {};
     let floatingContentFit = null;
+
+    function analyzeRobustDecorComponent(pixels, width, height) {
+      const contract = TOP_DECOR_GRID_CONTRACT;
+      const visited = new Uint8Array(width * height);
+      const queue = new Int32Array(width * height);
+      let best = null;
+
+      for (let start = 0; start < visited.length; start++) {
+        if (visited[start] || pixels[start * 4 + 3] <= contract.alphaThreshold) continue;
+        let head = 0;
+        let tail = 0;
+        let count = 0;
+        let left = width;
+        let right = -1;
+        let top = height;
+        let bottom = -1;
+        let baseLeft = width;
+        let baseRight = -1;
+        let basePixelCount = 0;
+        let baselinePixelCount = 0;
+        visited[start] = 1;
+        queue[tail++] = start;
+
+        while (head < tail) {
+          const pixelIndex = queue[head++];
+          const x = pixelIndex % width;
+          const y = Math.floor(pixelIndex / width);
+          count += 1;
+          left = Math.min(left, x);
+          right = Math.max(right, x);
+          top = Math.min(top, y);
+          bottom = Math.max(bottom, y);
+          if (y >= contract.contactBand.top && y <= contract.contactBand.bottom) {
+            baseLeft = Math.min(baseLeft, x);
+            baseRight = Math.max(baseRight, x);
+            basePixelCount += 1;
+          }
+          if (y === contract.anchor.y) baselinePixelCount += 1;
+
+          for (let offsetY = -1; offsetY <= 1; offsetY++) {
+            for (let offsetX = -1; offsetX <= 1; offsetX++) {
+              if (offsetX === 0 && offsetY === 0) continue;
+              const neighborX = x + offsetX;
+              const neighborY = y + offsetY;
+              if (
+                neighborX < 0 || neighborX >= width ||
+                neighborY < 0 || neighborY >= height
+              ) continue;
+              const neighborIndex = neighborY * width + neighborX;
+              if (
+                visited[neighborIndex] ||
+                pixels[neighborIndex * 4 + 3] <= contract.alphaThreshold
+              ) continue;
+              visited[neighborIndex] = 1;
+              queue[tail++] = neighborIndex;
+            }
+          }
+        }
+
+        if (!best || count > best.count) {
+          best = {
+            count,
+            left,
+            right,
+            top,
+            bottom,
+            baseLeft,
+            baseRight,
+            basePixelCount,
+            baselinePixelCount
+          };
+        }
+      }
+
+      if (!best) return null;
+      const hasContact = best.basePixelCount > 0;
+      return Object.freeze({
+        visibleBounds: Object.freeze({
+          x: best.left,
+          y: best.top,
+          w: best.right - best.left + 1,
+          h: best.bottom - best.top + 1
+        }),
+        visibleBase: Object.freeze({
+          left: hasContact ? best.baseLeft : best.left,
+          right: hasContact ? best.baseRight : best.right
+        }),
+        robustPixelCount: best.count,
+        contactPixelCount: best.basePixelCount,
+        baselinePixelCount: best.baselinePixelCount
+      });
+    }
+
+    function analyzeDecorGridAsset(image, spriteNames) {
+      if (typeof document === "undefined" || !document.createElement) return;
+      try {
+        const surface = document.createElement("canvas");
+        surface.width = image.naturalWidth;
+        surface.height = image.naturalHeight;
+        const context = surface.getContext("2d", {willReadFrequently: true});
+        if (!context) return;
+        context.clearRect(0, 0, surface.width, surface.height);
+        context.drawImage(image, 0, 0);
+        for (const name of spriteNames) {
+          const source = TOP_DECOR_SPRITES[name].source;
+          const profile = analyzeRobustDecorComponent(
+            context.getImageData(source.x, source.y, source.w, source.h).data,
+            source.w,
+            source.h
+          );
+          if (profile) decorAlphaProfiles[name] = profile;
+        }
+      } catch {
+        // The declarative safe-area bounds remain a conservative fallback.
+      }
+    }
 
     function createFloatingContentFit(sourceZones) {
       const contract = PLATFORM_VISUAL_CONTRACT.floating.contentFit;
@@ -479,6 +578,8 @@
               updateFloatingContentFit();
             }
           }
+          const decorSpriteNames = TOP_DECOR_SPRITE_NAMES_BY_ASSET[name];
+          if (decorSpriteNames) analyzeDecorGridAsset(image, decorSpriteNames);
           resolve(true);
         };
         image.onerror = () => resolve(false);
@@ -578,35 +679,34 @@
     }
 
     const FLOATING_TOP_DECOR_SEQUENCE = Object.freeze([
-      Object.freeze({sprite: "grassCompactFan", nominalWidth: 30}),
-      Object.freeze({sprite: "flowersWhiteDaisy", nominalWidth: 34}),
-      Object.freeze({sprite: "mushroomRedSingle", nominalWidth: 30}),
-      Object.freeze({sprite: "tuftSimpleFan", nominalWidth: 28}),
-      Object.freeze({sprite: "stoneMossySingle", nominalWidth: 28}),
-      Object.freeze({sprite: "bushLayeredCluster", nominalWidth: 32})
+      Object.freeze({sprites: GRASS_DECOR_SPRITE_NAMES, sizeRole: "COMPACT"}),
+      Object.freeze({sprites: FLOWER_DECOR_SPRITE_NAMES, sizeRole: "COMPACT"}),
+      Object.freeze({sprites: MUSHROOM_DECOR_SPRITE_NAMES, sizeRole: "COMPACT"}),
+      Object.freeze({sprites: TUFT_DECOR_SPRITE_NAMES, sizeRole: "COMPACT"}),
+      Object.freeze({sprites: STONE_DECOR_SPRITE_NAMES, sizeRole: "COMPACT"}),
+      Object.freeze({sprites: BUSH_DECOR_SPRITE_NAMES, sizeRole: "COMPACT"})
     ]);
-    const START_GOAL_TREE_DECOR = Object.freeze([
-      Object.freeze({sprite: "treeRoundFlowering", layer: "back", nominalWidth: 132}),
-      Object.freeze({sprite: "treeSaplingLeafy", layer: "back", nominalWidth: 60})
-    ]);
+    const START_GOAL_TREE_DECOR = Object.freeze(TREE_DECOR_SPRITE_NAMES.map(sprite => (
+      Object.freeze({sprite, layer: "back"})
+    )));
     const START_GOAL_BACK_DECOR = Object.freeze([
-      Object.freeze({sprite: "bushLayeredCluster", layer: "back"}),
-      Object.freeze({sprite: "bushTallLeafy", layer: "back"}),
-      Object.freeze({sprite: "grassTallFan", layer: "back"}),
-      Object.freeze({sprite: "grassWildArching", layer: "back"}),
-      Object.freeze({sprite: "mushroomsRedPair", layer: "back"})
+      Object.freeze({sprites: Object.freeze(BUSH_DECOR_SPRITE_NAMES.slice(0, 3)), layer: "back"}),
+      Object.freeze({sprites: Object.freeze(BUSH_DECOR_SPRITE_NAMES.slice(3)), layer: "back"}),
+      Object.freeze({sprites: Object.freeze(GRASS_DECOR_SPRITE_NAMES.slice(1, 3)), layer: "back"}),
+      Object.freeze({sprites: Object.freeze(GRASS_DECOR_SPRITE_NAMES.slice(3)), layer: "back"}),
+      Object.freeze({sprites: MUSHROOM_DECOR_SPRITE_NAMES, layer: "back"})
     ]);
     const START_GOAL_FRONT_DECOR = Object.freeze([
-      Object.freeze({sprite: "grassCompactFan", layer: "front"}),
-      Object.freeze({sprite: "flowersWhiteDaisy", layer: "front"}),
-      Object.freeze({sprite: "flowersLowMeadowMix", layer: "front"}),
-      Object.freeze({sprite: "mushroomRedSingle", layer: "front"}),
-      Object.freeze({sprite: "mushroomsRedPair", layer: "front", nominalWidth: 38}),
-      Object.freeze({sprite: "bushLayeredCluster", layer: "front", nominalWidth: 36}),
-      Object.freeze({sprite: "stoneMossySingle", layer: "front"}),
-      Object.freeze({sprite: "stoneMossyFlat", layer: "front"}),
-      Object.freeze({sprite: "tuftSimpleFan", layer: "front"}),
-      Object.freeze({sprite: "tuftBroadLeafFan", layer: "front"})
+      Object.freeze({sprite: GRASS_DECOR_SPRITE_NAMES[0], layer: "front"}),
+      Object.freeze({sprites: Object.freeze(FLOWER_DECOR_SPRITE_NAMES.slice(0, 3)), layer: "front"}),
+      Object.freeze({sprites: Object.freeze(FLOWER_DECOR_SPRITE_NAMES.slice(3)), layer: "front"}),
+      Object.freeze({sprites: Object.freeze(MUSHROOM_DECOR_SPRITE_NAMES.slice(0, 3)), layer: "front"}),
+      Object.freeze({sprites: Object.freeze(MUSHROOM_DECOR_SPRITE_NAMES.slice(3)), layer: "front"}),
+      Object.freeze({sprites: BUSH_DECOR_SPRITE_NAMES, layer: "front", sizeRole: "COMPACT"}),
+      Object.freeze({sprite: STONE_DECOR_SPRITE_NAMES[0], layer: "front"}),
+      Object.freeze({sprites: Object.freeze(STONE_DECOR_SPRITE_NAMES.slice(1)), layer: "front"}),
+      Object.freeze({sprites: Object.freeze(TUFT_DECOR_SPRITE_NAMES.slice(0, 3)), layer: "front"}),
+      Object.freeze({sprites: Object.freeze(TUFT_DECOR_SPRITE_NAMES.slice(3)), layer: "front"})
     ]);
 
     function randomInteger(random, minimum, maximum) {
@@ -617,30 +717,46 @@
       const available = [...source];
       const selected = [];
       while (selected.length < count && available.length > 0) {
-        selected.push(available.splice(randomInteger(random, 0, available.length - 1), 1)[0]);
+        const specification = available.splice(
+          randomInteger(random, 0, available.length - 1),
+          1
+        )[0];
+        if (specification.sprites) {
+          const {sprites, ...shared} = specification;
+          selected.push(Object.freeze({
+            ...shared,
+            sprite: sprites[randomInteger(random, 0, sprites.length - 1)]
+          }));
+        } else {
+          selected.push(specification);
+        }
       }
       return selected;
     }
 
-    function getDecorStandingAnchor(sprite) {
-      return sprite.standingAnchor ?? sprite.anchor;
+    function getDecorVisibleBounds(sprite) {
+      return decorAlphaProfiles[sprite.alphaProfile]?.visibleBounds ?? sprite.visibleBounds;
     }
 
     function getDecorVisibleBase(sprite) {
+      const analyzedBase = decorAlphaProfiles[sprite.alphaProfile]?.visibleBase;
+      if (analyzedBase) return analyzedBase;
       if (sprite.visibleBase) return sprite.visibleBase;
+      const visibleBounds = getDecorVisibleBounds(sprite);
       return Object.freeze({
-        left: sprite.visibleBounds.x,
-        right: sprite.visibleBounds.x + sprite.visibleBounds.w - 1
+        left: visibleBounds.x,
+        right: visibleBounds.x + visibleBounds.w - 1
       });
     }
 
     function getGoalSeamDecorProfile(name) {
       const sprite = TOP_DECOR_SPRITES[name];
-      const anchor = getDecorStandingAnchor(sprite);
+      const anchor = sprite.anchor;
+      const visibleBounds = getDecorVisibleBounds(sprite);
       const visibleBase = getDecorVisibleBase(sprite);
       const scale = sprite.nominalWidth / sprite.motifWidth;
-      const visibleWidth = sprite.visibleBounds.w * scale;
-      const visibleHeight = sprite.visibleBounds.h * scale;
+      const visibleWidth = visibleBounds.w * scale;
+      const visibleHeight = visibleBounds.h * scale;
       const sizeScore = Math.max(1, visibleWidth / 38, visibleHeight / 30);
       return Object.freeze({
         name,
@@ -762,6 +878,7 @@
           baselineY: goalPlatform.y + GOAL_SEAM_COVER_BASELINE_OFFSET,
           baselineOffset: GOAL_SEAM_COVER_BASELINE_OFFSET,
           nominalWidth: profile.sprite.nominalWidth * fitScale,
+          sizeRole: profile.sprite.sizeRole,
           anchor: profile.anchor,
           visibleBase: profile.visibleBase
         };
@@ -788,9 +905,10 @@
         const jitter = (random() - 0.5) * (layer === "back" ? 8 : 6);
         const roleShift = role === "START_PLATFORM" ? retryShift : -retryShift;
         const sprite = TOP_DECOR_SPRITES[specification.sprite];
-        const backAnchor = layer === "back" ? sprite.standingAnchor : null;
+        const backAnchor = layer === "back" ? sprite.anchor : null;
         const backBase = backAnchor ? getDecorVisibleBase(sprite) : null;
-        const nominalWidth = specification.nominalWidth ?? sprite.nominalWidth;
+        const sizeRole = specification.sizeRole ?? sprite.sizeRole;
+        const nominalWidth = getDecorRoleWidth(sprite.category, sizeRole);
         const scale = nominalWidth / sprite.motifWidth;
         const minimumX = backAnchor
           ? 3 + (backAnchor.x - backBase.left) * scale
@@ -874,6 +992,7 @@
       return {
         sprite: specification.sprite,
         category: sprite.category,
+        sizeRole: specification.sizeRole ?? sprite.sizeRole,
         role,
         layer: getTopDecorPreviewLayer(role, specification),
         platformX: platform.x,
@@ -883,7 +1002,10 @@
         baselineX,
         baselineY: platform.y + baselineOffset,
         baselineOffset,
-        nominalWidth: specification.nominalWidth ?? sprite.nominalWidth,
+        nominalWidth: getDecorRoleWidth(
+          sprite.category,
+          specification.sizeRole ?? sprite.sizeRole
+        ),
         ...(specification.anchor
           ? {anchor: specification.anchor, visibleBase: specification.visibleBase}
           : {})
@@ -954,11 +1076,25 @@
           4: [0.14, 0.38, 0.62, 0.86]
         }[count];
         for (let slot = 0; slot < count; slot++) {
+          const sequenceIndex = index * 2 + slot;
           const selection = FLOATING_TOP_DECOR_SEQUENCE[
-            (index * 2 + slot) % FLOATING_TOP_DECOR_SEQUENCE.length
+            sequenceIndex % FLOATING_TOP_DECOR_SEQUENCE.length
           ];
+          let resolvedSelection = selection;
+          if (selection.sprites) {
+            const {sprites, ...shared} = selection;
+            resolvedSelection = {
+              ...shared,
+              sprite: sprites[
+                hashVisualSeed(
+                  levelSeed,
+                  (MEADOW_TOP_DECOR_START ^ MEADOW_TOP_DECOR_GOAL ^ sequenceIndex) >>> 0
+                ) % sprites.length
+              ]
+            };
+          }
           items.push(createTopDecorPreviewItem(platform, "FLOATING", {
-            ...selection,
+            ...resolvedSelection,
             xRatio: xRatios[slot],
             baselineOffset: TOP_DECOR_PREVIEW_CONTRACT.floatingBaseline
           }));
@@ -1520,7 +1656,8 @@
         loaded: Object.freeze(
           Object.fromEntries(Object.keys(ASSET_PATHS).map(name => [name, isReady(name)]))
         ),
-        floatingContentFit
+        floatingContentFit,
+        decorAlphaProfiles: Object.freeze({...decorAlphaProfiles})
       });
     }
 
