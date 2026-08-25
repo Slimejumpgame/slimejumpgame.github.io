@@ -3,6 +3,25 @@
   const tutorialDragHandImage = new Image();
   tutorialDragHandImage.src = "assets/tutorial/tutorial-drag-hand.png";
 
+  const SLIME_BODY_ASSET_PATH = "assets/slime/slime_body.png";
+  const SLIME_BODY_SOURCE_SIZE = 256;
+  const SLIME_BODY_DRAW_SIZE = 80;
+  const SLIME_BODY_REFERENCE_RADIUS = 30;
+  const SLIME_BODY_DARK_TONE_LUMINANCE = 96;
+  const SLIME_BODY_MAIN_TONE_LUMINANCE = 176;
+  const slimeBodyImage = new Image();
+  const slimeBodyTintCache = new Map();
+  const slimeBodyPendingPreviews = new Map();
+  let slimeBodySourcePixels = null;
+  slimeBodyImage.decoding = "async";
+  slimeBodyImage.onload = prepareSlimeBodySourcePixels;
+  slimeBodyImage.onerror = () => {
+    slimeBodySourcePixels = null;
+    slimeBodyTintCache.clear();
+    slimeBodyPendingPreviews.clear();
+  };
+  slimeBodyImage.src = SLIME_BODY_ASSET_PATH;
+
   const COLLECTIBLE_STAR_ASSET_PATH = "assets/collectibles/star_collectible.png";
   const COLLECTIBLE_STAR_DRAW_SIZE = 60;
   const collectibleStarImage = new Image();
@@ -3217,6 +3236,211 @@
     context.restore();
   }
 
+  function prepareSlimeBodySourcePixels() {
+    if (
+      slimeBodyImage.naturalWidth !== SLIME_BODY_SOURCE_SIZE ||
+      slimeBodyImage.naturalHeight !== SLIME_BODY_SOURCE_SIZE
+    ) {
+      slimeBodySourcePixels = null;
+      slimeBodyTintCache.clear();
+      slimeBodyPendingPreviews.clear();
+      return;
+    }
+
+    try {
+      const sourceCanvas = document.createElement("canvas");
+      sourceCanvas.width = SLIME_BODY_SOURCE_SIZE;
+      sourceCanvas.height = SLIME_BODY_SOURCE_SIZE;
+      const sourceContext = sourceCanvas.getContext("2d", {willReadFrequently: true});
+      if (!sourceContext) throw new Error("Slime body source canvas unavailable");
+      sourceContext.drawImage(slimeBodyImage, 0, 0);
+      slimeBodySourcePixels = sourceContext.getImageData(
+        0,
+        0,
+        SLIME_BODY_SOURCE_SIZE,
+        SLIME_BODY_SOURCE_SIZE
+      );
+      slimeBodyTintCache.clear();
+      redrawPendingSlimeBodyPreviews();
+    } catch {
+      slimeBodySourcePixels = null;
+      slimeBodyTintCache.clear();
+      slimeBodyPendingPreviews.clear();
+    }
+  }
+
+  function parseSlimeBodyHexColor(value, fallback) {
+    const match = /^#([0-9a-f]{6})$/i.exec(String(value ?? ""));
+    if (!match) return fallback;
+    const numeric = Number.parseInt(match[1], 16);
+    return [numeric >> 16, numeric >> 8 & 0xff, numeric & 0xff];
+  }
+
+  function mixSlimeBodyColor(from, to, ratio) {
+    const t = Math.max(0, Math.min(1, ratio));
+    return [
+      Math.round(from[0] + (to[0] - from[0]) * t),
+      Math.round(from[1] + (to[1] - from[1]) * t),
+      Math.round(from[2] + (to[2] - from[2]) * t)
+    ];
+  }
+
+  function getSlimeBodyToneColor(luminance, tones) {
+    if (luminance <= SLIME_BODY_DARK_TONE_LUMINANCE) {
+      return mixSlimeBodyColor(
+        tones.outline,
+        tones.dark,
+        luminance / SLIME_BODY_DARK_TONE_LUMINANCE
+      );
+    }
+    if (luminance <= SLIME_BODY_MAIN_TONE_LUMINANCE) {
+      return mixSlimeBodyColor(
+        tones.dark,
+        tones.main,
+        (luminance - SLIME_BODY_DARK_TONE_LUMINANCE) /
+          (SLIME_BODY_MAIN_TONE_LUMINANCE - SLIME_BODY_DARK_TONE_LUMINANCE)
+      );
+    }
+    return mixSlimeBodyColor(
+      tones.main,
+      tones.light,
+      (luminance - SLIME_BODY_MAIN_TONE_LUMINANCE) /
+        (255 - SLIME_BODY_MAIN_TONE_LUMINANCE)
+    );
+  }
+
+  function getSlimeBodyTintCacheKey(palette) {
+    return [palette.outline, palette.dark, palette.main, palette.light].join("|");
+  }
+
+  function getTintedSlimeBody(palette) {
+    if (
+      !slimeBodySourcePixels ||
+      !slimeBodyImage.complete ||
+      slimeBodyImage.naturalWidth !== SLIME_BODY_SOURCE_SIZE ||
+      slimeBodyImage.naturalHeight !== SLIME_BODY_SOURCE_SIZE
+    ) return null;
+
+    const cacheKey = getSlimeBodyTintCacheKey(palette);
+    const cachedCanvas = slimeBodyTintCache.get(cacheKey);
+    if (cachedCanvas) return cachedCanvas;
+
+    try {
+      const tintedCanvas = document.createElement("canvas");
+      tintedCanvas.width = SLIME_BODY_SOURCE_SIZE;
+      tintedCanvas.height = SLIME_BODY_SOURCE_SIZE;
+      const tintedContext = tintedCanvas.getContext("2d");
+      if (!tintedContext) return null;
+      const tintedPixels = tintedContext.createImageData(
+        SLIME_BODY_SOURCE_SIZE,
+        SLIME_BODY_SOURCE_SIZE
+      );
+      const sourceData = slimeBodySourcePixels.data;
+      const targetData = tintedPixels.data;
+      const tones = {
+        outline: parseSlimeBodyHexColor(palette.outline, [16, 28, 20]),
+        dark: parseSlimeBodyHexColor(palette.dark, [40, 168, 84]),
+        main: parseSlimeBodyHexColor(palette.main, [112, 246, 138]),
+        light: parseSlimeBodyHexColor(palette.light, [197, 255, 203])
+      };
+
+      for (let offset = 0; offset < sourceData.length; offset += 4) {
+        const alpha = sourceData[offset + 3];
+        if (alpha === 0) continue;
+        const luminance =
+          sourceData[offset] * 0.2126 +
+          sourceData[offset + 1] * 0.7152 +
+          sourceData[offset + 2] * 0.0722;
+        const color = getSlimeBodyToneColor(luminance, tones);
+        targetData[offset] = color[0];
+        targetData[offset + 1] = color[1];
+        targetData[offset + 2] = color[2];
+        targetData[offset + 3] = alpha;
+      }
+
+      tintedContext.putImageData(tintedPixels, 0, 0);
+      slimeBodyTintCache.set(cacheKey, tintedCanvas);
+      return tintedCanvas;
+    } catch {
+      return null;
+    }
+  }
+
+  function drawVectorSlimeBody(context, palette, radius, options) {
+    const preview = options.preview === true;
+    const scale = radius / SLIME_BODY_REFERENCE_RADIUS;
+    const gradient = preview
+      ? context.createRadialGradient(-9 * scale, -10 * scale, 2 * scale, 0, 0, radius)
+      : context.createRadialGradient(-10 * scale, -12 * scale, 3 * scale, 0, 0, radius);
+    gradient.addColorStop(0, palette.light);
+    gradient.addColorStop(preview ? 0.34 : 0.32, palette.main);
+    gradient.addColorStop(1, palette.dark);
+    context.fillStyle = gradient;
+    context.strokeStyle = palette.outline;
+    context.lineWidth = (preview ? 4 : 5) * scale;
+    context.beginPath();
+    context.arc(0, 0, radius, 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
+
+    if (preview && options.gold !== true) return;
+    context.shadowBlur = 0;
+    context.fillStyle = options.gold === true
+      ? palette.specular ?? "#fff1b0"
+      : "rgba(255,255,255,0.65)";
+    context.globalAlpha = options.gold === true ? 0.82 : 1;
+    context.beginPath();
+    context.ellipse(
+      (preview ? -11 : -10) * scale,
+      (preview ? -13 : -12) * scale,
+      (preview ? 7 : 8) * scale,
+      (preview ? 4 : 5) * scale,
+      -0.5,
+      0,
+      Math.PI * 2
+    );
+    context.fill();
+    context.globalAlpha = 1;
+  }
+
+  function drawSlimeBody(context, palette, radius, options = {}) {
+    const tintedBody = getTintedSlimeBody(palette);
+    context.save();
+    if (Number.isFinite(options.glowBlur) && options.glowBlur > 0) {
+      context.shadowColor = palette.glow;
+      context.shadowBlur = options.glowBlur;
+    }
+
+    if (tintedBody) {
+      const drawSize = SLIME_BODY_DRAW_SIZE * radius / SLIME_BODY_REFERENCE_RADIUS;
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+      context.drawImage(tintedBody, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+      context.restore();
+      return true;
+    }
+
+    drawVectorSlimeBody(context, palette, radius, options);
+    context.restore();
+    return false;
+  }
+
+  function redrawPendingSlimeBodyPreviews() {
+    if (!slimeBodySourcePixels || slimeBodyPendingPreviews.size === 0) return;
+    const pendingPreviews = [...slimeBodyPendingPreviews.values()];
+    slimeBodyPendingPreviews.clear();
+    for (const preview of pendingPreviews) {
+      if (preview.canvasElement.isConnected === false) continue;
+      drawSlimeCharacterPreview(
+        preview.canvasElement,
+        preview.cosmetic,
+        preview.beard,
+        preview.color,
+        preview.options
+      );
+    }
+  }
+
   function drawSlimeCharacterPreview(
     canvasElement,
     cosmetic = "none",
@@ -3249,25 +3473,20 @@
     drawStaticPrestigeTrail(previewContext, prestigeTrail, prestigeTrailRadius);
     drawPrestigeAura(previewContext, prestigeAura, prestigeEffectRadius);
 
-    const bodyGradient = previewContext.createRadialGradient(-9, -10, 2, 0, 0, 30);
-    bodyGradient.addColorStop(0, palette.light);
-    bodyGradient.addColorStop(0.34, palette.main);
-    bodyGradient.addColorStop(1, palette.dark);
-    previewContext.fillStyle = bodyGradient;
-    previewContext.strokeStyle = palette.outline;
-    previewContext.lineWidth = 4;
-    previewContext.beginPath();
-    previewContext.arc(0, 0, 30, 0, Math.PI * 2);
-    previewContext.fill();
-    previewContext.stroke();
-
-    if (options.goldSlime === true) {
-      previewContext.fillStyle = palette.specular ?? "#fff1b0";
-      previewContext.globalAlpha = 0.82;
-      previewContext.beginPath();
-      previewContext.ellipse(-11, -13, 7, 4, -0.5, 0, Math.PI * 2);
-      previewContext.fill();
-      previewContext.globalAlpha = 1;
+    const pngBodyDrawn = drawSlimeBody(previewContext, palette, 30, {
+      preview: true,
+      gold: options.goldSlime === true
+    });
+    if (pngBodyDrawn) {
+      slimeBodyPendingPreviews.delete(canvasElement);
+    } else {
+      slimeBodyPendingPreviews.set(canvasElement, {
+        canvasElement,
+        cosmetic,
+        beard,
+        color,
+        options: {...options}
+      });
     }
 
     previewContext.fillStyle = palette.face ?? "#0b2c1a";
@@ -3455,29 +3674,10 @@
     drawLastBubbleProtection(ctx, player.r);
     drawStarShieldProtection(ctx, player.r);
 
-    ctx.shadowColor = palette.glow;
-    ctx.shadowBlur = 22;
-    const g = ctx.createRadialGradient(-10, -12, 3, 0, 0, player.r);
-    g.addColorStop(0, palette.light);
-    g.addColorStop(0.32, palette.main);
-    g.addColorStop(1, palette.dark);
-    ctx.fillStyle = g;
-    ctx.strokeStyle = palette.outline;
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.arc(0, 0, player.r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = goldAppearance.slime
-      ? palette.specular ?? "#fff1b0"
-      : "rgba(255,255,255,0.65)";
-    ctx.globalAlpha = goldAppearance.slime ? 0.82 : 1;
-    ctx.beginPath();
-    ctx.ellipse(-10, -12, 8, 5, -0.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
+    drawSlimeBody(ctx, palette, player.r, {
+      glowBlur: 22,
+      gold: goldAppearance.slime
+    });
 
     ctx.fillStyle = palette.face ?? "#0b2c1a";
     ctx.beginPath();
