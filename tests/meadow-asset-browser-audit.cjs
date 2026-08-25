@@ -662,9 +662,8 @@ async function auditViewport(cdp, viewport) {
     naturalHeight: 128,
     minimumAlpha: 255
   });
-  const floatingMiddleAsset = "assets/environments/meadow/platforms/floating_middle.png";
-  const floatingLeftAsset = "assets/environments/meadow/platforms/floating_left.png";
-  const floatingRightAsset = "assets/environments/meadow/platforms/floating_right.png";
+  const floatingWholeAsset =
+    "assets/environments/meadow/platforms/meadow_floating_platform.png";
   for (const alignment of alphaAlignment) {
     assert.ok(alignment.alpha64Padding.left <= 1, `${alignment.name} left alpha gap`);
     assert.ok(alignment.alpha64Padding.right <= 1, `${alignment.name} right alpha gap`);
@@ -679,40 +678,14 @@ async function auditViewport(cdp, viewport) {
       `${alignment.name} walkable top grass ratio: ${alignment.walkableTop.grassRatio}`
     );
     if (alignment.name.startsWith("floating-")) {
-      assert.equal(alignment.drawCalls.length % 3, 0);
-      const segments = Array.from(
-        {length: alignment.drawCalls.length / 3},
-        (_, index) => alignment.drawCalls.slice(index * 3, index * 3 + 3)
-      );
-      const middleSegments = segments.slice(0, -2);
-      const leftSegment = segments.at(-2);
-      const rightSegment = segments.at(-1);
-      assert.ok(middleSegments.every(segment => segment.every(call => (
-        call.asset === floatingMiddleAsset
-      ))));
-      assert.ok(leftSegment.every(call => call.asset === floatingLeftAsset));
-      assert.ok(rightSegment.every(call => call.asset === floatingRightAsset));
-      for (const segment of segments) {
-        assert.deepEqual(segment.map(call => [call.source.y, call.source.h]), [
-          [24, 10], [34, 51], [85, 18]
-        ]);
-        assert.deepEqual(segment.map(call => [call.destination.y, call.destination.h]), [
-          [-2, 2], [0, 26], [26, 3]
-        ]);
-      }
-      const middle = middleSegments.map(segment => segment[1].destination);
-      const left = leftSegment[1].destination;
-      const right = rightSegment[1].destination;
-      assert.equal(left.x, 0);
-      assert.equal(left.y, 0);
-      assert.equal(left.w, 26);
-      assert.equal(left.h, 26);
-      assert.equal(middle[0].x, 25);
-      assert.equal(right.x, alignment.destination.width - 26);
-      assert.equal(right.w, 26);
-      assert.equal(left.x + left.w - middle[0].x, 1);
-      assert.equal(middle.at(-1).x + middle.at(-1).w - right.x, 1);
-      assert.equal(right.x + right.w, alignment.destination.width);
+      assert.equal(alignment.drawCalls.length, 1);
+      const whole = alignment.drawCalls[0];
+      assert.equal(whole.asset, floatingWholeAsset);
+      assert.deepEqual(whole.source, {x: 0, y: 0, w: 512, h: 128});
+      assert.equal(whole.destination.w / whole.destination.h, 4);
+      assert.ok(whole.destination.x <= 0);
+      assert.ok(whole.destination.x + whole.destination.w >= alignment.destination.width);
+      assert.ok(whole.destination.y < 0);
     } else if (alignment.name === "start") {
       const startTopHeight = 235 * (128 / 352);
       assert.deepEqual(alignment.drawCalls, [

@@ -118,13 +118,13 @@ assert.deepEqual(
 );
 
 const rendererSource = read("js/renderer.js");
-const assetStart = rendererSource.indexOf("  const FALLING_PLATFORM_ASSET_CONTRACT");
+const assetStart = rendererSource.indexOf("  const GLOBAL_WHOLE_PLATFORM_SOURCE_SIZE");
 const assetEnd = rendererSource.indexOf("  const TUTORIAL_DRAG_HAND_RENDER_SIZE", assetStart);
-const helperStart = rendererSource.indexOf("  function drawSpecialPlatformOuterCapExtensions");
-const helperEnd = rendererSource.indexOf("  function areFallingPlatformAssetsReady", helperStart);
-const drawStart = rendererSource.indexOf("  function areFallingPlatformAssetsReady");
+const helperStart = rendererSource.indexOf("  function isGlobalWholePlatformAssetReady");
+const helperEnd = rendererSource.indexOf("  function areLegacyFallingPlatformAssetsReady", helperStart);
+const drawStart = rendererSource.indexOf("  function areLegacyFallingPlatformAssetsReady");
 const drawEnd = rendererSource.indexOf("  function drawCanvasBouncePadFallback", drawStart);
-const platformsStart = rendererSource.indexOf("  function drawPlatforms(");
+const platformsStart = rendererSource.indexOf("  function drawVectorPlatformSurface(");
 const platformsEnd = rendererSource.indexOf("  function drawGoal(", platformsStart);
 assert.ok(assetStart >= 0 && assetEnd > assetStart);
 assert.ok(helperStart >= 0 && helperEnd > helperStart);

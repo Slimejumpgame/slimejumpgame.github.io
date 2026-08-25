@@ -9,17 +9,11 @@
   const PLATFORM_VISUAL_KIT_CONTRACT = Object.freeze({
     floating: Object.freeze({
       height: 26,
-      leftWidth: 26,
-      middleTileWidth: 52,
-      middleTileAdvance: 51,
-      rightWidth: 26,
-      middleMode: "repeat-source-crop",
-      contentFit: Object.freeze({
+      wholeMode: "uniform-whole-image",
+      wholeContentFit: Object.freeze({
         alphaThreshold: 8,
-        bodyRowMinimumCoverage: 0.5,
-        topOverhang: 2,
-        bottomOverhang: 3,
-        mode: "shared-robust-alpha-body-band"
+        supportRowMinimumCoverage: 0.9,
+        mode: "robust-alpha-bounds-and-longest-contiguous-support-band"
       })
     }),
     start: Object.freeze({
@@ -40,14 +34,219 @@
   });
   const PLATFORM_VISUAL_KIT_NATIVE_SIZES = Object.freeze({
     familyA: Object.freeze({w: 352, h: 128}),
-    floatingLeft: Object.freeze({w: 128, h: 128}),
-    floatingMiddle: Object.freeze({w: 256, h: 128}),
-    floatingRight: Object.freeze({w: 128, h: 128})
+    floatingWhole: Object.freeze({w: 512, h: 128})
   });
-  const PLATFORM_VISUAL_KIT_SEAM_OVERLAP = 1;
+
+  function findLongestWholePlatformRowRun(rowCounts, minimumCount) {
+    let bestStart = -1;
+    let bestEnd = -1;
+    let runStart = -1;
+    for (let y = 0; y <= rowCounts.length; y++) {
+      const covered = y < rowCounts.length && rowCounts[y] >= minimumCount;
+      if (covered && runStart < 0) runStart = y;
+      if (!covered && runStart >= 0) {
+        if (bestStart < 0 || y - runStart > bestEnd - bestStart) {
+          bestStart = runStart;
+          bestEnd = y;
+        }
+        runStart = -1;
+      }
+    }
+    return bestStart >= 0 ? Object.freeze({start: bestStart, end: bestEnd}) : null;
+  }
+
+  function analyzeWholePlatformImage(image, sourceSize) {
+    if (
+      typeof document === "undefined" ||
+      !document.createElement ||
+      !image ||
+      !sourceSize?.w ||
+      !sourceSize?.h
+    ) return null;
+    try {
+      const surface = document.createElement("canvas");
+      surface.width = sourceSize.w;
+      surface.height = sourceSize.h;
+      const context = surface.getContext("2d", {willReadFrequently: true});
+      if (!context) return null;
+      context.clearRect(0, 0, sourceSize.w, sourceSize.h);
+      context.drawImage(image, 0, 0, sourceSize.w, sourceSize.h);
+      const pixels = context.getImageData(0, 0, sourceSize.w, sourceSize.h).data;
+      if (!pixels || pixels.length < sourceSize.w * sourceSize.h * 4) return null;
+      const rowLongestRuns = Array(sourceSize.h).fill(0);
+      let robustLeft = sourceSize.w;
+      let robustTop = sourceSize.h;
+      let robustRight = -1;
+      let robustBottom = -1;
+      const contentFitContract =
+        PLATFORM_VISUAL_KIT_CONTRACT.floating.wholeContentFit;
+      for (let y = 0; y < sourceSize.h; y++) {
+        let currentRun = 0;
+        for (let x = 0; x < sourceSize.w; x++) {
+          if (
+            pixels[(y * sourceSize.w + x) * 4 + 3] <=
+              contentFitContract.alphaThreshold
+          ) {
+            currentRun = 0;
+            continue;
+          }
+          currentRun += 1;
+          rowLongestRuns[y] = Math.max(rowLongestRuns[y], currentRun);
+          robustLeft = Math.min(robustLeft, x);
+          robustTop = Math.min(robustTop, y);
+          robustRight = Math.max(robustRight, x);
+          robustBottom = Math.max(robustBottom, y);
+        }
+      }
+      if (robustRight < robustLeft || robustBottom < robustTop) return null;
+      const visibleContentBounds = Object.freeze({
+        x: robustLeft,
+        y: robustTop,
+        w: robustRight - robustLeft + 1,
+        h: robustBottom - robustTop + 1
+      });
+      const minimumSupportRun = Math.ceil(
+        visibleContentBounds.w * contentFitContract.supportRowMinimumCoverage
+      );
+      const supportBand = findLongestWholePlatformRowRun(
+        rowLongestRuns,
+        minimumSupportRun
+      );
+      if (!supportBand) return null;
+      return Object.freeze({
+        analyzed: true,
+        alphaThreshold: contentFitContract.alphaThreshold,
+        supportRowMinimumCoverage: contentFitContract.supportRowMinimumCoverage,
+        visibleContentBounds,
+        supportY: supportBand.start,
+        supportBand: Object.freeze({
+          y: supportBand.start,
+          h: supportBand.end - supportBand.start
+        })
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  function getWholePlatformImageMapping(
+    contentFit,
+    sourceSize,
+    platform,
+    drawX = platform?.x,
+    flipX = false
+  ) {
+    if (
+      !contentFit ||
+      !sourceSize?.w ||
+      !sourceSize?.h ||
+      !platform ||
+      !Number.isFinite(drawX) ||
+      !Number.isFinite(platform.y) ||
+      !Number.isFinite(platform.w) ||
+      platform.w <= 0
+    ) return null;
+    const bounds = contentFit.visibleContentBounds;
+    const scale = platform.w / bounds.w;
+    const visibleSourceX = flipX
+      ? sourceSize.w - bounds.x - bounds.w
+      : bounds.x;
+    return Object.freeze({
+      scale,
+      drawX: drawX - visibleSourceX * scale,
+      drawY: platform.y - contentFit.supportY * scale,
+      drawWidth: sourceSize.w * scale,
+      drawHeight: sourceSize.h * scale,
+      visibleLeft: drawX,
+      visibleRight: drawX + platform.w,
+      supportY: platform.y,
+      flipX: Boolean(flipX)
+    });
+  }
+
+  function drawWholePlatformImage(
+    context,
+    image,
+    contentFit,
+    sourceSize,
+    platform,
+    drawX = platform?.x,
+    flipX = false
+  ) {
+    const mapping = getWholePlatformImageMapping(
+      contentFit,
+      sourceSize,
+      platform,
+      drawX,
+      flipX
+    );
+    if (!mapping) return false;
+    if (mapping.flipX) {
+      context.save();
+      context.translate(mapping.drawX * 2 + mapping.drawWidth, 0);
+      context.scale(-1, 1);
+    }
+    context.drawImage(
+      image,
+      0,
+      0,
+      sourceSize.w,
+      sourceSize.h,
+      mapping.drawX,
+      mapping.drawY,
+      mapping.drawWidth,
+      mapping.drawHeight
+    );
+    if (mapping.flipX) context.restore();
+    return true;
+  }
+
+  function hashPlatformVisualNamespace(value) {
+    let hash = 0x811c9dc5;
+    for (const character of String(value)) {
+      hash ^= character.charCodeAt(0);
+      hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    return hash >>> 0;
+  }
+
+  function createStandardPlatformVisualConfig(biomeId) {
+    if (typeof biomeId !== "string" || !biomeId.trim()) {
+      throw new TypeError("Standard platform visual config requires a biome id");
+    }
+    const biome = biomeId.trim();
+    const directory = `assets/environments/${biome}/platforms`;
+    const defineAsset = asset => Object.freeze({
+      asset,
+      path: `${directory}/${asset}.png`
+    });
+    const topOverlays = Object.freeze(Array.from({length: 6}, (_, index) => (
+      defineAsset(`${biome}_overlay_top_${String(index + 1).padStart(2, "0")}`)
+    )));
+    const bodyOverlays = Object.freeze(Array.from({length: 3}, (_, index) => (
+      defineAsset(`${biome}_overlay_body_${String(index + 1).padStart(2, "0")}`)
+    )));
+    return Object.freeze({
+      biome,
+      familyA: Object.freeze({
+        topBase: defineAsset(`${biome}_top_base`),
+        bodyBase: defineAsset(`${biome}_body_base`),
+        topOverlays,
+        bodyOverlays
+      }),
+      familyB: Object.freeze({
+        whole: defineAsset(`${biome}_floating_platform`)
+      }),
+      salts: Object.freeze({
+        topStart: hashPlatformVisualNamespace(`${biome}:platform:top:start`),
+        topGoal: hashPlatformVisualNamespace(`${biome}:platform:top:goal`),
+        bodyGoal: hashPlatformVisualNamespace(`${biome}:platform:body:goal`)
+      })
+    });
+  }
 
   function createPlatformVisualKit(config) {
-    if (!config || typeof config.biome !== "string") {
+    if (!config || typeof config.biome !== "string" || !config.biome.trim()) {
       throw new TypeError("Platform visual kit requires a biome id");
     }
     if (config.familyA?.topOverlays?.length !== 6) {
@@ -57,15 +256,18 @@
       throw new RangeError("Platform visual kit requires exactly 3 body overlays");
     }
 
+    const biome = config.biome.trim();
     const familyASource = PLATFORM_VISUAL_KIT_FAMILY_A_SOURCE;
+    const wholeFloatingDefinition = config.familyB.whole ?? Object.freeze({
+      asset: `${biome}_floating_platform`,
+      path: `assets/environments/${biome}/platforms/${biome}_floating_platform.png`
+    });
     const slotNames = Object.freeze({
       topBase: config.slotNames?.topBase ?? "top_base",
       bodyBase: config.slotNames?.bodyBase ?? "body_base",
       topOverlays: config.slotNames?.topOverlays ?? "top_overlays",
       bodyOverlays: config.slotNames?.bodyOverlays ?? "body_overlays",
-      floatingLeft: config.slotNames?.floatingLeft ?? "floating_left",
-      floatingMiddle: config.slotNames?.floatingMiddle ?? "floating_middle",
-      floatingRight: config.slotNames?.floatingRight ?? "floating_right"
+      floatingWhole: config.slotNames?.floatingWhole ?? "floating_platform"
     });
     const createSlot = (definition, size, includeSource = false) => Object.freeze({
       asset: definition.asset,
@@ -89,25 +291,13 @@
     const bodyOverlaySlots = Object.freeze(config.familyA.bodyOverlays.map(definition => (
       createSlot(definition, PLATFORM_VISUAL_KIT_NATIVE_SIZES.familyA)
     )));
-    const floatingLeftSlot = createSlot(
-      config.familyB.left,
-      PLATFORM_VISUAL_KIT_NATIVE_SIZES.floatingLeft,
-      true
-    );
-    const floatingMiddleSlot = createSlot(
-      config.familyB.middle,
-      PLATFORM_VISUAL_KIT_NATIVE_SIZES.floatingMiddle,
-      true
-    );
-    const floatingRightSlot = createSlot(
-      config.familyB.right,
-      PLATFORM_VISUAL_KIT_NATIVE_SIZES.floatingRight,
+    const floatingWholeSlot = createSlot(
+      wholeFloatingDefinition,
+      PLATFORM_VISUAL_KIT_NATIVE_SIZES.floatingWhole,
       true
     );
     const slots = Object.freeze({
-      [slotNames.floatingLeft]: floatingLeftSlot,
-      [slotNames.floatingMiddle]: floatingMiddleSlot,
-      [slotNames.floatingRight]: floatingRightSlot,
+      [slotNames.floatingWhole]: floatingWholeSlot,
       [slotNames.topBase]: topBaseSlot,
       [slotNames.bodyBase]: bodyBaseSlot,
       [slotNames.topOverlays]: topOverlaySlots,
@@ -122,9 +312,7 @@
         bodyOverlays: bodyOverlaySlots
       }),
       familyB: Object.freeze({
-        left: floatingLeftSlot,
-        middle: floatingMiddleSlot,
-        right: floatingRightSlot
+        whole: floatingWholeSlot
       })
     });
     const topOverlaySelection = Object.freeze({
@@ -152,9 +340,8 @@
       ...config.familyA.bodyOverlays.map(definition => (
         [definition, PLATFORM_VISUAL_KIT_NATIVE_SIZES.familyA, "familyA"]
       )),
-      [config.familyB.left, PLATFORM_VISUAL_KIT_NATIVE_SIZES.floatingLeft, "familyB"],
-      [config.familyB.middle, PLATFORM_VISUAL_KIT_NATIVE_SIZES.floatingMiddle, "familyB"],
-      [config.familyB.right, PLATFORM_VISUAL_KIT_NATIVE_SIZES.floatingRight, "familyB"]
+      [wholeFloatingDefinition, PLATFORM_VISUAL_KIT_NATIVE_SIZES.floatingWhole,
+        "familyBWhole"]
     ].map(([definition, size, family]) => Object.freeze({
       asset: definition.asset,
       path: definition.path,
@@ -167,15 +354,11 @@
     const familyAAssetDefinitions = Object.freeze(
       assetDefinitions.filter(definition => definition.family === "familyA")
     );
-    const familyBAssetDefinitions = Object.freeze(
-      assetDefinitions.filter(definition => definition.family === "familyB")
-    );
     const paths = Object.freeze(Object.fromEntries(
       assetDefinitions.map(definition => [definition.asset, definition.path])
     ));
     const images = {};
-    const floatingAlphaProfiles = {};
-    let floatingContentFit = null;
+    let wholeFloatingContentFit = null;
 
     function hasValidNativeSize(asset) {
       const definition = definitionByAsset[asset];
@@ -188,95 +371,6 @@
       );
     }
 
-    function findLongestCoveredRowRun(rowCounts, minimumCount) {
-      let bestStart = -1;
-      let bestEnd = -1;
-      let runStart = -1;
-      for (let y = 0; y <= rowCounts.length; y++) {
-        const covered = y < rowCounts.length && rowCounts[y] >= minimumCount;
-        if (covered && runStart < 0) runStart = y;
-        if (!covered && runStart >= 0) {
-          if (bestStart < 0 || y - runStart > bestEnd - bestStart) {
-            bestStart = runStart;
-            bestEnd = y;
-          }
-          runStart = -1;
-        }
-      }
-      return bestStart >= 0 ? Object.freeze({start: bestStart, end: bestEnd}) : null;
-    }
-
-    function analyzeFloatingAlpha(image, slot) {
-      if (typeof document === "undefined" || !document.createElement) return null;
-      try {
-        const surface = document.createElement("canvas");
-        surface.width = slot.w;
-        surface.height = slot.h;
-        const context = surface.getContext("2d", {willReadFrequently: true});
-        if (!context) return null;
-        context.clearRect(0, 0, slot.w, slot.h);
-        context.drawImage(image, 0, 0, slot.w, slot.h);
-        const pixels = context.getImageData(0, 0, slot.w, slot.h).data;
-        const rowCounts = Array(slot.h).fill(0);
-        let robustTop = slot.h;
-        let robustBottom = -1;
-        const contentFitContract = PLATFORM_VISUAL_KIT_CONTRACT.floating.contentFit;
-        for (let y = 0; y < slot.h; y++) {
-          for (let x = 0; x < slot.w; x++) {
-            if (pixels[(y * slot.w + x) * 4 + 3] <= contentFitContract.alphaThreshold) {
-              continue;
-            }
-            rowCounts[y] += 1;
-            robustTop = Math.min(robustTop, y);
-            robustBottom = Math.max(robustBottom, y);
-          }
-        }
-        if (robustBottom < robustTop) return null;
-        const minimumCount = Math.ceil(
-          slot.w * contentFitContract.bodyRowMinimumCoverage
-        );
-        const bodyRun = findLongestCoveredRowRun(rowCounts, minimumCount);
-        if (!bodyRun) return null;
-        return Object.freeze({
-          robustTop,
-          robustBottom: robustBottom + 1,
-          bodyTop: bodyRun.start,
-          bodyBottom: bodyRun.end
-        });
-      } catch {
-        return null;
-      }
-    }
-
-    function updateFloatingContentFit() {
-      const profiles = ["left", "middle", "right"].map(name => (
-        floatingAlphaProfiles[name]
-      ));
-      if (profiles.some(profile => !profile)) return;
-      const bodyTop = Math.max(...profiles.map(profile => profile.bodyTop));
-      const bodyBottom = Math.min(...profiles.map(profile => profile.bodyBottom));
-      if (bodyBottom <= bodyTop) return;
-      const robustTop = Math.min(...profiles.map(profile => profile.robustTop));
-      const robustBottom = Math.max(...profiles.map(profile => profile.robustBottom));
-      const contentFitContract = PLATFORM_VISUAL_KIT_CONTRACT.floating.contentFit;
-      floatingContentFit = Object.freeze({
-        analyzed: true,
-        alphaThreshold: contentFitContract.alphaThreshold,
-        bodyRowMinimumCoverage: contentFitContract.bodyRowMinimumCoverage,
-        topOverhang: contentFitContract.topOverhang,
-        bottomOverhang: contentFitContract.bottomOverhang,
-        topDecorSource: Object.freeze({
-          y: robustTop,
-          h: Math.max(0, bodyTop - robustTop)
-        }),
-        bodySource: Object.freeze({y: bodyTop, h: bodyBottom - bodyTop}),
-        bottomDecorSource: Object.freeze({
-          y: bodyBottom,
-          h: Math.max(0, robustBottom - bodyBottom)
-        })
-      });
-    }
-
     function loadAsset(definition) {
       const image = new Image();
       const record = {image, ready: null};
@@ -284,18 +378,11 @@
       record.ready = new Promise(resolve => {
         image.onload = () => {
           const valid = hasValidNativeSize(definition.asset);
-          if (valid && definition.family === "familyB") {
-            const familyBEntries = [
-              [config.familyB.left.asset, "left", floatingLeftSlot],
-              [config.familyB.middle.asset, "middle", floatingMiddleSlot],
-              [config.familyB.right.asset, "right", floatingRightSlot]
-            ];
-            const entry = familyBEntries.find(([asset]) => asset === definition.asset);
-            const profile = entry ? analyzeFloatingAlpha(image, entry[2]) : null;
-            if (profile) {
-              floatingAlphaProfiles[entry[1]] = profile;
-              updateFloatingContentFit();
-            }
+          if (valid && definition.family === "familyBWhole") {
+            wholeFloatingContentFit = analyzeWholePlatformImage(
+              image,
+              floatingWholeSlot
+            );
           }
           resolve(valid);
         };
@@ -317,39 +404,64 @@
       return (value ^ (value >>> 16)) >>> 0;
     }
 
+    function getAvailableOverlayEntries(overlaySlots) {
+      return overlaySlots.map((slot, index) => Object.freeze({slot, index})).filter(
+        entry => hasValidNativeSize(entry.slot.asset)
+      );
+    }
+
     function getTopOverlaySelection(levelSeed) {
-      const startIndex = hashVisualSeed(
+      const available = getAvailableOverlayEntries(topOverlaySlots);
+      if (available.length === 0) {
+        return Object.freeze({
+          startIndex: null,
+          goalIndex: null,
+          startAsset: null,
+          goalAsset: null
+        });
+      }
+      const startAvailableIndex = hashVisualSeed(
         levelSeed,
         topOverlaySelection.startSalt
-      ) % topOverlaySlots.length;
-      let goalIndex = hashVisualSeed(
+      ) % available.length;
+      let goalAvailableIndex = hashVisualSeed(
         levelSeed,
         topOverlaySelection.goalSalt
-      ) % topOverlaySlots.length;
-      if (goalIndex === startIndex) goalIndex = (goalIndex + 1) % topOverlaySlots.length;
+      ) % available.length;
+      if (available.length > 1 && goalAvailableIndex === startAvailableIndex) {
+        goalAvailableIndex = (goalAvailableIndex + 1) % available.length;
+      }
+      const start = available[startAvailableIndex];
+      const goal = available[goalAvailableIndex];
       return Object.freeze({
-        startIndex,
-        goalIndex,
-        startAsset: topOverlaySlots[startIndex].asset,
-        goalAsset: topOverlaySlots[goalIndex].asset
+        startIndex: start.index,
+        goalIndex: goal.index,
+        startAsset: start.slot.asset,
+        goalAsset: goal.slot.asset
       });
     }
 
     function getTopOverlaySlot(role, levelSeed) {
       const selection = getTopOverlaySelection(levelSeed);
-      return topOverlaySlots[
-        role === "START_PLATFORM" ? selection.startIndex : selection.goalIndex
-      ];
+      const index = role === "START_PLATFORM"
+        ? selection.startIndex
+        : selection.goalIndex;
+      return index === null ? null : topOverlaySlots[index];
     }
 
     function getBodyOverlaySelection(levelSeed) {
-      const goalIndex = hashVisualSeed(
+      const available = getAvailableOverlayEntries(bodyOverlaySlots);
+      if (available.length === 0) {
+        return Object.freeze({goalIndex: null, goalAsset: null});
+      }
+      const availableIndex = hashVisualSeed(
         levelSeed,
         bodyOverlaySelection.goalSalt
-      ) % bodyOverlaySlots.length;
+      ) % available.length;
+      const goal = available[availableIndex];
       return Object.freeze({
-        goalIndex,
-        goalAsset: bodyOverlaySlots[goalIndex].asset
+        goalIndex: goal.index,
+        goalAsset: goal.slot.asset
       });
     }
 
@@ -367,6 +479,10 @@
       ) return "GOAL_TOWER";
       if (platform.h === PLATFORM_VISUAL_KIT_CONTRACT.floating.height) return "FLOATING";
       return null;
+    }
+
+    function acceptsWholeFloatingBase(platform) {
+      return !platform?.fragile && !platform?.conveyor && !platform?.ice;
     }
 
     function traceRoundedRect(context, x, y, width, height, radius) {
@@ -402,19 +518,55 @@
       );
     }
 
-    function drawGoalPlatform(context, platform, drawX, topOverlaySlot, bodyOverlaySlot) {
+    function drawReadyFamilyALayer(
+      context,
+      slot,
+      destinationX,
+      destinationY,
+      destinationWidth,
+      destinationHeight,
+      sourceHeight = familyASource.h
+    ) {
+      if (!slot || !hasValidNativeSize(slot.asset)) return false;
+      drawFamilyALayer(
+        context,
+        slot,
+        destinationX,
+        destinationY,
+        destinationWidth,
+        destinationHeight,
+        sourceHeight
+      );
+      return true;
+    }
+
+    function drawGoalPlatform(
+      context,
+      platform,
+      drawX,
+      topOverlaySlot,
+      bodyOverlaySlot,
+      drawVectorFallbackRegion
+    ) {
       const contract = PLATFORM_VISUAL_KIT_CONTRACT.goal;
       const blockBottom = platform.y + platform.h;
       const bodyStartY = platform.y + contract.topHeight - contract.bodyOverlap;
-      drawFamilyALayer(
+      if (!drawReadyFamilyALayer(
         context,
         topBaseSlot,
         drawX,
         platform.y,
         platform.w,
         contract.topHeight
-      );
-      drawFamilyALayer(
+      )) {
+        drawVectorFallbackRegion(Object.freeze({
+          x: drawX,
+          y: platform.y,
+          w: platform.w,
+          h: contract.topHeight
+        }));
+      }
+      drawReadyFamilyALayer(
         context,
         topOverlaySlot,
         drawX,
@@ -423,153 +575,107 @@
         contract.topHeight
       );
 
-      for (let destinationY = bodyStartY; destinationY < blockBottom;) {
-        const destinationHeight = Math.min(
-          contract.bodyRowHeight,
-          blockBottom - destinationY
-        );
-        const sourceHeight = destinationHeight * familyASource.h /
-          contract.bodyRowHeight;
-        drawFamilyALayer(
-          context,
-          bodyBaseSlot,
-          drawX,
-          destinationY,
-          platform.w,
-          destinationHeight,
-          sourceHeight
-        );
-        if (destinationY + destinationHeight >= blockBottom) break;
-        destinationY += contract.bodyRowStep;
-      }
-
-      context.save();
-      context.beginPath();
-      context.rect(
-        drawX,
-        bodyStartY,
-        platform.w,
-        Math.max(0, blockBottom - bodyStartY)
-      );
-      context.clip();
-      drawFamilyALayer(
-        context,
-        bodyOverlaySlot,
-        drawX,
-        blockBottom - contract.bodyRowHeight,
-        platform.w,
-        contract.bodyRowHeight
-      );
-      context.restore();
-    }
-
-    function drawStartPlatform(context, platform, drawX, topOverlaySlot) {
-      const topHeight = platform.w * (familyASource.h / familyASource.w);
-      drawFamilyALayer(
-        context,
-        topBaseSlot,
-        drawX,
-        platform.y,
-        platform.w,
-        topHeight
-      );
-      drawFamilyALayer(
-        context,
-        topOverlaySlot,
-        drawX,
-        platform.y,
-        platform.w,
-        topHeight
-      );
-    }
-
-    function drawFloatingContentFitSegment(
-      context,
-      image,
-      sourceX,
-      sourceWidth,
-      destinationX,
-      destinationWidth,
-      platformY
-    ) {
-      const contract = PLATFORM_VISUAL_KIT_CONTRACT.floating;
-      const zones = [
-        {
-          source: floatingContentFit.topDecorSource,
-          y: platformY - floatingContentFit.topOverhang,
-          h: floatingContentFit.topOverhang
-        },
-        {
-          source: floatingContentFit.bodySource,
-          y: platformY,
-          h: contract.height
-        },
-        {
-          source: floatingContentFit.bottomDecorSource,
-          y: platformY + contract.height,
-          h: floatingContentFit.bottomOverhang
-        }
-      ];
-      for (const zone of zones) {
-        if (zone.source.h <= 0 || zone.h <= 0) continue;
-        context.drawImage(
-          image,
-          sourceX,
-          zone.source.y,
-          sourceWidth,
-          zone.source.h,
-          destinationX,
-          zone.y,
-          destinationWidth,
-          zone.h
-        );
-      }
-    }
-
-    function drawFloatingPlatform(context, platform, drawX) {
-      const contract = PLATFORM_VISUAL_KIT_CONTRACT.floating;
-      const capWidth = Math.min(contract.leftWidth, platform.w / 2);
-      if (platform.w > contract.leftWidth + contract.rightWidth) {
-        const middleStartX = drawX + contract.leftWidth - PLATFORM_VISUAL_KIT_SEAM_OVERLAP;
-        const middleEndX = drawX + platform.w - contract.rightWidth +
-          PLATFORM_VISUAL_KIT_SEAM_OVERLAP;
-        let destinationX = middleStartX;
-        while (destinationX < middleEndX) {
-          const remainingWidth = middleEndX - destinationX;
-          const destinationWidth = Math.min(contract.middleTileWidth, remainingWidth);
-          const sourceWidth = floatingMiddleSlot.source.w * (
-            destinationWidth / contract.middleTileWidth
+      if (hasValidNativeSize(bodyBaseSlot.asset)) {
+        for (let destinationY = bodyStartY; destinationY < blockBottom;) {
+          const destinationHeight = Math.min(
+            contract.bodyRowHeight,
+            blockBottom - destinationY
           );
-          drawFloatingContentFitSegment(
+          const sourceHeight = destinationHeight * familyASource.h /
+            contract.bodyRowHeight;
+          drawFamilyALayer(
             context,
-            images[floatingMiddleSlot.asset].image,
-            floatingMiddleSlot.source.x,
-            sourceWidth,
-            destinationX,
-            destinationWidth,
-            platform.y
+            bodyBaseSlot,
+            drawX,
+            destinationY,
+            platform.w,
+            destinationHeight,
+            sourceHeight
           );
-          if (destinationWidth >= remainingWidth) break;
-          destinationX += contract.middleTileAdvance;
+          if (destinationY + destinationHeight >= blockBottom) break;
+          destinationY += contract.bodyRowStep;
         }
+      } else {
+        drawVectorFallbackRegion(Object.freeze({
+          x: drawX,
+          y: bodyStartY,
+          w: platform.w,
+          h: Math.max(0, blockBottom - bodyStartY)
+        }));
       }
-      drawFloatingContentFitSegment(
+
+      if (bodyOverlaySlot) {
+        context.save();
+        context.beginPath();
+        context.rect(
+          drawX,
+          bodyStartY,
+          platform.w,
+          Math.max(0, blockBottom - bodyStartY)
+        );
+        context.clip();
+        drawReadyFamilyALayer(
+          context,
+          bodyOverlaySlot,
+          drawX,
+          blockBottom - contract.bodyRowHeight,
+          platform.w,
+          contract.bodyRowHeight
+        );
+        context.restore();
+      }
+    }
+
+    function drawStartPlatform(
+      context,
+      platform,
+      drawX,
+      topOverlaySlot,
+      drawVectorFallbackRegion
+    ) {
+      const topHeight = platform.w * (familyASource.h / familyASource.w);
+      if (!drawReadyFamilyALayer(
         context,
-        images[floatingLeftSlot.asset].image,
-        floatingLeftSlot.source.x,
-        floatingLeftSlot.source.w,
+        topBaseSlot,
         drawX,
-        capWidth,
-        platform.y
-      );
-      drawFloatingContentFitSegment(
+        platform.y,
+        platform.w,
+        topHeight
+      )) {
+        drawVectorFallbackRegion(Object.freeze({
+          x: drawX,
+          y: platform.y,
+          w: platform.w,
+          h: topHeight
+        }));
+      }
+      drawReadyFamilyALayer(
         context,
-        images[floatingRightSlot.asset].image,
-        floatingRightSlot.source.x,
-        floatingRightSlot.source.w,
-        drawX + platform.w - capWidth,
-        capWidth,
-        platform.y
+        topOverlaySlot,
+        drawX,
+        platform.y,
+        platform.w,
+        topHeight
+      );
+    }
+
+    function getWholeFloatingMapping(platform, drawX = platform?.x) {
+      return getWholePlatformImageMapping(
+        wholeFloatingContentFit,
+        floatingWholeSlot,
+        platform,
+        drawX
+      );
+    }
+
+    function drawWholeFloatingPlatform(context, platform, drawX) {
+      return drawWholePlatformImage(
+        context,
+        images[floatingWholeSlot.asset].image,
+        wholeFloatingContentFit,
+        floatingWholeSlot,
+        platform,
+        drawX
       );
     }
 
@@ -579,33 +685,53 @@
       ));
     }
 
-    function isFamilyBReady() {
-      return familyBAssetDefinitions.every(definition => (
-        hasValidNativeSize(definition.asset)
-      )) &&
-        Boolean(floatingContentFit);
+    function isWholeFamilyBReady() {
+      return hasValidNativeSize(floatingWholeSlot.asset) &&
+        Boolean(wholeFloatingContentFit);
     }
 
-    function drawPlatformBase(context, platform, drawX = platform.x, levelSeed = 0) {
+    function isFamilyBReady() {
+      return isWholeFamilyBReady();
+    }
+
+    function drawPlatformBase(
+      context,
+      platform,
+      drawX = platform.x,
+      levelSeed = 0,
+      drawVectorFallbackRegion = null
+    ) {
       const role = resolvePlatformRole(platform);
       if (!role) return false;
       const topOverlaySlot = role === "START_PLATFORM" || role === "GOAL_TOWER"
         ? getTopOverlaySlot(role, levelSeed)
         : null;
-      const bodyOverlaySlot = role === "GOAL_TOWER"
-        ? bodyOverlaySlots[getBodyOverlaySelection(levelSeed).goalIndex]
+      const bodyOverlayIndex = role === "GOAL_TOWER"
+        ? getBodyOverlaySelection(levelSeed).goalIndex
         : null;
+      const bodyOverlaySlot = bodyOverlayIndex === null
+        ? null
+        : bodyOverlaySlots[bodyOverlayIndex];
       if (role === "FLOATING") {
-        if (!isFamilyBReady()) return false;
-      } else if (role === "START_PLATFORM") {
-        if (!hasValidNativeSize(topBaseSlot.asset) ||
-            !hasValidNativeSize(topOverlaySlot.asset)) return false;
-      } else if (
-        !hasValidNativeSize(topBaseSlot.asset) ||
-        !hasValidNativeSize(topOverlaySlot.asset) ||
-        !hasValidNativeSize(bodyBaseSlot.asset) ||
-        !hasValidNativeSize(bodyOverlaySlot.asset)
-      ) return false;
+        if (!acceptsWholeFloatingBase(platform) || !isWholeFamilyBReady()) {
+          return false;
+        }
+      } else {
+        const topBaseReady = hasValidNativeSize(topBaseSlot.asset);
+        const bodyBaseReady = hasValidNativeSize(bodyBaseSlot.asset);
+        const hasAnyPngLayer = Boolean(
+          topBaseReady ||
+          topOverlaySlot ||
+          (role === "GOAL_TOWER" && (bodyBaseReady || bodyOverlaySlot))
+        );
+        if (!hasAnyPngLayer) return false;
+        const requiresVectorFallback = !topBaseReady || (
+          role === "GOAL_TOWER" && !bodyBaseReady
+        );
+        if (requiresVectorFallback && typeof drawVectorFallbackRegion !== "function") {
+          return false;
+        }
+      }
 
       context.save();
       if (role !== "FLOATING") {
@@ -615,14 +741,29 @@
       context.imageSmoothingEnabled = true;
       context.imageSmoothingQuality = "high";
       if (role === "GOAL_TOWER") {
-        drawGoalPlatform(context, platform, drawX, topOverlaySlot, bodyOverlaySlot);
+        drawGoalPlatform(
+          context,
+          platform,
+          drawX,
+          topOverlaySlot,
+          bodyOverlaySlot,
+          drawVectorFallbackRegion
+        );
       } else if (role === "FLOATING") {
-        drawFloatingPlatform(context, platform, drawX);
+        drawWholeFloatingPlatform(context, platform, drawX);
       } else {
-        drawStartPlatform(context, platform, drawX, topOverlaySlot);
+        drawStartPlatform(
+          context,
+          platform,
+          drawX,
+          topOverlaySlot,
+          drawVectorFallbackRegion
+        );
       }
       context.restore();
 
+      if (role === "FLOATING") return true;
+      const outlineHeight = platform.h;
       context.save();
       context.strokeStyle = config.outlineStyle ?? "rgba(46,72,28,0.62)";
       context.lineWidth = 1.5;
@@ -631,7 +772,7 @@
         drawX + 0.75,
         platform.y + 0.75,
         platform.w - 1.5,
-        platform.h - 1.5,
+        outlineHeight - 1.5,
         9
       );
       context.stroke();
@@ -639,25 +780,38 @@
       return true;
     }
 
-    function drawGoalTopForeground(context, platform, levelSeed = 0) {
+    function drawGoalTopForeground(
+      context,
+      platform,
+      levelSeed = 0,
+      drawVectorFallbackRegion = null
+    ) {
       if (resolvePlatformRole(platform) !== "GOAL_TOWER") return false;
       const topOverlaySlot = getTopOverlaySlot("GOAL_TOWER", levelSeed);
-      if (!hasValidNativeSize(topBaseSlot.asset) ||
-          !hasValidNativeSize(topOverlaySlot.asset)) return false;
+      const topBaseReady = hasValidNativeSize(topBaseSlot.asset);
+      if (!topBaseReady && !topOverlaySlot) return false;
+      if (!topBaseReady && typeof drawVectorFallbackRegion !== "function") return false;
       context.save();
       traceRoundedRect(context, platform.x, platform.y, platform.w, platform.h, 10);
       context.clip();
       context.imageSmoothingEnabled = true;
       context.imageSmoothingQuality = "high";
-      drawFamilyALayer(
+      if (!drawReadyFamilyALayer(
         context,
         topBaseSlot,
         platform.x,
         platform.y,
         platform.w,
         PLATFORM_VISUAL_KIT_CONTRACT.goal.topHeight
-      );
-      drawFamilyALayer(
+      )) {
+        drawVectorFallbackRegion(Object.freeze({
+          x: platform.x,
+          y: platform.y,
+          w: platform.w,
+          h: PLATFORM_VISUAL_KIT_CONTRACT.goal.topHeight
+        }));
+      }
+      drawReadyFamilyALayer(
         context,
         topOverlaySlot,
         platform.x,
@@ -676,16 +830,28 @@
           hasValidNativeSize(definition.asset)
         ])
       ));
+      const availableTopOverlays = Object.freeze(
+        getAvailableOverlayEntries(topOverlaySlots).map(entry => entry.slot.asset)
+      );
+      const availableBodyOverlays = Object.freeze(
+        getAvailableOverlayEntries(bodyOverlaySlots).map(entry => entry.slot.asset)
+      );
       return Object.freeze({
+        biome,
         ready: assetDefinitions.every(definition => validNativeSizes[definition.asset]),
         familyAReady: isFamilyAReady(),
         familyBReady: isFamilyBReady(),
+        wholeFamilyBReady: isWholeFamilyBReady(),
+        topBaseReady: hasValidNativeSize(topBaseSlot.asset),
+        bodyBaseReady: hasValidNativeSize(bodyBaseSlot.asset),
+        availableTopOverlays,
+        availableBodyOverlays,
         paths,
         expectedNativeSizes: Object.freeze(Object.fromEntries(
           assetDefinitions.map(definition => [definition.asset, definition.size])
         )),
         validNativeSizes,
-        floatingContentFit
+        wholeFloatingContentFit
       });
     }
 
@@ -697,10 +863,12 @@
       isAssetReady: hasValidNativeSize,
       isFamilyAReady,
       isFamilyBReady,
+      isWholeFamilyBReady,
       getStatus,
       getManifest: () => manifest,
       getTopOverlaySelection,
       getBodyOverlaySelection,
+      getWholeFloatingMapping,
       resolvePlatformRole,
       drawPlatformBase,
       drawGoalTopForeground
@@ -711,14 +879,23 @@
     const visualsByBiome = new Map();
     return Object.freeze({
       register(biomeId, visuals) {
-        if (typeof biomeId !== "string" || !visuals) {
+        if (typeof biomeId !== "string" || !biomeId.trim() || !visuals) {
           throw new TypeError("Biome platform visual registration is invalid");
         }
-        visualsByBiome.set(biomeId, visuals);
+        visualsByBiome.set(biomeId.trim(), visuals);
         return visuals;
       },
       resolve(biomeId) {
-        return visualsByBiome.get(biomeId) ?? null;
+        if (typeof biomeId !== "string" || !biomeId.trim()) return null;
+        const normalizedBiomeId = biomeId.trim();
+        let visuals = visualsByBiome.get(normalizedBiomeId);
+        if (!visuals) {
+          visuals = createPlatformVisualKit(
+            createStandardPlatformVisualConfig(normalizedBiomeId)
+          );
+          visualsByBiome.set(normalizedBiomeId, visuals);
+        }
+        return visuals;
       }
     });
   })();

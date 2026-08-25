@@ -43,13 +43,11 @@ function loadVisuals(failedAssetSuffixes = []) {
     set src(value) {
       this._src = value;
       const failed = failedAssetSuffixes.some(suffix => value.endsWith(suffix));
-      const platformSize = value.endsWith("floating_middle.png")
-        ? [256, 128]
-        : value.endsWith("floating_left.png") || value.endsWith("floating_right.png")
-          ? [128, 128]
-          : value.includes("/platforms/")
-            ? [352, 128]
-            : [1280, 720];
+      const platformSize = value.endsWith("meadow_floating_platform.png")
+        ? [512, 128]
+        : value.includes("/platforms/")
+          ? [352, 128]
+          : [1280, 720];
       this.complete = true;
       this.naturalWidth = failed ? 0 : platformSize[0];
       this.naturalHeight = failed ? 0 : platformSize[1];

@@ -120,19 +120,10 @@ for (const legacyName of legacyAssetNames) {
   );
 }
 
-function createFamilyBAlphaFixture(width) {
-  const pixels = Buffer.alloc(width * 128 * 4);
-  for (let y = 24; y <= 102; y++) pixels[y * width * 4 + 3] = 255;
-  for (let y = 34; y <= 84; y++) {
-    for (let x = 0; x < width; x++) pixels[(y * width + x) * 4 + 3] = 255;
-  }
-  return pixels;
-}
-const familyBFixtures = {
-  [`${platformDirectory}/floating_left.png`]: {width: 128, pixels: createFamilyBAlphaFixture(128)},
-  [`${platformDirectory}/floating_middle.png`]: {width: 256, pixels: createFamilyBAlphaFixture(256)},
-  [`${platformDirectory}/floating_right.png`]: {width: 128, pixels: createFamilyBAlphaFixture(128)}
-};
+const wholeFloatingPath = `${platformDirectory}/meadow_floating_platform.png`;
+const wholeFloatingFixture = decodePng(wholeFloatingPath);
+assert.deepEqual([wholeFloatingFixture.width, wholeFloatingFixture.height], [512, 128]);
+const floatingFixtures = {[wholeFloatingPath]: wholeFloatingFixture};
 
 class FakeImage {
   constructor() {
@@ -145,11 +136,11 @@ class FakeImage {
   set src(value) {
     this._src = value;
     const familyA = decodedFamilyA[value];
-    const familyB = familyBFixtures[value];
+    const floating = floatingFixtures[value];
     this.complete = true;
-    this.naturalWidth = familyA?.width ?? familyB?.width ?? 1;
-    this.naturalHeight = familyA?.height ?? (familyB ? 128 : 1);
-    this.pixelData = familyB?.pixels;
+    this.naturalWidth = familyA?.width ?? floating?.width ?? 1;
+    this.naturalHeight = familyA?.height ?? floating?.height ?? 1;
+    this.pixelData = floating?.pixels;
     this.onload?.();
   }
 

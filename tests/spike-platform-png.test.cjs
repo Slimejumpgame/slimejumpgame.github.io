@@ -94,7 +94,7 @@ const assetStart = rendererSource.indexOf("  const SPIKE_PLATFORM_ASSET_CONTRACT
 const assetEnd = rendererSource.indexOf("  const TUTORIAL_DRAG_HAND_RENDER_SIZE", assetStart);
 const drawStart = rendererSource.indexOf("  function isSpikePlatformAssetReady");
 const drawEnd = rendererSource.indexOf("  function drawBouncePads", drawStart);
-const platformsStart = rendererSource.indexOf("  function drawPlatforms(");
+const platformsStart = rendererSource.indexOf("  function drawVectorPlatformSurface(");
 const platformsEnd = rendererSource.indexOf("  function drawGoal(", platformsStart);
 assert.ok(assetStart >= 0 && assetEnd > assetStart);
 assert.ok(drawStart >= 0 && drawEnd > drawStart);
@@ -338,10 +338,32 @@ platforms = [spikeFixture];
 resetEvents();
 api.drawPlatforms(biome, rendererContext.MEADOW_ASSET_VISUALS);
 assert.equal(events.filter(event => event.type === "meadowBase").length, 1,
-  "Meadow Spike Platform must use the normal Meadow floating base");
+  "Meadow Spike Platform must request the biome Whole/fallback base");
 assert.equal(events.filter(event => event.type === "biomeDetails").length, 0);
-assert.ok(events.findIndex(event => event.type === "meadowBase") <
-  events.findIndex(event => event.type === "drawImage"));
+const wholeBaseIndex = events.findIndex(event => event.type === "meadowBase");
+const wholeSlotIndex = events.findIndex(event => (
+  event.type === "roundedRect" && event.args[1] === spikeFixture.y + 4
+));
+const wholeSpikeIndex = events.findIndex(event => event.type === "drawImage");
+assert.ok(wholeBaseIndex < wholeSlotIndex && wholeSlotIndex < wholeSpikeIndex,
+  "Whole base must stay below the unchanged slots and Spike PNG overlay");
+
+meadowAssetsReady = false;
+resetEvents();
+api.drawPlatforms(biome, rendererContext.MEADOW_ASSET_VISUALS);
+assert.equal(events.filter(event => event.type === "meadowBase").length, 1);
+assert.ok(events.some(event => (
+  event.type === "fill" && event.style === biome.platform.body
+)), "an invalid Whole/Family-B base must restore the prior vector body");
+assert.equal(events.filter(event => (
+  event.type === "roundedRect" && event.args[1] === spikeFixture.y + 4
+)).length, Math.max(3, Math.floor(spikeFixture.w / 25)));
+assert.equal(
+  events.filter(event => event.type === "drawImage").length,
+  Math.max(3, Math.floor(spikeFixture.w / 25)),
+  "base fallback must not affect the Spike PNG overlay"
+);
+meadowAssetsReady = true;
 
 resetEvents();
 api.drawPlatforms(biome, false);

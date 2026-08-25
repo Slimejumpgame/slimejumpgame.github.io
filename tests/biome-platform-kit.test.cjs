@@ -15,11 +15,7 @@ const bodyAssets = Array.from({length: 3}, (_, index) => (
   `coast_overlay_body_0${index + 1}`
 ));
 const familyAAssets = ["coast_top_base", "coast_body_base", ...topAssets, ...bodyAssets];
-const familyBAssets = [
-  "coast_floating_left",
-  "coast_floating_middle",
-  "coast_floating_right"
-];
+const familyBAssets = ["coast_floating_platform"];
 const expectedPaths = Object.fromEntries(
   [...familyAAssets, ...familyBAssets].map(asset => [
     asset,
@@ -28,14 +24,10 @@ const expectedPaths = Object.fromEntries(
 );
 const expectedSizes = Object.fromEntries([
   ...familyAAssets.map(asset => [asset, {w: 352, h: 128}]),
-  ["coast_floating_left", {w: 128, h: 128}],
-  ["coast_floating_middle", {w: 256, h: 128}],
-  ["coast_floating_right", {w: 128, h: 128}]
+  ["coast_floating_platform", {w: 512, h: 128}]
 ]);
 const oldInvalidSizes = Object.freeze({
-  [expectedPaths.coast_floating_left]: [112, 127],
-  [expectedPaths.coast_floating_middle]: [300, 127],
-  [expectedPaths.coast_floating_right]: [108, 127]
+  [expectedPaths.coast_floating_platform]: [511, 128]
 });
 const newSizes = Object.freeze(Object.fromEntries(
   Object.entries(expectedSizes).map(([asset, size]) => (
@@ -43,11 +35,13 @@ const newSizes = Object.freeze(Object.fromEntries(
   ))
 ));
 
-function createFloatingPixels(width) {
+function createWholeFloatingPixels() {
+  const width = 512;
   const pixels = Buffer.alloc(width * 128 * 4);
-  for (let y = 24; y <= 102; y++) pixels[y * width * 4 + 3] = 255;
-  for (let y = 34; y <= 84; y++) {
-    for (let x = 0; x < width; x++) pixels[(y * width + x) * 4 + 3] = 255;
+  pixels[(20 * width + 4) * 4 + 3] = 255;
+  pixels[(109 * width + 507) * 4 + 3] = 255;
+  for (let y = 34; y < 91; y++) {
+    for (let x = 4; x <= 507; x++) pixels[(y * width + x) * 4 + 3] = 255;
   }
   return pixels;
 }
@@ -55,9 +49,7 @@ function createFloatingPixels(width) {
 function createContext(sizes, includeContentFit) {
   const pixelsByPath = includeContentFit
     ? {
-        [expectedPaths.coast_floating_left]: createFloatingPixels(128),
-        [expectedPaths.coast_floating_middle]: createFloatingPixels(256),
-        [expectedPaths.coast_floating_right]: createFloatingPixels(128)
+        [expectedPaths.coast_floating_platform]: createWholeFloatingPixels()
       }
     : {};
   class FakeImage {
@@ -135,17 +127,9 @@ assert.equal(coastManifest.kit.familyA.bodyOverlays.length, 3);
 assert.deepEqual(
   coastManifest.kit.familyB,
   {
-    left: {
-      asset: "coast_floating_left", w: 128, h: 128,
-      source: {x: 0, y: 0, w: 128, h: 128}
-    },
-    middle: {
-      asset: "coast_floating_middle", w: 256, h: 128,
-      source: {x: 0, y: 0, w: 256, h: 128}
-    },
-    right: {
-      asset: "coast_floating_right", w: 128, h: 128,
-      source: {x: 0, y: 0, w: 128, h: 128}
+    whole: {
+      asset: "coast_floating_platform", w: 512, h: 128,
+      source: {x: 0, y: 0, w: 512, h: 128}
     }
   }
 );
@@ -166,6 +150,7 @@ const drawContext = new Proxy({
   }
 });
 const startPlatform = {x: 0, y: 640, w: 235, h: 80};
+const goalPlatform = {x: 1060, y: 370, w: 220, h: 350};
 const floatingPlatform = {x: 420, y: 310, w: 138, h: 26};
 assert.equal(oldInvalidApi.drawPlatformBase(drawContext, startPlatform, 0, 17), false);
 assert.equal(drawCalls.length, 0, "missing Coast Family A must keep the vector fallback");
@@ -173,8 +158,42 @@ assert.equal(oldInvalidApi.drawPlatformBase(drawContext, floatingPlatform), fals
 assert.equal(
   drawCalls.length,
   0,
-  "old Coast floating sizes must be rejected so the renderer uses its vector fallback"
+  "an invalid Coast Whole asset must be rejected so the renderer uses its vector fallback"
 );
+
+const coastBasesOnlyContext = createContext({
+  [expectedPaths.coast_top_base]: [352, 128],
+  [expectedPaths.coast_body_base]: [352, 128]
+}, false);
+const coastBasesOnlyApi = coastBasesOnlyContext.coastKitTestApi;
+const coastBasesOnlyStatus = JSON.parse(JSON.stringify(
+  coastBasesOnlyApi.getStatus()
+));
+assert.equal(coastBasesOnlyStatus.familyAReady, false);
+assert.equal(coastBasesOnlyStatus.topBaseReady, true);
+assert.equal(coastBasesOnlyStatus.bodyBaseReady, true);
+assert.deepEqual(coastBasesOnlyStatus.availableTopOverlays, []);
+assert.deepEqual(coastBasesOnlyStatus.availableBodyOverlays, []);
+drawCalls.length = 0;
+assert.equal(
+  coastBasesOnlyApi.drawPlatformBase(drawContext, startPlatform, 0, 17),
+  true
+);
+assert.deepEqual(drawCalls.map(call => call[0].src), [expectedPaths.coast_top_base]);
+drawCalls.length = 0;
+assert.equal(
+  coastBasesOnlyApi.drawPlatformBase(
+    drawContext,
+    goalPlatform,
+    goalPlatform.x,
+    17
+  ),
+  true
+);
+assert.equal(drawCalls[0][0].src, expectedPaths.coast_top_base);
+assert.ok(drawCalls.slice(1).every(call => (
+  call[0].src === expectedPaths.coast_body_base
+)));
 
 const newContext = createContext(newSizes, true);
 const newApi = newContext.coastKitTestApi;
@@ -182,17 +201,15 @@ const newStatus = JSON.parse(JSON.stringify(newApi.getStatus()));
 assert.equal(newStatus.ready, true);
 assert.equal(newStatus.familyAReady, true);
 assert.equal(newStatus.familyBReady, true);
-assert.deepEqual(newStatus.floatingContentFit, {
+assert.equal(newStatus.wholeFamilyBReady, true);
+assert.deepEqual(newStatus.wholeFloatingContentFit, {
   analyzed: true,
   alphaThreshold: 8,
-  bodyRowMinimumCoverage: 0.5,
-  topOverhang: 2,
-  bottomOverhang: 3,
-  topDecorSource: {y: 24, h: 10},
-  bodySource: {y: 34, h: 51},
-  bottomDecorSource: {y: 85, h: 18}
+  supportRowMinimumCoverage: 0.9,
+  visibleContentBounds: {x: 4, y: 20, w: 504, h: 90},
+  supportY: 34,
+  supportBand: {y: 34, h: 57}
 });
-
 for (let seed = 0; seed < 100; seed++) {
   const top = JSON.parse(JSON.stringify(newApi.getTopOverlaySelection(seed)));
   const body = JSON.parse(JSON.stringify(newApi.getBodyOverlaySelection(seed)));
@@ -210,15 +227,25 @@ assert.deepEqual(
 );
 drawCalls.length = 0;
 assert.equal(newApi.drawPlatformBase(drawContext, floatingPlatform), true);
-assert.ok(drawCalls.length > 3);
-assert.ok(drawCalls.some(call => call[2] === 34 && call[4] === 51));
-assert.ok(drawCalls.every(call => call[2] !== 22));
+assert.equal(drawCalls.length, 1, "whole Floating must be one unsliced draw");
+assert.equal(drawCalls[0][0].src, expectedPaths.coast_floating_platform);
+const mapping = JSON.parse(JSON.stringify(
+  newApi.getWholeFloatingMapping(floatingPlatform)
+));
+assert.equal(mapping.scale, floatingPlatform.w / 504);
+assert.equal(mapping.drawX + 4 * mapping.scale, floatingPlatform.x);
+assert.equal(mapping.drawX + 508 * mapping.scale, floatingPlatform.x + floatingPlatform.w);
+assert.equal(mapping.drawY + 34 * mapping.scale, floatingPlatform.y);
+assert.equal(drawCalls[0][5], mapping.drawX);
+assert.equal(drawCalls[0][6], mapping.drawY);
+assert.equal(drawCalls[0][7], mapping.drawWidth);
+assert.equal(drawCalls[0][8], mapping.drawHeight);
 
 const source = read("js/visual-platform-kit.js");
 assert.doesNotMatch(source, /Math\.random\(/);
 assert.match(read("js/visual-meadow-assets.js"), /createPlatformVisualKit/);
 const coastSource = read("js/visual-coast-assets.js");
-assert.match(coastSource, /createPlatformVisualKit/);
+assert.match(coastSource, /BIOME_PLATFORM_VISUALS\.resolve\("coast"\)/);
 assert.doesNotMatch(coastSource, /LEGACY_COAST|SOURCE_SCALE|y:\s*22/);
 
 console.log("Generic Meadow/Coast platform-kit configuration, sizing and fallback tests passed.");

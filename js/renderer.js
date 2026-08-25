@@ -86,6 +86,48 @@
   const bouncePadImage = new Image();
   bouncePadImage.src = BOUNCE_PAD_ASSET_PATH;
 
+  const GLOBAL_WHOLE_PLATFORM_SOURCE_SIZE = Object.freeze({w: 512, h: 128});
+  const FALLING_PLATFORM_WHOLE_ASSET_CONTRACT = Object.freeze({
+    path: "assets/platforms/falling_platform.png",
+    canvas: GLOBAL_WHOLE_PLATFORM_SOURCE_SIZE
+  });
+  const ICE_PLATFORM_WHOLE_ASSET_CONTRACT = Object.freeze({
+    path: "assets/platforms/ice_platform.png",
+    canvas: GLOBAL_WHOLE_PLATFORM_SOURCE_SIZE
+  });
+  const CONVEYOR_PLATFORM_WHOLE_ASSET_CONTRACT = Object.freeze({
+    path: "assets/platforms/conveyor_platform.png",
+    canvas: GLOBAL_WHOLE_PLATFORM_SOURCE_SIZE,
+    defaultDirection: 1,
+    beltChannelSource: Object.freeze({x: 50, y: 43, w: 412, h: 39})
+  });
+
+  function createGlobalWholePlatformAsset(contract) {
+    const record = {image: new Image(), contentFit: null};
+    record.image.decoding = "async";
+    record.image.onload = () => {
+      record.contentFit = (
+        record.image.naturalWidth === contract.canvas.w &&
+        record.image.naturalHeight === contract.canvas.h
+      ) ? analyzeWholePlatformImage(record.image, contract.canvas) : null;
+    };
+    record.image.onerror = () => {
+      record.contentFit = null;
+    };
+    record.image.src = contract.path;
+    return record;
+  }
+
+  const fallingPlatformWholeAsset = createGlobalWholePlatformAsset(
+    FALLING_PLATFORM_WHOLE_ASSET_CONTRACT
+  );
+  const icePlatformWholeAsset = createGlobalWholePlatformAsset(
+    ICE_PLATFORM_WHOLE_ASSET_CONTRACT
+  );
+  const conveyorPlatformWholeAsset = createGlobalWholePlatformAsset(
+    CONVEYOR_PLATFORM_WHOLE_ASSET_CONTRACT
+  );
+
   const FALLING_PLATFORM_ASSET_CONTRACT = Object.freeze({
     left: Object.freeze({
       path: "assets/platforms/falling_platform_left.png",
@@ -691,18 +733,38 @@
     ctx.restore();
   }
 
-  function drawGhostStepFadeOutline(platform, x) {
-    if (!platform?.fade || !isGhostStepActive()) return;
+  function isGlobalWholePlatformAssetReady(record, contract) {
+    return Boolean(
+      record?.contentFit &&
+      record.image.complete &&
+      record.image.naturalWidth === contract.canvas.w &&
+      record.image.naturalHeight === contract.canvas.h
+    );
+  }
 
-    ctx.save();
-    ctx.globalAlpha = 1;
-    ctx.strokeStyle = "rgba(221,205,255,0.92)";
-    ctx.lineWidth = 2.5;
-    ctx.shadowColor = "rgba(190,158,255,0.72)";
-    ctx.shadowBlur = 6;
-    roundedRect(x - 1, platform.y - 1, platform.w + 2, platform.h + 2, 11);
-    ctx.stroke();
-    ctx.restore();
+  function drawGlobalWholePlatformAsset(
+    context,
+    record,
+    contract,
+    platform,
+    drawX,
+    flipX = false
+  ) {
+    if (!isGlobalWholePlatformAssetReady(record, contract)) return false;
+    context.save();
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    const drawn = drawWholePlatformImage(
+      context,
+      record.image,
+      record.contentFit,
+      contract.canvas,
+      platform,
+      drawX,
+      flipX
+    );
+    context.restore();
+    return drawn;
   }
 
   function drawSpecialPlatformOuterCapExtensions(
@@ -746,7 +808,7 @@
     context.restore();
   }
 
-  function areFallingPlatformAssetsReady() {
+  function areLegacyFallingPlatformAssetsReady() {
     return Object.entries(FALLING_PLATFORM_ASSET_CONTRACT).every(([name, contract]) => {
       const image = fallingPlatformImages[name];
       return (
@@ -757,13 +819,13 @@
     });
   }
 
-  function drawFallingPlatformAsset(context, platform, drawX = platform.x) {
+  function drawLegacyFallingPlatformAsset(context, platform, drawX = platform.x) {
     const contract = FALLING_PLATFORM_ASSET_CONTRACT;
     if (
       !platform?.fragile ||
       platform.h !== FALLING_PLATFORM_DRAW_HEIGHT ||
       platform.w < contract.left.drawWidth + contract.right.drawWidth ||
-      !areFallingPlatformAssetsReady()
+      !areLegacyFallingPlatformAssetsReady()
     ) return false;
 
     const destinationY = platform.y + SPECIAL_PLATFORM_BODY_TOP_OFFSET;
@@ -833,7 +895,28 @@
     return true;
   }
 
-  function areIcePlatformAssetsReady() {
+  function areFallingPlatformAssetsReady() {
+    return isGlobalWholePlatformAssetReady(
+      fallingPlatformWholeAsset,
+      FALLING_PLATFORM_WHOLE_ASSET_CONTRACT
+    ) || areLegacyFallingPlatformAssetsReady();
+  }
+
+  function drawFallingPlatformAsset(context, platform, drawX = platform.x) {
+    if (!platform?.fragile || platform.h !== FALLING_PLATFORM_DRAW_HEIGHT) {
+      return false;
+    }
+    if (drawGlobalWholePlatformAsset(
+      context,
+      fallingPlatformWholeAsset,
+      FALLING_PLATFORM_WHOLE_ASSET_CONTRACT,
+      platform,
+      drawX
+    )) return true;
+    return drawLegacyFallingPlatformAsset(context, platform, drawX);
+  }
+
+  function areLegacyIcePlatformAssetsReady() {
     return Object.entries(ICE_PLATFORM_ASSET_CONTRACT).every(([name, contract]) => {
       const image = icePlatformImages[name];
       return (
@@ -844,13 +927,13 @@
     });
   }
 
-  function drawIcePlatformAsset(context, platform, drawX = platform.x) {
+  function drawLegacyIcePlatformAsset(context, platform, drawX = platform.x) {
     const contract = ICE_PLATFORM_ASSET_CONTRACT;
     if (
       !platform?.ice ||
       platform.h !== ICE_PLATFORM_COLLISION_HEIGHT ||
       platform.w < contract.left.drawWidth + contract.right.drawWidth ||
-      !areIcePlatformAssetsReady()
+      !areLegacyIcePlatformAssetsReady()
     ) return false;
 
     const middleStartX = drawX + contract.left.drawWidth;
@@ -958,6 +1041,27 @@
     return true;
   }
 
+  function areIcePlatformAssetsReady() {
+    return isGlobalWholePlatformAssetReady(
+      icePlatformWholeAsset,
+      ICE_PLATFORM_WHOLE_ASSET_CONTRACT
+    ) || areLegacyIcePlatformAssetsReady();
+  }
+
+  function drawIcePlatformAsset(context, platform, drawX = platform.x) {
+    if (!platform?.ice || platform.h !== ICE_PLATFORM_COLLISION_HEIGHT) {
+      return false;
+    }
+    if (drawGlobalWholePlatformAsset(
+      context,
+      icePlatformWholeAsset,
+      ICE_PLATFORM_WHOLE_ASSET_CONTRACT,
+      platform,
+      drawX
+    )) return true;
+    return drawLegacyIcePlatformAsset(context, platform, drawX);
+  }
+
   function drawCanvasBouncePadFallback(pad) {
     ctx.fillStyle = "#47cde9";
     roundedRect(pad.x, pad.y, pad.w, pad.h, 9);
@@ -1050,7 +1154,7 @@
     }
   }
 
-  function areConveyorPlatformAssetsReady() {
+  function areLegacyConveyorPlatformAssetsReady() {
     return Object.entries(CONVEYOR_PLATFORM_ASSET_CONTRACT).every(([name, contract]) => {
       const image = conveyorPlatformImages[name];
       return (
@@ -1061,13 +1165,13 @@
     });
   }
 
-  function drawConveyorPlatformAsset(context, platform, drawX = platform.x) {
+  function drawLegacyConveyorPlatformAsset(context, platform, drawX = platform.x) {
     const contract = CONVEYOR_PLATFORM_ASSET_CONTRACT;
     if (
       !platform?.conveyor ||
       platform.h !== CONVEYOR_PLATFORM_DRAW_HEIGHT ||
       platform.w < contract.left.drawWidth + contract.right.drawWidth ||
-      !areConveyorPlatformAssetsReady()
+      !areLegacyConveyorPlatformAssetsReady()
     ) return false;
 
     const destinationY = platform.y + SPECIAL_PLATFORM_BODY_TOP_OFFSET;
@@ -1148,6 +1252,30 @@
     return true;
   }
 
+  function areConveyorPlatformAssetsReady() {
+    return isGlobalWholePlatformAssetReady(
+      conveyorPlatformWholeAsset,
+      CONVEYOR_PLATFORM_WHOLE_ASSET_CONTRACT
+    ) || areLegacyConveyorPlatformAssetsReady();
+  }
+
+  function drawConveyorPlatformAsset(context, platform, drawX = platform.x) {
+    if (!platform?.conveyor || platform.h !== CONVEYOR_PLATFORM_DRAW_HEIGHT) {
+      return false;
+    }
+    const direction = Math.sign(platform.conveyorSpeed) ||
+      CONVEYOR_PLATFORM_WHOLE_ASSET_CONTRACT.defaultDirection;
+    if (drawGlobalWholePlatformAsset(
+      context,
+      conveyorPlatformWholeAsset,
+      CONVEYOR_PLATFORM_WHOLE_ASSET_CONTRACT,
+      platform,
+      drawX,
+      direction < 0
+    )) return true;
+    return drawLegacyConveyorPlatformAsset(context, platform, drawX);
+  }
+
   function drawConveyorPlatformBeltOverlay(context, platform, drawX = platform.x) {
     const contract = CONVEYOR_PLATFORM_ASSET_CONTRACT;
     const channel = CONVEYOR_PLATFORM_BELT_CHANNEL;
@@ -1162,12 +1290,37 @@
       worldTime * Math.abs(platform.conveyorSpeed) * 0.72 +
       platform.conveyorData.phase
     ) % channel.stripeSpacing;
-    const middleStartX = drawX + contract.left.drawWidth;
-    const middleWidth = platform.w - contract.left.drawWidth - contract.right.drawWidth;
-    const destinationScaleY = SPECIAL_PLATFORM_BODY_DRAW_HEIGHT / CONVEYOR_PLATFORM_DRAW_HEIGHT;
-    const channelTop =
-      platform.y + SPECIAL_PLATFORM_BODY_TOP_OFFSET + channel.top * destinationScaleY;
-    const channelHeight = channel.height * destinationScaleY;
+    const wholeReady = isGlobalWholePlatformAssetReady(
+      conveyorPlatformWholeAsset,
+      CONVEYOR_PLATFORM_WHOLE_ASSET_CONTRACT
+    );
+    const wholeMapping = wholeReady ? getWholePlatformImageMapping(
+      conveyorPlatformWholeAsset.contentFit,
+      CONVEYOR_PLATFORM_WHOLE_ASSET_CONTRACT.canvas,
+      platform,
+      drawX,
+      direction < 0
+    ) : null;
+    const wholeChannel = CONVEYOR_PLATFORM_WHOLE_ASSET_CONTRACT.beltChannelSource;
+    const wholeChannelX = direction < 0
+      ? CONVEYOR_PLATFORM_WHOLE_ASSET_CONTRACT.canvas.w -
+        wholeChannel.x - wholeChannel.w
+      : wholeChannel.x;
+    const middleStartX = wholeMapping
+      ? wholeMapping.drawX + wholeChannelX * wholeMapping.scale
+      : drawX + contract.left.drawWidth;
+    const middleWidth = wholeMapping
+      ? wholeChannel.w * wholeMapping.scale
+      : platform.w - contract.left.drawWidth - contract.right.drawWidth;
+    const destinationScaleY =
+      SPECIAL_PLATFORM_BODY_DRAW_HEIGHT / CONVEYOR_PLATFORM_DRAW_HEIGHT;
+    const channelTop = wholeMapping
+      ? wholeMapping.drawY + wholeChannel.y * wholeMapping.scale
+      : platform.y + SPECIAL_PLATFORM_BODY_TOP_OFFSET +
+        channel.top * destinationScaleY;
+    const channelHeight = wholeMapping
+      ? wholeChannel.h * wholeMapping.scale
+      : channel.height * destinationScaleY;
     const channelBottom = channelTop + channelHeight;
 
     context.save();
@@ -1197,6 +1350,75 @@
     }
     context.restore();
     return true;
+  }
+
+  function drawVectorPlatformSurface(biome, platform, drawX) {
+    ctx.fillStyle = platform.fragile
+      ? "#815142"
+      : platform.moving
+        ? "#5e7592"
+        : platform.conveyor
+          ? "#4a4f5b"
+          : platform.fade
+            ? biome.platform.body
+            : platform.ice
+              ? "#75bad1"
+              : platform.spikePlatform
+                ? biome.platform.body
+                : isStandardPlatform(platform)
+                  ? biome.platform.body
+                  : "#3c5872";
+    roundedRect(drawX, platform.y, platform.w, platform.h, 10);
+    ctx.fill();
+
+    ctx.fillStyle = platform.fragile
+      ? "#ff9d61"
+      : platform.moving
+        ? "#a7d2ff"
+        : platform.conveyor
+          ? "#ffad45"
+          : platform.fade
+            ? biome.platform.top
+            : platform.ice
+              ? "#e8fbff"
+              : platform.spikePlatform
+                ? biome.platform.top
+                : isStandardPlatform(platform)
+                  ? biome.platform.top
+                  : "#77c68a";
+    roundedRect(drawX, platform.y, platform.w, Math.min(12, platform.h), 8);
+    ctx.fill();
+  }
+
+  function drawVectorPlatformFallbackRegion(
+    biome,
+    platform,
+    drawX,
+    region
+  ) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(region.x, region.y, region.w, region.h);
+    ctx.clip();
+    drawVectorPlatformSurface(biome, platform, drawX);
+    if (platform.spikePlatform) {
+      drawStandardPlatformDetails(
+        drawX,
+        platform.y,
+        platform.w,
+        platform.h,
+        biome.platform
+      );
+    } else if (isStandardPlatform(platform) || platform.fade) {
+      drawStandardPlatformDetails(
+        drawX,
+        platform.y,
+        platform.w,
+        platform.h,
+        biome.platform
+      );
+    }
+    ctx.restore();
   }
 
   function drawPlatforms(
@@ -1254,7 +1476,18 @@
         !conveyorAssetPlatform &&
         platformVisuals &&
         !p.lastBubbleSupport &&
-        platformVisuals.drawPlatformBase(ctx, p, drawX, level.seed)
+        platformVisuals.drawPlatformBase(
+          ctx,
+          p,
+          drawX,
+          level.seed,
+          region => drawVectorPlatformFallbackRegion(
+            biome,
+            p,
+            drawX,
+            region
+          )
+        )
       );
 
       if (
@@ -1263,60 +1496,11 @@
         !conveyorAssetPlatform &&
         !biomeAssetPlatform
       ) {
-        ctx.fillStyle = p.fragile
-          ? "#815142"
-          : p.moving
-            ? "#5e7592"
-            : p.conveyor
-              ? "#4a4f5b"
-              : p.fade
-                ? biome.platform.body
-                : p.ice
-                  ? "#75bad1"
-                  : p.spikePlatform
-                    ? biome.platform.body
-                    : standardPlatform
-                      ? biome.platform.body
-                      : "#3c5872";
-        roundedRect(drawX, p.y, p.w, p.h, 10);
-        ctx.fill();
-
-        ctx.fillStyle = p.fragile
-          ? "#ff9d61"
-          : p.moving
-            ? "#a7d2ff"
-            : p.conveyor
-              ? "#ffad45"
-              : p.fade
-                ? biome.platform.top
-                : p.ice
-                  ? "#e8fbff"
-                  : p.spikePlatform
-                    ? biome.platform.top
-                    : standardPlatform
-                      ? biome.platform.top
-                      : "#77c68a";
-        roundedRect(drawX, p.y, p.w, Math.min(12, p.h), 8);
-        ctx.fill();
+        drawVectorPlatformSurface(biome, p, drawX);
       }
 
       if (p.spikePlatform && !biomeAssetPlatform) {
         drawStandardPlatformDetails(drawX, p.y, p.w, p.h, biome.platform);
-      }
-
-      if (p.fade) {
-        ctx.strokeStyle = "rgba(230,215,255,0.8)";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([8, 8]);
-        roundedRect(drawX + 4, p.y + 4, p.w - 8, p.h - 8, 7);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-
-      if (p.moving && biomeAssetPlatform) {
-        ctx.fillStyle = "rgba(167,210,255,0.62)";
-        roundedRect(drawX + 3, p.y + 2, p.w - 6, 7, 5);
-        ctx.fill();
       }
 
       if (p.ice && !iceAssetPlatform) {
@@ -1460,8 +1644,6 @@
         drawAnchorStepWarningBorder(p.fallingPlatform, drawX);
       }
 
-      drawGhostStepFadeOutline(p, drawX);
-
       ctx.restore();
     }
 
@@ -1470,8 +1652,13 @@
     for (const s of level.spikes) drawDeathZone(s, biome);
   }
 
-  function drawGoal(platformVisuals = null, portalVisuals = null) {
+  function drawGoal(
+    platformVisuals = null,
+    portalVisuals = null,
+    biome = null
+  ) {
     const level = currentLevel();
+    const goalBiome = biome ?? getBiomeForLevel(levelIndex + 1);
     const g = level.goal;
     const assetGoalPlatform = platformVisuals
       ? level.platforms.find(platform => (
@@ -1491,7 +1678,13 @@
       platformVisuals.drawGoalTopForeground(
         ctx,
         assetGoalPlatform,
-        level.seed
+        level.seed,
+        region => drawVectorPlatformFallbackRegion(
+          goalBiome,
+          assetGoalPlatform,
+          assetGoalPlatform.x,
+          region
+        )
       );
     }
     if (!biomeAssetPortal) {
@@ -4066,7 +4259,7 @@
       drawPlatforms(biome);
       drawBouncePads();
     }
-    drawGoal(biomePlatformVisuals, biomePortalVisuals);
+    drawGoal(biomePlatformVisuals, biomePortalVisuals, biome);
     biomeDecorVisuals?.drawGoalSeamCoverProps?.(ctx, biomeDecorScene);
     drawStars();
     drawEnemies();

@@ -114,11 +114,11 @@ for (const contract of Object.values(assetContracts)) {
 }
 
 const rendererSource = read("js/renderer.js");
-const assetStart = rendererSource.indexOf("  const CONVEYOR_PLATFORM_ASSET_CONTRACT");
+const assetStart = rendererSource.indexOf("  const GLOBAL_WHOLE_PLATFORM_SOURCE_SIZE");
 const assetEnd = rendererSource.indexOf("  const SPIKE_PLATFORM_ASSET_CONTRACT", assetStart);
-const helperStart = rendererSource.indexOf("  function drawSpecialPlatformOuterCapExtensions");
-const helperEnd = rendererSource.indexOf("  function areFallingPlatformAssetsReady", helperStart);
-const drawStart = rendererSource.indexOf("  function areConveyorPlatformAssetsReady");
+const helperStart = rendererSource.indexOf("  function isGlobalWholePlatformAssetReady");
+const helperEnd = rendererSource.indexOf("  function areLegacyFallingPlatformAssetsReady", helperStart);
+const drawStart = rendererSource.indexOf("  function areLegacyConveyorPlatformAssetsReady");
 const drawEnd = rendererSource.indexOf("  function drawPlatforms(", drawStart);
 const platformsStart = drawEnd;
 const platformsEnd = rendererSource.indexOf("  function drawGoal(", platformsStart);

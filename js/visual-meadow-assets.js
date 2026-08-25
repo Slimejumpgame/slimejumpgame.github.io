@@ -23,9 +23,7 @@
       background_clouds_back: "assets/environments/meadow/background/meadow_background_clouds_back.png",
       background_landscape: "assets/environments/meadow/background/meadow_background_landscape.png",
       background_clouds_front: "assets/environments/meadow/background/meadow_background_clouds_front.png",
-      floating_left: "assets/environments/meadow/platforms/floating_left.png",
-      floating_middle: "assets/environments/meadow/platforms/floating_middle.png",
-      floating_right: "assets/environments/meadow/platforms/floating_right.png",
+      meadow_floating_platform: "assets/environments/meadow/platforms/meadow_floating_platform.png",
       meadow_top_base: "assets/environments/meadow/platforms/meadow_top_base.png",
       meadow_body_base: "assets/environments/meadow/platforms/meadow_body_base.png",
       meadow_overlay_top_01: "assets/environments/meadow/platforms/meadow_overlay_top_01.png",
@@ -53,9 +51,7 @@
       background_clouds_back: Object.freeze({w: 1280, h: 720}),
       background_landscape: Object.freeze({w: 1280, h: 720}),
       background_clouds_front: Object.freeze({w: 1280, h: 720}),
-      floating_left: Object.freeze({w: 128, h: 128}),
-      floating_middle: Object.freeze({w: 256, h: 128}),
-      floating_right: Object.freeze({w: 128, h: 128}),
+      meadow_floating_platform: Object.freeze({w: 512, h: 128}),
       meadow_top_base: Object.freeze({w: 352, h: 128}),
       meadow_body_base: Object.freeze({w: 352, h: 128}),
       meadow_overlay_top_01: Object.freeze({w: 352, h: 128}),
@@ -91,9 +87,7 @@
       "portal"
     ]);
     const PLATFORM_ASSET_NAMES = Object.freeze([
-      "floating_left",
-      "floating_middle",
-      "floating_right",
+      "meadow_floating_platform",
       "meadow_top_base",
       "meadow_body_base",
       ...MEADOW_TOP_OVERLAY_ASSET_NAMES,
@@ -118,21 +112,17 @@
         )))
       }),
       familyB: Object.freeze({
-        left: Object.freeze({asset: "floating_left", path: ASSET_PATHS.floating_left}),
-        middle: Object.freeze({
-          asset: "floating_middle",
-          path: ASSET_PATHS.floating_middle
-        }),
-        right: Object.freeze({asset: "floating_right", path: ASSET_PATHS.floating_right})
+        whole: Object.freeze({
+          asset: "meadow_floating_platform",
+          path: ASSET_PATHS.meadow_floating_platform
+        })
       }),
       slotNames: Object.freeze({
         topBase: "meadow_top_base",
         bodyBase: "meadow_body_base",
         topOverlays: "meadow_top_overlays",
         bodyOverlays: "meadow_body_overlays",
-        floatingLeft: "floating_left",
-        floatingMiddle: "floating_middle",
-        floatingRight: "floating_right"
+        floatingWhole: "meadow_floating_platform"
       }),
       salts: Object.freeze({
         topStart: MEADOW_TOP_OVERLAY_START,
@@ -414,7 +404,6 @@
         loaded: Object.freeze(
           Object.fromEntries(Object.keys(ASSET_PATHS).map(name => [name, isReady(name)]))
         ),
-        floatingContentFit: meadowPlatformKit.getStatus().floatingContentFit,
         platformKit: meadowPlatformKit.getStatus(),
         decorAlphaProfiles: meadowDecorKit.getStatus().alphaProfiles,
         decorKit: meadowDecorKit.getStatus(),

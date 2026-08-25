@@ -18,17 +18,14 @@ assert.doesNotMatch(rendererSource, /fadingPlatformImages/);
 assert.doesNotMatch(rendererSource, /drawFadingPlatformAsset/);
 assert.doesNotMatch(rendererSource, /areFadingPlatformAssetsReady/);
 
-const ghostStart = rendererSource.indexOf("  function drawGhostStepFadeOutline");
-const ghostEnd = rendererSource.indexOf("  function areFallingPlatformAssetsReady", ghostStart);
-const platformsStart = rendererSource.indexOf("  function drawPlatforms(");
+const platformsStart = rendererSource.indexOf("  function drawVectorPlatformSurface(");
 const platformsEnd = rendererSource.indexOf("  function drawGoal(", platformsStart);
-assert.ok(ghostStart >= 0 && ghostEnd > ghostStart);
 assert.ok(platformsStart >= 0 && platformsEnd > platformsStart);
-const fadingRendererSource = [
-  rendererSource.slice(ghostStart, ghostEnd),
-  rendererSource.slice(platformsStart, platformsEnd)
-].join("\n");
+const fadingRendererSource = rendererSource.slice(platformsStart, platformsEnd);
 assert.doesNotMatch(fadingRendererSource, /Math\.random\(/);
+assert.doesNotMatch(rendererSource, /drawGhostStepFadeOutline/);
+assert.doesNotMatch(rendererSource, /rgba\(230,215,255,0\.8\)/);
+assert.doesNotMatch(rendererSource, /rgba\(221,205,255,0\.92\)/);
 
 const events = [];
 const roundedRects = [];
@@ -62,6 +59,7 @@ const ctx = {
   },
   setLineDash(value) {
     state.lineDash = [...value];
+    events.push({type: "lineDash", value: [...value]});
   },
   beginPath() {},
   moveTo() {},
@@ -168,20 +166,12 @@ assert.equal(events.filter(event => event.type === "fill").length, 0,
   "the Canvas base must not draw behind a ready Meadow floating base");
 assert.equal(standardDetailCalls.length, 0);
 
-const meadowFadeStroke = events.find(event => (
-  event.type === "stroke" && event.style === "rgba(230,215,255,0.8)"
-));
-assert.deepEqual(meadowFadeStroke, {
-  type: "stroke",
-  style: "rgba(230,215,255,0.8)",
-  alpha: 0.37,
-  lineDash: [8, 8]
-});
-const ghostStepStroke = events.find(event => (
-  event.type === "stroke" && event.style === "rgba(221,205,255,0.92)"
-));
-assert.equal(ghostStepStroke.alpha, 1,
-  "Ghost-Step outline must remain permanently visible above faded content");
+assert.equal(events.filter(event => event.type === "stroke").length, 0,
+  "Fading/Ghost must not draw an extra outline around the Whole base");
+assert.equal(events.filter(event => event.type === "lineDash").length, 0,
+  "Fading/Ghost must not draw the former dashed frame");
+assert.equal(roundedRects.length, 0,
+  "a ready Whole base must be the only Fading/Ghost platform body");
 
 resetDrawAudit();
 api.drawPlatforms(biome, false);
@@ -201,11 +191,11 @@ assert.deepEqual(standardDetailCalls[0], {
   biomePlatform: biome.platform,
   alpha: 0.37
 });
-assert.ok(events.some(event => (
-  event.type === "stroke" &&
-  event.style === "rgba(230,215,255,0.8)" &&
-  event.alpha === 0.37
-)), "non-Meadow Fading must retain the lavender fade overlay");
+assert.equal(events.filter(event => event.type === "stroke").length, 0,
+  "Canvas fallback must not reintroduce the removed Fading/Ghost frame");
+assert.equal(events.filter(event => event.type === "lineDash").length, 0);
+assert.equal(roundedRects.length, 2,
+  "Canvas fallback keeps only its body and top surface, without a third frame box");
 
 meadowAssetsReady = false;
 resetDrawAudit();
@@ -217,24 +207,62 @@ assert.deepEqual(
   "missing Meadow assets must fall back to a visible biome Canvas base"
 );
 assert.equal(standardDetailCalls.length, 1);
+assert.equal(events.filter(event => event.type === "stroke").length, 0);
+assert.equal(events.filter(event => event.type === "lineDash").length, 0);
 meadowAssetsReady = true;
 
 const movingFixture = {
-  x: 220,
-  y: 340,
+  x: 220.375,
+  y: 340.625,
   w: 126,
   h: 26,
   moving: true,
   movingData: {}
 };
+const movingSnapshot = JSON.stringify(movingFixture);
 platforms = [movingFixture];
 resetDrawAudit();
 api.drawPlatforms(biome, context.MEADOW_ASSET_VISUALS);
 assert.equal(meadowBaseCalls.length, 1,
   "Moving and Fading must share the normal Meadow platform-base route");
-assert.ok(events.some(event => (
-  event.type === "fill" && event.style === "rgba(167,210,255,0.62)"
-)), "the existing Meadow Moving overlay must remain intact");
+assert.deepEqual(meadowBaseCalls[0], {
+  platform: movingFixture,
+  drawX: movingFixture.x,
+  levelSeed: 73,
+  alpha: 1
+}, "Moving Whole mapping must receive the current animated x/y geometry unchanged");
+assert.equal(events.filter(event => event.type === "fill").length, 0,
+  "a successful Moving Whole render must not receive a second Canvas basis or top strip");
+assert.equal(roundedRects.length, 0,
+  "Moving Whole must consist of exactly the platform-kit base draw");
+assert.equal(JSON.stringify(movingFixture), movingSnapshot);
+
+meadowAssetsReady = false;
+resetDrawAudit();
+api.drawPlatforms(biome, context.MEADOW_ASSET_VISUALS);
+assert.equal(meadowBaseCalls.length, 1);
+assert.deepEqual(
+  events.filter(event => event.type === "fill").map(event => event.style).slice(0, 2),
+  ["#5e7592", "#a7d2ff"],
+  "Moving must retain its complete Canvas basis when Whole is unavailable"
+);
+assert.equal(roundedRects.length, 2);
+meadowAssetsReady = true;
+
+const normalFloatingFixture = {x: 180.5, y: 290.25, w: 138, h: 26};
+platforms = [normalFloatingFixture];
+meadowAssetsReady = false;
+resetDrawAudit();
+api.drawPlatforms(biome, context.MEADOW_ASSET_VISUALS);
+assert.equal(meadowBaseCalls.length, 1);
+assert.deepEqual(
+  events.filter(event => event.type === "fill").map(event => event.style).slice(0, 2),
+  [biome.platform.body, biome.platform.top],
+  "normal Floating must fall directly back to its Canvas basis when Whole is unavailable"
+);
+assert.equal(roundedRects.length, 2);
+assert.equal(standardDetailCalls.length, 1);
+meadowAssetsReady = true;
 
 assert.equal(JSON.stringify(fadeFixture), fadeSnapshot,
   "visual drawing must not mutate Fading geometry or state");
@@ -246,7 +274,9 @@ assert.match(platformSource, /!platform\.solid && platform\.opacity >= 0\.40/);
 assert.match(read("js/level-generator.js"),
   /speed: randomRange\(random, 1\.02, 1\.22 \+ intensityFactor \* 0\.18\)/);
 assert.match(rendererSource, /if \(p\.fade\) ctx\.globalAlpha = p\.fadeData\.opacity;/);
-assert.match(rendererSource, /drawGhostStepFadeOutline\(p, drawX\);/);
+assert.doesNotMatch(rendererSource, /drawGhostStepFadeOutline\(p, drawX\);/);
+assert.doesNotMatch(rendererSource, /p\.moving && biomeAssetPlatform/);
+assert.doesNotMatch(rendererSource, /rgba\(167,210,255,0\.62\)/);
 
 const protectedFiles = [
   "js/game.js",
@@ -263,4 +293,4 @@ for (const relativePath of protectedFiles) {
   assert.equal(normalize(read(relativePath)), normalize(headSource));
 }
 
-console.log("Fading biome-base, alpha, overlay, fallback and frozen-scope tests passed.");
+console.log("Fading Whole base, alpha, no-frame, fallback and frozen-scope tests passed.");

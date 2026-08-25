@@ -50,6 +50,74 @@ const coastDecorDirectory = "assets/environments/coast/decor";
 const coastRolePath = role => (
   `${coastDecorDirectory}/coast_decor_${role}_set_01.png`
 );
+const snowDecorDirectory = "assets/environments/snow/decor";
+const snowRolePath = role => (
+  `${snowDecorDirectory}/snow_decor_${role}_set_01.png`
+);
+const levelFixture = seed => ({
+  seed,
+  platforms: [
+    {x: 0, y: 640, w: 235, h: 80},
+    {x: 420, y: 360, w: 170, h: 26},
+    {x: 1060, y: 370, w: 220, h: 350}
+  ]
+});
+
+const snowDecorContext = createDecorContext({
+  [snowRolePath("stones")]: [1536, 1024],
+  [snowRolePath("hero")]: [1536, 1023]
+});
+const snowDecor = snowDecorContext.decorRegistryForTest.resolve("snow");
+const snowDecorStatus = JSON.parse(JSON.stringify(snowDecor.getStatus()));
+assert.equal(snowDecorStatus.paths.stones, snowRolePath("stones"));
+assert.ok(Object.values(snowDecorStatus.paths).every(value => (
+  value.includes("/snow/") && !value.includes("/meadow/") && !value.includes("/coast/")
+)));
+assert.deepEqual(snowDecorStatus.expectedNativeSize, {w: 1536, h: 1024});
+assert.deepEqual(snowDecorStatus.availableRoles, ["stones"]);
+assert.equal(snowDecorStatus.validNativeSizes.stones, true);
+assert.equal(snowDecorStatus.validNativeSizes.hero, false);
+
+let snowDecorScene = null;
+for (let seed = 1; seed <= 100; seed++) {
+  const scene = snowDecor.getScene(levelFixture(seed));
+  const items = [
+    ...scene.topBackDecor,
+    ...scene.topFrontDecor,
+    ...scene.goalSeamCoverProps
+  ];
+  if (items.length > 0) {
+    snowDecorScene = scene;
+    break;
+  }
+}
+assert.ok(snowDecorScene, "a valid standard Snow decor role must be selectable");
+assert.equal(snowDecorScene.biome, "snow");
+assert.ok([
+  ...snowDecorScene.topBackDecor,
+  ...snowDecorScene.topFrontDecor,
+  ...snowDecorScene.goalSeamCoverProps
+].every(item => item.category === "stones"));
+const snowDecorDrawCalls = [];
+const snowDecorCanvas = {
+  save() {},
+  restore() {},
+  drawImage(...args) { snowDecorDrawCalls.push(args); }
+};
+snowDecor.drawTopBackDecor(snowDecorCanvas, snowDecorScene);
+snowDecor.drawGoalSeamCoverProps(snowDecorCanvas, snowDecorScene);
+snowDecor.drawTopFrontDecor(snowDecorCanvas, snowDecorScene);
+assert.ok(snowDecorDrawCalls.length > 0);
+assert.ok(snowDecorDrawCalls.every(call => call[0].src === snowRolePath("stones")));
+
+const snowContextCoast = snowDecorContext.decorRegistryForTest.resolve("coast");
+assert.notEqual(snowContextCoast, snowDecor);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(snowContextCoast.getStatus().availableRoles)),
+  []
+);
+assert.equal(snowContextCoast.isRoleReady("stones"), false);
+
 const heroOnlyContext = createDecorContext({
   [coastRolePath("hero")]: [1536, 1024],
   [coastRolePath("stones")]: [1535, 1024]
@@ -64,14 +132,6 @@ assert.deepEqual(heroOnlyStatus.availableRoles, ["hero"]);
 assert.equal(heroOnlyStatus.validNativeSizes.stones, false);
 assert.equal(heroOnly.areAllReady(), false);
 
-const levelFixture = seed => ({
-  seed,
-  platforms: [
-    {x: 0, y: 640, w: 235, h: 80},
-    {x: 420, y: 360, w: 170, h: 26},
-    {x: 1060, y: 370, w: 220, h: 350}
-  ]
-});
 let heroScene = null;
 for (let seed = 1; seed <= 100; seed++) {
   const scene = heroOnly.getScene(levelFixture(seed));
@@ -226,9 +286,31 @@ function decodeRgba8Png(relativePath) {
 
 const meadowPortalPath = "assets/environments/meadow/portal/meadow_goal_portal.png";
 const coastPortalPath = "assets/environments/coast/portal/coast_goal_portal.png";
+const snowPortalPath = "assets/environments/snow/portal/snow_goal_portal.png";
+const snowPortalContentBounds = Object.freeze({x: 24, y: 32, w: 180, h: 208});
+
+function createSyntheticPortalPixels(width, height, bounds) {
+  const pixels = Buffer.alloc(width * height * 4);
+  for (let y = bounds.y; y < bounds.y + bounds.h; y++) {
+    for (let x = bounds.x; x < bounds.x + bounds.w; x++) {
+      const offset = (y * width + x) * 4;
+      pixels[offset] = 224;
+      pixels[offset + 1] = 240;
+      pixels[offset + 2] = 255;
+      pixels[offset + 3] = 255;
+    }
+  }
+  return pixels;
+}
+
 const decodedPortals = Object.freeze({
   [meadowPortalPath]: decodeRgba8Png(meadowPortalPath),
-  [coastPortalPath]: decodeRgba8Png(coastPortalPath)
+  [coastPortalPath]: decodeRgba8Png(coastPortalPath),
+  [snowPortalPath]: Object.freeze({
+    width: 256,
+    height: 272,
+    pixels: createSyntheticPortalPixels(256, 272, snowPortalContentBounds)
+  })
 });
 
 class PortalImage {
@@ -284,6 +366,7 @@ vm.runInContext(`${portalSource}
 `, portalContext, {filename: "generic-portal-kit-fixture.js"});
 const meadowPortal = portalContext.portalRegistryForTest.resolve("meadow");
 const coastPortal = portalContext.portalRegistryForTest.resolve("coast");
+const snowPortal = portalContext.portalRegistryForTest.resolve("snow");
 assert.deepEqual(
   JSON.parse(JSON.stringify(meadowPortal.getStatus().contentBounds)),
   {x: 9, y: 21, w: 239, h: 248}
@@ -292,8 +375,14 @@ assert.deepEqual(
   JSON.parse(JSON.stringify(coastPortal.getStatus().contentBounds)),
   {x: 16, y: 14, w: 230, h: 256}
 );
+assert.deepEqual(
+  JSON.parse(JSON.stringify(snowPortal.getStatus().contentBounds)),
+  snowPortalContentBounds
+);
 assert.equal(meadowPortal.getStatus().path, meadowPortalPath);
 assert.equal(coastPortal.getStatus().path, coastPortalPath);
+assert.equal(snowPortal.getStatus().path, snowPortalPath);
+assert.equal(snowPortal.getStatus().validNativeSize, true);
 
 function capturePortal(api, visualTime = 0.55) {
   const drawCalls = [];
@@ -323,12 +412,16 @@ function capturePortal(api, visualTime = 0.55) {
 
 const meadowPortalDraw = capturePortal(meadowPortal);
 const coastPortalDraw = capturePortal(coastPortal);
+const snowPortalDraw = capturePortal(snowPortal);
 assert.equal(meadowPortalDraw.result, true);
 assert.equal(coastPortalDraw.result, true);
+assert.equal(snowPortalDraw.result, true);
 assert.equal(meadowPortalDraw.drawCalls[0][0].src, meadowPortalPath);
 assert.equal(coastPortalDraw.drawCalls[0][0].src, coastPortalPath);
+assert.equal(snowPortalDraw.drawCalls[0][0].src, snowPortalPath);
 assert.deepEqual(meadowPortalDraw.drawCalls[0].slice(1, 5), [9, 21, 239, 248]);
 assert.deepEqual(coastPortalDraw.drawCalls[0].slice(1, 5), [16, 14, 230, 256]);
+assert.deepEqual(snowPortalDraw.drawCalls[0].slice(1, 5), [24, 32, 180, 208]);
 assert.deepEqual(meadowPortalDraw.drawCalls[0].slice(5), [
   1081,
   203.703876527,
@@ -345,21 +438,36 @@ const coastBottom = coastPortalDraw.drawCalls[0][6] + coastPortalDraw.drawCalls[
 assert.ok(Math.abs(meadowBottom - coastBottom) < 1e-12);
 assert.deepEqual(meadowPortalDraw.gradients[0].map(stop => stop[0]), [0, 0.42, 1]);
 assert.deepEqual(coastPortalDraw.gradients[0].map(stop => stop[0]), [0, 0.42, 1]);
+assert.deepEqual(snowPortalDraw.gradients[0].map(stop => stop[0]), [0, 0.42, 1]);
+assert.ok(snowPortalDraw.drawCalls.every(call => ![
+  meadowPortalPath,
+  coastPortalPath
+].includes(call[0]?.src)));
 
-const missingPortal = portalContext.portalRegistryForTest.resolve("snow");
+const missingPortal = portalContext.portalRegistryForTest.resolve("tundra");
 const invalidPortal = portalContext.portalRegistryForTest.resolve("desert");
 assert.equal(missingPortal.isReady(), false);
 assert.equal(invalidPortal.isReady(), false);
-assert.equal(capturePortal(missingPortal).result, false);
-assert.equal(capturePortal(invalidPortal).result, false);
+const missingPortalDraw = capturePortal(missingPortal);
+const invalidPortalDraw = capturePortal(invalidPortal);
+assert.equal(missingPortalDraw.result, false);
+assert.equal(invalidPortalDraw.result, false);
+assert.equal(missingPortalDraw.drawCalls.length, 0);
+assert.equal(invalidPortalDraw.drawCalls.length, 0);
 assert.ok(Object.values(coastPortal.getStatus()).every(value => (
   typeof value !== "string" || !value.includes("/meadow/")
 )));
+assert.equal(missingPortal.getStatus().path,
+  "assets/environments/tundra/portal/tundra_goal_portal.png");
+assert.equal(invalidPortal.getStatus().path,
+  "assets/environments/desert/portal/desert_goal_portal.png");
 
 const rendererSource = read("js/renderer.js");
 assert.match(rendererSource, /BIOME_DECOR_VISUALS\.resolve\(biome\.id\)/);
 assert.match(rendererSource, /BIOME_PORTAL_VISUALS\.resolve\(biome\.id\)/);
-assert.match(rendererSource, /drawGoal\(biomePlatformVisuals, biomePortalVisuals\)/);
+assert.match(rendererSource, /function drawGoal\(\s*platformVisuals = null,\s*portalVisuals = null,\s*biome = null\s*\)/);
+assert.match(rendererSource, /drawGoal\(biomePlatformVisuals, biomePortalVisuals, biome\)/);
+assert.match(rendererSource, /const goalBiome = biome \?\? getBiomeForLevel\(levelIndex \+ 1\)/);
 assert.match(rendererSource, /portalVisuals\.drawPortal\(ctx, g, worldTime\)/);
 assert.match(rendererSource, /if \(!biomeAssetPortal\) \{/);
 assert.doesNotMatch(rendererSource, /getMeadowDecorAttemptNonce|meadowDecorAttempt/);

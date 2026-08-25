@@ -47,9 +47,7 @@ const assetExpectations = Object.freeze({
   "assets/environments/meadow/background/meadow_background_clouds_back.png": [1280, 720],
   "assets/environments/meadow/background/meadow_background_landscape.png": [1280, 720],
   "assets/environments/meadow/background/meadow_background_clouds_front.png": [1280, 720],
-  "assets/environments/meadow/platforms/floating_left.png": [128, 128],
-  "assets/environments/meadow/platforms/floating_middle.png": [256, 128],
-  "assets/environments/meadow/platforms/floating_right.png": [128, 128],
+  "assets/environments/meadow/platforms/meadow_floating_platform.png": [512, 128],
   "assets/environments/meadow/platforms/meadow_top_base.png": [352, 128],
   "assets/environments/meadow/platforms/meadow_body_base.png": [352, 128],
   "assets/environments/meadow/platforms/meadow_overlay_top_01.png": [352, 128],
@@ -385,20 +383,11 @@ for (let levelNumber = 1; levelNumber <= 10; levelNumber++) {
 }
 
 let imageConstructionCount = 0;
-function createFamilyBAlphaFixture(width) {
-  const height = 128;
-  const pixels = Buffer.alloc(width * height * 4);
-  for (let y = 24; y <= 102; y++) pixels[(y * width) * 4 + 3] = 255;
-  for (let y = 34; y <= 84; y++) {
-    for (let x = 0; x < width; x++) pixels[(y * width + x) * 4 + 3] = 255;
-  }
-  return pixels;
-}
-const familyBAlphaFixtures = Object.freeze({
-  "assets/environments/meadow/platforms/floating_left.png": createFamilyBAlphaFixture(128),
-  "assets/environments/meadow/platforms/floating_middle.png": createFamilyBAlphaFixture(256),
-  "assets/environments/meadow/platforms/floating_right.png": createFamilyBAlphaFixture(128)
-});
+const wholeFloatingAssetPath =
+  "assets/environments/meadow/platforms/meadow_floating_platform.png";
+const decodedWholeFloatingAsset = decodeRgba8Png(
+  fs.readFileSync(path.join(root, wholeFloatingAssetPath))
+);
 
 class FakeImage {
   constructor() {
@@ -421,7 +410,9 @@ class FakeImage {
       ? decodedDecorGridAssets[decorDefinition.asset].pixels
       : value === "assets/environments/meadow/portal/meadow_goal_portal.png"
         ? decodedPortalAsset.pixels
-        : familyBAlphaFixtures[value];
+        : value === wholeFloatingAssetPath
+          ? decodedWholeFloatingAsset.pixels
+          : undefined;
     this.onload?.();
   }
 
@@ -488,7 +479,7 @@ ${read("js/visual-meadow-assets.js")}
 const visualApi = visualContext.meadowAssetVisualsForTest;
 assert.equal(
   imageConstructionCount,
-  28,
+  26,
   "the loader must construct all base assets, platform variants and top-decor sheets once"
 );
 assert.equal(visualApi.areAllReady(), true);
@@ -500,9 +491,7 @@ assert.deepEqual(
     background_clouds_back: "assets/environments/meadow/background/meadow_background_clouds_back.png",
     background_landscape: "assets/environments/meadow/background/meadow_background_landscape.png",
     background_clouds_front: "assets/environments/meadow/background/meadow_background_clouds_front.png",
-    floating_left: "assets/environments/meadow/platforms/floating_left.png",
-    floating_middle: "assets/environments/meadow/platforms/floating_middle.png",
-    floating_right: "assets/environments/meadow/platforms/floating_right.png",
+    meadow_floating_platform: "assets/environments/meadow/platforms/meadow_floating_platform.png",
     meadow_top_base: "assets/environments/meadow/platforms/meadow_top_base.png",
     meadow_body_base: "assets/environments/meadow/platforms/meadow_body_base.png",
     meadow_overlay_top_01: "assets/environments/meadow/platforms/meadow_overlay_top_01.png",
@@ -602,17 +591,11 @@ assert.deepEqual(
 assert.deepEqual(meadowManifest.platforms.contract, {
   floating: {
     height: 26,
-    leftWidth: 26,
-    middleTileWidth: 52,
-    middleTileAdvance: 51,
-    rightWidth: 26,
-    middleMode: "repeat-source-crop",
-    contentFit: {
+    wholeMode: "uniform-whole-image",
+    wholeContentFit: {
       alphaThreshold: 8,
-      bodyRowMinimumCoverage: 0.5,
-      topOverhang: 2,
-      bottomOverhang: 3,
-      mode: "shared-robust-alpha-body-band"
+      supportRowMinimumCoverage: 0.9,
+      mode: "robust-alpha-bounds-and-longest-contiguous-support-band"
     }
   },
   start: {
@@ -632,31 +615,17 @@ assert.deepEqual(meadowManifest.platforms.contract, {
   }
 });
 assert.deepEqual(Object.keys(meadowManifest.platforms.slots), [
-  "floating_left",
-  "floating_middle",
-  "floating_right",
+  "meadow_floating_platform",
   "meadow_top_base",
   "meadow_body_base",
   "meadow_top_overlays",
   "meadow_body_overlays"
 ]);
-assert.deepEqual(meadowManifest.platforms.slots.floating_left, {
-  asset: "floating_left",
-  w: 128,
+assert.deepEqual(meadowManifest.platforms.slots.meadow_floating_platform, {
+  asset: "meadow_floating_platform",
+  w: 512,
   h: 128,
-  source: {x: 0, y: 0, w: 128, h: 128}
-});
-assert.deepEqual(meadowManifest.platforms.slots.floating_middle, {
-  asset: "floating_middle",
-  w: 256,
-  h: 128,
-  source: {x: 0, y: 0, w: 256, h: 128}
-});
-assert.deepEqual(meadowManifest.platforms.slots.floating_right, {
-  asset: "floating_right",
-  w: 128,
-  h: 128,
-  source: {x: 0, y: 0, w: 128, h: 128}
+  source: {x: 0, y: 0, w: 512, h: 128}
 });
 assert.deepEqual(
   meadowManifest.platforms.slots.meadow_top_overlays,
@@ -1134,7 +1103,7 @@ assert.deepEqual(
   [2, 3, 4, 5],
   "goal seam-cover density must exercise the full 2-5 range"
 );
-assert.equal(imageConstructionCount, 28, "draw calls must not construct additional images");
+assert.equal(imageConstructionCount, 26, "draw calls must not construct additional images");
 assert.ok(drawCalls.length > 0);
 assert.ok(
   drawCalls.every(call => call.length === 5 || call.length === 9),
@@ -1418,102 +1387,29 @@ assert.equal(
   false
 );
 
-function assertDrawBounds(platform, calls) {
-  const epsilon = 0.001;
-  assert.ok(calls.length > 0);
-  for (const call of calls) {
-    const [destinationX, destinationY, destinationWidth, destinationHeight] =
-      call.length === 5 ? call.slice(1, 5) : call.slice(5, 9);
-    assert.ok(destinationX >= platform.x - epsilon);
-    assert.ok(destinationY >= platform.y - epsilon);
-    assert.ok(destinationX + destinationWidth <= platform.x + platform.w + epsilon);
-    assert.ok(destinationY + destinationHeight <= platform.y + platform.h + epsilon);
-  }
-}
-
-const floatingAssetPaths = [
-  "assets/environments/meadow/platforms/floating_left.png",
-  "assets/environments/meadow/platforms/floating_right.png"
-];
-for (const [width, expectedMiddleCount] of [[100, 1], [138, 2], [176, 3]]) {
+for (const width of [40, 100, 138, 176]) {
   const floatingPlatform = {x: 420, y: 310, w: width, h: 26};
   const platformSnapshot = JSON.stringify(floatingPlatform);
   drawCalls.length = 0;
   assert.equal(visualApi.drawPlatformBase(fakeCanvasContext, floatingPlatform), true);
   assert.equal(JSON.stringify(floatingPlatform), platformSnapshot);
-  assert.ok(drawCalls.every(call => call.length === 9));
-
-  const segments = Array.from({length: drawCalls.length / 3}, (_, index) => (
-    drawCalls.slice(index * 3, index * 3 + 3)
+  assert.equal(drawCalls.length, 1, "Whole Floating must use exactly one base draw");
+  const mapping = JSON.parse(JSON.stringify(
+    visualApi.getPlatformKit().getWholeFloatingMapping(floatingPlatform)
   ));
-  const middleSegments = segments.slice(0, -2);
-  const leftSegment = segments.at(-2);
-  const rightSegment = segments.at(-1);
-  assert.equal(middleSegments.length, expectedMiddleCount);
-  assert.deepEqual([leftSegment[0][0].src, rightSegment[0][0].src], floatingAssetPaths);
-  assert.ok(middleSegments.every(calls => calls.every(call => (
-    call[0].src === "assets/environments/meadow/platforms/floating_middle.png"
-  ))));
-  assert.deepEqual(leftSegment.map(call => call.slice(1)), [
-    [0, 24, 128, 10, 420, 308, 26, 2],
-    [0, 34, 128, 51, 420, 310, 26, 26],
-    [0, 85, 128, 18, 420, 336, 26, 3]
+  assert.equal(drawCalls[0][0].src, wholeFloatingAssetPath);
+  assert.deepEqual(drawCalls[0].slice(1, 5), [0, 0, 512, 128]);
+  assert.deepEqual(drawCalls[0].slice(5), [
+    mapping.drawX,
+    mapping.drawY,
+    mapping.drawWidth,
+    mapping.drawHeight
   ]);
-  assert.deepEqual(rightSegment.map(call => call.slice(1)), [
-    [0, 24, 128, 10, 420 + width - 26, 308, 26, 2],
-    [0, 34, 128, 51, 420 + width - 26, 310, 26, 26],
-    [0, 85, 128, 18, 420 + width - 26, 336, 26, 3]
-  ]);
-  assert.ok(segments.every(calls => (
-    calls.every(call => call[5] >= floatingPlatform.x && (
-      call[5] + call[7] <= floatingPlatform.x + floatingPlatform.w
-    ))
-  )));
-
-  const middleStartX = 420 + 26 - 1;
-  const middleEndX = 420 + width - 26 + 1;
-  assert.equal(middleSegments[0][0][5], middleStartX);
-  assert.equal(
-    middleSegments.at(-1)[0][5] + middleSegments.at(-1)[0][7],
-    middleEndX
-  );
-  for (const [index, calls] of middleSegments.entries()) {
-    const call = calls[0];
-    const destinationWidth = call[7];
-    assert.deepEqual(calls.map(item => item[2]), [24, 34, 85]);
-    assert.deepEqual(calls.map(item => item[4]), [10, 51, 18]);
-    assert.deepEqual(calls.map(item => item[6]), [308, 310, 336]);
-    assert.deepEqual(calls.map(item => item[8]), [2, 26, 3]);
-    assert.ok(calls.every(item => item[3] === 256 * destinationWidth / 52));
-    assert.ok(destinationWidth <= 52);
-    if (index < middleSegments.length - 1) {
-      assert.equal(destinationWidth, 52);
-      assert.equal(middleSegments[index + 1][0][5] - call[5], 51);
-      assert.equal(call[5] + destinationWidth - middleSegments[index + 1][0][5], 1);
-    }
-  }
-  assert.equal(leftSegment[0][5] + leftSegment[0][7] - middleSegments[0][0][5], 1);
-  assert.equal(
-    middleSegments.at(-1)[0][5] + middleSegments.at(-1)[0][7] - rightSegment[0][5],
-    1
-  );
+  assert.equal(mapping.visibleLeft, floatingPlatform.x);
+  assert.equal(mapping.visibleRight, floatingPlatform.x + floatingPlatform.w);
+  assert.equal(mapping.supportY, floatingPlatform.y);
+  assert.equal(mapping.drawWidth / mapping.drawHeight, 4);
 }
-assert.equal(26 / 128, 52 / 256);
-
-const narrowFloatingPlatform = {x: 420, y: 310, w: 40, h: 26};
-drawCalls.length = 0;
-assert.equal(visualApi.drawPlatformBase(fakeCanvasContext, narrowFloatingPlatform), true);
-assert.equal(drawCalls.length, 6, "narrow floating platforms must use two three-zone caps");
-assert.deepEqual(drawCalls.slice(0, 3).map(call => call.slice(1)), [
-  [0, 24, 128, 10, 420, 308, 20, 2],
-  [0, 34, 128, 51, 420, 310, 20, 26],
-  [0, 85, 128, 18, 420, 336, 20, 3]
-]);
-assert.deepEqual(drawCalls.slice(3).map(call => call.slice(1)), [
-  [0, 24, 128, 10, 440, 308, 20, 2],
-  [0, 34, 128, 51, 440, 310, 20, 26],
-  [0, 85, 128, 18, 440, 336, 20, 3]
-]);
 
 const startPlatform = {x: 0, y: 640, w: 235, h: 80};
 const startTopHeight = startPlatform.w * (128 / 352);
@@ -1697,19 +1593,32 @@ assert.equal(
 );
 for (const specialPlatform of [
   {x: 300, y: 300, w: 120, h: 26, moving: true, movingData: {x: 300, y: 300, w: 120, h: 26}},
-  {x: 320, y: 300, w: 121, h: 26, fragile: true, fallingPlatform: {x: 320, y: 300, w: 121, h: 26}},
-  {x: 340, y: 300, w: 122, h: 26, conveyor: true, conveyorData: {x: 340, y: 300, w: 122, h: 26}},
   {x: 360, y: 300, w: 123, h: 26, fade: true, fadeData: {x: 360, y: 300, w: 123, h: 26}},
-  {x: 380, y: 300, w: 124, h: 26, ice: true, iceData: {x: 380, y: 300, w: 124, h: 26}},
   {x: 400, y: 300, w: 125, h: 26, spikePlatform: true, spikeData: {x: 400, y: 300, w: 125, h: 26}}
 ]) {
   assert.equal(visualApi.resolvePlatformRole(specialPlatform), "FLOATING");
   drawCalls.length = 0;
   assert.equal(visualApi.drawPlatformBase(fakeCanvasContext, specialPlatform, specialPlatform.x, 41), true);
-  assert.equal(drawCalls.length, 12, "each special must reuse four three-zone segments");
-  assert.ok(drawCalls.every(call => call.length === 9));
-  assert.deepEqual(drawCalls.slice(-6).filter((_, index) => index % 3 === 0).map(call => call[0].src), floatingAssetPaths);
-  assert.deepEqual(drawCalls.map(call => call[8]), [2, 26, 3, 2, 26, 3, 2, 26, 3, 2, 26, 3]);
+  assert.equal(drawCalls.length, 1, "Moving, Fading and Spike base must use one Whole draw");
+  assert.equal(drawCalls[0][0].src, wholeFloatingAssetPath);
+}
+for (const globalSpecialPlatform of [
+  {x: 320, y: 300, w: 121, h: 26, fragile: true, fallingPlatform: {}},
+  {x: 340, y: 300, w: 122, h: 26, conveyor: true, conveyorData: {}},
+  {x: 380, y: 300, w: 124, h: 26, ice: true, iceData: {}}
+]) {
+  assert.equal(visualApi.resolvePlatformRole(globalSpecialPlatform), "FLOATING");
+  drawCalls.length = 0;
+  assert.equal(
+    visualApi.drawPlatformBase(
+      fakeCanvasContext,
+      globalSpecialPlatform,
+      globalSpecialPlatform.x,
+      41
+    ),
+    false
+  );
+  assert.deepEqual(drawCalls, [], "global specials must remain on their dedicated renderers");
 }
 
 drawCalls.length = 0;
@@ -1733,8 +1642,8 @@ assert.doesNotMatch(
   /drawMassivePlatform|BLOCK_BODY_TILES|BLOCK_TOP_STRIP|NineSlice|CoverageProbe/
 );
 assert.match(platformKitSource, /const PLATFORM_VISUAL_KIT_CONTRACT = Object\.freeze/);
-assert.match(platformKitSource, /const PLATFORM_VISUAL_KIT_SEAM_OVERLAP = 1;/);
-assert.match(platformKitSource, /function drawFloatingPlatform/);
+assert.match(platformKitSource, /function drawWholeFloatingPlatform/);
+assert.doesNotMatch(platformKitSource, /function drawLegacyFloatingPlatform/);
 assert.match(platformKitSource, /function drawGoalPlatform/);
 assert.match(visualSource, /const meadowPlatformKit = createPlatformVisualKit/);
 assert.doesNotMatch(visualSource, /function drawFloatingPlatform|function drawGoalPlatform/);
@@ -1744,7 +1653,10 @@ assert.doesNotMatch(visualSource, /GOAL_TOP: Object\.freeze\(\{x:/);
 assert.doesNotMatch(visualSource, /GOAL_BODY_[A-F]|getGoalBodySprite/);
 const standardPlatformSource = platformKitSource;
 assert.doesNotMatch(standardPlatformSource, /fillRect|#65432d/);
-assert.doesNotMatch(standardPlatformSource, /\.rotate\(|\.scale\(/);
+assert.doesNotMatch(standardPlatformSource, /\.rotate\(/);
+assert.match(standardPlatformSource, /context\.scale\(-1, 1\)/,
+  "the shared Whole helper may mirror only explicitly direction-flipped assets");
+assert.doesNotMatch(visualSource, /\.rotate\(|\.scale\(/);
 assert.doesNotMatch(visualSource, /FLOATING_[123]/);
 const topDecorPreviewSource = decorKitSource;
 assert.doesNotMatch(topDecorPreviewSource, /Math\.random\(/);
@@ -1762,7 +1674,7 @@ assert.match(decorKitSource, /const anchor = item\.anchor \?\? sprite\.anchor/);
 assert.doesNotMatch(decorKitSource, /TREE|MUSHROOM/);
 
 const rendererSource = read("js/renderer.js");
-const rendererPlatformStart = rendererSource.indexOf("  function drawPlatforms(");
+const rendererPlatformStart = rendererSource.indexOf("  function drawVectorPlatformSurface(");
 const rendererPlatformEnd = rendererSource.indexOf("  function drawGoal(", rendererPlatformStart);
 assert.ok(rendererPlatformStart >= 0 && rendererPlatformEnd > rendererPlatformStart);
 const rendererPlatformFixture = [
@@ -1929,7 +1841,6 @@ assert.doesNotMatch(
   /standardPlatform &&\s*!p\.lastBubbleSupport/
 );
 for (const mechanicFlag of [
-  "p.moving",
   "p.fragile",
   "p.conveyor",
   "p.fade",
@@ -1938,11 +1849,13 @@ for (const mechanicFlag of [
 ]) {
   assert.ok(rendererSource.includes(mechanicFlag), `${mechanicFlag} overlay must remain`);
 }
+assert.doesNotMatch(rendererSource, /p\.moving && biomeAssetPlatform/);
+assert.match(rendererSource, /platform\.moving[\s\S]*?\? "#5e7592"/);
 assert.match(rendererSource, /for \(const s of level\.spikes\) drawDeathZone\(s, biome\);/);
 assert.match(rendererSource, /drawTrajectory\(\);\s*drawPlayer\(\);/);
 assert.match(
   rendererSource,
-  /drawPlatforms\([\s\S]*?"without-floating"[\s\S]*?drawStartGoalBackDecor\?\.\(ctx, biomeDecorScene\);[\s\S]*?drawPlatforms\([\s\S]*?"floating-only"[\s\S]*?drawFloatingBackDecor\?\.\(ctx, biomeDecorScene\);[\s\S]*?drawGoal\(biomePlatformVisuals, biomePortalVisuals\);[\s\S]*?drawGoalSeamCoverProps\?\.\(ctx, biomeDecorScene\);[\s\S]*?drawPlayer\(\);[\s\S]*?drawTopFrontDecor\?\.\(ctx, biomeDecorScene\);/
+  /drawPlatforms\([\s\S]*?"without-floating"[\s\S]*?drawStartGoalBackDecor\?\.\(ctx, biomeDecorScene\);[\s\S]*?drawPlatforms\([\s\S]*?"floating-only"[\s\S]*?drawFloatingBackDecor\?\.\(ctx, biomeDecorScene\);[\s\S]*?drawGoal\(biomePlatformVisuals, biomePortalVisuals, biome\);[\s\S]*?drawGoalSeamCoverProps\?\.\(ctx, biomeDecorScene\);[\s\S]*?drawPlayer\(\);[\s\S]*?drawTopFrontDecor\?\.\(ctx, biomeDecorScene\);/
 );
 assert.match(
   rendererSource,

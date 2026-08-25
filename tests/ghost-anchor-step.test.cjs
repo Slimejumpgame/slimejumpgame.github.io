@@ -372,71 +372,18 @@ function assertAnchorStepWarningTimingAndBorderOnly() {
 
   const borderSource = source.slice(
     source.indexOf("  function drawAnchorStepWarningBorder"),
-    source.indexOf("  function drawGhostStepFadeOutline")
+    source.indexOf("  function isGlobalWholePlatformAssetReady")
   );
   assert.match(borderSource, /ctx\.stroke\(\);/);
   assert.doesNotMatch(borderSource, /ctx\.fill\(\);|ctx\.fillStyle/);
 }
 
-function assertGhostStepOutlineIsVisualOnly() {
+function assertGhostStepHasNoExtraPlatformOutline() {
   const source = read("js/renderer.js");
-  const start = source.indexOf("  function drawGhostStepFadeOutline");
-  const end = source.indexOf("  function drawPlatforms(", start);
-  assert.ok(start >= 0 && end > start);
-
-  const drawCalls = [];
-  const context = vm.createContext({
-    ghostStepActive: true,
-    isGhostStepActive: () => context.ghostStepActive,
-    ctx: {
-      save() { drawCalls.push("save"); },
-      restore() { drawCalls.push("restore"); },
-      stroke() { drawCalls.push("stroke"); },
-      set globalAlpha(value) { drawCalls.push(["globalAlpha", value]); },
-      set strokeStyle(value) { drawCalls.push(["strokeStyle", value]); },
-      set lineWidth(value) { drawCalls.push(["lineWidth", value]); },
-      set shadowColor(value) { drawCalls.push(["shadowColor", value]); },
-      set shadowBlur(value) { drawCalls.push(["shadowBlur", value]); }
-    },
-    roundedRect(x, y, w, h, radius) {
-      drawCalls.push(["roundedRect", x, y, w, h, radius]);
-    }
-  });
-  vm.runInContext(source.slice(start, end) + `
-    globalThis.drawGhostStepFadeOutlineForTest = drawGhostStepFadeOutline;
-  `, context);
-
-  const fadedPlatform = {x: 0, y: 100, w: 120, h: 30, fade: true};
-  context.drawGhostStepFadeOutlineForTest(fadedPlatform, fadedPlatform.x);
-  assert.equal(drawCalls.filter(call => call === "stroke").length, 1);
-  assert.deepEqual(
-    drawCalls.find(call => Array.isArray(call) && call[0] === "globalAlpha"),
-    ["globalAlpha", 1]
-  );
-  assert.deepEqual(
-    drawCalls.find(call => Array.isArray(call) && call[0] === "roundedRect"),
-    ["roundedRect", -1, 99, 122, 32, 11]
-  );
-
-  drawCalls.length = 0;
-  context.ghostStepActive = false;
-  context.drawGhostStepFadeOutlineForTest(fadedPlatform, fadedPlatform.x);
-  assert.deepEqual(drawCalls, []);
-
-  drawCalls.length = 0;
-  context.ghostStepActive = true;
-  context.drawGhostStepFadeOutlineForTest(
-    {...fadedPlatform, fade: false},
-    fadedPlatform.x
-  );
-  assert.deepEqual(drawCalls, []);
-
-  const outlineSource = source.slice(
-    start,
-    source.indexOf("  function areFallingPlatformAssetsReady", start)
-  );
-  assert.match(outlineSource, /ctx\.stroke\(\);/);
-  assert.doesNotMatch(outlineSource, /ctx\.fill\(\);|ctx\.fillStyle/);
+  assert.doesNotMatch(source, /function drawGhostStepFadeOutline/);
+  assert.doesNotMatch(source, /drawGhostStepFadeOutline\(p, drawX\);/);
+  assert.doesNotMatch(source, /rgba\(221,205,255,0\.92\)/);
+  assert.doesNotMatch(source, /rgba\(230,215,255,0\.8\)/);
   assert.match(source, /if \(p\.fade\) ctx\.globalAlpha = p\.fadeData\.opacity;/);
 }
 
@@ -473,6 +420,6 @@ assertGhostStepCollisionAndOneShotFallingActivation();
 assertFadeAnimationRemainsVisual();
 assertAnchorStepTimer();
 assertAnchorStepWarningTimingAndBorderOnly();
-assertGhostStepOutlineIsVisualOnly();
+assertGhostStepHasNoExtraPlatformOutline();
 assertScopedIntegration();
 console.log("Ghost Step and Anchor Step tests passed.");
