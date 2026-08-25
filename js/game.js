@@ -1385,6 +1385,7 @@
     lastTime = now;
     update(dt);
     updateLiveDevPerkTelemetry(now);
+    updateMainMenuMascotFaceAnimation(now);
     draw();
     requestAnimationFrame(frame);
   }

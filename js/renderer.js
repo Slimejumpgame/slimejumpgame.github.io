@@ -22,6 +22,60 @@
   };
   slimeBodyImage.src = SLIME_BODY_ASSET_PATH;
 
+  const SLIME_FACE_SOURCE_SIZE = 256;
+  const SLIME_FACE_DRAW_SIZE = 80;
+  const SLIME_FACE_ACTION_SPEED = 720;
+  const SLIME_FACE_IDLE_SPEED_LIMIT = 30;
+  const SLIME_FACE_IDLE_SQUISH_EPSILON = 0.01;
+  const SLIME_FACE_IDLE_INTERVAL_MIN = 1.8;
+  const SLIME_FACE_IDLE_INTERVAL_MAX = 9;
+  const SLIME_FACE_BLINK_DURATION_MIN = 0.08;
+  const SLIME_FACE_BLINK_DURATION_MAX = 0.14;
+  const SLIME_FACE_TRANSITION_BLINK_DURATION_MIN = 0.04;
+  const SLIME_FACE_TRANSITION_BLINK_DURATION_MAX = 0.07;
+  const SLIME_FACE_LOOK_DURATION_MIN = 0.5;
+  const SLIME_FACE_LOOK_DURATION_MAX = 1.2;
+  const SLIME_FACE_BLINK_EVENT_WEIGHT = 0.4;
+  const SLIME_FACE_LEFT_EVENT_WEIGHT = 0.3;
+  const SLIME_FACE_STATES = Object.freeze({
+    NORMAL: "normal",
+    ACTION: "action",
+    BLINK: "blink",
+    LEFT: "left",
+    RIGHT: "right"
+  });
+  const SLIME_FACE_IDLE_PHASES = Object.freeze({
+    NONE: "none",
+    BLINK: "blink",
+    LOOK_TRANSITION_IN: "look-transition-in",
+    LOOK: "look",
+    LOOK_TRANSITION_OUT: "look-transition-out"
+  });
+  const SLIME_FACE_ASSET_PATHS = Object.freeze({
+    [SLIME_FACE_STATES.NORMAL]: "assets/slime/face/slime_face_normal.png",
+    [SLIME_FACE_STATES.ACTION]: "assets/slime/face/slime_face_action.png",
+    [SLIME_FACE_STATES.BLINK]: "assets/slime/face/slime_face_blink.png",
+    [SLIME_FACE_STATES.LEFT]: "assets/slime/face/slime_face_left.png",
+    [SLIME_FACE_STATES.RIGHT]: "assets/slime/face/slime_face_right.png"
+  });
+  const slimeFacePendingPreviews = new Map();
+  const slimeFaceImages = Object.fromEntries(
+    Object.entries(SLIME_FACE_ASSET_PATHS).map(([faceState, path]) => {
+      const image = new Image();
+      image.decoding = "async";
+      image.onload = () => handleSlimeFaceImageLoad(faceState, image);
+      image.onerror = () => handleSlimeFaceImageError(faceState);
+      image.src = path;
+      return [faceState, image];
+    })
+  );
+  let slimeFaceVisualRandomState = 0;
+  let slimeFaceIdleEvent = SLIME_FACE_STATES.NORMAL;
+  let slimeFaceIdlePhase = SLIME_FACE_IDLE_PHASES.NONE;
+  let slimeFaceIdleLookTarget = SLIME_FACE_STATES.NORMAL;
+  let slimeFaceIdleEventEndsAt = 0;
+  let slimeFaceNextIdleEventAt = null;
+
   const COLLECTIBLE_STAR_ASSET_PATH = "assets/collectibles/star_collectible.png";
   const COLLECTIBLE_STAR_DRAW_SIZE = 60;
   const collectibleStarImage = new Image();
@@ -3425,6 +3479,232 @@
     return false;
   }
 
+  function isSlimeFaceImageReady(image) {
+    return Boolean(
+      image?.complete &&
+      image.naturalWidth === SLIME_FACE_SOURCE_SIZE &&
+      image.naturalHeight === SLIME_FACE_SOURCE_SIZE
+    );
+  }
+
+  function handleSlimeFaceImageLoad(faceState, image) {
+    if (!isSlimeFaceImageReady(image)) {
+      handleSlimeFaceImageError(faceState);
+      return;
+    }
+    redrawPendingSlimeFacePreviews();
+  }
+
+  function handleSlimeFaceImageError(faceState) {
+    if (faceState === SLIME_FACE_STATES.NORMAL) {
+      slimeFacePendingPreviews.clear();
+    }
+  }
+
+  function drawCanvasSlimeFace(context, palette, faceState, options = {}) {
+    const preview = options.preview === true;
+    context.fillStyle = palette.face ?? "#0b2c1a";
+    context.beginPath();
+    context.arc(-10, -2, preview ? 4 : 4.5, 0, Math.PI * 2);
+    context.arc(10, -2, preview ? 4 : 4.5, 0, Math.PI * 2);
+    context.fill();
+
+    // The previous preview fallback only contained the two open eyes.
+    if (preview) return;
+
+    context.strokeStyle = palette.face ?? "#0b2c1a";
+    context.lineWidth = 3;
+    context.lineCap = "round";
+    context.beginPath();
+    if (faceState === SLIME_FACE_STATES.ACTION) {
+      context.arc(0, 10, 7, 0, Math.PI * 2);
+    } else {
+      context.arc(0, 5, 11, 0.15, Math.PI - 0.15);
+    }
+    context.stroke();
+  }
+
+  function drawSlimeFace(context, palette, faceState, options = {}) {
+    const image = slimeFaceImages[faceState];
+    if (isSlimeFaceImageReady(image)) {
+      context.save();
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+      context.drawImage(
+        image,
+        -SLIME_FACE_DRAW_SIZE / 2,
+        -SLIME_FACE_DRAW_SIZE / 2,
+        SLIME_FACE_DRAW_SIZE,
+        SLIME_FACE_DRAW_SIZE
+      );
+      context.restore();
+      return true;
+    }
+
+    drawCanvasSlimeFace(context, palette, faceState, options);
+    return false;
+  }
+
+  function normalizeSlimePreviewFaceState(faceState) {
+    if (
+      faceState === SLIME_FACE_STATES.BLINK ||
+      faceState === SLIME_FACE_STATES.LEFT ||
+      faceState === SLIME_FACE_STATES.RIGHT
+    ) return faceState;
+    return SLIME_FACE_STATES.NORMAL;
+  }
+
+  function seedSlimeFaceVisualRandom() {
+    let seed = 0;
+    try {
+      const randomValues = new Uint32Array(1);
+      globalThis.crypto?.getRandomValues?.(randomValues);
+      seed = randomValues[0] >>> 0;
+    } catch (_) {}
+    if (seed === 0) seed = (Date.now() ^ 0xa511e9b3) >>> 0;
+    slimeFaceVisualRandomState = seed || 0x6d2b79f5;
+  }
+
+  function nextSlimeFaceVisualRandom() {
+    if (slimeFaceVisualRandomState === 0) seedSlimeFaceVisualRandom();
+    let randomState = slimeFaceVisualRandomState;
+    randomState ^= randomState << 13;
+    randomState ^= randomState >>> 17;
+    randomState ^= randomState << 5;
+    slimeFaceVisualRandomState = randomState >>> 0;
+    return slimeFaceVisualRandomState / 4294967296;
+  }
+
+  function getSlimeFaceVisualRange(random, min, max) {
+    return min + (max - min) * random();
+  }
+
+  function resetSlimeFaceIdleAnimation() {
+    slimeFaceIdleEvent = SLIME_FACE_STATES.NORMAL;
+    slimeFaceIdlePhase = SLIME_FACE_IDLE_PHASES.NONE;
+    slimeFaceIdleLookTarget = SLIME_FACE_STATES.NORMAL;
+    slimeFaceIdleEventEndsAt = 0;
+    slimeFaceNextIdleEventAt = null;
+  }
+
+  function isSlimeFaceIdleEligible(speed) {
+    return state === "playing" &&
+      !aiming &&
+      player.onGround &&
+      hasValidAimSupport() &&
+      speed < SLIME_FACE_IDLE_SPEED_LIMIT &&
+      Math.abs(player.squish) <= SLIME_FACE_IDLE_SQUISH_EPSILON &&
+      !airHopFlightActive;
+  }
+
+  function scheduleNextSlimeFaceIdleEvent(random) {
+    slimeFaceNextIdleEventAt = worldTime + getSlimeFaceVisualRange(
+      random,
+      SLIME_FACE_IDLE_INTERVAL_MIN,
+      SLIME_FACE_IDLE_INTERVAL_MAX
+    );
+  }
+
+  function beginSlimeFaceIdleEvent(random) {
+    const eventRoll = random();
+    if (eventRoll < SLIME_FACE_BLINK_EVENT_WEIGHT) {
+      slimeFaceIdleEvent = SLIME_FACE_STATES.BLINK;
+      slimeFaceIdlePhase = SLIME_FACE_IDLE_PHASES.BLINK;
+      slimeFaceIdleEventEndsAt = worldTime + getSlimeFaceVisualRange(
+        random,
+        SLIME_FACE_BLINK_DURATION_MIN,
+        SLIME_FACE_BLINK_DURATION_MAX
+      );
+    } else {
+      slimeFaceIdleLookTarget = eventRoll <
+          SLIME_FACE_BLINK_EVENT_WEIGHT + SLIME_FACE_LEFT_EVENT_WEIGHT
+        ? SLIME_FACE_STATES.LEFT
+        : SLIME_FACE_STATES.RIGHT;
+      slimeFaceIdleEvent = SLIME_FACE_STATES.BLINK;
+      slimeFaceIdlePhase = SLIME_FACE_IDLE_PHASES.LOOK_TRANSITION_IN;
+      slimeFaceIdleEventEndsAt = worldTime + getSlimeFaceVisualRange(
+        random,
+        SLIME_FACE_TRANSITION_BLINK_DURATION_MIN,
+        SLIME_FACE_TRANSITION_BLINK_DURATION_MAX
+      );
+    }
+    slimeFaceNextIdleEventAt = null;
+  }
+
+  function advanceSlimeFaceIdleEvent(random) {
+    if (slimeFaceIdlePhase === SLIME_FACE_IDLE_PHASES.LOOK_TRANSITION_IN) {
+      slimeFaceIdleEvent = slimeFaceIdleLookTarget;
+      slimeFaceIdlePhase = SLIME_FACE_IDLE_PHASES.LOOK;
+      slimeFaceIdleEventEndsAt = worldTime + getSlimeFaceVisualRange(
+        random,
+        SLIME_FACE_LOOK_DURATION_MIN,
+        SLIME_FACE_LOOK_DURATION_MAX
+      );
+      return;
+    }
+
+    if (slimeFaceIdlePhase === SLIME_FACE_IDLE_PHASES.LOOK) {
+      slimeFaceIdleEvent = SLIME_FACE_STATES.BLINK;
+      slimeFaceIdlePhase = SLIME_FACE_IDLE_PHASES.LOOK_TRANSITION_OUT;
+      slimeFaceIdleEventEndsAt = worldTime + getSlimeFaceVisualRange(
+        random,
+        SLIME_FACE_TRANSITION_BLINK_DURATION_MIN,
+        SLIME_FACE_TRANSITION_BLINK_DURATION_MAX
+      );
+      return;
+    }
+
+    slimeFaceIdleEvent = SLIME_FACE_STATES.NORMAL;
+    slimeFaceIdlePhase = SLIME_FACE_IDLE_PHASES.NONE;
+    slimeFaceIdleLookTarget = SLIME_FACE_STATES.NORMAL;
+    slimeFaceIdleEventEndsAt = 0;
+    scheduleNextSlimeFaceIdleEvent(random);
+  }
+
+  function getSlimeFaceState(speed, random = nextSlimeFaceVisualRandom) {
+    if (speed > SLIME_FACE_ACTION_SPEED) {
+      resetSlimeFaceIdleAnimation();
+      return SLIME_FACE_STATES.ACTION;
+    }
+
+    if (!isSlimeFaceIdleEligible(speed)) {
+      resetSlimeFaceIdleAnimation();
+      return SLIME_FACE_STATES.NORMAL;
+    }
+
+    if (slimeFaceIdlePhase !== SLIME_FACE_IDLE_PHASES.NONE) {
+      if (worldTime < slimeFaceIdleEventEndsAt) return slimeFaceIdleEvent;
+      advanceSlimeFaceIdleEvent(random);
+      return slimeFaceIdleEvent;
+    }
+
+    if (slimeFaceNextIdleEventAt === null) {
+      scheduleNextSlimeFaceIdleEvent(random);
+      return SLIME_FACE_STATES.NORMAL;
+    }
+    if (worldTime < slimeFaceNextIdleEventAt) return SLIME_FACE_STATES.NORMAL;
+
+    beginSlimeFaceIdleEvent(random);
+    return slimeFaceIdleEvent;
+  }
+
+  function redrawPendingSlimeFacePreviews() {
+    const normalFace = slimeFaceImages[SLIME_FACE_STATES.NORMAL];
+    if (!isSlimeFaceImageReady(normalFace) || slimeFacePendingPreviews.size === 0) return;
+    const pendingPreviews = [...slimeFacePendingPreviews.values()];
+    slimeFacePendingPreviews.clear();
+    for (const preview of pendingPreviews) {
+      if (preview.canvasElement.isConnected === false) continue;
+      drawSlimeCharacterPreview(
+        preview.canvasElement,
+        preview.cosmetic,
+        preview.beard,
+        preview.color,
+        preview.options
+      );
+    }
+  }
+
   function redrawPendingSlimeBodyPreviews() {
     if (!slimeBodySourcePixels || slimeBodyPendingPreviews.size === 0) return;
     const pendingPreviews = [...slimeBodyPendingPreviews.values()];
@@ -3465,6 +3745,7 @@
       : canvasElement.width / 2;
     const centerY = Number.isFinite(options.centerY) ? options.centerY : 48;
     const scale = Number.isFinite(options.scale) ? options.scale : 0.66;
+    const previewFaceState = normalizeSlimePreviewFaceState(options.faceState);
     previewContext.clearRect(0, 0, canvasElement.width, canvasElement.height);
     previewContext.save();
     previewContext.translate(centerX, centerY);
@@ -3489,11 +3770,23 @@
       });
     }
 
-    previewContext.fillStyle = palette.face ?? "#0b2c1a";
-    previewContext.beginPath();
-    previewContext.arc(-10, -2, 4, 0, Math.PI * 2);
-    previewContext.arc(10, -2, 4, 0, Math.PI * 2);
-    previewContext.fill();
+    const pngFaceDrawn = drawSlimeFace(
+      previewContext,
+      palette,
+      previewFaceState,
+      {preview: true}
+    );
+    if (pngFaceDrawn) {
+      slimeFacePendingPreviews.delete(canvasElement);
+    } else {
+      slimeFacePendingPreviews.set(canvasElement, {
+        canvasElement,
+        cosmetic,
+        beard,
+        color,
+        options: {...options}
+      });
+    }
     drawSlimeBeard(
       previewContext,
       normalizeSlimeBeard(beard),
@@ -3679,22 +3972,8 @@
       gold: goldAppearance.slime
     });
 
-    ctx.fillStyle = palette.face ?? "#0b2c1a";
-    ctx.beginPath();
-    ctx.arc(-10, -2, 4.5, 0, Math.PI * 2);
-    ctx.arc(10, -2, 4.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = palette.face ?? "#0b2c1a";
-    ctx.lineWidth = 3;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    if (speed > 720) {
-      ctx.arc(0, 10, 7, 0, Math.PI * 2);
-    } else {
-      ctx.arc(0, 5, 11, 0.15, Math.PI - 0.15);
-    }
-    ctx.stroke();
+    const faceState = getSlimeFaceState(speed);
+    drawSlimeFace(ctx, palette, faceState);
     const activeBeard = getActiveSlimeBeard();
     const activeCosmetic = getActiveSlimeCosmetic();
     drawSlimeBeard(ctx, activeBeard, player.r, {

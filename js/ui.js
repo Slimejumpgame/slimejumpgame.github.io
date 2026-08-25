@@ -676,6 +676,157 @@
     return preview;
   }
 
+  let mainMenuMascotFaceState = "normal";
+  let mainMenuMascotFacePhase = "none";
+  let mainMenuMascotFaceLookTarget = "normal";
+  let mainMenuMascotFaceEventEndsAt = 0;
+  let mainMenuMascotNextFaceEventAt = null;
+  let mainMenuMascotFaceAnimationActive = false;
+  let mainMenuMascotFaceVisualRandomState = 0;
+
+  function seedMainMenuMascotFaceVisualRandom() {
+    let seed = 0;
+    try {
+      const randomValues = new Uint32Array(1);
+      globalThis.crypto?.getRandomValues?.(randomValues);
+      seed = randomValues[0] >>> 0;
+    } catch (_) {}
+    if (seed === 0) seed = (Date.now() ^ 0x7f4a7c15) >>> 0;
+    mainMenuMascotFaceVisualRandomState = seed || 0x9e3779b9;
+  }
+
+  function nextMainMenuMascotFaceVisualRandom() {
+    if (mainMenuMascotFaceVisualRandomState === 0) {
+      seedMainMenuMascotFaceVisualRandom();
+    }
+    let randomState = mainMenuMascotFaceVisualRandomState;
+    randomState ^= randomState << 13;
+    randomState ^= randomState >>> 17;
+    randomState ^= randomState << 5;
+    mainMenuMascotFaceVisualRandomState = randomState >>> 0;
+    return mainMenuMascotFaceVisualRandomState / 4294967296;
+  }
+
+  function getMainMenuMascotFaceVisualRange(random, min, max) {
+    return min + (max - min) * random();
+  }
+
+  function resetMainMenuMascotFaceAnimation() {
+    mainMenuMascotFaceState = SLIME_FACE_STATES.NORMAL;
+    mainMenuMascotFacePhase = SLIME_FACE_IDLE_PHASES.NONE;
+    mainMenuMascotFaceLookTarget = SLIME_FACE_STATES.NORMAL;
+    mainMenuMascotFaceEventEndsAt = 0;
+    mainMenuMascotNextFaceEventAt = null;
+    mainMenuMascotFaceAnimationActive = false;
+  }
+
+  function isMainMenuMascotFaceAnimationVisible() {
+    return Boolean(
+      ui.menuMascot &&
+      state === "menu" &&
+      document.visibilityState !== "hidden" &&
+      !ui.menu.classList.contains("hidden") &&
+      !ui.mainMenuScreen.classList.contains("hidden")
+    );
+  }
+
+  function scheduleNextMainMenuMascotFaceEvent(now, random) {
+    mainMenuMascotNextFaceEventAt = now + getMainMenuMascotFaceVisualRange(
+      random,
+      SLIME_FACE_IDLE_INTERVAL_MIN,
+      SLIME_FACE_IDLE_INTERVAL_MAX
+    );
+  }
+
+  function beginMainMenuMascotFaceEvent(now, random) {
+    const eventRoll = random();
+    if (eventRoll < SLIME_FACE_BLINK_EVENT_WEIGHT) {
+      mainMenuMascotFaceState = SLIME_FACE_STATES.BLINK;
+      mainMenuMascotFacePhase = SLIME_FACE_IDLE_PHASES.BLINK;
+      mainMenuMascotFaceEventEndsAt = now + getMainMenuMascotFaceVisualRange(
+        random,
+        SLIME_FACE_BLINK_DURATION_MIN,
+        SLIME_FACE_BLINK_DURATION_MAX
+      );
+    } else {
+      mainMenuMascotFaceLookTarget = eventRoll <
+          SLIME_FACE_BLINK_EVENT_WEIGHT + SLIME_FACE_LEFT_EVENT_WEIGHT
+        ? SLIME_FACE_STATES.LEFT
+        : SLIME_FACE_STATES.RIGHT;
+      mainMenuMascotFaceState = SLIME_FACE_STATES.BLINK;
+      mainMenuMascotFacePhase = SLIME_FACE_IDLE_PHASES.LOOK_TRANSITION_IN;
+      mainMenuMascotFaceEventEndsAt = now + getMainMenuMascotFaceVisualRange(
+        random,
+        SLIME_FACE_TRANSITION_BLINK_DURATION_MIN,
+        SLIME_FACE_TRANSITION_BLINK_DURATION_MAX
+      );
+    }
+    mainMenuMascotNextFaceEventAt = null;
+  }
+
+  function advanceMainMenuMascotFaceEvent(now, random) {
+    if (mainMenuMascotFacePhase === SLIME_FACE_IDLE_PHASES.LOOK_TRANSITION_IN) {
+      mainMenuMascotFaceState = mainMenuMascotFaceLookTarget;
+      mainMenuMascotFacePhase = SLIME_FACE_IDLE_PHASES.LOOK;
+      mainMenuMascotFaceEventEndsAt = now + getMainMenuMascotFaceVisualRange(
+        random,
+        SLIME_FACE_LOOK_DURATION_MIN,
+        SLIME_FACE_LOOK_DURATION_MAX
+      );
+      return;
+    }
+
+    if (mainMenuMascotFacePhase === SLIME_FACE_IDLE_PHASES.LOOK) {
+      mainMenuMascotFaceState = SLIME_FACE_STATES.BLINK;
+      mainMenuMascotFacePhase = SLIME_FACE_IDLE_PHASES.LOOK_TRANSITION_OUT;
+      mainMenuMascotFaceEventEndsAt = now + getMainMenuMascotFaceVisualRange(
+        random,
+        SLIME_FACE_TRANSITION_BLINK_DURATION_MIN,
+        SLIME_FACE_TRANSITION_BLINK_DURATION_MAX
+      );
+      return;
+    }
+
+    mainMenuMascotFaceState = SLIME_FACE_STATES.NORMAL;
+    mainMenuMascotFacePhase = SLIME_FACE_IDLE_PHASES.NONE;
+    mainMenuMascotFaceLookTarget = SLIME_FACE_STATES.NORMAL;
+    mainMenuMascotFaceEventEndsAt = 0;
+    scheduleNextMainMenuMascotFaceEvent(now, random);
+  }
+
+  function updateMainMenuMascotFaceAnimation(
+    timestamp,
+    random = nextMainMenuMascotFaceVisualRandom
+  ) {
+    if (!isMainMenuMascotFaceAnimationVisible()) {
+      if (mainMenuMascotFaceAnimationActive) resetMainMenuMascotFaceAnimation();
+      return false;
+    }
+
+    const now = Math.max(0, Number(timestamp) || 0) / 1000;
+    if (!mainMenuMascotFaceAnimationActive) {
+      mainMenuMascotFaceAnimationActive = true;
+      mainMenuMascotFaceState = SLIME_FACE_STATES.NORMAL;
+      mainMenuMascotFacePhase = SLIME_FACE_IDLE_PHASES.NONE;
+      mainMenuMascotFaceLookTarget = SLIME_FACE_STATES.NORMAL;
+      scheduleNextMainMenuMascotFaceEvent(now, random);
+      renderMenuMascot();
+      return true;
+    }
+
+    if (mainMenuMascotFacePhase !== SLIME_FACE_IDLE_PHASES.NONE) {
+      if (now < mainMenuMascotFaceEventEndsAt) return false;
+      advanceMainMenuMascotFaceEvent(now, random);
+      renderMenuMascot();
+      return true;
+    }
+
+    if (now < mainMenuMascotNextFaceEventAt) return false;
+    beginMainMenuMascotFaceEvent(now, random);
+    renderMenuMascot();
+    return true;
+  }
+
   function renderMenuMascot() {
     if (!ui.menuMascot) return;
     const cosmetic = getActiveSlimeCosmetic();
@@ -717,6 +868,7 @@
       {
         ...previewLayout,
         ...prestigePreviewOptions,
+        faceState: mainMenuMascotFaceState,
         goldSlime: goldAppearance.slime,
         goldCosmetic: goldAppearance.hatId === cosmetic,
         goldBeard: goldAppearance.beardId === beard
@@ -2936,6 +3088,7 @@
     ui.perksScreen.classList.toggle("hidden", screenName !== "perks");
     ui.howToScreen.classList.toggle("hidden", screenName !== "howto");
     ui.highscoreScreen.classList.toggle("hidden", screenName !== "highscores");
+    resetMainMenuMascotFaceAnimation();
     if (screenName === "main") {
       renderMenuMascot();
       renderMainMenuStats();

@@ -209,7 +209,7 @@ assert.match(playerSource, /drawSlimeBody\(ctx, palette, player\.r,/);
 assert.doesNotMatch(previewSource, /createRadialGradient/);
 assert.doesNotMatch(playerSource, /createRadialGradient/);
 assert.ok(playerSource.indexOf("ctx.scale(sx, sy)") < playerSource.indexOf("drawSlimeBody(ctx"));
-assert.ok(playerSource.indexOf("drawSlimeBody(ctx") < playerSource.indexOf("ctx.arc(-10, -2, 4.5"));
+assert.ok(playerSource.indexOf("drawSlimeBody(ctx") < playerSource.indexOf("drawSlimeFace(ctx"));
 assert.equal((rendererSource.match(/drawSlimeBody\(/g) ?? []).length, 3);
 
 const normalize = source => source.replace(/\r\n/g, "\n");
@@ -224,10 +224,17 @@ for (const relativePath of [
     cwd: root,
     encoding: "utf8"
   });
+  const expected = relativePath === "js/game.js"
+    ? normalize(baseline).replace(
+        "    updateLiveDevPerkTelemetry(now);\n    draw();",
+        "    updateLiveDevPerkTelemetry(now);\n" +
+          "    updateMainMenuMascotFaceAnimation(now);\n    draw();"
+      )
+    : normalize(baseline);
   assert.equal(
     normalize(current),
-    normalize(baseline),
-    `${relativePath} must remain unchanged by the slime body PNG integration`
+    expected,
+    `${relativePath} must remain unchanged outside the authorized menu face hook`
   );
 }
 
