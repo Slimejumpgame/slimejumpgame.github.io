@@ -128,27 +128,29 @@ async function auditViewport(cdp, viewport) {
   })()`);
   assert.equal(startup.loaded, true);
   assert.equal(startup.status.ready, true);
+  for (const assetName of ["meadow_top_base", "meadow_body_base"]) {
+    assert.equal(startup.status.loaded[assetName], true);
+    assert.equal(
+      startup.status.paths[assetName],
+      `assets/environments/meadow/platforms/${assetName}.png`
+    );
+  }
   for (let index = 1; index <= 6; index++) {
-    const assetName = `meadow_top_0${index}`;
+    const assetName = `meadow_overlay_top_0${index}`;
     assert.equal(startup.status.loaded[assetName], true);
     assert.equal(
       startup.status.paths[assetName],
       `assets/environments/meadow/platforms/${assetName}.png`
     );
   }
-  for (let index = 1; index <= 4; index++) {
-    const assetName = `meadow_body_top_0${index}`;
+  for (let index = 1; index <= 3; index++) {
+    const assetName = `meadow_overlay_body_0${index}`;
     assert.equal(startup.status.loaded[assetName], true);
     assert.equal(
       startup.status.paths[assetName],
       `assets/environments/meadow/platforms/${assetName}.png`
     );
   }
-  assert.equal(startup.status.loaded.meadow_body_base, true);
-  assert.equal(
-    startup.status.paths.meadow_body_base,
-    "assets/environments/meadow/platforms/meadow_body_base.png"
-  );
   assert.equal(startup.state, "menu");
   assert.equal(startup.menuGuard, false);
   assert.equal(startup.menuVisible, true);
@@ -301,8 +303,8 @@ async function auditViewport(cdp, viewport) {
     return {
       active: isMeadowAssetVisualsActive(getBiomeForLevel(1)),
       assets: MEADOW_ASSET_VISUALS.getStatus(),
-      topVariantSelection: MEADOW_ASSET_VISUALS.getTopVariantSelection(generatedLevel.seed),
-      bodyTopVariantSelection: MEADOW_ASSET_VISUALS.getBodyTopVariantSelection(
+      topOverlaySelection: MEADOW_ASSET_VISUALS.getTopOverlaySelection(generatedLevel.seed),
+      bodyOverlaySelection: MEADOW_ASSET_VISUALS.getBodyOverlaySelection(
         generatedLevel.seed
       ),
       geometryUnchanged: before === after,
@@ -345,8 +347,8 @@ async function auditViewport(cdp, viewport) {
     delta: 0
   });
   assert.notEqual(
-    gameplay.topVariantSelection.startIndex,
-    gameplay.topVariantSelection.goalIndex
+    gameplay.topOverlaySelection.startIndex,
+    gameplay.topOverlaySelection.goalIndex
   );
   assert.ok(
     gameplay.massiveBlocks.start.coverageRatio > 0.95,
@@ -361,67 +363,66 @@ async function auditViewport(cdp, viewport) {
   assert.equal(gameplay.massiveBlocks.start.blackPixels, 0);
   assert.equal(gameplay.massiveBlocks.goal.blackPixels, 0);
   assert.ok(gameplay.massiveBlocks.goal.height >= 500);
-  const startTopHeight = 235 * (745 / 2048);
+  const startTopHeight = 235 * (128 / 352);
   assert.equal(gameplay.massiveBlocks.start.drawCalls.length, 2);
   assert.deepEqual(
     gameplay.massiveBlocks.start.drawCalls,
     [
       {
-        asset: "assets/environments/meadow/platforms/meadow_body_base.png",
-        source: {x: 1, y: 1, w: 2079, h: 756},
-        destination: {x: 0, y: startTopHeight - 1, w: 235, h: 48}
+        asset: "assets/environments/meadow/platforms/meadow_top_base.png",
+        source: {x: 0, y: 0, w: 352, h: 128},
+        destination: {x: 0, y: 0, w: 235, h: startTopHeight}
       },
       {
-        asset: `assets/environments/meadow/platforms/${gameplay.topVariantSelection.startAsset}.png`,
-        source: null,
+        asset: `assets/environments/meadow/platforms/${gameplay.topOverlaySelection.startAsset}.png`,
+        source: {x: 0, y: 0, w: 352, h: 128},
         destination: {x: 0, y: 0, w: 235, h: startTopHeight}
       }
     ]
   );
   const goalDrawCalls = gameplay.massiveBlocks.goal.drawCalls;
-  assert.ok(goalDrawCalls.length >= 2);
-  assert.deepEqual(
-    goalDrawCalls.at(-1),
+  assert.ok(goalDrawCalls.length >= 4);
+  assert.deepEqual(goalDrawCalls.slice(0, 2), [
     {
-      asset: `assets/environments/meadow/platforms/${gameplay.topVariantSelection.goalAsset}.png`,
-      source: null,
+      asset: "assets/environments/meadow/platforms/meadow_top_base.png",
+      source: {x: 0, y: 0, w: 352, h: 128},
+      destination: {x: 0, y: 0, w: 220, h: 80}
+    },
+    {
+      asset: `assets/environments/meadow/platforms/${gameplay.topOverlaySelection.goalAsset}.png`,
+      source: {x: 0, y: 0, w: 352, h: 128},
       destination: {x: 0, y: 0, w: 220, h: 80}
     }
-  );
-  const bodyTopSources = [
-    {x: 3, y: 0, w: 2045, h: 742},
-    {x: 0, y: 1, w: 2048, h: 740},
-    {x: 0, y: 1, w: 2048, h: 742},
-    {x: 0, y: 0, w: 2045, h: 742}
-  ];
-  const gameplayBodyTopSource = bodyTopSources[
-    gameplay.bodyTopVariantSelection.goalIndex
-  ];
-  const goalBodyTopHeight = 220 * (gameplayBodyTopSource.h / gameplayBodyTopSource.w);
-  const goalBaseStartY = 79 + goalBodyTopHeight - 1;
-  assert.deepEqual(goalDrawCalls.at(-2), {
-    asset: `assets/environments/meadow/platforms/${gameplay.bodyTopVariantSelection.goalAsset}.png`,
-    source: gameplayBodyTopSource,
-    destination: {x: 0, y: 79, w: 220, h: goalBodyTopHeight}
+  ]);
+  const goalBodyOverlay = goalDrawCalls.at(-1);
+  assert.deepEqual(goalBodyOverlay, {
+    asset: `assets/environments/meadow/platforms/${gameplay.bodyOverlaySelection.goalAsset}.png`,
+    source: {x: 0, y: 0, w: 352, h: 128},
+    destination: {
+      x: 0,
+      y: gameplay.massiveBlocks.goal.platformHeight - 80,
+      w: 220,
+      h: 80
+    }
   });
-  const goalBaseCalls = goalDrawCalls.slice(0, -2);
+  const goalBaseCalls = goalDrawCalls.slice(2, -1);
   for (const [rowIndex, call] of goalBaseCalls.entries()) {
     assert.equal(
       call.asset,
       "assets/environments/meadow/platforms/meadow_body_base.png"
     );
-    assert.equal(call.source.x, 1);
-    assert.equal(call.source.y, 1);
-    assert.equal(call.source.w, 2079);
+    assert.equal(call.source.x, 0);
+    assert.equal(call.source.y, 0);
+    assert.equal(call.source.w, 352);
     assert.equal(call.destination.x, 0);
     assert.equal(call.destination.w, 220);
-    assert.equal(call.destination.y, goalBaseStartY + rowIndex * 47);
-    assert.equal(call.source.h, 756);
-    assert.equal(call.destination.h, 48);
+    assert.equal(call.destination.y, 79 + rowIndex * 79);
+    assert.ok(call.destination.h > 0 && call.destination.h <= 80);
+    assert.equal(call.source.h, call.destination.h * 128 / 80);
   }
-  assert.ok(
-    goalBaseCalls.at(-1).destination.y + 48 >=
-      gameplay.massiveBlocks.goal.platformHeight
+  assert.equal(
+    goalBaseCalls.at(-1).destination.y + goalBaseCalls.at(-1).destination.h,
+    gameplay.massiveBlocks.goal.platformHeight
   );
   assert.equal(gameplay.canvas.internalWidth, 1280);
   assert.equal(gameplay.canvas.internalHeight, 720);
@@ -527,8 +528,8 @@ async function auditViewport(cdp, viewport) {
       return {
         name,
         seed,
-        topVariantSelection: MEADOW_ASSET_VISUALS.getTopVariantSelection(seed),
-        bodyTopVariantSelection: MEADOW_ASSET_VISUALS.getBodyTopVariantSelection(seed),
+        topOverlaySelection: MEADOW_ASSET_VISUALS.getTopOverlaySelection(seed),
+        bodyOverlaySelection: MEADOW_ASSET_VISUALS.getBodyOverlaySelection(seed),
         destination: {width: surface.width, height: surface.height},
         drawCalls,
         walkableTop: {
@@ -579,27 +580,18 @@ async function auditViewport(cdp, viewport) {
       inspectRendered("goal-tall", {x: 1060, y: 0, w: 220, h: 535}, 23)
     ];
   })()`);
-  const bodyTopTransitionAudit = await evaluate(`(() => {
-    const sources = [
-      {x: 3, y: 0, w: 2045, h: 742},
-      {x: 0, y: 1, w: 2048, h: 740},
-      {x: 0, y: 1, w: 2048, h: 742},
-      {x: 0, y: 0, w: 2045, h: 742}
-    ];
-    const seeds = sources.map((_, goalIndex) => {
+  const bodyOverlayAudit = await evaluate(`(() => {
+    const seeds = Array.from({length: 3}, (_, goalIndex) => {
       for (let seed = 0; seed < 4096; seed++) {
-        if (MEADOW_ASSET_VISUALS.getBodyTopVariantSelection(seed).goalIndex === goalIndex) {
+        if (MEADOW_ASSET_VISUALS.getBodyOverlaySelection(seed).goalIndex === goalIndex) {
           return seed;
         }
       }
-      throw new Error("No seed found for Meadow body-top variant " + goalIndex);
+      throw new Error("No seed found for Meadow body overlay " + goalIndex);
     });
     return seeds.map((seed, expectedGoalIndex) => {
       const platform = {x: 1060, y: 0, w: 220, h: 250};
-      const surface = document.createElement("canvas");
-      surface.width = platform.w;
-      surface.height = platform.h;
-      const context = surface.getContext("2d", {willReadFrequently: true});
+      const context = document.createElement("canvas").getContext("2d");
       const drawCalls = [];
       const drawImage = context.drawImage.bind(context);
       context.drawImage = (...args) => {
@@ -615,84 +607,39 @@ async function auditViewport(cdp, viewport) {
         return drawImage(...args);
       };
       MEADOW_ASSET_VISUALS.drawPlatformBase(context, platform, 0, seed);
-      const pixels = context.getImageData(0, 0, surface.width, surface.height).data;
-      const selection = MEADOW_ASSET_VISUALS.getBodyTopVariantSelection(seed);
-      const bodyTop = drawCalls.at(-2);
-      const base = drawCalls.slice(0, -2);
-      const bodyTopBottom = bodyTop.destination.y + bodyTop.destination.h;
-      const firstRow = Math.max(0, Math.floor(bodyTopBottom) - 2);
-      const lastRow = Math.min(surface.height - 1, Math.ceil(bodyTopBottom) + 2);
-      const rowStats = [];
-      let minimumAlpha = 255;
-      let suspiciousLightPixels = 0;
-      for (let y = firstRow; y <= lastRow; y++) {
-        const totals = [0, 0, 0];
-        let count = 0;
-        for (let x = 10; x < surface.width - 10; x++) {
-          const offset = (y * surface.width + x) * 4;
-          const red = pixels[offset];
-          const green = pixels[offset + 1];
-          const blue = pixels[offset + 2];
-          const alpha = pixels[offset + 3];
-          totals[0] += red;
-          totals[1] += green;
-          totals[2] += blue;
-          count += 1;
-          minimumAlpha = Math.min(minimumAlpha, alpha);
-          if (red >= 190 && green >= 135 && blue >= 110) suspiciousLightPixels += 1;
-        }
-        rowStats.push({
-          y,
-          average: totals.map(total => total / count)
-        });
-      }
-      let maximumAdjacentChannelDelta = 0;
-      for (let index = 1; index < rowStats.length; index++) {
-        for (let channel = 0; channel < 3; channel++) {
-          maximumAdjacentChannelDelta = Math.max(
-            maximumAdjacentChannelDelta,
-            Math.abs(rowStats[index].average[channel] - rowStats[index - 1].average[channel])
-          );
-        }
-      }
+      const selection = MEADOW_ASSET_VISUALS.getBodyOverlaySelection(seed);
       return {
         expectedGoalIndex,
         seed,
         selection,
-        bodyTop,
-        firstBase: base[0],
-        bodyTopBottom,
-        rowStats,
-        minimumAlpha,
-        suspiciousLightPixels,
-        maximumAdjacentChannelDelta
+        overlay: drawCalls.filter(call => call.asset.includes("meadow_overlay_body_")),
+        base: drawCalls.filter(call => call.asset.endsWith("meadow_body_base.png"))
       };
     });
   })()`);
-  assert.equal(bodyTopTransitionAudit.length, 4);
-  for (const transition of bodyTopTransitionAudit) {
-    const source = bodyTopSources[transition.expectedGoalIndex];
+  assert.equal(bodyOverlayAudit.length, 3);
+  for (const transition of bodyOverlayAudit) {
     assert.equal(transition.selection.goalIndex, transition.expectedGoalIndex);
     assert.equal(
       transition.selection.goalAsset,
-      `meadow_body_top_0${transition.expectedGoalIndex + 1}`
+      `meadow_overlay_body_0${transition.expectedGoalIndex + 1}`
     );
-    assert.deepEqual(transition.bodyTop.source, source);
-    assert.equal(transition.bodyTop.destination.y, 79);
-    assert.equal(transition.bodyTop.destination.w, 220);
-    assert.equal(transition.bodyTop.destination.h, 220 * (source.h / source.w));
-    assert.deepEqual(transition.firstBase.source, {x: 1, y: 1, w: 2079, h: 756});
-    assert.equal(transition.firstBase.destination.y, transition.bodyTopBottom - 1);
-    assert.equal(transition.minimumAlpha, 255);
-    assert.equal(
-      transition.suspiciousLightPixels,
-      0,
-      `body-top 0${transition.expectedGoalIndex + 1} has a light export seam: ${JSON.stringify(transition.rowStats)}`
-    );
-    assert.ok(
-      transition.maximumAdjacentChannelDelta < 24,
-      `body-top 0${transition.expectedGoalIndex + 1} transition delta: ${JSON.stringify(transition.rowStats)}`
-    );
+    assert.equal(transition.overlay.length, 1);
+    assert.deepEqual(transition.overlay[0], {
+      asset: `assets/environments/meadow/platforms/${transition.selection.goalAsset}.png`,
+      source: {x: 0, y: 0, w: 352, h: 128},
+      destination: {x: 0, y: 170, w: 220, h: 80}
+    });
+    assert.deepEqual(transition.base.map(call => call.destination), [
+      {x: 0, y: 79, w: 220, h: 80},
+      {x: 0, y: 158, w: 220, h: 80},
+      {x: 0, y: 237, w: 220, h: 13}
+    ]);
+    assert.deepEqual(transition.base.map(call => call.source), [
+      {x: 0, y: 0, w: 352, h: 128},
+      {x: 0, y: 0, w: 352, h: 128},
+      {x: 0, y: 0, w: 352, h: 20.8}
+    ]);
   }
   const goalBodyDecodeAudit = await evaluate(`(async () => {
     const image = new Image();
@@ -700,10 +647,10 @@ async function auditViewport(cdp, viewport) {
     await image.decode();
     const surface = document.createElement("canvas");
     surface.width = 220;
-    surface.height = 48;
+    surface.height = 80;
     const context = surface.getContext("2d", {willReadFrequently: true});
-    context.drawImage(image, 1, 1, 2079, 756, 0, 0, 220, 48);
-    const pixels = context.getImageData(0, 0, 220, 48).data;
+    context.drawImage(image, 0, 0, 352, 128, 0, 0, 220, 80);
+    const pixels = context.getImageData(0, 0, 220, 80).data;
     let minimumAlpha = 255;
     for (let index = 3; index < pixels.length; index += 4) {
       minimumAlpha = Math.min(minimumAlpha, pixels[index]);
@@ -711,15 +658,13 @@ async function auditViewport(cdp, viewport) {
     return {naturalWidth: image.naturalWidth, naturalHeight: image.naturalHeight, minimumAlpha};
   })()`);
   assert.deepEqual(goalBodyDecodeAudit, {
-    naturalWidth: 2081,
-    naturalHeight: 758,
+    naturalWidth: 352,
+    naturalHeight: 128,
     minimumAlpha: 255
   });
-  const floatingAssets = [
-    "assets/environments/meadow/platforms/floating_middle.png",
-    "assets/environments/meadow/platforms/floating_left.png",
-    "assets/environments/meadow/platforms/floating_right.png"
-  ];
+  const floatingMiddleAsset = "assets/environments/meadow/platforms/floating_middle.png";
+  const floatingLeftAsset = "assets/environments/meadow/platforms/floating_left.png";
+  const floatingRightAsset = "assets/environments/meadow/platforms/floating_right.png";
   for (const alignment of alphaAlignment) {
     assert.ok(alignment.alpha64Padding.left <= 1, `${alignment.name} left alpha gap`);
     assert.ok(alignment.alpha64Padding.right <= 1, `${alignment.name} right alpha gap`);
@@ -734,80 +679,92 @@ async function auditViewport(cdp, viewport) {
       `${alignment.name} walkable top grass ratio: ${alignment.walkableTop.grassRatio}`
     );
     if (alignment.name.startsWith("floating-")) {
-      assert.equal(alignment.drawCalls.length, 3);
-      assert.deepEqual(
-        alignment.drawCalls.map(call => call.asset),
-        floatingAssets
+      assert.equal(alignment.drawCalls.length % 3, 0);
+      const segments = Array.from(
+        {length: alignment.drawCalls.length / 3},
+        (_, index) => alignment.drawCalls.slice(index * 3, index * 3 + 3)
       );
-      assert.ok(alignment.drawCalls.every(call => call.source === null));
-      const [middle, left, right] = alignment.drawCalls.map(call => call.destination);
+      const middleSegments = segments.slice(0, -2);
+      const leftSegment = segments.at(-2);
+      const rightSegment = segments.at(-1);
+      assert.ok(middleSegments.every(segment => segment.every(call => (
+        call.asset === floatingMiddleAsset
+      ))));
+      assert.ok(leftSegment.every(call => call.asset === floatingLeftAsset));
+      assert.ok(rightSegment.every(call => call.asset === floatingRightAsset));
+      for (const segment of segments) {
+        assert.deepEqual(segment.map(call => [call.source.y, call.source.h]), [
+          [24, 10], [34, 51], [85, 18]
+        ]);
+        assert.deepEqual(segment.map(call => [call.destination.y, call.destination.h]), [
+          [-2, 2], [0, 26], [26, 3]
+        ]);
+      }
+      const middle = middleSegments.map(segment => segment[1].destination);
+      const left = leftSegment[1].destination;
+      const right = rightSegment[1].destination;
       assert.equal(left.x, 0);
       assert.equal(left.y, 0);
-      assert.equal(left.w, 23);
+      assert.equal(left.w, 26);
       assert.equal(left.h, 26);
-      assert.equal(middle.x, 22);
-      assert.equal(middle.w, alignment.destination.width - 43);
-      assert.equal(right.x, alignment.destination.width - 22);
-      assert.equal(right.w, 22);
-      assert.equal(left.x + left.w - middle.x, 1);
-      assert.equal(middle.x + middle.w - right.x, 1);
+      assert.equal(middle[0].x, 25);
+      assert.equal(right.x, alignment.destination.width - 26);
+      assert.equal(right.w, 26);
+      assert.equal(left.x + left.w - middle[0].x, 1);
+      assert.equal(middle.at(-1).x + middle.at(-1).w - right.x, 1);
       assert.equal(right.x + right.w, alignment.destination.width);
     } else if (alignment.name === "start") {
-      const startTopHeight = 235 * (745 / 2048);
+      const startTopHeight = 235 * (128 / 352);
       assert.deepEqual(alignment.drawCalls, [
         {
-          asset: "assets/environments/meadow/platforms/meadow_body_base.png",
-          source: {x: 1, y: 1, w: 2079, h: 756},
-          destination: {x: 0, y: startTopHeight - 1, w: 235, h: 48}
+          asset: "assets/environments/meadow/platforms/meadow_top_base.png",
+          source: {x: 0, y: 0, w: 352, h: 128},
+          destination: {x: 0, y: 0, w: 235, h: startTopHeight}
         },
         {
-          asset: `assets/environments/meadow/platforms/${alignment.topVariantSelection.startAsset}.png`,
-          source: null,
+          asset: `assets/environments/meadow/platforms/${alignment.topOverlaySelection.startAsset}.png`,
+          source: {x: 0, y: 0, w: 352, h: 128},
           destination: {x: 0, y: 0, w: 235, h: startTopHeight}
         }
       ]);
       assert.equal(
-        alignment.drawCalls[1].destination.w / 2048,
-        alignment.drawCalls[1].destination.h / 745
+        alignment.drawCalls[1].destination.w / 352,
+        alignment.drawCalls[1].destination.h / 128
       );
-      assert.ok(alignment.drawCalls[0].destination.y >= alignment.destination.height);
+      assert.ok(startTopHeight > alignment.destination.height);
       assert.ok(
         alignment.drawCalls.every(call =>
           call.destination.x === 0 && call.destination.w === alignment.destination.width
         )
       );
-      assert.ok(alignment.drawCalls.every(call => !call.asset.includes("meadow_body_top_")));
+      assert.ok(alignment.drawCalls.every(call => !call.asset.includes("body")));
       assert.ok(
         alignment.minimumInteriorRowCoverage > 0.99,
         `start horizontal alpha seam: ${alignment.minimumInteriorRowCoverage}`
       );
-      assert.ok(
-        alignment.startMaterialSeamDelta < 24,
-        `start top/body material seam delta: ${alignment.startMaterialSeamDelta}`
-      );
     } else if (alignment.name.startsWith("goal-")) {
-      const top = alignment.drawCalls.at(-1);
-      const bodyTop = alignment.drawCalls.at(-2);
-      const base = alignment.drawCalls.slice(0, -2);
-      const bodyTopSource = bodyTopSources[
-        alignment.bodyTopVariantSelection.goalIndex
-      ];
-      const bodyTopHeight = 220 * (bodyTopSource.h / bodyTopSource.w);
-      const baseStartY = 79 + bodyTopHeight - 1;
-      assert.deepEqual(top, {
-        asset: `assets/environments/meadow/platforms/${alignment.topVariantSelection.goalAsset}.png`,
-        source: null,
+      const [topBase, topOverlay] = alignment.drawCalls;
+      const base = alignment.drawCalls.slice(2, -1);
+      const bodyOverlay = alignment.drawCalls.at(-1);
+      assert.deepEqual(topBase, {
+        asset: "assets/environments/meadow/platforms/meadow_top_base.png",
+        source: {x: 0, y: 0, w: 352, h: 128},
         destination: {x: 0, y: 0, w: 220, h: 80}
       });
-      assert.deepEqual(bodyTop, {
-        asset: `assets/environments/meadow/platforms/${alignment.bodyTopVariantSelection.goalAsset}.png`,
-        source: bodyTopSource,
-        destination: {x: 0, y: 79, w: 220, h: bodyTopHeight}
+      assert.deepEqual(topOverlay, {
+        asset: `assets/environments/meadow/platforms/${alignment.topOverlaySelection.goalAsset}.png`,
+        source: {x: 0, y: 0, w: 352, h: 128},
+        destination: {x: 0, y: 0, w: 220, h: 80}
+      });
+      assert.deepEqual(bodyOverlay, {
+        asset: `assets/environments/meadow/platforms/${alignment.bodyOverlaySelection.goalAsset}.png`,
+        source: {x: 0, y: 0, w: 352, h: 128},
+        destination: {x: 0, y: alignment.destination.height - 80, w: 220, h: 80}
       });
       assert.equal(base.length, {
-        "goal-short": 0,
-        "goal-medium": 2,
-        "goal-tall": 9
+        "goal-short": 1,
+        "goal-medium": 3,
+        "goal-tall": 6
       }[alignment.name]);
       assert.equal(
         alignment.bodyEdgeOpacity.left,
@@ -825,26 +782,24 @@ async function auditViewport(cdp, viewport) {
       assert.ok(base.every(call =>
         call.asset === "assets/environments/meadow/platforms/meadow_body_base.png" &&
         call.source !== null &&
-        call.source.x === 1 &&
-        call.source.y === 1 &&
-        call.source.w === 2079 &&
+        call.source.x === 0 &&
+        call.source.y === 0 &&
+        call.source.w === 352 &&
         call.destination.x === 0 &&
         call.destination.w === 220
       ));
-      if (base.length > 0) {
-        assert.equal(base[0].destination.y, baseStartY);
-        assert.ok(
-          base.at(-1).destination.y + base.at(-1).destination.h >=
-            alignment.destination.height
-        );
-      } else {
-        assert.ok(bodyTop.destination.y + bodyTop.destination.h > alignment.destination.height);
-      }
+      assert.equal(base[0].destination.y, 79);
+      assert.equal(
+        base.at(-1).destination.y + base.at(-1).destination.h,
+        alignment.destination.height
+      );
       assert.ok(
         alignment.minimumInteriorRowCoverage > 0.99,
         `${alignment.name} horizontal alpha seam: ${alignment.minimumInteriorRowCoverage}`
       );
-      assert.ok(base.every(call => call.source.h === 756 && call.destination.h === 48));
+      assert.ok(base.every(call => (
+        call.destination.h <= 80 && call.source.h === call.destination.h * 128 / 80
+      )));
     }
   }
 
@@ -875,7 +830,7 @@ async function auditViewport(cdp, viewport) {
       const towers = [
         {label: "LOW 150 px", drawX: 100, height: 150, seed: 17},
         {label: "MEDIUM 250 px", drawX: 500, height: 250, seed: 19},
-        {label: "HIGH 535 px / 10 rows", drawX: 900, height: 535, seed: 23}
+        {label: "HIGH 535 px / 6 rows", drawX: 900, height: 535, seed: 23}
       ];
       context.font = "bold 18px sans-serif";
       context.textAlign = "center";
@@ -1068,7 +1023,7 @@ async function auditViewport(cdp, viewport) {
     startup,
     gameplay,
     alphaAlignment,
-    bodyTopTransitionAudit,
+    bodyOverlayAudit,
     seedAudits,
     performance,
     tutorial,
