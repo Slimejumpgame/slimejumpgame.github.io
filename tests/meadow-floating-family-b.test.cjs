@@ -150,6 +150,8 @@ const fakeDocument = {
 
 const context = vm.createContext({Image: FakeImage, Math, Promise, document: fakeDocument});
 vm.runInContext(`${read("js/visual-platform-kit.js")}
+${read("js/visual-decor-kit.js")}
+${read("js/visual-portal-kit.js")}
 ${read("js/visual-meadow-assets.js")}
   globalThis.meadowFloatingTestApi = MEADOW_ASSET_VISUALS;
 `, context, {filename: "meadow-floating-family-b-fixture.js"});
@@ -335,6 +337,8 @@ const syntheticContext = vm.createContext({
   document: fakeDocument
 });
 vm.runInContext(`${read("js/visual-platform-kit.js")}
+${read("js/visual-decor-kit.js")}
+${read("js/visual-portal-kit.js")}
 ${read("js/visual-meadow-assets.js")}
   globalThis.syntheticFamilyBApi = MEADOW_ASSET_VISUALS;
 `, syntheticContext, {filename: "synthetic-family-b-fixture.js"});

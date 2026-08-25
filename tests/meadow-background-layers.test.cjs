@@ -26,6 +26,8 @@ for (const [relativePath, expectedColorType] of Object.entries(layerAssets)) {
 
 const visualSource = read("js/visual-meadow-assets.js");
 const platformKitSource = read("js/visual-platform-kit.js");
+const decorKitSource = read("js/visual-decor-kit.js");
+const portalKitSource = read("js/visual-portal-kit.js");
 const rendererSource = read("js/renderer.js");
 
 function loadVisuals(failedAssetSuffixes = []) {
@@ -65,6 +67,8 @@ function loadVisuals(failedAssetSuffixes = []) {
   };
   const context = vm.createContext({Image: FakeImage, Math: math, Promise});
   vm.runInContext(`${platformKitSource}
+    ${decorKitSource}
+    ${portalKitSource}
     ${visualSource}
     globalThis.backgroundVisualsForTest = MEADOW_ASSET_VISUALS;
   `, context, {filename: "meadow-background-layers-fixture.js"});
@@ -152,7 +156,7 @@ assert.equal(captureBackground(canvasFallback, 4).result, false);
 
 assert.match(
   rendererSource,
-  /biomePlatformVisuals\.drawBackground\(ctx, W, H, worldTime\)[\s\S]*?drawPlatforms\(biome, biomePlatformVisuals, "without-floating"\)/
+  /biomePlatformVisuals\.drawBackground\(ctx, W, H, worldTime\)[\s\S]*?drawPlatforms\(\s*biome,\s*biomePlatformVisuals,\s*"without-floating"/
 );
 assert.doesNotMatch(
   visualSource.slice(

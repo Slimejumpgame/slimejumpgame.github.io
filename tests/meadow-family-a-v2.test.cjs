@@ -191,6 +191,8 @@ const fixture = vm.createContext({
   document: fakeDocument
 });
 vm.runInContext(`${read("js/visual-platform-kit.js")}
+${read("js/visual-decor-kit.js")}
+${read("js/visual-portal-kit.js")}
 ${read("js/visual-meadow-assets.js")}
   globalThis.familyATestApi = MEADOW_ASSET_VISUALS;
 `, fixture, {filename: "meadow-family-a-v2-fixture.js"});

@@ -419,7 +419,9 @@ class FakeImage {
     const decorDefinition = decorGridDefinitions.find(definition => definition.path === value);
     this.pixelData = decorDefinition
       ? decodedDecorGridAssets[decorDefinition.asset].pixels
-      : familyBAlphaFixtures[value];
+      : value === "assets/environments/meadow/portal/meadow_goal_portal.png"
+        ? decodedPortalAsset.pixels
+        : familyBAlphaFixtures[value];
     this.onload?.();
   }
 
@@ -478,6 +480,8 @@ const visualContext = vm.createContext({
   document: fakeDocument
 });
 vm.runInContext(`${read("js/visual-platform-kit.js")}
+${read("js/visual-decor-kit.js")}
+${read("js/visual-portal-kit.js")}
 ${read("js/visual-meadow-assets.js")}
   globalThis.meadowAssetVisualsForTest = MEADOW_ASSET_VISUALS;
 `, visualContext, {filename: "js/visual-meadow-assets.js"});
@@ -1722,6 +1726,8 @@ assert.equal(drawCalls.length, 0, "Last Bubble support keeps its existing fallba
 
 const visualSource = read("js/visual-meadow-assets.js");
 const platformKitSource = read("js/visual-platform-kit.js");
+const decorKitSource = read("js/visual-decor-kit.js");
+const portalKitSource = read("js/visual-portal-kit.js");
 assert.doesNotMatch(
   visualSource,
   /drawMassivePlatform|BLOCK_BODY_TILES|BLOCK_TOP_STRIP|NineSlice|CoverageProbe/
@@ -1740,22 +1746,20 @@ const standardPlatformSource = platformKitSource;
 assert.doesNotMatch(standardPlatformSource, /fillRect|#65432d/);
 assert.doesNotMatch(standardPlatformSource, /\.rotate\(|\.scale\(/);
 assert.doesNotMatch(visualSource, /FLOATING_[123]/);
-const topDecorPreviewSource = visualSource.slice(
-  visualSource.indexOf("    const TOP_DECOR_SPRITES"),
-  visualSource.indexOf("    function drawBackgroundLayer")
-);
+const topDecorPreviewSource = decorKitSource;
 assert.doesNotMatch(topDecorPreviewSource, /Math\.random\(/);
 assert.doesNotMatch(topDecorPreviewSource, /mushroomRedSingle|mushroomsRedPair/);
 assert.doesNotMatch(
   topDecorPreviewSource,
   /standingAnchor|grassCompactFan|grassTallFan|grassWildArching|flowersWhiteDaisy|flowersLowMeadowMix|bushLayeredCluster|bushTallLeafy|stoneMossySingle|stoneMossyFlat|tuftSimpleFan|tuftBroadLeafFan|treeSaplingLeafy|treeRoundFlowering/
 );
-assert.match(visualSource, /function createDecorGridSprite\(category, slotIndex\)/);
-assert.match(visualSource, /x: slotIndex % contract\.columns \* contract\.slot\.w/);
-assert.match(visualSource, /y: Math\.floor\(slotIndex \/ contract\.columns\) \* contract\.slot\.h/);
-assert.match(visualSource, /anchor: contract\.anchor/);
-assert.match(visualSource, /const backAnchor = layer === "back" \? sprite\.anchor : null/);
-assert.match(visualSource, /const anchor = sprite\.anchor/);
+assert.match(decorKitSource, /function createGridSprite\(role, slotIndex\)/);
+assert.match(decorKitSource, /x: slotIndex % contract\.columns \* contract\.slot\.w/);
+assert.match(decorKitSource, /y: Math\.floor\(slotIndex \/ contract\.columns\) \* contract\.slot\.h/);
+assert.match(decorKitSource, /anchor: contract\.anchor/);
+assert.match(decorKitSource, /const backAnchor = layer === "back" \? sprite\.anchor : null/);
+assert.match(decorKitSource, /const anchor = item\.anchor \?\? sprite\.anchor/);
+assert.doesNotMatch(decorKitSource, /TREE|MUSHROOM/);
 
 const rendererSource = read("js/renderer.js");
 const rendererPlatformStart = rendererSource.indexOf("  function drawPlatforms(");
@@ -1890,7 +1894,7 @@ guardContext.tutorial = false;
 assert.equal(guardContext.guardForTest({id: "coast"}), "coast-kit");
 assert.equal(guardContext.guardForTest({id: "desert"}), null);
 
-const decorAttemptStart = rendererSource.indexOf("  let meadowDecorAttemptLevel");
+const decorAttemptStart = rendererSource.indexOf("  let decorAttemptLevel");
 const decorAttemptEnd = rendererSource.indexOf(
   "  function drawEarthPlatformDetail",
   decorAttemptStart
@@ -1898,23 +1902,23 @@ const decorAttemptEnd = rendererSource.indexOf(
 assert.ok(decorAttemptStart >= 0 && decorAttemptEnd > decorAttemptStart);
 const decorAttemptContext = vm.createContext({lives: 3, shots: 0});
 vm.runInContext(`${rendererSource.slice(decorAttemptStart, decorAttemptEnd)}
-  globalThis.getMeadowDecorAttemptNonceForTest = getMeadowDecorAttemptNonce;
+  globalThis.getDecorAttemptNonceForTest = getDecorAttemptNonce;
 `, decorAttemptContext);
 const attemptLevelA = {};
 const attemptLevelB = {};
-assert.equal(decorAttemptContext.getMeadowDecorAttemptNonceForTest(attemptLevelA), 0);
-assert.equal(decorAttemptContext.getMeadowDecorAttemptNonceForTest(attemptLevelA), 0);
+assert.equal(decorAttemptContext.getDecorAttemptNonceForTest(attemptLevelA), 0);
+assert.equal(decorAttemptContext.getDecorAttemptNonceForTest(attemptLevelA), 0);
 decorAttemptContext.shots = 2;
-assert.equal(decorAttemptContext.getMeadowDecorAttemptNonceForTest(attemptLevelA), 0);
+assert.equal(decorAttemptContext.getDecorAttemptNonceForTest(attemptLevelA), 0);
 decorAttemptContext.shots = 0;
-assert.equal(decorAttemptContext.getMeadowDecorAttemptNonceForTest(attemptLevelA), 1);
+assert.equal(decorAttemptContext.getDecorAttemptNonceForTest(attemptLevelA), 1);
 decorAttemptContext.lives = 2;
-assert.equal(decorAttemptContext.getMeadowDecorAttemptNonceForTest(attemptLevelA), 2);
-assert.equal(decorAttemptContext.getMeadowDecorAttemptNonceForTest(attemptLevelB), 0);
+assert.equal(decorAttemptContext.getDecorAttemptNonceForTest(attemptLevelA), 2);
+assert.equal(decorAttemptContext.getDecorAttemptNonceForTest(attemptLevelB), 0);
 
 assert.match(
   rendererSource,
-  /function drawPlatforms\(biome, platformVisuals = null, platformPass = "all"\)/
+  /function drawPlatforms\([\s\S]*?platformRoleVisuals = platformVisuals[\s\S]*?\) \{/
 );
 assert.match(
   rendererSource,
@@ -1938,24 +1942,24 @@ assert.match(rendererSource, /for \(const s of level\.spikes\) drawDeathZone\(s,
 assert.match(rendererSource, /drawTrajectory\(\);\s*drawPlayer\(\);/);
 assert.match(
   rendererSource,
-  /drawPlatforms\(biome, biomePlatformVisuals, "without-floating"\);[\s\S]*?drawStartGoalBackDecor\?\.\(ctx, biomeVisualScene\);[\s\S]*?drawPlatforms\(biome, biomePlatformVisuals, "floating-only"\);[\s\S]*?drawFloatingBackDecor\?\.\(ctx, biomeVisualScene\);[\s\S]*?drawGoal\(biomePlatformVisuals\);[\s\S]*?drawGoalSeamCoverProps\?\.\(ctx, biomeVisualScene\);[\s\S]*?drawPlayer\(\);[\s\S]*?drawTopFrontDecor\?\.\(ctx, biomeVisualScene\);/
+  /drawPlatforms\([\s\S]*?"without-floating"[\s\S]*?drawStartGoalBackDecor\?\.\(ctx, biomeDecorScene\);[\s\S]*?drawPlatforms\([\s\S]*?"floating-only"[\s\S]*?drawFloatingBackDecor\?\.\(ctx, biomeDecorScene\);[\s\S]*?drawGoal\(biomePlatformVisuals, biomePortalVisuals\);[\s\S]*?drawGoalSeamCoverProps\?\.\(ctx, biomeDecorScene\);[\s\S]*?drawPlayer\(\);[\s\S]*?drawTopFrontDecor\?\.\(ctx, biomeDecorScene\);/
 );
 assert.match(
   rendererSource,
-  /biomePlatformVisuals\.getScene\(\s*biomeVisualLevel,\s*getMeadowDecorAttemptNonce\(biomeVisualLevel\)\s*\)/
+  /biomeDecorVisuals\.getScene\(\s*biomeDecorLevel,\s*getDecorAttemptNonce\(biomeDecorLevel\)\s*\)/
 );
 assert.match(
   rendererSource,
-  /platformVisuals\.drawPortal\(ctx, g, worldTime\)/
+  /portalVisuals\.drawPortal\(ctx, g, worldTime\)/
 );
 assert.match(
   rendererSource,
-  /drawPortal\(ctx, g, worldTime\)[\s\S]*?drawGoalTopForeground\([\s\S]*?level\.seed/
+  /portalVisuals\.drawPortal\(ctx, g, worldTime\)[\s\S]*?drawGoalTopForeground\([\s\S]*?level\.seed/
 );
 const html = read("index.html");
 assert.match(
   html,
-  /js\/tutorials\.js[\s\S]*?js\/visual-platform-kit\.js[\s\S]*?js\/visual-meadow-assets\.js[\s\S]*?js\/renderer\.js/
+  /js\/tutorials\.js[\s\S]*?js\/visual-platform-kit\.js[\s\S]*?js\/visual-decor-kit\.js[\s\S]*?js\/visual-portal-kit\.js[\s\S]*?js\/visual-meadow-assets\.js[\s\S]*?js\/renderer\.js/
 );
 
 for (const [relativePath, expectedHash] of assetHashesBefore) {
