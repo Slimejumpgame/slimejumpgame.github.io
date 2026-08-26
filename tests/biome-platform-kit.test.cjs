@@ -135,9 +135,17 @@ assert.deepEqual(
 );
 
 const drawCalls = [];
+const drawOperations = [];
+const propertyWrites = [];
 const drawContext = new Proxy({
-  save() {}, restore() {}, beginPath() {}, moveTo() {}, arcTo() {}, closePath() {},
-  clip() {}, rect() {}, stroke() {},
+  save() {}, restore() {},
+  beginPath(...args) { drawOperations.push(["beginPath", ...args]); },
+  moveTo(...args) { drawOperations.push(["moveTo", ...args]); },
+  arcTo(...args) { drawOperations.push(["arcTo", ...args]); },
+  closePath(...args) { drawOperations.push(["closePath", ...args]); },
+  clip(...args) { drawOperations.push(["clip", ...args]); },
+  rect(...args) { drawOperations.push(["rect", ...args]); },
+  stroke(...args) { drawOperations.push(["stroke", ...args]); },
   drawImage(...args) { drawCalls.push(args); }
 }, {
   get(target, property) {
@@ -145,6 +153,7 @@ const drawContext = new Proxy({
     return target[property];
   },
   set(target, property, value) {
+    propertyWrites.push([property, value]);
     target[property] = value;
     return true;
   }
@@ -175,12 +184,20 @@ assert.equal(coastBasesOnlyStatus.bodyBaseReady, true);
 assert.deepEqual(coastBasesOnlyStatus.availableTopOverlays, []);
 assert.deepEqual(coastBasesOnlyStatus.availableBodyOverlays, []);
 drawCalls.length = 0;
+drawOperations.length = 0;
+propertyWrites.length = 0;
 assert.equal(
   coastBasesOnlyApi.drawPlatformBase(drawContext, startPlatform, 0, 17),
   true
 );
 assert.deepEqual(drawCalls.map(call => call[0].src), [expectedPaths.coast_top_base]);
+assert.ok(drawOperations.some(operation => operation[0] === "arcTo"));
+assert.ok(drawOperations.some(operation => operation[0] === "clip"));
+assert.equal(drawOperations.some(operation => operation[0] === "stroke"), false);
+assert.equal(propertyWrites.some(write => write[0] === "lineWidth"), false);
 drawCalls.length = 0;
+drawOperations.length = 0;
+propertyWrites.length = 0;
 assert.equal(
   coastBasesOnlyApi.drawPlatformBase(
     drawContext,
@@ -194,6 +211,31 @@ assert.equal(drawCalls[0][0].src, expectedPaths.coast_top_base);
 assert.ok(drawCalls.slice(1).every(call => (
   call[0].src === expectedPaths.coast_body_base
 )));
+assert.ok(drawCalls.every(call => call[5] === goalPlatform.x));
+assert.ok(drawCalls.every(call => call[7] === goalPlatform.w));
+assert.ok(drawOperations.some(operation => operation[0] === "arcTo"));
+assert.ok(drawOperations.some(operation => operation[0] === "clip"));
+assert.equal(drawOperations.some(operation => operation[0] === "stroke"), false);
+assert.equal(propertyWrites.some(write => write[0] === "lineWidth"), false);
+
+drawCalls.length = 0;
+drawOperations.length = 0;
+propertyWrites.length = 0;
+assert.equal(
+  coastBasesOnlyApi.drawGoalTopForeground(drawContext, goalPlatform, 17),
+  true
+);
+assert.equal(drawCalls.length, 1);
+assert.equal(drawCalls[0][0].src, expectedPaths.coast_top_base);
+assert.deepEqual(drawCalls[0].slice(5, 9), [
+  goalPlatform.x,
+  goalPlatform.y,
+  goalPlatform.w,
+  coastManifest.contract.goal.topHeight
+]);
+assert.ok(drawOperations.some(operation => operation[0] === "arcTo"));
+assert.ok(drawOperations.some(operation => operation[0] === "clip"));
+assert.equal(drawOperations.some(operation => operation[0] === "stroke"), false);
 
 const newContext = createContext(newSizes, true);
 const newApi = newContext.coastKitTestApi;

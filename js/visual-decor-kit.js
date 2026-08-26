@@ -52,8 +52,8 @@ const BIOME_DECOR_ROLE_CONTRACTS = Object.freeze({
     slotRoles: Object.freeze(Array(6).fill("STANDARD"))
   }),
   hero: Object.freeze({
-    widths: Object.freeze({WIDE: 60, HERO: 132}),
-    slotRoles: Object.freeze(["WIDE", "HERO", "HERO", "HERO", "HERO", "HERO"])
+    widths: Object.freeze({HERO: 132}),
+    slotRoles: Object.freeze(Array(6).fill("HERO"))
   })
 });
 

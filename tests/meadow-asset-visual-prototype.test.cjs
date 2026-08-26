@@ -159,7 +159,7 @@ const decorGridDefinitions = Object.freeze([
   {category: "BUSHES", prefix: "bush", asset: "decor_top_bushes", roles: Array(6).fill("LARGE")},
   {category: "STONES", prefix: "stone", asset: "decor_top_stones", roles: ["COMPACT", "WIDE", "WIDE", "WIDE", "WIDE", "WIDE"]},
   {category: "TUFTS", prefix: "tuft", asset: "decor_top_tufts", roles: Array(6).fill("STANDARD")},
-  {category: "TREES", prefix: "tree", asset: "decor_top_trees", roles: ["WIDE", "HERO", "HERO", "HERO", "HERO", "HERO"]}
+  {category: "TREES", prefix: "tree", asset: "decor_top_trees", roles: Array(6).fill("HERO")}
 ].map(definition => Object.freeze({
   ...definition,
   path: `assets/environments/meadow/decor/top/meadow_decor_top_${
@@ -550,7 +550,7 @@ assert.deepEqual(meadowManifest.decor.gridV2, {
     BUSHES: {COMPACT: 34, LARGE: 66},
     STONES: {COMPACT: 32, WIDE: 60},
     TUFTS: {COMPACT: 32, STANDARD: 40},
-    TREES: {WIDE: 60, HERO: 132}
+    TREES: {HERO: 132}
   },
   sheets: Object.fromEntries(decorGridDefinitions.map(definition => [
     definition.category,
@@ -957,9 +957,7 @@ for (const level of generatedLevels) {
       item.layer === "back" &&
       item.baselineOffset >= 1 &&
       item.baselineOffset <= 2 &&
-      item.nominalWidth === (
-        item.sprite === decorSpriteNamesByCategory.TREES[0] ? 60 : 132
-      )
+      item.nominalWidth === 132
     )));
     for (const tree of startGoalTrees.filter(item => (
       item.sprite !== decorSpriteNamesByCategory.TREES[0]
@@ -1674,8 +1672,18 @@ assert.match(decorKitSource, /const anchor = item\.anchor \?\? sprite\.anchor/);
 assert.doesNotMatch(decorKitSource, /TREE|MUSHROOM/);
 
 const rendererSource = read("js/renderer.js");
+const rendererSpikeVisualStart = rendererSource.indexOf(
+  "  function getSpikePlatformSlotVisual("
+);
+const rendererSpikeVisualEnd = rendererSource.indexOf(
+  "  function drawSpikePlatformAsset(",
+  rendererSpikeVisualStart
+);
 const rendererPlatformStart = rendererSource.indexOf("  function drawVectorPlatformSurface(");
 const rendererPlatformEnd = rendererSource.indexOf("  function drawGoal(", rendererPlatformStart);
+assert.ok(
+  rendererSpikeVisualStart >= 0 && rendererSpikeVisualEnd > rendererSpikeVisualStart
+);
 assert.ok(rendererPlatformStart >= 0 && rendererPlatformEnd > rendererPlatformStart);
 const rendererPlatformFixture = [
   {x: 420, y: 300, w: 130, h: 26},
@@ -1706,6 +1714,11 @@ const rendererCanvasContext = new Proxy({}, {
 });
 const rendererPlatformContext = vm.createContext({
   SPIKE_PLATFORM_FULL_DRAW_WIDTH: 18,
+  SPIKE_PLATFORM_SLOT_TRANSITION_DURATION: 0.12,
+  SPIKE_PLATFORM_WARNING_DURATION: 0.62,
+  SPIKE_PLATFORM_EXTEND_DURATION: 0.28,
+  SPIKE_PLATFORM_DANGER_DURATION: 1.08,
+  SPIKE_PLATFORM_RETRACT_DURATION: 0.30,
   MEADOW_ASSET_VISUALS: {
     drawPlatformBase: (context, platform, drawX, levelSeed) => {
       rendererBaseCalls.push({platform, drawX, levelSeed});
@@ -1738,7 +1751,8 @@ const rendererPlatformContext = vm.createContext({
   roundedRect: () => {},
   worldTime: 1.25
 });
-vm.runInContext(`${rendererSource.slice(rendererPlatformStart, rendererPlatformEnd)}
+vm.runInContext(`${rendererSource.slice(rendererSpikeVisualStart, rendererSpikeVisualEnd)}
+${rendererSource.slice(rendererPlatformStart, rendererPlatformEnd)}
   globalThis.drawPlatformsForTest = drawPlatforms;
 `, rendererPlatformContext);
 rendererPlatformContext.drawPlatformsForTest(

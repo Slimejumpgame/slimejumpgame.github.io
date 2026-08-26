@@ -247,6 +247,11 @@
     SPIKE_PLATFORM_ASSET_CONTRACT.source.w /
     SPIKE_PLATFORM_ASSET_CONTRACT.source.h;
   const SPIKE_PLATFORM_BASELINE_OFFSET = 6;
+  const SPIKE_PLATFORM_SLOT_TRANSITION_DURATION = 0.12;
+  const SPIKE_PLATFORM_WARNING_DURATION = 0.62;
+  const SPIKE_PLATFORM_EXTEND_DURATION = 0.28;
+  const SPIKE_PLATFORM_DANGER_DURATION = 1.08;
+  const SPIKE_PLATFORM_RETRACT_DURATION = 0.30;
   const spikePlatformImage = new Image();
   spikePlatformImage.src = SPIKE_PLATFORM_ASSET_CONTRACT.path;
 
@@ -1088,6 +1093,66 @@
     );
   }
 
+  function getSpikePlatformSlotVisual(spikeData, visualTime = worldTime) {
+    const extension = clamp(spikeData?.extension ?? 0, 0, 1);
+    const fallbackOpen = Boolean(
+      spikeData?.warning || spikeData?.dangerous || extension > 0.02
+    );
+    const cycle = Number(spikeData?.cycle);
+    const startTime = Number(spikeData?.startTime);
+    if (!Number.isFinite(cycle) || cycle <= 0 || !Number.isFinite(startTime)) {
+      return Object.freeze({
+        phase: fallbackOpen ? "OPEN" : "CLOSED",
+        openness: fallbackOpen ? 1 : 0
+      });
+    }
+
+    const phaseOffset = Number.isFinite(Number(spikeData?.phaseOffset))
+      ? Number(spikeData.phaseOffset)
+      : 0;
+    const elapsed = Math.max(0, (Number(visualTime) || 0) - startTime) + phaseOffset;
+    const cycleTime = ((elapsed % cycle) + cycle) % cycle;
+    const activeDurations =
+      SPIKE_PLATFORM_WARNING_DURATION +
+      SPIKE_PLATFORM_EXTEND_DURATION +
+      SPIKE_PLATFORM_DANGER_DURATION +
+      SPIKE_PLATFORM_RETRACT_DURATION;
+    const safeDuration = Math.max(1.5, cycle - activeDurations);
+    const openingStart = Math.max(
+      0,
+      safeDuration - SPIKE_PLATFORM_SLOT_TRANSITION_DURATION
+    );
+
+    if (cycleTime >= openingStart && cycleTime < safeDuration) {
+      const progress = clamp(
+        (cycleTime - openingStart) /
+          Math.max(Number.EPSILON, safeDuration - openingStart),
+        0,
+        1
+      );
+      return Object.freeze({
+        phase: "OPENING",
+        openness: progress * progress * (3 - 2 * progress)
+      });
+    }
+
+    if (cycleTime >= safeDuration) {
+      return Object.freeze({phase: "OPEN", openness: 1});
+    }
+
+    if (elapsed >= cycle && cycleTime < SPIKE_PLATFORM_SLOT_TRANSITION_DURATION) {
+      const progress = clamp(
+        cycleTime / SPIKE_PLATFORM_SLOT_TRANSITION_DURATION,
+        0,
+        1
+      );
+      const easedProgress = progress * progress * (3 - 2 * progress);
+      return Object.freeze({phase: "CLOSING", openness: 1 - easedProgress});
+    }
+
+    return Object.freeze({phase: "CLOSED", openness: 0});
+  }
+
   function drawSpikePlatformAsset(context, platform, drawX, count, step) {
     if (
       !platform?.spikePlatform ||
@@ -1518,18 +1583,22 @@
         const spikeData = p.spikeData;
         const count = Math.max(3, Math.floor(p.w / 25));
         const step = p.w / count;
+        const slotVisual = getSpikePlatformSlotVisual(spikeData, worldTime);
 
-        // Dunkle Schlitze zeigen auch im sicheren Zustand klar, dass hier etwas
-        // aus der Plattform herausfahren kann.
-        ctx.fillStyle = "rgba(43,27,32,0.82)";
         const slotWidth = Math.min(
           step - 4,
           SPIKE_PLATFORM_FULL_DRAW_WIDTH + 2
         );
-        for (let i = 0; i < count; i++) {
-          const cellCenterX = drawX + (i + 0.5) * step;
-          roundedRect(cellCenterX - slotWidth / 2, p.y + 4, slotWidth, 5, 2.5);
-          ctx.fill();
+        if (slotVisual.openness > 0) {
+          ctx.save();
+          ctx.globalAlpha *= slotVisual.openness;
+          ctx.fillStyle = "rgba(43,27,32,0.82)";
+          for (let i = 0; i < count; i++) {
+            const cellCenterX = drawX + (i + 0.5) * step;
+            roundedRect(cellCenterX - slotWidth / 2, p.y + 4, slotWidth, 5, 2.5);
+            ctx.fill();
+          }
+          ctx.restore();
         }
 
         if (spikeData.warning && !spikeData.dangerous) {

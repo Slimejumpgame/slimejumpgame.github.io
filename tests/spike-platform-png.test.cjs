@@ -153,7 +153,8 @@ const ctx = {
       type: "drawImage",
       args,
       shadowColor: state.shadowColor,
-      shadowBlur: state.shadowBlur
+      shadowBlur: state.shadowBlur,
+      globalAlpha: state.globalAlpha
     });
   },
   fill() {
@@ -161,7 +162,8 @@ const ctx = {
       type: "fill",
       style: state.fillStyle,
       shadowColor: state.shadowColor,
-      shadowBlur: state.shadowBlur
+      shadowBlur: state.shadowBlur,
+      globalAlpha: state.globalAlpha
     });
   },
   stroke() {
@@ -234,8 +236,10 @@ vm.runInContext(`${fixtureSource}
     fullDrawHeight: SPIKE_PLATFORM_FULL_DRAW_HEIGHT,
     fullDrawWidth: SPIKE_PLATFORM_FULL_DRAW_WIDTH,
     baselineOffset: SPIKE_PLATFORM_BASELINE_OFFSET,
+    slotTransitionDuration: SPIKE_PLATFORM_SLOT_TRANSITION_DURATION,
     image: spikePlatformImage,
     ready: isSpikePlatformAssetReady,
+    getSlotVisual: getSpikePlatformSlotVisual,
     drawAsset: drawSpikePlatformAsset,
     drawPlatforms
   };
@@ -250,6 +254,7 @@ assert.deepEqual(JSON.parse(JSON.stringify(api.contract)), {
 assert.equal(api.fullDrawHeight, 26);
 assert.equal(api.fullDrawWidth, 26 * 228 / 299);
 assert.equal(api.baselineOffset, 6);
+assert.equal(api.slotTransitionDuration, 0.12);
 
 function resetEvents() {
   events.length = 0;
@@ -333,6 +338,117 @@ const spikeFixture = {
   spikePlatform: true,
   spikeData: {extension: 1, warning: false, dangerous: true}
 };
+
+const visualCycle = 4.6;
+const visualSafeDuration = visualCycle - 0.62 - 0.28 - 1.08 - 0.30;
+const visualSpikeData = {
+  cycle: visualCycle,
+  phaseOffset: 0,
+  startTime: 0,
+  warning: false,
+  extension: 0,
+  dangerous: false
+};
+const slotVisualAt = time => JSON.parse(JSON.stringify(
+  api.getSlotVisual(visualSpikeData, time)
+));
+
+assert.deepEqual(slotVisualAt(1), {phase: "CLOSED", openness: 0});
+const openingVisual = slotVisualAt(visualSafeDuration - 0.06);
+assert.equal(openingVisual.phase, "OPENING");
+assert.ok(openingVisual.openness > 0 && openingVisual.openness < 1);
+assert.deepEqual(slotVisualAt(visualSafeDuration + 0.001), {phase: "OPEN", openness: 1});
+assert.deepEqual(slotVisualAt(visualSafeDuration + 0.7), {phase: "OPEN", openness: 1});
+assert.deepEqual(slotVisualAt(visualCycle - 0.15), {phase: "OPEN", openness: 1});
+const closingVisual = slotVisualAt(visualCycle + 0.06);
+assert.equal(closingVisual.phase, "CLOSING");
+assert.ok(closingVisual.openness > 0 && closingVisual.openness < 1);
+assert.deepEqual(slotVisualAt(visualCycle + 0.13), {phase: "CLOSED", openness: 0});
+
+const timedSpikeFixture = {
+  x: spikeFixture.x,
+  y: spikeFixture.y,
+  w: spikeFixture.w,
+  h: spikeFixture.h,
+  spikePlatform: true,
+  spikeData: {...visualSpikeData}
+};
+const slotFills = () => events.filter(event => (
+  event.type === "fill" && event.style === "rgba(43,27,32,0.82)"
+));
+const renderTimedSpike = (time, statePatch = {}, platformVisuals = rendererContext.MEADOW_ASSET_VISUALS) => {
+  Object.assign(timedSpikeFixture.spikeData, {
+    warning: false,
+    extension: 0,
+    dangerous: false,
+    ...statePatch
+  });
+  rendererContext.worldTime = time;
+  platforms = [timedSpikeFixture];
+  resetEvents();
+  api.drawPlatforms(biome, platformVisuals);
+};
+
+renderTimedSpike(1);
+assert.equal(events.filter(event => event.type === "meadowBase").length, 1);
+assert.equal(slotFills().length, 0, "CLOSED must render only the Whole base");
+assert.equal(events.filter(event => event.type === "drawImage").length, 0);
+
+renderTimedSpike(visualSafeDuration - 0.06);
+assert.equal(slotFills().length, Math.max(3, Math.floor(timedSpikeFixture.w / 25)));
+assert.ok(slotFills().every(event => event.globalAlpha > 0 && event.globalAlpha < 1));
+
+renderTimedSpike(visualSafeDuration + 0.62 + 0.07, {
+  warning: true,
+  extension: 0.25,
+  dangerous: false
+});
+const timedBaseIndex = events.findIndex(event => event.type === "meadowBase");
+const timedSlotIndex = events.findIndex(event => (
+  event.type === "fill" && event.style === "rgba(43,27,32,0.82)"
+));
+const timedWarningIndex = events.findIndex(event => (
+  event.type === "fill" && event.style.startsWith("rgba(255,196,86,")
+));
+const timedSpikeIndex = events.findIndex(event => event.type === "drawImage");
+assert.ok(
+  timedBaseIndex < timedSlotIndex &&
+  timedSlotIndex < timedWarningIndex &&
+  timedWarningIndex < timedSpikeIndex,
+  "Spike layers must remain Whole base, slots, Warning, then Spikes"
+);
+assert.ok(slotFills().every(event => event.globalAlpha === 1));
+assert.equal(events[timedWarningIndex].globalAlpha, 1);
+assert.equal(events[timedSpikeIndex].globalAlpha, 1);
+
+renderTimedSpike(visualSafeDuration + 0.62 + 0.28 + 0.4, {
+  extension: 1,
+  dangerous: true
+});
+assert.ok(slotFills().length > 0, "fully extended Spikes must keep slots open");
+assert.ok(events.some(event => event.type === "drawImage"));
+
+renderTimedSpike(visualCycle - 0.15, {extension: 0.5, dangerous: false});
+assert.ok(slotFills().length > 0, "retracting Spikes must keep slots open");
+assert.ok(events.some(event => event.type === "drawImage"));
+
+renderTimedSpike(visualCycle + 0.06);
+assert.ok(slotFills().length > 0, "fully retracted Spikes must enter CLOSING");
+assert.ok(slotFills().every(event => event.globalAlpha > 0 && event.globalAlpha < 1));
+assert.equal(events.filter(event => event.type === "drawImage").length, 0);
+
+renderTimedSpike(visualCycle + 0.13);
+assert.equal(slotFills().length, 0, "slots must be hidden again after CLOSING");
+assert.equal(events.filter(event => event.type === "meadowBase").length, 1);
+
+meadowAssetsReady = false;
+renderTimedSpike(1, {}, rendererContext.MEADOW_ASSET_VISUALS);
+assert.ok(events.some(event => (
+  event.type === "fill" && event.style === biome.platform.body
+)), "CLOSED vector fallback must keep the platform body visible");
+assert.equal(slotFills().length, 0, "CLOSED vector fallback must hide slots");
+meadowAssetsReady = true;
+rendererContext.worldTime = 1.25;
 platforms = [spikeFixture];
 
 resetEvents();
@@ -409,10 +525,13 @@ const warningFill = events.find(event => (
 ));
 assert.equal(warningFill.shadowColor, "rgba(255,196,86,0.90)");
 assert.equal(warningFill.shadowBlur, 12);
+assert.equal(warningFill.globalAlpha, 1);
 const glowingSpikeDraws = events.filter(event => event.type === "drawImage");
 assert.ok(glowingSpikeDraws.length > 0);
 assert.ok(glowingSpikeDraws.every(event => event.shadowColor === "" && event.shadowBlur === 0),
   "Warning shadow must be restored before Spike PNGs draw");
+assert.ok(glowingSpikeDraws.every(event => event.globalAlpha === 1),
+  "Slot reveal alpha must be restored before Spike PNGs draw");
 
 for (const spikeData of [
   {extension: 1, warning: false, dangerous: false},
@@ -453,6 +572,11 @@ assert.match(platformsSource, /const extendDuration = 0\.28;/);
 assert.match(platformsSource, /const dangerDuration = 1\.08;/);
 assert.match(platformsSource, /const retractDuration = 0\.30;/);
 assert.match(platformsSource, /platform\.dangerous = platform\.extension >= 0\.52;/);
+assert.match(rendererSource, /SPIKE_PLATFORM_SLOT_TRANSITION_DURATION = 0\.12/);
+assert.match(rendererSource, /SPIKE_PLATFORM_WARNING_DURATION = 0\.62/);
+assert.match(rendererSource, /SPIKE_PLATFORM_EXTEND_DURATION = 0\.28/);
+assert.match(rendererSource, /SPIKE_PLATFORM_DANGER_DURATION = 1\.08/);
+assert.match(rendererSource, /SPIKE_PLATFORM_RETRACT_DURATION = 0\.30/);
 assert.match(rendererSource, /spikeData\.extension > 0\.02/);
 assert.match(rendererSource, /Math\.max\(3, Math\.floor\(p\.w \/ 25\)\)/);
 assert.match(rendererSource,

@@ -762,7 +762,11 @@
       }
       context.restore();
 
-      if (role === "FLOATING") return true;
+      if (
+        role === "FLOATING" ||
+        role === "GOAL_TOWER" ||
+        role === "START_PLATFORM"
+      ) return true;
       const outlineHeight = platform.h;
       context.save();
       context.strokeStyle = config.outlineStyle ?? "rgba(46,72,28,0.62)";

@@ -131,6 +131,38 @@ assert.deepEqual(heroOnlyStatus.expectedNativeSize, {w: 1536, h: 1024});
 assert.deepEqual(heroOnlyStatus.availableRoles, ["hero"]);
 assert.equal(heroOnlyStatus.validNativeSizes.stones, false);
 assert.equal(heroOnly.areAllReady(), false);
+const heroOnlyManifest = JSON.parse(JSON.stringify(heroOnly.getManifest()));
+assert.deepEqual(heroOnlyManifest.roleWidths, {
+  groundcover: {COMPACT: 34, WIDE: 62, LARGE: 78},
+  small_flora: {COMPACT: 34, STANDARD: 52},
+  small_props: {COMPACT: 30, STANDARD: 40},
+  bushes: {COMPACT: 34, LARGE: 66},
+  stones: {COMPACT: 32, WIDE: 60},
+  tufts: {COMPACT: 32, STANDARD: 40},
+  hero: {HERO: 132}
+});
+assert.deepEqual(
+  heroOnlyManifest.sheets.hero.slotRoles,
+  Array(6).fill("HERO")
+);
+
+const renderedHeroSlots = new Set();
+for (let seed = 1; seed <= 100; seed++) {
+  for (let decorNonce = 0; decorNonce < 7; decorNonce++) {
+    const scene = heroOnly.getScene(levelFixture(seed), decorNonce);
+    for (const item of scene.topBackDecor.filter(item => item.category === "hero")) {
+      renderedHeroSlots.add(item.sprite);
+      assert.equal(item.sizeRole, "HERO");
+      assert.equal(item.nominalWidth, 132);
+      assert.equal(item.layer, "back");
+      assert.notEqual(item.role, "FLOATING");
+    }
+  }
+}
+assert.deepEqual(
+  [...renderedHeroSlots].sort(),
+  [...heroOnlyManifest.sheets.hero.sprites].sort()
+);
 
 let heroScene = null;
 for (let seed = 1; seed <= 100; seed++) {
