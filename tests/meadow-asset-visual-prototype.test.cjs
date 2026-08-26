@@ -1865,7 +1865,10 @@ for (const mechanicFlag of [
 }
 assert.doesNotMatch(rendererSource, /p\.moving && biomeAssetPlatform/);
 assert.match(rendererSource, /platform\.moving[\s\S]*?\? "#5e7592"/);
-assert.match(rendererSource, /for \(const s of level\.spikes\) drawDeathZone\(s, biome\);/);
+assert.match(
+  rendererSource,
+  /for \(const s of level\.spikes\) drawDeathZone\(s, biome, platformVisuals\);/
+);
 assert.match(rendererSource, /drawTrajectory\(\);\s*drawPlayer\(\);/);
 assert.match(
   rendererSource,

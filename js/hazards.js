@@ -205,13 +205,18 @@
     cloudAbyss: drawCloudAbyssHazard
   };
 
-  function drawDeathZone(rect, biome) {
+  function drawDeathZone(rect, biome, biomeVisuals = null) {
     const renderer = DEATH_ZONE_RENDERERS[biome.hazard.type] || drawSpikeHazard;
     ctx.save();
     ctx.beginPath();
     ctx.rect(rect.x, rect.y, rect.w, rect.h);
     ctx.clip();
-    renderer(rect, biome.hazard);
+    const assetHazardDrawn = Boolean(
+      biomeVisuals &&
+      typeof biomeVisuals.drawBottomDeathHazard === "function" &&
+      biomeVisuals.drawBottomDeathHazard(ctx, rect, worldTime)
+    );
+    if (!assetHazardDrawn) renderer(rect, biome.hazard);
     ctx.restore();
   }
 

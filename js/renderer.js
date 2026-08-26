@@ -1718,7 +1718,7 @@
 
     if (platformPass === "without-floating") return;
 
-    for (const s of level.spikes) drawDeathZone(s, biome);
+    for (const s of level.spikes) drawDeathZone(s, biome, platformVisuals);
   }
 
   function drawGoal(

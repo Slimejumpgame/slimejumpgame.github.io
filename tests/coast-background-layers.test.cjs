@@ -162,7 +162,10 @@ function captureBackground(api, visualTime, width = 1280, height = 720) {
 
 const fixture = loadVisuals();
 const visuals = fixture.api;
-assert.deepEqual(fixture.loadedPaths, backgroundPaths);
+assert.deepEqual(
+  fixture.loadedPaths.filter(assetPath => assetPath.includes("/background/")),
+  backgroundPaths
+);
 assert.equal(fixture.getRegisteredVisuals(), visuals);
 assert.equal(visuals.platformMarker, fixture.platformVisuals.platformMarker);
 assert.equal(visuals.drawPlatformBase, fixture.platformVisuals.drawPlatformBase);

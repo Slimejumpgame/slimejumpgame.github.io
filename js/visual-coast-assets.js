@@ -11,6 +11,16 @@ const COAST_ASSET_VISUALS = (() => {
     landscape: "assets/environments/coast/background/coast_background_landscape.png",
     cloudsFront: "assets/environments/coast/background/coast_background_clouds_front.png"
   });
+  const WATER_HAZARD_CONTRACT = Object.freeze({
+    native: Object.freeze({w: 1650, h: 60}),
+    runtime: Object.freeze({w: 825, h: 30}),
+    nativeToRuntimeScale: 0.5
+  });
+  const WATER_HAZARD_PATHS = Object.freeze({
+    waterBase: "assets/environments/coast/hazards/coast_hazard_water_base.png",
+    wave01: "assets/environments/coast/hazards/coast_hazard_wave_01.png",
+    wave02: "assets/environments/coast/hazards/coast_hazard_wave_02.png"
+  });
   const BACK_CLOUD_SPEED = 4;
   const FRONT_CLOUD_SPEED = -7;
   const SHIP_CONTENT_WIDTH = 190;
@@ -22,7 +32,16 @@ const COAST_ASSET_VISUALS = (() => {
   const HORIZON_LAYER_Y_OFFSET = 75;
   const SHIP_BOB_AMPLITUDE = 2.5;
   const SHIP_BOB_PERIOD_SECONDS = 5.5;
+  const WAVE_01_SPEED = 18;
+  const WAVE_01_BOB_SPEED = 1.6;
+  const WAVE_01_BOB_AMPLITUDE = 1.2;
+  const WAVE_02_SPEED = -11;
+  const WAVE_02_BOB_SPEED = 1.15;
+  const WAVE_02_BOB_PHASE = 1.7;
+  const WAVE_02_BOB_AMPLITUDE = 0.7;
   const backgroundAssets = {};
+  const waterHazardAssets = {};
+  const waterHazardAlphaUsage = {};
   let shipContentBounds = null;
 
   function hasValidBackgroundSize(name) {
@@ -95,11 +114,85 @@ const COAST_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
+  function analyzeAlphaUsage(image, width, height) {
+    if (
+      typeof document === "undefined" ||
+      !document.createElement ||
+      !image
+    ) return null;
+    try {
+      const surface = document.createElement("canvas");
+      surface.width = width;
+      surface.height = height;
+      const context = surface.getContext("2d", {willReadFrequently: true});
+      if (!context) return null;
+      context.clearRect(0, 0, width, height);
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, width, height).data;
+      let hasVisiblePixels = false;
+      let hasTransparentPixels = false;
+      for (let index = 3; index < pixels.length; index += 4) {
+        const alpha = pixels[index];
+        if (alpha > 0) hasVisiblePixels = true;
+        if (alpha < 255) hasTransparentPixels = true;
+        if (hasVisiblePixels && hasTransparentPixels) break;
+      }
+      return Object.freeze({hasVisiblePixels, hasTransparentPixels});
+    } catch {
+      return null;
+    }
+  }
+
+  function hasValidWaterHazardSize(name) {
+    const image = waterHazardAssets[name]?.image;
+    return Boolean(
+      image?.complete &&
+      image.naturalWidth === WATER_HAZARD_CONTRACT.native.w &&
+      image.naturalHeight === WATER_HAZARD_CONTRACT.native.h
+    );
+  }
+
+  function hasValidWaveAlpha(name) {
+    const usage = waterHazardAlphaUsage[name];
+    return Boolean(usage?.hasVisiblePixels && usage.hasTransparentPixels);
+  }
+
+  function loadWaterHazardAsset(name, path) {
+    const image = new Image();
+    const record = {image, ready: null};
+    waterHazardAssets[name] = record;
+    record.ready = new Promise(resolve => {
+      image.onload = () => {
+        const validSize = hasValidWaterHazardSize(name);
+        if (validSize && name !== "waterBase") {
+          waterHazardAlphaUsage[name] = analyzeAlphaUsage(
+            image,
+            WATER_HAZARD_CONTRACT.native.w,
+            WATER_HAZARD_CONTRACT.native.h
+          );
+        }
+        resolve(
+          validSize &&
+          (name === "waterBase" || hasValidWaveAlpha(name))
+        );
+      };
+      image.onerror = () => resolve(false);
+    });
+    image.decoding = "async";
+    image.src = path;
+  }
+
   for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
     loadBackgroundAsset(name, path);
   }
   const backgroundReadyPromise = Promise.all(
     Object.values(backgroundAssets).map(record => record.ready)
+  ).then(results => results.every(Boolean));
+  for (const [name, path] of Object.entries(WATER_HAZARD_PATHS)) {
+    loadWaterHazardAsset(name, path);
+  }
+  const waterHazardReadyPromise = Promise.all(
+    Object.values(waterHazardAssets).map(record => record.ready)
   ).then(results => results.every(Boolean));
 
   function isBackgroundReady() {
@@ -202,6 +295,113 @@ const COAST_ASSET_VISUALS = (() => {
     });
   }
 
+  function isWaterHazardReady() {
+    return Object.keys(WATER_HAZARD_PATHS).every(hasValidWaterHazardSize) &&
+      hasValidWaveAlpha("wave01") &&
+      hasValidWaveAlpha("wave02");
+  }
+
+  function getSignedWrappedOffset(visualTime, speed, width) {
+    const safeTime = Number.isFinite(visualTime) ? visualTime : 0;
+    const distance = Math.abs(safeTime * speed) % width;
+    return Math.sign(speed) * distance;
+  }
+
+  function getWrappedWaterDestinations(rect, offsetX, offsetY) {
+    const firstX = offsetX >= 0
+      ? rect.x + offsetX - rect.w
+      : rect.x + offsetX;
+    return Object.freeze([
+      Object.freeze({x: firstX, y: rect.y + offsetY, w: rect.w, h: rect.h}),
+      Object.freeze({
+        x: firstX + rect.w,
+        y: rect.y + offsetY,
+        w: rect.w,
+        h: rect.h
+      })
+    ]);
+  }
+
+  function getWaterHazardMapping(visualTime, rect) {
+    if (
+      !rect ||
+      !Number.isFinite(rect.x) ||
+      !Number.isFinite(rect.y) ||
+      rect.w !== WATER_HAZARD_CONTRACT.runtime.w ||
+      rect.h !== WATER_HAZARD_CONTRACT.runtime.h
+    ) return null;
+    const safeTime = Number.isFinite(visualTime) ? visualTime : 0;
+    const wave01OffsetX = getSignedWrappedOffset(
+      safeTime,
+      WAVE_01_SPEED,
+      rect.w
+    );
+    const wave02OffsetX = getSignedWrappedOffset(
+      safeTime,
+      WAVE_02_SPEED,
+      rect.w
+    );
+    const wave01OffsetY = Math.sin(safeTime * WAVE_01_BOB_SPEED) *
+      WAVE_01_BOB_AMPLITUDE;
+    const wave02OffsetY = Math.sin(
+      safeTime * WAVE_02_BOB_SPEED + WAVE_02_BOB_PHASE
+    ) * WAVE_02_BOB_AMPLITUDE;
+    return Object.freeze({
+      source: WATER_HAZARD_CONTRACT.native,
+      base: Object.freeze({x: rect.x, y: rect.y, w: rect.w, h: rect.h}),
+      wave01: Object.freeze({
+        offsetX: wave01OffsetX,
+        offsetY: wave01OffsetY,
+        destinations: getWrappedWaterDestinations(
+          rect,
+          wave01OffsetX,
+          wave01OffsetY
+        )
+      }),
+      wave02: Object.freeze({
+        offsetX: wave02OffsetX,
+        offsetY: wave02OffsetY,
+        destinations: getWrappedWaterDestinations(
+          rect,
+          wave02OffsetX,
+          wave02OffsetY
+        )
+      })
+    });
+  }
+
+  function drawWaterHazardLayer(context, name, source, destination) {
+    context.drawImage(
+      waterHazardAssets[name].image,
+      0,
+      0,
+      source.w,
+      source.h,
+      destination.x,
+      destination.y,
+      destination.w,
+      destination.h
+    );
+  }
+
+  function drawBottomDeathHazard(context, rect, visualTime = 0) {
+    if (!context || !isWaterHazardReady()) return false;
+    const mapping = getWaterHazardMapping(visualTime, rect);
+    if (!mapping) return false;
+    context.save();
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    drawWaterHazardLayer(context, "waterBase", mapping.source, mapping.base);
+    for (const destination of mapping.wave01.destinations) {
+      drawWaterHazardLayer(context, "wave01", mapping.source, destination);
+    }
+    for (const destination of mapping.wave02.destinations) {
+      drawWaterHazardLayer(context, "wave02", mapping.source, destination);
+    }
+    context.restore();
+    return true;
+  }
+
   function drawShip(context, mapping) {
     const source = mapping.source;
     const destination = mapping.destination;
@@ -269,6 +469,10 @@ const COAST_ASSET_VISUALS = (() => {
     getBackgroundMapping,
     getShipMapping,
     drawBackground,
+    whenWaterHazardReady: () => waterHazardReadyPromise,
+    isWaterHazardReady,
+    getWaterHazardMapping,
+    drawBottomDeathHazard,
     getBackgroundStatus: () => Object.freeze({
       ready: isBackgroundReady(),
       paths: BACKGROUND_PATHS,
@@ -278,6 +482,18 @@ const COAST_ASSET_VISUALS = (() => {
       )),
       alphaThreshold: BACKGROUND_ALPHA_THRESHOLD,
       shipContentBounds
+    }),
+    getWaterHazardStatus: () => Object.freeze({
+      ready: isWaterHazardReady(),
+      paths: WATER_HAZARD_PATHS,
+      contract: WATER_HAZARD_CONTRACT,
+      validNativeSizes: Object.freeze(Object.fromEntries(
+        Object.keys(WATER_HAZARD_PATHS).map(name => [
+          name,
+          hasValidWaterHazardSize(name)
+        ])
+      )),
+      waveAlphaUsage: Object.freeze({...waterHazardAlphaUsage})
     })
   });
   BIOME_PLATFORM_VISUALS.register("coast", coastVisuals);
