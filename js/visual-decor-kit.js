@@ -60,7 +60,7 @@ const BIOME_DECOR_ROLE_CONTRACTS = Object.freeze({
 const BIOME_DECOR_PLACEMENT_CONTRACT = Object.freeze({
   floatingBaseline: 2,
   startGoalBackBaseline: Object.freeze({minimum: 1, maximum: 2}),
-  startGoalFrontBaseline: Object.freeze({minimum: 9, maximum: 11}),
+  startGoalFrontBaseline: Object.freeze({minimum: 6, maximum: 8}),
   goalSeamBaseline: 11,
   goalSeamEdgeInset: 3,
   goalSeamMinimumGap: 1

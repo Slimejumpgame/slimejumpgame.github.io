@@ -923,8 +923,8 @@ for (const level of generatedLevels) {
         ))
     );
     assert.ok(retryScene.topFrontDecor.every(item => (
-      item.baselineOffset >= 9 &&
-      item.baselineOffset <= 11 &&
+      item.baselineOffset >= 6 &&
+      item.baselineOffset <= 8 &&
       item.category !== "TREES" &&
       !("anchor" in item) &&
       !("visibleBase" in item)

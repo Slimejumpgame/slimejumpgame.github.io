@@ -11,7 +11,7 @@ const read = relativePath => fs.readFileSync(path.join(root, relativePath), "utf
 const decorSource = read("js/visual-decor-kit.js");
 const portalSource = read("js/visual-portal-kit.js");
 
-function createDecorContext(sizes) {
+function createDecorContext(sizes, source = decorSource) {
   class FakeImage {
     constructor() {
       this.complete = false;
@@ -40,7 +40,7 @@ function createDecorContext(sizes) {
     throw new Error("generic decor must not consume Math.random()");
   };
   const context = vm.createContext({Image: FakeImage, Math: visualMath, Promise});
-  vm.runInContext(`${decorSource}
+  vm.runInContext(`${source}
     globalThis.decorRegistryForTest = BIOME_DECOR_VISUALS;
   `, context, {filename: "generic-decor-kit-fixture.js"});
   return context;
@@ -62,6 +62,43 @@ const levelFixture = seed => ({
     {x: 1060, y: 370, w: 220, h: 350}
   ]
 });
+
+const allCoastDecorSizes = Object.fromEntries([
+  "groundcover",
+  "small_flora",
+  "small_props",
+  "bushes",
+  "stones",
+  "tufts",
+  "hero"
+].map(role => [coastRolePath(role), [1536, 1024]]));
+const priorPlacementSource = decorSource.replace(
+  "startGoalFrontBaseline: Object.freeze({minimum: 6, maximum: 8})",
+  "startGoalFrontBaseline: Object.freeze({minimum: 9, maximum: 11})"
+);
+assert.notEqual(priorPlacementSource, decorSource);
+const shiftedPlacement = createDecorContext(allCoastDecorSizes)
+  .decorRegistryForTest.resolve("coast").getScene(levelFixture(83), 4);
+const priorPlacement = JSON.parse(JSON.stringify(
+  createDecorContext(allCoastDecorSizes, priorPlacementSource)
+    .decorRegistryForTest.resolve("coast").getScene(levelFixture(83), 4)
+));
+for (const item of priorPlacement.topFrontDecor) {
+  item.baselineOffset -= 3;
+  item.baselineY -= 3;
+}
+assert.deepEqual(
+  JSON.parse(JSON.stringify(shiftedPlacement)),
+  priorPlacement,
+  "only Start/Goal FRONT baseline Y values may move, exactly 3px upward"
+);
+assert.ok(shiftedPlacement.topFrontDecor.every(item => (
+  item.baselineOffset >= 6 && item.baselineOffset <= 8
+)));
+assert.deepEqual(
+  [...new Set(shiftedPlacement.topFrontDecor.map(item => item.role))].sort(),
+  ["GOAL_TOWER", "START_PLATFORM"]
+);
 
 const snowDecorContext = createDecorContext({
   [snowRolePath("stones")]: [1536, 1024],
