@@ -305,14 +305,76 @@ assert.deepEqual(
 );
 assert.equal(leftRecorder.events.filter(event => event.type === "drawImage").length, 1);
 
-for (const conveyor of [platforms.conveyor, leftPlatform]) {
+const conveyorChannel = api.contracts.conveyor.beltChannelSource;
+assert.deepEqual(JSON.parse(JSON.stringify(conveyorChannel)), {
+  x: 50,
+  y: 43,
+  w: 412,
+  h: 39,
+  stripeLean: 37
+});
+const wideRightPlatform = Object.freeze({...platforms.conveyor, w: 181});
+const wideLeftPlatform = Object.freeze({...wideRightPlatform, conveyorSpeed: -42});
+for (const conveyor of [
+  platforms.conveyor,
+  leftPlatform,
+  wideRightPlatform,
+  wideLeftPlatform
+]) {
   const recorder = createRecorder();
   assert.equal(api.drawConveyorOverlay(recorder.canvasContext, conveyor), true);
-  assert.equal(recorder.events.filter(event => event.type === "rect").length, 1,
+  const clipRects = recorder.events.filter(event => event.type === "rect");
+  assert.equal(clipRects.length, 1,
     "the existing animated belt overlay stays clipped to the Whole body channel");
   assert.ok(recorder.events.some(event => event.type === "fill"),
     "the direction-aware animated belt stripes remain visible");
+  const direction = Math.sign(conveyor.conveyorSpeed) || 1;
+  const mapping = api.mapping(
+    api.records.conveyor.contentFit,
+    api.contracts.conveyor.canvas,
+    conveyor,
+    conveyor.x,
+    direction < 0
+  );
+  const channelX = direction < 0
+    ? api.contracts.conveyor.canvas.w - conveyorChannel.x - conveyorChannel.w
+    : conveyorChannel.x;
+  assert.deepEqual(clipRects[0].args, [
+    mapping.drawX + channelX * mapping.scale,
+    mapping.drawY + conveyorChannel.y * mapping.scale,
+    conveyorChannel.w * mapping.scale,
+    conveyorChannel.h * mapping.scale
+  ]);
+  const firstMove = recorder.events.find(event => event.type === "moveTo");
+  const firstStripeLines = recorder.events
+    .filter(event => event.type === "lineTo")
+    .slice(0, 3);
+  assert.ok(firstMove && firstStripeLines.length === 3);
+  const projectedLean = firstStripeLines[2].args[0] - firstMove.args[0];
+  assert.ok(Math.abs(
+    projectedLean - direction * conveyorChannel.stripeLean * mapping.scale
+  ) < 1e-12, "Whole stripe lean must be projected from source space");
+  assert.ok(Math.abs(
+    Math.abs(projectedLean) / clipRects[0].args[3] -
+      conveyorChannel.stripeLean / conveyorChannel.h
+  ) < 1e-12, "Whole stripe angle must remain stable across platform widths");
 }
+
+function getFirstWholeStripeX(conveyor, visualTime) {
+  context.worldTime = visualTime;
+  const recorder = createRecorder();
+  assert.equal(api.drawConveyorOverlay(recorder.canvasContext, conveyor), true);
+  return recorder.events.find(event => event.type === "moveTo").args[0];
+}
+for (const conveyor of [platforms.conveyor, leftPlatform]) {
+  const firstX = getFirstWholeStripeX(conveyor, 1.25);
+  const secondX = getFirstWholeStripeX(conveyor, 1.3);
+  assert.ok(
+    Math.sign(conveyor.conveyorSpeed) * (secondX - firstX) > 0,
+    "Whole stripe animation direction must remain tied to Conveyor direction"
+  );
+}
+context.worldTime = 1.25;
 
 for (const name of Object.keys(assets)) {
   api.records[name].contentFit = null;

@@ -241,6 +241,7 @@ const rendererContext = vm.createContext({
   drawSpikePlatformAsset: () => false,
   drawStandardPlatformDetails: () => {},
   getFallingPlatformActivationDelay: () => 1,
+  getSpikePlatformSlotVisual: () => ({openness: 0}),
   getPlatforms: () => platforms,
   isStandardPlatform: platform => !(
     platform.fragile || platform.moving || platform.conveyor || platform.fade ||

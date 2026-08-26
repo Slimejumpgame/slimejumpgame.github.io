@@ -99,7 +99,13 @@
     path: "assets/platforms/conveyor_platform.png",
     canvas: GLOBAL_WHOLE_PLATFORM_SOURCE_SIZE,
     defaultDirection: 1,
-    beltChannelSource: Object.freeze({x: 50, y: 43, w: 412, h: 39})
+    beltChannelSource: Object.freeze({
+      x: 50,
+      y: 43,
+      w: 412,
+      h: 39,
+      stripeLean: 37
+    })
   });
 
   function createGlobalWholePlatformAsset(contract) {
@@ -1387,6 +1393,9 @@
       ? wholeChannel.h * wholeMapping.scale
       : channel.height * destinationScaleY;
     const channelBottom = channelTop + channelHeight;
+    const stripeLean = wholeMapping
+      ? wholeChannel.stripeLean * wholeMapping.scale
+      : channel.stripeLean;
 
     context.save();
     context.beginPath();
@@ -1401,9 +1410,9 @@
     ) {
       const topLeft = direction > 0
         ? x - channel.stripeWidth / 2
-        : x + channel.stripeLean - channel.stripeWidth / 2;
+        : x + stripeLean - channel.stripeWidth / 2;
       const bottomLeft = direction > 0
-        ? x + channel.stripeLean - channel.stripeWidth / 2
+        ? x + stripeLean - channel.stripeWidth / 2
         : x - channel.stripeWidth / 2;
       context.beginPath();
       context.moveTo(topLeft, channelTop);
