@@ -1796,10 +1796,11 @@ assert.deepEqual(
   "the second Meadow pass must exclude the global Falling, Ice and Conveyor assets"
 );
 
-const guardStart = rendererSource.indexOf("  function getActiveBiomePlatformVisuals");
+const guardStart = rendererSource.indexOf("  function getActiveVisualBiome");
 const guardEnd = rendererSource.indexOf("  function drawEarthPlatformDetail", guardStart);
 assert.ok(guardStart >= 0 && guardEnd > guardStart);
 const guardContext = vm.createContext({
+  BIOMES: [{id: "meadow"}, {id: "coast"}],
   BIOME_PLATFORM_VISUALS: {
     resolve: biomeId => ({meadow: "meadow-kit", coast: "coast-kit"})[biomeId] ?? null
   },
@@ -1815,7 +1816,7 @@ guardContext.state = "menu";
 assert.equal(guardContext.guardForTest({id: "meadow"}), null);
 guardContext.state = "playing";
 guardContext.tutorial = true;
-assert.equal(guardContext.guardForTest({id: "meadow"}), null);
+assert.equal(guardContext.guardForTest({id: "coast"}), "meadow-kit");
 guardContext.tutorial = false;
 assert.equal(guardContext.guardForTest({id: "coast"}), "coast-kit");
 assert.equal(guardContext.guardForTest({id: "desert"}), null);
@@ -1869,7 +1870,10 @@ assert.match(
   rendererSource,
   /for \(const s of level\.spikes\) drawDeathZone\(s, biome, platformVisuals\);/
 );
-assert.match(rendererSource, /drawTrajectory\(\);\s*drawPlayer\(\);/);
+assert.match(
+  rendererSource,
+  /drawTrajectory\(\);\s*drawTutorialAimLine\(\);\s*drawPlayer\(\);/
+);
 assert.match(
   rendererSource,
   /drawPlatforms\([\s\S]*?"without-floating"[\s\S]*?drawStartGoalBackDecor\?\.\(ctx, biomeDecorScene\);[\s\S]*?drawPlatforms\([\s\S]*?"floating-only"[\s\S]*?drawFloatingBackDecor\?\.\(ctx, biomeDecorScene\);[\s\S]*?drawGoal\(biomePlatformVisuals, biomePortalVisuals, biome\);[\s\S]*?drawGoalSeamCoverProps\?\.\(ctx, biomeDecorScene\);[\s\S]*?drawPlayer\(\);[\s\S]*?drawTopFrontDecor\?\.\(ctx, biomeDecorScene\);/

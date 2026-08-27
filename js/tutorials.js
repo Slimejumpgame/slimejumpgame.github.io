@@ -2,6 +2,14 @@
 
   let tutorialDragHandDismissed = false;
   let tutorialDragHandAnimationStartTime = 0;
+  const TUTORIAL_DRAG_HAND_TIMING = Object.freeze({
+    cycleDuration: 4.6,
+    approachEnd: 0.45,
+    fingerDownEnd: 0.9,
+    dragEnd: 2.15,
+    releaseAt: 2.6,
+    liftEnd: 3.15
+  });
 
   function resetTutorialDragHand() {
     tutorialDragHandDismissed = false;
@@ -24,23 +32,36 @@
     return Math.max(0, worldTime - tutorialDragHandAnimationStartTime);
   }
 
+  function getTutorialDragHandTimelineState() {
+    const elapsed = getTutorialDragHandElapsed() % TUTORIAL_DRAG_HAND_TIMING.cycleDuration;
+    return Object.freeze({
+      elapsed,
+      released: elapsed >= TUTORIAL_DRAG_HAND_TIMING.releaseAt,
+      visible: elapsed < TUTORIAL_DRAG_HAND_TIMING.liftEnd
+    });
+  }
+
   function createTutorialLevel(stageIndex) {
     if (stageIndex === 1) {
       return {
         seed: 1,
         name: "Tutorial 2",
         spawn: {x: 110, y: 590},
-        goal: {x: 1100, y: 505, w: 62, h: 92},
+        goal: {x: 1140, y: 475, w: 62, h: 92},
         tutorialHeadline: "COLLECT STARS",
         tutorialHeadlineX: 448,
         tutorialHeadlineY: 345,
         platforms: [
-          {x: 0, y: 620, w: 360, h: 100},
-          {x: 470, y: 540, w: 280, h: 55},
-          {x: 850, y: 600, w: 430, h: 120}
+          {x: 0, y: 640, w: 235, h: 80},
+          {x: 264, y: 560, w: 130, h: 26},
+          {x: 423, y: 520, w: 130, h: 26},
+          {x: 582, y: 555, w: 130, h: 26},
+          {x: 741, y: 575, w: 130, h: 26},
+          {x: 900, y: 570, w: 130, h: 26},
+          {x: 1060, y: 570, w: 220, h: 150}
         ],
         spikes: [
-          {x: 360, y: 690, w: 490, h: 30}
+          {x: 235, y: 690, w: 825, h: 30, isBottomDeathHazard: true}
         ],
         pads: [],
         stars: [
@@ -66,15 +87,20 @@
       seed: 0,
       name: "Tutorial 1",
       spawn: {x: 110, y: 590},
-      goal: {x: 1100, y: 505, w: 62, h: 92},
+      goal: {x: 1140, y: 475, w: 62, h: 92},
       goalLabel: "FINISH",
       showDragHand: true,
       platforms: [
-        {x: 0, y: 620, w: 430, h: 100},
-        {x: 750, y: 600, w: 530, h: 120}
+        {x: 0, y: 640, w: 235, h: 80},
+        {x: 264, y: 610, w: 130, h: 26},
+        {x: 423, y: 600, w: 130, h: 26},
+        {x: 582, y: 590, w: 130, h: 26},
+        {x: 741, y: 580, w: 130, h: 26},
+        {x: 900, y: 570, w: 130, h: 26},
+        {x: 1060, y: 570, w: 220, h: 150}
       ],
       spikes: [
-        {x: 430, y: 690, w: 320, h: 30}
+        {x: 235, y: 690, w: 825, h: 30, isBottomDeathHazard: true}
       ],
       pads: [],
       stars: [],

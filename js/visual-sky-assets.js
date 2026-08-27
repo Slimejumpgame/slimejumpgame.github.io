@@ -183,6 +183,10 @@ const SKY_ASSET_VISUALS = (() => {
     return true;
   }
 
+  function drawBottomDeathHazard() {
+    return true;
+  }
+
   const skyVisuals = Object.freeze({
     ...skyPlatformVisuals,
     whenBackgroundReady: () => backgroundReadyPromise,
@@ -193,6 +197,7 @@ const SKY_ASSET_VISUALS = (() => {
     getIslandsMapping,
     getCloudsFrontMapping,
     drawBackground,
+    drawBottomDeathHazard,
     getBackgroundStatus: () => Object.freeze({
       ready: isBackgroundReady(),
       paths: BACKGROUND_PATHS,

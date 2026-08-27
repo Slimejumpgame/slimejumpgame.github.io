@@ -928,9 +928,9 @@ async function auditViewport(cdp, viewport) {
         stars: generatedLevel.stars.length
       };
     })()`);
-    assert.equal(tutorial.active, false);
+    assert.equal(tutorial.active, true);
     assert.equal(tutorial.tutorialStage, true);
-    tutorialScreenshot = await capture(cdp, "1280x720-tutorial-control.png");
+    tutorialScreenshot = await capture(cdp, "1280x720-tutorial-meadow-kit.png");
 
     await evaluate(`sessionStorage.setItem("slimejumperLocalDevMode", "on")`);
     const devReloaded = waitForEvent("Page.loadEventFired");

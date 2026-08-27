@@ -488,37 +488,48 @@
     );
   }
 
-  function getActiveBiomePlatformVisuals(biome) {
+  function getActiveVisualBiome(biome) {
     if (
-      !biome?.id ||
+      typeof isTutorialStage === "function" &&
+      isTutorialStage() &&
+      typeof BIOMES !== "undefined"
+    ) {
+      return BIOMES.find(candidate => candidate?.id === "meadow") ?? biome;
+    }
+    return biome;
+  }
+
+  function getActiveBiomePlatformVisuals(biome) {
+    const visualBiome = getActiveVisualBiome(biome);
+    if (
+      !visualBiome?.id ||
       state === "menu" ||
       typeof isTutorialStage !== "function" ||
-      isTutorialStage() ||
       typeof BIOME_PLATFORM_VISUALS === "undefined"
     ) return null;
-    return BIOME_PLATFORM_VISUALS.resolve(biome.id);
+    return BIOME_PLATFORM_VISUALS.resolve(visualBiome.id);
   }
 
   function getActiveBiomeDecorVisuals(biome) {
+    const visualBiome = getActiveVisualBiome(biome);
     if (
-      !biome?.id ||
+      !visualBiome?.id ||
       state === "menu" ||
       typeof isTutorialStage !== "function" ||
-      isTutorialStage() ||
       typeof BIOME_DECOR_VISUALS === "undefined"
     ) return null;
-    return BIOME_DECOR_VISUALS.resolve(biome.id);
+    return BIOME_DECOR_VISUALS.resolve(visualBiome.id);
   }
 
   function getActiveBiomePortalVisuals(biome) {
+    const visualBiome = getActiveVisualBiome(biome);
     if (
-      !biome?.id ||
+      !visualBiome?.id ||
       state === "menu" ||
       typeof isTutorialStage !== "function" ||
-      isTutorialStage() ||
       typeof BIOME_PORTAL_VISUALS === "undefined"
     ) return null;
-    return BIOME_PORTAL_VISUALS.resolve(biome.id);
+    return BIOME_PORTAL_VISUALS.resolve(visualBiome.id);
   }
 
   let decorAttemptLevel = null;
@@ -1909,11 +1920,11 @@
     ctx.restore();
   }
 
-  function drawTutorialDragHand() {
-    if (!shouldShowTutorialDragHand()) return;
+  function getTutorialDragHandVisualState() {
+    if (!shouldShowTutorialDragHand()) return null;
 
-    const cycleDuration = 4.6;
-    const elapsed = getTutorialDragHandElapsed() % cycleDuration;
+    const timeline = getTutorialDragHandTimelineState();
+    const elapsed = timeline.elapsed;
     const startX = W * 0.58;
     const startY = H * 0.20;
     const endX = startX - 125;
@@ -1931,44 +1942,79 @@
     let trailAlpha = 0;
     let touchAlpha = 0;
 
-    if (elapsed < 0.45) {
-      const progress = smooth(elapsed / 0.45);
+    if (elapsed < TUTORIAL_DRAG_HAND_TIMING.approachEnd) {
+      const progress = smooth(elapsed / TUTORIAL_DRAG_HAND_TIMING.approachEnd);
       handY = startY - 10 * (1 - progress);
       handAlpha = progress;
-    } else if (elapsed < 0.9) {
-      const progress = smooth((elapsed - 0.45) / 0.45);
+    } else if (elapsed < TUTORIAL_DRAG_HAND_TIMING.fingerDownEnd) {
+      const progress = smooth(
+        (elapsed - TUTORIAL_DRAG_HAND_TIMING.approachEnd) /
+        (TUTORIAL_DRAG_HAND_TIMING.fingerDownEnd - TUTORIAL_DRAG_HAND_TIMING.approachEnd)
+      );
       handY = startY + 10 * progress;
       handScale = 1 - progress * 0.08;
       handAlpha = 1;
       touchAlpha = progress;
-    } else if (elapsed < 2.15) {
-      const progress = smooth((elapsed - 0.9) / 1.25);
+    } else if (elapsed < TUTORIAL_DRAG_HAND_TIMING.dragEnd) {
+      const progress = smooth(
+        (elapsed - TUTORIAL_DRAG_HAND_TIMING.fingerDownEnd) /
+        (TUTORIAL_DRAG_HAND_TIMING.dragEnd - TUTORIAL_DRAG_HAND_TIMING.fingerDownEnd)
+      );
       handX = startX + (endX - startX) * progress;
       handY = touchY + (endY - touchY) * progress;
       handScale = 0.92 + progress * 0.08;
       handAlpha = 1;
       trailAlpha = progress;
       touchAlpha = 1;
-    } else if (elapsed < 2.6) {
+    } else if (!timeline.released) {
       handX = endX;
       handY = endY;
       handAlpha = 1;
       trailAlpha = 1;
       touchAlpha = 1;
-    } else if (elapsed < 3.15) {
-      const progress = smooth((elapsed - 2.6) / 0.55);
+    } else if (timeline.visible) {
+      const progress = smooth(
+        (elapsed - TUTORIAL_DRAG_HAND_TIMING.releaseAt) /
+        (TUTORIAL_DRAG_HAND_TIMING.liftEnd - TUTORIAL_DRAG_HAND_TIMING.releaseAt)
+      );
       handX = endX;
       handY = endY - 15 * progress;
       handScale = 1 + progress * 0.06;
       handAlpha = 1 - progress;
-      trailAlpha = 1 - progress;
-      touchAlpha = 1 - progress;
     } else {
-      return;
+      return null;
     }
 
     const contactX = startX;
     const contactY = touchY;
+    return Object.freeze({
+      elapsed,
+      released: timeline.released,
+      contactX,
+      contactY,
+      handX,
+      handY,
+      handScale,
+      handAlpha,
+      trailAlpha,
+      touchAlpha
+    });
+  }
+
+  function drawTutorialDragHand() {
+    const visualState = getTutorialDragHandVisualState();
+    if (!visualState) return;
+
+    const {
+      contactX,
+      contactY,
+      handX,
+      handY,
+      handScale,
+      handAlpha,
+      trailAlpha,
+      touchAlpha
+    } = visualState;
     if (touchAlpha > 0) {
       ctx.save();
       ctx.globalAlpha = touchAlpha;
@@ -2091,43 +2137,37 @@
     }
   }
 
-  function drawTrajectory() {
-    if (!aiming) {
-      setCurrentAimBouncePreviewHit(false);
-      return;
-    }
-    const launch = getSlingshotLaunch();
-    if (launch.dragDistance <= MIN_LAUNCH_DRAG) {
-      setCurrentAimBouncePreviewHit(false);
-      return;
-    }
-
+  function drawSlingshotPreview(
+    origin,
+    previewDrag,
+    launch,
+    {bouncePreviewActive = false, pads = [], previewRadius = 0} = {}
+  ) {
+    if (!origin || !previewDrag || launch.dragDistance <= MIN_LAUNCH_DRAG) return null;
     ctx.save();
     ctx.lineCap = "round";
 
     ctx.strokeStyle = "rgba(255,255,255,0.55)";
     ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.moveTo(player.x, player.y);
-    ctx.lineTo(player.x - drag.x, player.y - drag.y);
+    ctx.moveTo(origin.x, origin.y);
+    ctx.lineTo(origin.x - previewDrag.x, origin.y - previewDrag.y);
     ctx.stroke();
 
     const ratio = launch.forceRatio;
     ctx.strokeStyle = ratio > 0.82 ? "#ff7b78" : ratio > 0.55 ? "#ffe66a" : "#7cff90";
     ctx.lineWidth = 8;
     ctx.beginPath();
-    ctx.moveTo(player.x, player.y);
+    ctx.moveTo(origin.x, origin.y);
     ctx.lineTo(
-      player.x + launch.vx * (0.58 / 5.7),
-      player.y + launch.vy * (0.58 / 5.7)
+      origin.x + launch.vx * (0.58 / 5.7),
+      origin.y + launch.vy * (0.58 / 5.7)
     );
     ctx.stroke();
 
-    let x = player.x, y = player.y;
+    let x = origin.x, y = origin.y;
     let vx = launch.vx, vy = launch.vy;
     let bounceHit = null;
-    const bouncePreviewActive =
-      window.SlimePerks?.isActiveForRun?.("bounce_master") === true;
     for (let i = 0; i < 18; i++) {
       const t = 0.055;
       const startX = x;
@@ -2137,13 +2177,13 @@
       y += vy * t;
 
       if (bouncePreviewActive && !bounceHit && vy > 0) {
-        for (const pad of currentLevel().pads) {
+        for (const pad of pads) {
           const contact = findFirstSweptCircleRectContact(
             startX,
             startY,
             x,
             y,
-            player.r,
+            previewRadius,
             pad
           );
           if (
@@ -2182,9 +2222,74 @@
       if (bounceHit) break;
     }
 
-    setCurrentAimBouncePreviewHit(Boolean(bounceHit));
-    if (bounceHit) drawPostBounceTrajectory(bounceHit);
     ctx.restore();
+    return Object.freeze({bounceHit});
+  }
+
+  function getTutorialSlingshotLaunch(previewDrag) {
+    const dragDistance = Math.hypot(previewDrag.x, previewDrag.y);
+    const dragRatio = clamp(dragDistance / MAX_DRAG_DISTANCE, 0, 1);
+    const forceRatio = dragRatio * dragRatio * (3 - 2 * dragRatio);
+    const launchSpeed = MAX_LAUNCH_SPEED * forceRatio;
+    const directionScale = dragDistance > 0 ? launchSpeed / dragDistance : 0;
+    return Object.freeze({
+      dragDistance,
+      forceRatio,
+      vx: previewDrag.x * directionScale,
+      vy: previewDrag.y * directionScale
+    });
+  }
+
+  function drawTutorialAimLine() {
+    if (aiming) return false;
+    const visualState = getTutorialDragHandVisualState();
+    if (
+      !visualState ||
+      visualState.released ||
+      visualState.elapsed < TUTORIAL_DRAG_HAND_TIMING.fingerDownEnd
+    ) return false;
+
+    const previewDrag = Object.freeze({
+      x: visualState.contactX - visualState.handX,
+      y: visualState.contactY - visualState.handY
+    });
+    const launch = getTutorialSlingshotLaunch(previewDrag);
+    return Boolean(drawSlingshotPreview(
+      Object.freeze({x: player.x, y: player.y}),
+      previewDrag,
+      launch
+    ));
+  }
+
+  function drawTrajectory() {
+    if (!aiming) {
+      setCurrentAimBouncePreviewHit(false);
+      return;
+    }
+    const launch = getSlingshotLaunch();
+    if (launch.dragDistance <= MIN_LAUNCH_DRAG) {
+      setCurrentAimBouncePreviewHit(false);
+      return;
+    }
+
+    const preview = drawSlingshotPreview(
+      Object.freeze({x: player.x, y: player.y}),
+      drag,
+      launch,
+      {
+        bouncePreviewActive:
+          window.SlimePerks?.isActiveForRun?.("bounce_master") === true,
+        pads: currentLevel().pads,
+        previewRadius: player.r
+      }
+    );
+    const bounceHit = preview?.bounceHit ?? null;
+    setCurrentAimBouncePreviewHit(Boolean(bounceHit));
+    if (bounceHit) {
+      ctx.save();
+      drawPostBounceTrajectory(bounceHit);
+      ctx.restore();
+    }
   }
 
   function roundedCosmeticRectPath(context, x, y, width, height, radius) {
@@ -4297,7 +4402,7 @@
     const sy = shake ? (Math.random() - 0.5) * shake : 0;
     ctx.translate(sx, sy);
 
-    const biome = getBiomeForLevel(levelIndex + 1);
+    const biome = getActiveVisualBiome(getBiomeForLevel(levelIndex + 1));
     const biomePlatformVisuals = getActiveBiomePlatformVisuals(biome);
     const biomeDecorVisuals = getActiveBiomeDecorVisuals(biome);
     const biomePortalVisuals = getActiveBiomePortalVisuals(biome);
@@ -4342,6 +4447,7 @@
     drawStars();
     drawEnemies();
     drawTrajectory();
+    drawTutorialAimLine();
     drawPlayer();
     drawParticles();
     biomeDecorVisuals?.drawTopFrontDecor?.(ctx, biomeDecorScene);

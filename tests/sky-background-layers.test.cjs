@@ -9,6 +9,10 @@ const zlib = require("node:zlib");
 const root = path.resolve(__dirname, "..");
 const read = relativePath => fs.readFileSync(path.join(root, relativePath), "utf8");
 const visualSource = read("js/visual-sky-assets.js");
+const hazardsSource = read("js/hazards.js");
+const generatorSource = read("js/level-generator.js");
+const physicsSource = read("js/physics.js");
+const playerSource = read("js/player.js");
 const rendererSource = read("js/renderer.js");
 const biomesSource = read("js/biomes.js");
 const indexSource = read("index.html");
@@ -193,6 +197,9 @@ function createRecordingContext() {
   const target = {
     save() { calls.push(["save"]); },
     restore() { calls.push(["restore"]); },
+    beginPath() { calls.push(["beginPath"]); },
+    rect(...args) { calls.push(["rect", ...args]); },
+    clip() { calls.push(["clip"]); },
     drawImage(...args) { calls.push(["drawImage", ...args]); }
   };
   const context = new Proxy(target, {
@@ -266,16 +273,21 @@ function loadFixture({
     BIOME_PLATFORM_VISUALS: registry,
     Image: FakeImage,
     Math: visualMath,
-    Promise
+    Promise,
+    ctx: recording.context,
+    worldTime: 4.25
   });
   vm.runInContext(`${visualSource}
+    ${hazardsSource}
     globalThis.skyBackgroundForTest = SKY_ASSET_VISUALS;
+    globalThis.drawDeathZoneForTest = drawDeathZone;
   `, context, {filename: "sky-background-layers-fixture.js"});
   return {
     recording,
     loadedPaths,
     platformVisuals,
     api: context.skyBackgroundForTest,
+    drawDeathZone: context.drawDeathZoneForTest,
     getRegisteredVisuals: () => registeredVisuals
   };
 }
@@ -319,6 +331,39 @@ assert.equal(visuals.platformMarker, fixture.platformVisuals.platformMarker);
 assert.equal(visuals.resolvePlatformRole, fixture.platformVisuals.resolvePlatformRole);
 assert.equal(visuals.drawPlatformBase, fixture.platformVisuals.drawPlatformBase);
 assert.equal(visuals.drawGoalTopForeground, fixture.platformVisuals.drawGoalTopForeground);
+
+const hazardRect = Object.freeze({
+  x: 235,
+  y: 690,
+  w: 825,
+  h: 30,
+  isBottomDeathHazard: true
+});
+const skyBiome = Object.freeze({
+  id: "sky",
+  hazard: Object.freeze({
+    type: "cloudAbyss",
+    fill: "#dff8ff",
+    deep: "#82bfdc",
+    surface: "#ffffff",
+    accent: "#a9e8ff"
+  })
+});
+fixture.recording.calls.length = 0;
+assert.equal(visuals.drawBottomDeathHazard(
+  fixture.recording.context,
+  hazardRect,
+  4.25
+), true);
+assert.deepEqual(fixture.recording.calls, []);
+fixture.drawDeathZone(hazardRect, skyBiome, visuals);
+assert.deepEqual(fixture.recording.calls, [
+  ["save"],
+  ["beginPath"],
+  ["rect", 235, 690, 825, 30],
+  ["clip"],
+  ["restore"]
+]);
 
 const status = JSON.parse(JSON.stringify(visuals.getBackgroundStatus()));
 assert.equal(status.ready, true);
@@ -477,7 +522,27 @@ for (const optionalFile of [backgroundFiles[1], backgroundFiles[3]]) {
 
 assert.match(visualSource, /BIOME_PLATFORM_VISUALS\.register\("sky", skyVisuals\)/);
 assert.doesNotMatch(visualSource, /Math\.random\s*\(/);
-assert.doesNotMatch(visualSource, /getImageData|hazard|gameplay|generator|tiling/i);
+assert.doesNotMatch(visualSource, /getImageData|gameplay|generator|tiling/i);
+assert.match(
+  generatorSource,
+  /spikes\.push\(\{x: 235, y: 690, w: 825, h: 30, isBottomDeathHazard: true\}\);/
+);
+assert.match(
+  physicsSource,
+  /function getBottomDeathHazard[\s\S]*?isBottomDeathHazard === true[\s\S]*?function isPlayerTouchingBottomDeathHazard/
+);
+assert.match(
+  physicsSource,
+  /for \(const spike of level\.spikes\)[\s\S]*?intersectsRect[\s\S]*?loseLife\(\);/
+);
+assert.match(
+  playerSource,
+  /reason === "bottom_death_hazard"[\s\S]*?isBottomDeathHazard === true/
+);
+assert.match(
+  hazardsSource,
+  /if \(!assetHazardDrawn\) renderer\(rect, biome\.hazard\);/
+);
 assert.match(biomesSource, /sky:\s*drawSkyBackground/);
 assert.match(
   rendererSource,
