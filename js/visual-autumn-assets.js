@@ -9,6 +9,15 @@ const AUTUMN_ASSET_VISUALS = (() => {
     forest: "assets/environments/autumn/background/autumn_background_forest.png",
     leaves: "assets/environments/autumn/background/autumn_background_leaves.png"
   });
+  const AUTUMN_HAZARD_CONTRACT = Object.freeze({
+    native: Object.freeze({w: 256, h: 320}),
+    source: Object.freeze({x: 10, y: 13, w: 235, h: 297}),
+    runtime: Object.freeze({w: 825, h: 30}),
+    nominalTileWidth: 24
+  });
+  const AUTUMN_HAZARD_PATHS = Object.freeze({
+    spike: "assets/environments/autumn/hazards/autumn_hazard_spike.png"
+  });
   const ESSENTIAL_BACKGROUND_LAYERS = Object.freeze(["skybox", "forest"]);
   const CLOUD_LEFT_SPEED = 6;
   const CLOUD_WRAP_OVERLAP = 27;
@@ -16,6 +25,7 @@ const AUTUMN_ASSET_VISUALS = (() => {
   const LEAVES_TOP_INSET = 40;
   const backgroundAssets = {};
   const backgroundAlphaUsage = {};
+  const autumnHazardAssets = {};
 
   function hasValidBackgroundSize(name) {
     const image = backgroundAssets[name]?.image;
@@ -91,15 +101,46 @@ const AUTUMN_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
+  function hasValidAutumnHazardSize(name) {
+    const image = autumnHazardAssets[name]?.image;
+    return Boolean(
+      image?.complete &&
+      image.naturalWidth === AUTUMN_HAZARD_CONTRACT.native.w &&
+      image.naturalHeight === AUTUMN_HAZARD_CONTRACT.native.h
+    );
+  }
+
+  function loadAutumnHazardAsset(name, path) {
+    const image = new Image();
+    const record = {image, ready: null};
+    autumnHazardAssets[name] = record;
+    record.ready = new Promise(resolve => {
+      image.onload = () => resolve(hasValidAutumnHazardSize(name));
+      image.onerror = () => resolve(false);
+    });
+    image.decoding = "async";
+    image.src = path;
+  }
+
   for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
     loadBackgroundAsset(name, path);
   }
   const backgroundReadyPromise = Promise.all(
     Object.values(backgroundAssets).map(record => record.ready)
   ).then(() => isBackgroundReady());
+  for (const [name, path] of Object.entries(AUTUMN_HAZARD_PATHS)) {
+    loadAutumnHazardAsset(name, path);
+  }
+  const autumnHazardReadyPromise = Promise.all(
+    Object.values(autumnHazardAssets).map(record => record.ready)
+  ).then(() => isAutumnHazardReady());
 
   function isBackgroundReady() {
     return ESSENTIAL_BACKGROUND_LAYERS.every(isBackgroundLayerReady);
+  }
+
+  function isAutumnHazardReady() {
+    return Object.keys(AUTUMN_HAZARD_PATHS).every(hasValidAutumnHazardSize);
   }
 
   function getBackgroundMapping(width, height) {
@@ -229,6 +270,34 @@ const AUTUMN_ASSET_VISUALS = (() => {
     return true;
   }
 
+  function drawBottomDeathHazard(context, rect) {
+    if (!context || !isAutumnHazardReady()) return false;
+    const count = Math.max(
+      2,
+      Math.floor(rect.w / AUTUMN_HAZARD_CONTRACT.nominalTileWidth)
+    );
+    const step = rect.w / count;
+    const source = AUTUMN_HAZARD_CONTRACT.source;
+    context.save();
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    for (let i = 0; i < count; i++) {
+      context.drawImage(
+        autumnHazardAssets.spike.image,
+        source.x,
+        source.y,
+        source.w,
+        source.h,
+        rect.x + i * step,
+        rect.y,
+        step,
+        rect.h
+      );
+    }
+    context.restore();
+    return true;
+  }
+
   const autumnVisuals = Object.freeze({
     ...autumnPlatformVisuals,
     whenBackgroundReady: () => backgroundReadyPromise,
@@ -238,6 +307,20 @@ const AUTUMN_ASSET_VISUALS = (() => {
     getCloudMapping,
     getLeavesMapping,
     drawBackground,
+    whenAutumnHazardReady: () => autumnHazardReadyPromise,
+    isAutumnHazardReady,
+    drawBottomDeathHazard,
+    getAutumnHazardStatus: () => Object.freeze({
+      ready: isAutumnHazardReady(),
+      paths: AUTUMN_HAZARD_PATHS,
+      contract: AUTUMN_HAZARD_CONTRACT,
+      validNativeSizes: Object.freeze(Object.fromEntries(
+        Object.keys(AUTUMN_HAZARD_PATHS).map(name => [
+          name,
+          hasValidAutumnHazardSize(name)
+        ])
+      ))
+    }),
     getBackgroundStatus: () => Object.freeze({
       ready: isBackgroundReady(),
       paths: BACKGROUND_PATHS,

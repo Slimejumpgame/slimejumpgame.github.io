@@ -9,6 +9,10 @@ const zlib = require("node:zlib");
 const root = path.resolve(__dirname, "..");
 const read = relativePath => fs.readFileSync(path.join(root, relativePath), "utf8");
 const visualSource = read("js/visual-autumn-assets.js");
+const hazardsSource = read("js/hazards.js");
+const generatorSource = read("js/level-generator.js");
+const physicsSource = read("js/physics.js");
+const meadowVisualSource = read("js/visual-meadow-assets.js");
 const rendererSource = read("js/renderer.js");
 const biomesSource = read("js/biomes.js");
 const indexSource = read("index.html");
@@ -22,6 +26,7 @@ const backgroundFiles = Object.freeze([
 const backgroundPaths = backgroundFiles.map(file => (
   `${backgroundDirectory}/${file}`
 ));
+const hazardPath = "assets/environments/autumn/hazards/autumn_hazard_spike.png";
 
 function decodePng(relativePath) {
   const bytes = fs.readFileSync(path.join(root, relativePath));
@@ -149,6 +154,16 @@ assert.equal(
   getMaximumHorizontalEdgeAlpha(decodedLeaves, decodedLeaves.height - 1),
   0
 );
+const decodedHazard = decodePng(hazardPath);
+assert.deepEqual(
+  {w: decodedHazard.width, h: decodedHazard.height},
+  {w: 256, h: 320}
+);
+assert.equal(decodedHazard.colorType, 6, "Autumn spike hazard must remain RGBA");
+assert.deepEqual(getAlphaUsage(decodedHazard), {
+  hasVisiblePixels: true,
+  hasTransparentPixels: true
+});
 
 function createRecordingContext() {
   const calls = [];
@@ -158,7 +173,21 @@ function createRecordingContext() {
     beginPath() { calls.push(["beginPath"]); },
     rect(...args) { calls.push(["rect", ...args]); },
     clip() { calls.push(["clip"]); },
-    drawImage(...args) { calls.push(["drawImage", ...args]); }
+    moveTo(...args) { calls.push(["moveTo", ...args]); },
+    lineTo(...args) { calls.push(["lineTo", ...args]); },
+    closePath() { calls.push(["closePath"]); },
+    stroke() { calls.push(["stroke"]); },
+    fill() { calls.push(["fill"]); },
+    fillRect(...args) { calls.push(["fillRect", ...args]); },
+    drawImage(...args) { calls.push(["drawImage", ...args]); },
+    createLinearGradient(...args) {
+      calls.push(["createLinearGradient", ...args]);
+      return {
+        addColorStop(...stopArgs) {
+          calls.push(["addColorStop", ...stopArgs]);
+        }
+      };
+    }
   };
   const context = new Proxy(target, {
     set(object, property, value) {
@@ -199,8 +228,9 @@ function loadFixture({
         return;
       }
       this.complete = true;
-      this.naturalWidth = file === invalidFile ? 1279 : 1280;
-      this.naturalHeight = 720;
+      const isHazard = file === path.posix.basename(hazardPath);
+      this.naturalWidth = isHazard ? 256 : file === invalidFile ? 1279 : 1280;
+      this.naturalHeight = isHazard ? 320 : 720;
       this.onload?.();
     }
 
@@ -263,16 +293,21 @@ function loadFixture({
     Math: visualMath,
     Promise,
     Uint8ClampedArray,
-    document
+    document,
+    ctx: recording.context,
+    worldTime: 0
   });
   vm.runInContext(`${visualSource}
+    ${hazardsSource}
     globalThis.autumnBackgroundForTest = AUTUMN_ASSET_VISUALS;
+    globalThis.drawDeathZoneForTest = drawDeathZone;
   `, context, {filename: "autumn-background-layers-fixture.js"});
   return {
     recording,
     loadedPaths,
     platformVisuals,
     api: context.autumnBackgroundForTest,
+    drawDeathZone: context.drawDeathZoneForTest,
     getRegisteredVisuals: () => registeredVisuals
   };
 }
@@ -298,12 +333,90 @@ function drawsForFile(capture, file) {
 
 const fixture = loadFixture();
 const visuals = fixture.api;
-assert.deepEqual(fixture.loadedPaths, backgroundPaths);
+assert.deepEqual(fixture.loadedPaths, [...backgroundPaths, hazardPath]);
 assert.equal(fixture.getRegisteredVisuals(), visuals);
 assert.equal(visuals.platformMarker, fixture.platformVisuals.platformMarker);
 assert.equal(visuals.resolvePlatformRole, fixture.platformVisuals.resolvePlatformRole);
 assert.equal(visuals.drawPlatformBase, fixture.platformVisuals.drawPlatformBase);
 assert.equal(visuals.drawGoalTopForeground, fixture.platformVisuals.drawGoalTopForeground);
+
+const hazardRect = Object.freeze({
+  x: 235,
+  y: 690,
+  w: 825,
+  h: 30,
+  isBottomDeathHazard: true
+});
+const autumnBiome = Object.freeze({
+  id: "autumn",
+  hazard: Object.freeze({
+    type: "thorns",
+    fill: "#2b251f",
+    deep: "#171411",
+    surface: "#70452e",
+    accent: "#b35d32"
+  })
+});
+const hazardStatus = JSON.parse(JSON.stringify(visuals.getAutumnHazardStatus()));
+assert.deepEqual(hazardStatus, {
+  ready: true,
+  paths: {spike: hazardPath},
+  contract: {
+    native: {w: 256, h: 320},
+    source: {x: 10, y: 13, w: 235, h: 297},
+    runtime: {w: 825, h: 30},
+    nominalTileWidth: 24
+  },
+  validNativeSizes: {spike: true}
+});
+fixture.recording.calls.length = 0;
+fixture.drawDeathZone(hazardRect, autumnBiome, visuals);
+const hazardCalls = fixture.recording.calls.map(call => [...call]);
+const spikeDraws = hazardCalls.filter(call => call[0] === "drawImage");
+assert.equal(spikeDraws.length, 34);
+const step = hazardRect.w / spikeDraws.length;
+for (let i = 0; i < spikeDraws.length; i++) {
+  const call = spikeDraws[i];
+  assert.equal(call[1].src, hazardPath);
+  assert.deepEqual(call.slice(2, 6), [10, 13, 235, 297]);
+  assert.equal(call[6], hazardRect.x + i * step);
+  assert.equal(call[7], hazardRect.y);
+  assert.equal(call[8], step);
+  assert.equal(call[9], hazardRect.h);
+  assert.equal(call[7] + call[9], 720);
+}
+assert.ok(Math.abs(
+  spikeDraws.at(-1)[6] + spikeDraws.at(-1)[8] -
+  (hazardRect.x + hazardRect.w)
+) < 1e-9);
+assert.equal(hazardCalls.some(call => (
+  ["fill", "fillRect", "stroke"].includes(call[0])
+)), false, "valid Autumn PNG must suppress the thorns/vector fallback");
+assert.ok(
+  hazardCalls.findIndex(call => call[0] === "clip") <
+  hazardCalls.findIndex(call => call[0] === "drawImage"),
+  "the shared death-zone clip must be active before Autumn spikes draw"
+);
+assert.equal(fixture.loadedPaths.some(assetPath => (
+  assetPath.includes("/meadow/")
+)), false, "Autumn must not load a Meadow hazard asset");
+
+const missingHazard = loadFixture({failedFile: path.posix.basename(hazardPath)});
+missingHazard.recording.calls.length = 0;
+assert.equal(missingHazard.api.drawBottomDeathHazard(
+  missingHazard.recording.context,
+  hazardRect
+), false);
+missingHazard.drawDeathZone(hazardRect, autumnBiome, missingHazard.api);
+assert.equal(
+  missingHazard.recording.calls.some(call => call[0] === "drawImage"),
+  false
+);
+assert.equal(
+  missingHazard.recording.calls.some(call => call[0] === "fillRect"),
+  true,
+  "missing Autumn PNG must retain the existing generic thorns fallback"
+);
 
 const status = JSON.parse(JSON.stringify(visuals.getBackgroundStatus()));
 assert.equal(status.ready, true);
@@ -517,6 +630,22 @@ assert.match(
 );
 assert.match(visualSource, /BIOME_PLATFORM_VISUALS\.resolve\("autumn"\)/);
 assert.match(visualSource, /BIOME_PLATFORM_VISUALS\.register\("autumn", autumnVisuals\)/);
-assert.doesNotMatch(visualSource, /Math\.random\(|hazard|night|sky\/background/i);
+assert.doesNotMatch(visualSource, /Math\.random\(|night|sky\/background/i);
+assert.match(
+  generatorSource,
+  /spikes\.push\(\{x: 235, y: 690, w: 825, h: 30, isBottomDeathHazard: true\}\);/
+);
+assert.match(
+  physicsSource,
+  /function getBottomDeathHazard[\s\S]*?isBottomDeathHazard === true[\s\S]*?function isPlayerTouchingBottomDeathHazard/
+);
+assert.match(
+  meadowVisualSource,
+  /bottom_spike_tile: "assets\/environments\/meadow\/hazards\/meadow_bottom_spike_tile\.png"/
+);
+assert.match(
+  hazardsSource,
+  /if \(!assetHazardDrawn\) renderer\(rect, biome\.hazard\);/
+);
 
-console.log("Autumn four-layer background, wrapped clouds, clipped two-copy falling leaves and fallback tests passed.");
+console.log("Autumn background and Meadow-contract spike hazard regression tests passed.");
