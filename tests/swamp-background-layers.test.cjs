@@ -174,8 +174,11 @@ function loadFixture({
         return;
       }
       this.complete = true;
-      this.naturalWidth = file === invalidFile ? 1279 : 1280;
-      this.naturalHeight = 720;
+      const isHazard = value.includes("/hazards/");
+      this.naturalWidth = file === invalidFile
+        ? (isHazard ? 1649 : 1279)
+        : (isHazard ? 1650 : 1280);
+      this.naturalHeight = isHazard ? 60 : 720;
       this.onload?.();
     }
 
@@ -273,7 +276,10 @@ function drawForFile(capture, file) {
 
 const fixture = loadFixture();
 const visuals = fixture.api;
-assert.deepEqual(fixture.loadedPaths, backgroundPaths);
+assert.deepEqual(
+  fixture.loadedPaths.filter(assetPath => assetPath.includes("/background/")),
+  backgroundPaths
+);
 assert.equal(fixture.getRegisteredVisuals(), visuals);
 assert.equal(visuals.platformMarker, fixture.platformVisuals.platformMarker);
 assert.equal(visuals.resolvePlatformRole, fixture.platformVisuals.resolvePlatformRole);
@@ -311,15 +317,15 @@ assert.ok(Object.values(status.alphaUsage).every(usage => (
 )));
 assert.deepEqual(status.fogAnimation, {
   back: {
-    xAmplitude: 4,
-    xPeriodSeconds: 32,
+    xAmplitude: 16,
+    xPeriodSeconds: 26,
     xPhase: 0,
     yAmplitude: 0,
     drawCopies: 1
   },
   front: {
-    xAmplitude: 7,
-    xPeriodSeconds: 20,
+    xAmplitude: 26,
+    xPeriodSeconds: 16,
     xPhase: 1.2,
     yAmplitude: 0,
     drawCopies: 1
@@ -380,17 +386,17 @@ assert.equal(atZero.calls.some(call => call[1] === "filter"), false);
 const mapping = visuals.getBackgroundMapping(1280, 720);
 const fogBackLater = visuals.getFogMapping(5.25, mapping, "back");
 const fogFrontLater = visuals.getFogMapping(5.25, mapping, "front");
-assert.ok(Math.abs(fogBackLater.offsetX) <= 4);
-assert.ok(Math.abs(fogFrontLater.offsetX) <= 7);
+assert.ok(Math.abs(fogBackLater.offsetX) <= 16);
+assert.ok(Math.abs(fogFrontLater.offsetX) <= 26);
 assert.equal(fogBackLater.offsetY, 0);
 assert.equal(fogFrontLater.offsetY, 0);
 assert.equal(fogBackLater.destination.y, 0);
 assert.equal(fogFrontLater.destination.y, 0);
-const backPeak = visuals.getFogMapping(8, mapping, "back");
-const frontPeakTime = (Math.PI / 2 - 1.2) * 20 / (Math.PI * 2);
+const backPeak = visuals.getFogMapping(6.5, mapping, "back");
+const frontPeakTime = (Math.PI / 2 - 1.2) * 16 / (Math.PI * 2);
 const frontPeak = visuals.getFogMapping(frontPeakTime, mapping, "front");
-assert.ok(Math.abs(backPeak.offsetX - 4) < 1e-12);
-assert.ok(Math.abs(frontPeak.offsetX - 7) < 1e-12);
+assert.ok(Math.abs(backPeak.offsetX - 16) < 1e-12);
+assert.ok(Math.abs(frontPeak.offsetX - 26) < 1e-12);
 
 for (const essentialFile of [
   "swamp_background_skybox.png",
@@ -454,7 +460,7 @@ assert.match(
 );
 assert.doesNotMatch(
   visualSource,
-  /Math\.random\(|drawBottomDeathHazard|hazard|bubble|wave|coast|desert|volcano|snow_background/i
+  /Math\.random\(|coast|desert|volcano|snow_background/i
 );
 
 for (const relativePath of [
