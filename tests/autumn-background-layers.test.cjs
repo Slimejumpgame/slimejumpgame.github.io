@@ -326,12 +326,13 @@ assert.ok(Object.values(status.alphaUsage).every(usage => (
   usage.hasVisiblePixels && usage.hasTransparentPixels
 )));
 assert.deepEqual(status.cloudAnimation, {
-  xAmplitude: 20,
-  xPeriodSeconds: 34,
-  xPhase: 0,
-  yAmplitude: 0,
-  drawCopies: 1,
-  wrapMode: "single-sine-no-wrap"
+  leftSpeed: 6,
+  ySpeed: 0,
+  wrapDistance: 1253,
+  overlap: 27,
+  drawCopies: 2,
+  direction: "right-to-left",
+  wrapMode: "horizontal-continuous"
 });
 assert.deepEqual(status.leavesAnimation, {
   fallSpeed: 14,
@@ -349,6 +350,7 @@ assert.deepEqual(
   imageDraws(atZero).map(call => path.basename(call[1].src)),
   [
     "autumn_background_skybox.png",
+    "autumn_background_clouds.png",
     "autumn_background_clouds.png",
     "autumn_background_forest.png",
     "autumn_background_leaves.png",
@@ -371,6 +373,13 @@ assert.notDeepEqual(
   drawsForFile(atZero, "autumn_background_clouds.png"),
   drawsForFile(later, "autumn_background_clouds.png")
 );
+assert.equal(drawsForFile(atZero, "autumn_background_clouds.png").length, 2);
+assert.ok(drawsForFile(atZero, "autumn_background_clouds.png").every(
+  draw => draw[7] === 0
+));
+assert.ok(drawsForFile(later, "autumn_background_clouds.png").every(
+  draw => draw[7] === 0
+));
 assert.notDeepEqual(
   drawsForFile(atZero, "autumn_background_leaves.png"),
   drawsForFile(later, "autumn_background_leaves.png")
@@ -398,11 +407,19 @@ assert.equal(atZero.calls.some(call => call[1] === "filter"), false);
 
 const mapping = visuals.getBackgroundMapping(1280, 720);
 const cloudsAtOne = visuals.getCloudMapping(1, mapping);
-assert.ok(Math.abs(cloudsAtOne.offsetX) <= 20);
+const cloudsAtTwo = visuals.getCloudMapping(2, mapping);
+assert.equal(cloudsAtOne.offsetX, -6);
+assert.equal(cloudsAtTwo.offsetX, -12);
 assert.equal(cloudsAtOne.offsetY, 0);
-assert.equal(cloudsAtOne.destination.y, 0);
-const cloudPeak = visuals.getCloudMapping(8.5, mapping);
-assert.ok(Math.abs(cloudPeak.offsetX - 20) < 1e-12);
+assert.equal(cloudsAtOne.wrapDistance, 1253);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(cloudsAtOne.destinations)),
+  [
+    {x: -6, y: 0, w: 1280, h: 720},
+    {x: 1247, y: 0, w: 1280, h: 720}
+  ]
+);
+assert.equal(visuals.getCloudMapping(1253 / 6, mapping).offsetX, 0);
 
 const leavesAtOne = visuals.getLeavesMapping(1, mapping);
 const leavesAtTwo = visuals.getLeavesMapping(2, mapping);
@@ -502,4 +519,4 @@ assert.match(visualSource, /BIOME_PLATFORM_VISUALS\.resolve\("autumn"\)/);
 assert.match(visualSource, /BIOME_PLATFORM_VISUALS\.register\("autumn", autumnVisuals\)/);
 assert.doesNotMatch(visualSource, /Math\.random\(|hazard|night|sky\/background/i);
 
-console.log("Autumn four-layer background, sine clouds, clipped two-copy falling leaves and fallback tests passed.");
+console.log("Autumn four-layer background, wrapped clouds, clipped two-copy falling leaves and fallback tests passed.");

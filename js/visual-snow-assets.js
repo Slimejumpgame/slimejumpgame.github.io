@@ -14,17 +14,10 @@ const SNOW_ASSET_VISUALS = (() => {
     "skyBase",
     "mountains"
   ]);
-  const BACK_CLOUD_X_AMPLITUDE = 5;
-  const BACK_CLOUD_X_PERIOD_SECONDS = 24;
-  const BACK_CLOUD_Y_AMPLITUDE = 1;
-  const BACK_CLOUD_Y_PERIOD_SECONDS = 17;
-  const BACK_CLOUD_Y_PHASE = 0.45;
-  const FRONT_CLOUD_X_AMPLITUDE = 7;
-  const FRONT_CLOUD_X_PERIOD_SECONDS = 16;
-  const FRONT_CLOUD_X_PHASE = 1.15;
-  const FRONT_CLOUD_Y_AMPLITUDE = 1.5;
-  const FRONT_CLOUD_Y_PERIOD_SECONDS = 12;
-  const FRONT_CLOUD_Y_PHASE = 2.1;
+  const BACK_CLOUD_LEFT_SPEED = 6;
+  const BACK_CLOUD_WRAP_OVERLAP = 15;
+  const FRONT_CLOUD_LEFT_SPEED = 12;
+  const FRONT_CLOUD_WRAP_OVERLAP = 277;
   const SNOWFLAKE_FALL_SPEED = 8;
   const SNOWFLAKE_X_SWAY_AMPLITUDE = 3;
   const SNOWFLAKE_X_SWAY_PERIOD_SECONDS = 13;
@@ -151,35 +144,32 @@ const SNOW_ASSET_VISUALS = (() => {
     if (!mapping) return null;
     const safeTime = Number.isFinite(visualTime) ? visualTime : 0;
     const isFront = layer === "front";
-    const xAmplitude = isFront
-      ? FRONT_CLOUD_X_AMPLITUDE
-      : BACK_CLOUD_X_AMPLITUDE;
-    const xPeriodSeconds = isFront
-      ? FRONT_CLOUD_X_PERIOD_SECONDS
-      : BACK_CLOUD_X_PERIOD_SECONDS;
-    const xPhase = isFront ? FRONT_CLOUD_X_PHASE : 0;
-    const yAmplitude = isFront
-      ? FRONT_CLOUD_Y_AMPLITUDE
-      : BACK_CLOUD_Y_AMPLITUDE;
-    const yPeriodSeconds = isFront
-      ? FRONT_CLOUD_Y_PERIOD_SECONDS
-      : BACK_CLOUD_Y_PERIOD_SECONDS;
-    const yPhase = isFront ? FRONT_CLOUD_Y_PHASE : BACK_CLOUD_Y_PHASE;
-    const offsetX = Math.sin(
-      safeTime * Math.PI * 2 / xPeriodSeconds + xPhase
-    ) * xAmplitude;
-    const offsetY = Math.sin(
-      safeTime * Math.PI * 2 / yPeriodSeconds + yPhase
-    ) * yAmplitude;
+    const leftSpeed = isFront
+      ? FRONT_CLOUD_LEFT_SPEED
+      : BACK_CLOUD_LEFT_SPEED;
+    const overlap = isFront
+      ? FRONT_CLOUD_WRAP_OVERLAP
+      : BACK_CLOUD_WRAP_OVERLAP;
+    const wrapDistance = BACKGROUND_REFERENCE.w - overlap;
+    const travel = (
+      (safeTime * leftSpeed) % wrapDistance + wrapDistance
+    ) % wrapDistance;
+    const offsetX = travel === 0 ? 0 : -travel;
+    const copyOffsets = isFront
+      ? [-wrapDistance, 0, wrapDistance]
+      : [0, wrapDistance];
     return Object.freeze({
       offsetX,
-      offsetY,
-      destination: Object.freeze({
-        x: offsetX * mapping.scaleX,
-        y: offsetY * mapping.scaleY,
-        w: mapping.destination.w,
-        h: mapping.destination.h
-      })
+      offsetY: 0,
+      wrapDistance,
+      destinations: Object.freeze(copyOffsets.map(copyOffset => (
+        Object.freeze({
+          x: (offsetX + copyOffset) * mapping.scaleX,
+          y: 0,
+          w: mapping.destination.w,
+          h: mapping.destination.h
+        })
+      )))
     });
   }
 
@@ -243,22 +233,16 @@ const SNOW_ASSET_VISUALS = (() => {
     drawBackgroundLayer(context, "skyBase", mapping);
     if (isBackgroundLayerReady("cloudsBack")) {
       const cloudsBack = getCloudMapping(visualTime, mapping, "back");
-      drawBackgroundLayer(
-        context,
-        "cloudsBack",
-        mapping,
-        cloudsBack.destination
-      );
+      for (const destination of cloudsBack.destinations) {
+        drawBackgroundLayer(context, "cloudsBack", mapping, destination);
+      }
     }
     drawBackgroundLayer(context, "mountains", mapping);
     if (isBackgroundLayerReady("cloudsFront")) {
       const cloudsFront = getCloudMapping(visualTime, mapping, "front");
-      drawBackgroundLayer(
-        context,
-        "cloudsFront",
-        mapping,
-        cloudsFront.destination
-      );
+      for (const destination of cloudsFront.destinations) {
+        drawBackgroundLayer(context, "cloudsFront", mapping, destination);
+      }
     }
     if (isBackgroundLayerReady("snowflakes")) {
       const snowflakes = getSnowflakeMapping(visualTime, mapping);
@@ -477,19 +461,20 @@ const SNOW_ASSET_VISUALS = (() => {
       )),
       alphaUsage: Object.freeze({...backgroundAlphaUsage}),
       backCloudAnimation: Object.freeze({
-        xAmplitude: BACK_CLOUD_X_AMPLITUDE,
-        xPeriodSeconds: BACK_CLOUD_X_PERIOD_SECONDS,
-        yAmplitude: BACK_CLOUD_Y_AMPLITUDE,
-        yPeriodSeconds: BACK_CLOUD_Y_PERIOD_SECONDS,
-        yPhase: BACK_CLOUD_Y_PHASE
+        leftSpeed: BACK_CLOUD_LEFT_SPEED,
+        ySpeed: 0,
+        wrapDistance: BACKGROUND_REFERENCE.w - BACK_CLOUD_WRAP_OVERLAP,
+        overlap: BACK_CLOUD_WRAP_OVERLAP,
+        drawCopies: 2,
+        direction: "right-to-left"
       }),
       frontCloudAnimation: Object.freeze({
-        xAmplitude: FRONT_CLOUD_X_AMPLITUDE,
-        xPeriodSeconds: FRONT_CLOUD_X_PERIOD_SECONDS,
-        xPhase: FRONT_CLOUD_X_PHASE,
-        yAmplitude: FRONT_CLOUD_Y_AMPLITUDE,
-        yPeriodSeconds: FRONT_CLOUD_Y_PERIOD_SECONDS,
-        yPhase: FRONT_CLOUD_Y_PHASE
+        leftSpeed: FRONT_CLOUD_LEFT_SPEED,
+        ySpeed: 0,
+        wrapDistance: BACKGROUND_REFERENCE.w - FRONT_CLOUD_WRAP_OVERLAP,
+        overlap: FRONT_CLOUD_WRAP_OVERLAP,
+        drawCopies: 3,
+        direction: "right-to-left"
       }),
       snowflakeAnimation: Object.freeze({
         fallSpeed: SNOWFLAKE_FALL_SPEED,

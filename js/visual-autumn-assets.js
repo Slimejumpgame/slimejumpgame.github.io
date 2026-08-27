@@ -10,9 +10,8 @@ const AUTUMN_ASSET_VISUALS = (() => {
     leaves: "assets/environments/autumn/background/autumn_background_leaves.png"
   });
   const ESSENTIAL_BACKGROUND_LAYERS = Object.freeze(["skybox", "forest"]);
-  const CLOUD_X_AMPLITUDE = 20;
-  const CLOUD_X_PERIOD_SECONDS = 34;
-  const CLOUD_X_PHASE = 0;
+  const CLOUD_LEFT_SPEED = 6;
+  const CLOUD_WRAP_OVERLAP = 27;
   const LEAVES_FALL_SPEED = 14;
   const LEAVES_TOP_INSET = 40;
   const backgroundAssets = {};
@@ -121,18 +120,23 @@ const AUTUMN_ASSET_VISUALS = (() => {
   function getCloudMapping(visualTime, mapping) {
     if (!mapping) return null;
     const safeTime = Number.isFinite(visualTime) ? visualTime : 0;
-    const offsetX = Math.sin(
-      safeTime * Math.PI * 2 / CLOUD_X_PERIOD_SECONDS + CLOUD_X_PHASE
-    ) * CLOUD_X_AMPLITUDE;
+    const wrapDistance = BACKGROUND_REFERENCE.w - CLOUD_WRAP_OVERLAP;
+    const travel = (
+      (safeTime * CLOUD_LEFT_SPEED) % wrapDistance + wrapDistance
+    ) % wrapDistance;
+    const offsetX = travel === 0 ? 0 : -travel;
     return Object.freeze({
       offsetX,
       offsetY: 0,
-      destination: Object.freeze({
-        x: offsetX * mapping.scaleX,
-        y: 0,
-        w: mapping.destination.w,
-        h: mapping.destination.h
-      })
+      wrapDistance,
+      destinations: Object.freeze([0, wrapDistance].map(copyOffset => (
+        Object.freeze({
+          x: (offsetX + copyOffset) * mapping.scaleX,
+          y: 0,
+          w: mapping.destination.w,
+          h: mapping.destination.h
+        })
+      )))
     });
   }
 
@@ -200,7 +204,9 @@ const AUTUMN_ASSET_VISUALS = (() => {
     drawBackgroundLayer(context, "skybox", mapping);
     if (isBackgroundLayerReady("clouds")) {
       const clouds = getCloudMapping(visualTime, mapping);
-      drawBackgroundLayer(context, "clouds", mapping, clouds.destination);
+      for (const destination of clouds.destinations) {
+        drawBackgroundLayer(context, "clouds", mapping, destination);
+      }
     }
     drawBackgroundLayer(context, "forest", mapping);
     if (isBackgroundLayerReady("leaves")) {
@@ -251,12 +257,13 @@ const AUTUMN_ASSET_VISUALS = (() => {
       )),
       alphaUsage: Object.freeze({...backgroundAlphaUsage}),
       cloudAnimation: Object.freeze({
-        xAmplitude: CLOUD_X_AMPLITUDE,
-        xPeriodSeconds: CLOUD_X_PERIOD_SECONDS,
-        xPhase: CLOUD_X_PHASE,
-        yAmplitude: 0,
-        drawCopies: 1,
-        wrapMode: "single-sine-no-wrap"
+        leftSpeed: CLOUD_LEFT_SPEED,
+        ySpeed: 0,
+        wrapDistance: BACKGROUND_REFERENCE.w - CLOUD_WRAP_OVERLAP,
+        overlap: CLOUD_WRAP_OVERLAP,
+        drawCopies: 2,
+        direction: "right-to-left",
+        wrapMode: "horizontal-continuous"
       }),
       leavesAnimation: Object.freeze({
         fallSpeed: LEAVES_FALL_SPEED,

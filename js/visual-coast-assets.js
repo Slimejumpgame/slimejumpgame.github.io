@@ -21,8 +21,10 @@ const COAST_ASSET_VISUALS = (() => {
     wave01: "assets/environments/coast/hazards/coast_hazard_wave_01.png",
     wave02: "assets/environments/coast/hazards/coast_hazard_wave_02.png"
   });
-  const BACK_CLOUD_SPEED = 4;
-  const FRONT_CLOUD_SPEED = -7;
+  const BACK_CLOUD_LEFT_SPEED = 6;
+  const BACK_CLOUD_WRAP_OVERLAP = 59;
+  const FRONT_CLOUD_LEFT_SPEED = 12;
+  const FRONT_CLOUD_WRAP_OVERLAP = 35;
   const SHIP_CONTENT_WIDTH = 190;
   const SHIP_VISIBLE_SCALE = 0.75;
   const SHIP_TRAVEL_EDGE_INSET = 270;
@@ -215,12 +217,12 @@ const COAST_ASSET_VISUALS = (() => {
     });
   }
 
-  function getWrappedCloudOffset(visualTime, speed) {
+  function getWrappedCloudOffset(visualTime, leftSpeed, wrapDistance) {
     const safeTime = Number.isFinite(visualTime) ? visualTime : 0;
     const travel = (
-      (safeTime * speed) % BACKGROUND_REFERENCE.w + BACKGROUND_REFERENCE.w
-    ) % BACKGROUND_REFERENCE.w;
-    return -travel;
+      (safeTime * leftSpeed) % wrapDistance + wrapDistance
+    ) % wrapDistance;
+    return travel === 0 ? 0 : -travel;
   }
 
   function drawFullBackgroundLayer(
@@ -244,14 +246,26 @@ const COAST_ASSET_VISUALS = (() => {
     );
   }
 
-  function drawWrappedCloudLayer(context, name, mapping, visualTime, speed) {
-    const offsetX = getWrappedCloudOffset(visualTime, speed);
+  function drawWrappedCloudLayer(
+    context,
+    name,
+    mapping,
+    visualTime,
+    leftSpeed,
+    overlap
+  ) {
+    const wrapDistance = BACKGROUND_REFERENCE.w - overlap;
+    const offsetX = getWrappedCloudOffset(
+      visualTime,
+      leftSpeed,
+      wrapDistance
+    );
     drawFullBackgroundLayer(context, name, mapping, offsetX);
     drawFullBackgroundLayer(
       context,
       name,
       mapping,
-      offsetX + BACKGROUND_REFERENCE.w
+      offsetX + wrapDistance
     );
   }
 
@@ -441,7 +455,8 @@ const COAST_ASSET_VISUALS = (() => {
       "cloudsBack",
       mapping,
       visualTime,
-      BACK_CLOUD_SPEED
+      BACK_CLOUD_LEFT_SPEED,
+      BACK_CLOUD_WRAP_OVERLAP
     );
     drawShip(context, shipMapping);
     drawFullBackgroundLayer(
@@ -456,7 +471,8 @@ const COAST_ASSET_VISUALS = (() => {
       "cloudsFront",
       mapping,
       visualTime,
-      FRONT_CLOUD_SPEED
+      FRONT_CLOUD_LEFT_SPEED,
+      FRONT_CLOUD_WRAP_OVERLAP
     );
     context.restore();
     return true;
@@ -481,7 +497,25 @@ const COAST_ASSET_VISUALS = (() => {
         Object.keys(BACKGROUND_PATHS).map(name => [name, hasValidBackgroundSize(name)])
       )),
       alphaThreshold: BACKGROUND_ALPHA_THRESHOLD,
-      shipContentBounds
+      shipContentBounds,
+      cloudAnimation: Object.freeze({
+        back: Object.freeze({
+          leftSpeed: BACK_CLOUD_LEFT_SPEED,
+          ySpeed: 0,
+          wrapDistance: BACKGROUND_REFERENCE.w - BACK_CLOUD_WRAP_OVERLAP,
+          overlap: BACK_CLOUD_WRAP_OVERLAP,
+          drawCopies: 2
+        }),
+        front: Object.freeze({
+          leftSpeed: FRONT_CLOUD_LEFT_SPEED,
+          ySpeed: 0,
+          wrapDistance: BACKGROUND_REFERENCE.w - FRONT_CLOUD_WRAP_OVERLAP,
+          overlap: FRONT_CLOUD_WRAP_OVERLAP,
+          drawCopies: 2
+        }),
+        direction: "right-to-left",
+        wrapMode: "horizontal-continuous"
+      })
     }),
     getWaterHazardStatus: () => Object.freeze({
       ready: isWaterHazardReady(),

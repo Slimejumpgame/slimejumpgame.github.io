@@ -253,6 +253,10 @@ function drawForFile(capture, file) {
   return imageDraws(capture).find(call => path.basename(call[1].src) === file);
 }
 
+function drawsForFile(capture, file) {
+  return imageDraws(capture).filter(call => path.basename(call[1].src) === file);
+}
+
 const fixture = loadFixture();
 const visuals = fixture.api;
 assert.deepEqual(
@@ -280,27 +284,24 @@ assert.ok(Object.values(status.alphaUsage).every(usage => (
   usage.hasVisiblePixels && usage.hasTransparentPixels
 )));
 assert.deepEqual(status.backCloudAnimation, {
-  xAmplitude: 5,
-  xPeriodSeconds: 24,
-  yAmplitude: 1,
-  yPeriodSeconds: 17,
-  yPhase: 0.45
+  leftSpeed: 6,
+  ySpeed: 0,
+  wrapDistance: 1265,
+  overlap: 15,
+  drawCopies: 2,
+  direction: "right-to-left"
 });
 assert.deepEqual(status.frontCloudAnimation, {
-  xAmplitude: 7,
-  xPeriodSeconds: 16,
-  xPhase: 1.15,
-  yAmplitude: 1.5,
-  yPeriodSeconds: 12,
-  yPhase: 2.1
+  leftSpeed: 12,
+  ySpeed: 0,
+  wrapDistance: 1003,
+  overlap: 277,
+  drawCopies: 3,
+  direction: "right-to-left"
 });
 assert.ok(
-  status.frontCloudAnimation.xPeriodSeconds <
-    status.backCloudAnimation.xPeriodSeconds
-);
-assert.notEqual(
-  status.frontCloudAnimation.xPhase,
-  status.backCloudAnimation.xPhase ?? 0
+  status.frontCloudAnimation.leftSpeed >
+  status.backCloudAnimation.leftSpeed
 );
 assert.deepEqual(status.snowflakeAnimation, {
   fallSpeed: 8,
@@ -318,7 +319,10 @@ assert.deepEqual(
   [
     "snow_background_sky_base.png",
     "snow_background_clouds_back.png",
+    "snow_background_clouds_back.png",
     "snow_background_mountains.png",
+    "snow_background_clouds_front.png",
+    "snow_background_clouds_front.png",
     "snow_background_clouds_front.png",
     "snow_background_snowflakes.png",
     "snow_background_snowflakes.png",
@@ -342,20 +346,36 @@ for (const cloudFile of [
   "snow_background_clouds_back.png",
   "snow_background_clouds_front.png"
 ]) {
+  assert.ok(drawsForFile(atZero, cloudFile).length >= 2);
   assert.notDeepEqual(
     drawForFile(atZero, cloudFile).slice(6),
     drawForFile(later, cloudFile).slice(6)
   );
+  assert.ok(drawsForFile(atZero, cloudFile).every(draw => draw[7] === 0));
+  assert.ok(drawsForFile(later, cloudFile).every(draw => draw[7] === 0));
 }
 
 const mapping = visuals.getBackgroundMapping(1280, 720);
-const backClouds = visuals.getCloudMapping(4.25, mapping, "back");
-const frontClouds = visuals.getCloudMapping(4.25, mapping, "front");
-assert.ok(Math.abs(backClouds.offsetX) <= 5);
-assert.ok(Math.abs(backClouds.offsetY) <= 1);
-assert.ok(Math.abs(frontClouds.offsetX) <= 7);
-assert.ok(Math.abs(frontClouds.offsetY) <= 1.5);
-assert.notEqual(backClouds.offsetX, frontClouds.offsetX);
+const backCloudsAtOne = visuals.getCloudMapping(1, mapping, "back");
+const backCloudsAtTwo = visuals.getCloudMapping(2, mapping, "back");
+const frontCloudsAtOne = visuals.getCloudMapping(1, mapping, "front");
+const frontCloudsAtTwo = visuals.getCloudMapping(2, mapping, "front");
+assert.equal(backCloudsAtOne.offsetX, -6);
+assert.equal(backCloudsAtTwo.offsetX, -12);
+assert.equal(backCloudsAtOne.offsetY, 0);
+assert.equal(backCloudsAtOne.wrapDistance, 1265);
+assert.deepEqual(
+  [...backCloudsAtOne.destinations].map(destination => destination.x),
+  [-6, 1259]
+);
+assert.equal(frontCloudsAtOne.offsetX, -12);
+assert.equal(frontCloudsAtTwo.offsetX, -24);
+assert.equal(frontCloudsAtOne.offsetY, 0);
+assert.equal(frontCloudsAtOne.wrapDistance, 1003);
+assert.deepEqual(
+  [...frontCloudsAtOne.destinations].map(destination => destination.x),
+  [-1015, -12, 991]
+);
 
 const snowAtOne = visuals.getSnowflakeMapping(1, mapping);
 const snowAtTwo = visuals.getSnowflakeMapping(2, mapping);
@@ -457,9 +477,7 @@ for (const relativePath of [
   "js/platforms.js",
   "js/player.js",
   "js/renderer.js",
-  "js/visual-coast-assets.js",
   "js/visual-desert-assets.js",
-  "js/visual-meadow-assets.js",
   "js/visual-volcano-assets.js"
 ]) {
   const current = read(relativePath);

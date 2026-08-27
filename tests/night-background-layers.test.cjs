@@ -297,6 +297,10 @@ function drawForFile(capture, file) {
   return imageDraws(capture).find(call => path.basename(call[1].src) === file);
 }
 
+function drawsForFile(capture, file) {
+  return imageDraws(capture).filter(call => path.basename(call[1].src) === file);
+}
+
 const fixture = loadFixture();
 const visuals = fixture.api;
 assert.deepEqual(
@@ -335,28 +339,25 @@ assert.ok(Object.values(status.alphaUsage).every(usage => (
 )));
 assert.deepEqual(status.cloudAnimation, {
   back: {
-    xAmplitude: 24,
-    xPeriodSeconds: 36,
-    xPhase: 0,
-    yAmplitude: 0,
-    drawCopies: 1
+    leftSpeed: 6,
+    ySpeed: 0,
+    wrapDistance: 1215,
+    overlap: 65,
+    drawCopies: 2
   },
   front: {
-    xAmplitude: 18,
-    xPeriodSeconds: 24,
-    xPhase: 1.1,
-    yAmplitude: 0,
-    drawCopies: 1
+    leftSpeed: 12,
+    ySpeed: 0,
+    wrapDistance: 1235,
+    overlap: 45,
+    drawCopies: 2
   },
-  wrapMode: "single-sine-no-wrap"
+  direction: "right-to-left",
+  wrapMode: "horizontal-continuous"
 });
 assert.ok(
-  status.cloudAnimation.back.xAmplitude >
-    status.cloudAnimation.front.xAmplitude
-);
-assert.ok(
-  status.cloudAnimation.front.xPeriodSeconds <
-    status.cloudAnimation.back.xPeriodSeconds
+  status.cloudAnimation.front.leftSpeed >
+  status.cloudAnimation.back.leftSpeed
 );
 assert.deepEqual(status.starPulseAnimation, {
   count: 26,
@@ -387,7 +388,16 @@ const later = captureBackground(fixture, 5.25);
 assert.equal(atZero.drawn, true);
 assert.deepEqual(
   imageDraws(atZero).map(call => path.basename(call[1].src)),
-  backgroundFiles
+  [
+    backgroundFiles[0],
+    backgroundFiles[1],
+    backgroundFiles[2],
+    backgroundFiles[2],
+    backgroundFiles[3],
+    backgroundFiles[4],
+    backgroundFiles[5],
+    backgroundFiles[5]
+  ]
 );
 for (const call of imageDraws(atZero)) {
   assert.deepEqual(call.slice(2, 6), [0, 0, 1280, 720]);
@@ -407,29 +417,36 @@ for (const cloudFile of [
   "night_background_clouds_back.png",
   "night_background_clouds_front.png"
 ]) {
+  assert.equal(drawsForFile(atZero, cloudFile).length, 2);
   assert.notDeepEqual(
     drawForFile(atZero, cloudFile).slice(6),
     drawForFile(later, cloudFile).slice(6)
   );
-  assert.equal(imageDraws(atZero).filter(call => (
-    path.basename(call[1].src) === cloudFile
-  )).length, 1, `${cloudFile} must use one non-wrapped draw`);
+  assert.ok(drawsForFile(atZero, cloudFile).every(draw => draw[7] === 0));
+  assert.ok(drawsForFile(later, cloudFile).every(draw => draw[7] === 0));
 }
 
 const mapping = visuals.getBackgroundMapping(1280, 720);
-const backClouds = visuals.getCloudMapping(5.25, mapping, "back");
-const frontClouds = visuals.getCloudMapping(5.25, mapping, "front");
-assert.ok(Math.abs(backClouds.offsetX) <= 24);
-assert.ok(Math.abs(frontClouds.offsetX) <= 18);
-assert.equal(backClouds.offsetY, 0);
-assert.equal(frontClouds.offsetY, 0);
-assert.equal(backClouds.destination.y, 0);
-assert.equal(frontClouds.destination.y, 0);
-const backPeak = visuals.getCloudMapping(9, mapping, "back");
-const frontPeakTime = (Math.PI / 2 - 1.1) * 24 / (Math.PI * 2);
-const frontPeak = visuals.getCloudMapping(frontPeakTime, mapping, "front");
-assert.ok(Math.abs(backPeak.offsetX - 24) < 1e-12);
-assert.ok(Math.abs(frontPeak.offsetX - 18) < 1e-12);
+const backCloudsAtOne = visuals.getCloudMapping(1, mapping, "back");
+const backCloudsAtTwo = visuals.getCloudMapping(2, mapping, "back");
+const frontCloudsAtOne = visuals.getCloudMapping(1, mapping, "front");
+const frontCloudsAtTwo = visuals.getCloudMapping(2, mapping, "front");
+assert.equal(backCloudsAtOne.offsetX, -6);
+assert.equal(backCloudsAtTwo.offsetX, -12);
+assert.equal(backCloudsAtOne.offsetY, 0);
+assert.equal(backCloudsAtOne.wrapDistance, 1215);
+assert.deepEqual(
+  [...backCloudsAtOne.destinations].map(destination => destination.x),
+  [-6, 1209]
+);
+assert.equal(frontCloudsAtOne.offsetX, -12);
+assert.equal(frontCloudsAtTwo.offsetX, -24);
+assert.equal(frontCloudsAtOne.offsetY, 0);
+assert.equal(frontCloudsAtOne.wrapDistance, 1235);
+assert.deepEqual(
+  [...frontCloudsAtOne.destinations].map(destination => destination.x),
+  [-12, 1223]
+);
 
 const pulsesAtZero = JSON.parse(JSON.stringify(visuals.getStarPulseMapping(0)));
 const pulsesLater = JSON.parse(JSON.stringify(visuals.getStarPulseMapping(5.25)));

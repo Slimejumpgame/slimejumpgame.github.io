@@ -96,11 +96,14 @@ function captureBackground(api, visualTime) {
 
 const visuals = loadVisuals();
 const atZero = captureBackground(visuals, 0);
+const atOne = captureBackground(visuals, 1);
 const later = captureBackground(visuals, 3.75);
 const expectedOrder = [
   "meadow_background_sky_base.png",
   "meadow_background_clouds_back.png",
+  "meadow_background_clouds_back.png",
   "meadow_background_landscape.png",
+  "meadow_background_clouds_front.png",
   "meadow_background_clouds_front.png"
 ];
 assert.equal(atZero.result, true);
@@ -109,16 +112,19 @@ assert.deepEqual(
   expectedOrder
 );
 assert.deepEqual(atZero.drawCalls[0].slice(5), [0, 0, 1280, 720]);
-assert.deepEqual(atZero.drawCalls[2].slice(5), [0, 0, 1280, 720]);
+assert.deepEqual(atZero.drawCalls[3].slice(5), [0, 0, 1280, 720]);
 assert.deepEqual(later.drawCalls[0].slice(5), [0, 0, 1280, 720]);
-assert.deepEqual(later.drawCalls[2].slice(5), [0, 0, 1280, 720]);
-assert.notEqual(atZero.drawCalls[1][5], later.drawCalls[1][5]);
-assert.notEqual(atZero.drawCalls[3][5], later.drawCalls[3][5]);
-assert.notEqual(later.drawCalls[1][5], later.drawCalls[3][5]);
-assert.equal(atZero.drawCalls[1][6], 0);
-assert.equal(atZero.drawCalls[3][6], 0);
-assert.ok(Math.abs(later.drawCalls[1][5]) <= 15);
-assert.ok(Math.abs(later.drawCalls[3][5]) <= 22);
+assert.deepEqual(later.drawCalls[3].slice(5), [0, 0, 1280, 720]);
+assert.deepEqual(atZero.drawCalls[1].slice(5), [0, 0, 1280, 720]);
+assert.deepEqual(atZero.drawCalls[2].slice(5), [1272, 0, 1280, 720]);
+assert.deepEqual(atOne.drawCalls[1].slice(5), [-6, 0, 1280, 720]);
+assert.deepEqual(atOne.drawCalls[2].slice(5), [1266, 0, 1280, 720]);
+assert.deepEqual(atZero.drawCalls[4].slice(5), [0, 0, 1280, 720]);
+assert.deepEqual(atZero.drawCalls[5].slice(5), [1251, 0, 1280, 720]);
+assert.deepEqual(atOne.drawCalls[4].slice(5), [-12, 0, 1280, 720]);
+assert.deepEqual(atOne.drawCalls[5].slice(5), [1239, 0, 1280, 720]);
+assert.ok(later.drawCalls[1][5] < atOne.drawCalls[1][5]);
+assert.ok(later.drawCalls[4][5] < atOne.drawCalls[4][5]);
 assert.ok(atZero.propertyWrites.some(write => (
   write[0] === "imageSmoothingEnabled" && write[1] === true
 )));

@@ -94,6 +94,23 @@ function getMaximumEdgeAlpha(decoded, x) {
   return maximum;
 }
 
+function getTransparentHorizontalMargins(decoded) {
+  let firstVisibleX = decoded.width;
+  let lastVisibleX = -1;
+  for (let y = 0; y < decoded.height; y++) {
+    for (let x = 0; x < decoded.width; x++) {
+      if (decoded.pixels[(y * decoded.width + x) * 4 + 3] > 0) {
+        firstVisibleX = Math.min(firstVisibleX, x);
+        lastVisibleX = Math.max(lastVisibleX, x);
+      }
+    }
+  }
+  return Object.freeze({
+    left: firstVisibleX,
+    right: decoded.width - 1 - lastVisibleX
+  });
+}
+
 const decodedAssets = Object.fromEntries(backgroundPaths.map(relativePath => (
   [relativePath, decodeRgba8Png(relativePath)]
 )));
@@ -114,19 +131,20 @@ for (const relativePath of backgroundPaths.slice(1)) {
     hasTransparentPixels: true
   });
 }
-for (const relativePath of [backgroundPaths[2], backgroundPaths[4]]) {
-  const decoded = decodedAssets[relativePath];
-  assert.equal(
-    getMaximumEdgeAlpha(decoded, 0),
-    0,
-    `${relativePath} left edge must remain transparent for small sine drift`
-  );
-  assert.equal(
-    getMaximumEdgeAlpha(decoded, decoded.width - 1),
-    0,
-    `${relativePath} right edge must remain transparent for small sine drift`
-  );
-}
+const fogBack = decodedAssets[backgroundPaths[2]];
+assert.equal(getMaximumEdgeAlpha(fogBack, 0), 0);
+assert.equal(getMaximumEdgeAlpha(fogBack, fogBack.width - 1), 0);
+assert.deepEqual(getTransparentHorizontalMargins(fogBack), {
+  left: 31,
+  right: 61
+});
+const fogFront = decodedAssets[backgroundPaths[4]];
+assert.equal(getMaximumEdgeAlpha(fogFront, 0), 0);
+assert.equal(getMaximumEdgeAlpha(fogFront, fogFront.width - 1), 0);
+assert.deepEqual(getTransparentHorizontalMargins(fogFront), {
+  left: 18,
+  right: 43
+});
 
 function createRecordingContext() {
   const calls = [];
@@ -274,6 +292,10 @@ function drawForFile(capture, file) {
   return imageDraws(capture).find(call => path.basename(call[1].src) === file);
 }
 
+function drawsForFile(capture, file) {
+  return imageDraws(capture).filter(call => path.basename(call[1].src) === file);
+}
+
 const fixture = loadFixture();
 const visuals = fixture.api;
 assert.deepEqual(
@@ -317,29 +339,26 @@ assert.ok(Object.values(status.alphaUsage).every(usage => (
 )));
 assert.deepEqual(status.fogAnimation, {
   back: {
-    xAmplitude: 16,
-    xPeriodSeconds: 26,
-    xPhase: 0,
-    yAmplitude: 0,
-    drawCopies: 1
+    leftSpeed: 6,
+    ySpeed: 0,
+    wrapDistance: 1219,
+    overlap: 61,
+    drawCopies: 2
   },
   front: {
-    xAmplitude: 26,
-    xPeriodSeconds: 16,
-    xPhase: 1.2,
-    yAmplitude: 0,
-    drawCopies: 1
+    leftSpeed: 10,
+    ySpeed: 0,
+    wrapDistance: 1237,
+    overlap: 43,
+    drawCopies: 2
   },
-  wrapMode: "single-sine-no-wrap",
+  direction: "right-to-left",
+  wrapMode: "horizontal-continuous",
   blendMode: "source-over"
 });
 assert.ok(
-  status.fogAnimation.front.xPeriodSeconds <
-    status.fogAnimation.back.xPeriodSeconds
-);
-assert.notEqual(
-  status.fogAnimation.front.xPhase,
-  status.fogAnimation.back.xPhase
+  status.fogAnimation.front.leftSpeed >
+  status.fogAnimation.back.leftSpeed
 );
 
 const atZero = captureBackground(fixture);
@@ -347,7 +366,16 @@ const later = captureBackground(fixture, 5.25);
 assert.equal(atZero.drawn, true);
 assert.deepEqual(
   imageDraws(atZero).map(call => path.basename(call[1].src)),
-  backgroundFiles
+  [
+    backgroundFiles[0],
+    backgroundFiles[1],
+    backgroundFiles[2],
+    backgroundFiles[2],
+    backgroundFiles[3],
+    backgroundFiles[4],
+    backgroundFiles[4],
+    backgroundFiles[5]
+  ]
 );
 for (const call of imageDraws(atZero)) {
   assert.deepEqual(call.slice(2, 6), [0, 0, 1280, 720]);
@@ -367,13 +395,13 @@ for (const fogFile of [
   "swamp_background_fog_back.png",
   "swamp_background_fog_front.png"
 ]) {
+  assert.equal(drawsForFile(atZero, fogFile).length, 2);
   assert.notDeepEqual(
     drawForFile(atZero, fogFile).slice(6),
     drawForFile(later, fogFile).slice(6)
   );
-  assert.equal(imageDraws(atZero).filter(call => (
-    path.basename(call[1].src) === fogFile
-  )).length, 1, `${fogFile} must use one non-wrapped draw`);
+  assert.ok(drawsForFile(atZero, fogFile).every(draw => draw[7] === 0));
+  assert.ok(drawsForFile(later, fogFile).every(draw => draw[7] === 0));
 }
 assert.ok(atZero.calls.some(call => (
   call[0] === "set" &&
@@ -384,19 +412,34 @@ assert.equal(atZero.calls.some(call => call[1] === "globalAlpha"), false);
 assert.equal(atZero.calls.some(call => call[1] === "filter"), false);
 
 const mapping = visuals.getBackgroundMapping(1280, 720);
-const fogBackLater = visuals.getFogMapping(5.25, mapping, "back");
-const fogFrontLater = visuals.getFogMapping(5.25, mapping, "front");
-assert.ok(Math.abs(fogBackLater.offsetX) <= 16);
-assert.ok(Math.abs(fogFrontLater.offsetX) <= 26);
-assert.equal(fogBackLater.offsetY, 0);
-assert.equal(fogFrontLater.offsetY, 0);
-assert.equal(fogBackLater.destination.y, 0);
-assert.equal(fogFrontLater.destination.y, 0);
-const backPeak = visuals.getFogMapping(6.5, mapping, "back");
-const frontPeakTime = (Math.PI / 2 - 1.2) * 16 / (Math.PI * 2);
-const frontPeak = visuals.getFogMapping(frontPeakTime, mapping, "front");
-assert.ok(Math.abs(backPeak.offsetX - 16) < 1e-12);
-assert.ok(Math.abs(frontPeak.offsetX - 26) < 1e-12);
+const fogBackAtOne = visuals.getFogMapping(1, mapping, "back");
+const fogBackAtTwo = visuals.getFogMapping(2, mapping, "back");
+const fogFrontAtOne = visuals.getFogMapping(1, mapping, "front");
+const fogFrontAtTwo = visuals.getFogMapping(2, mapping, "front");
+assert.equal(fogBackAtOne.offsetX, -6);
+assert.equal(fogBackAtTwo.offsetX, -12);
+assert.equal(fogBackAtOne.offsetY, 0);
+assert.equal(fogBackAtOne.wrapDistance, 1219);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(fogBackAtOne.destinations)),
+  [
+    {x: -6, y: 0, w: 1280, h: 720},
+    {x: 1213, y: 0, w: 1280, h: 720}
+  ]
+);
+assert.equal(fogFrontAtOne.offsetX, -10);
+assert.equal(fogFrontAtTwo.offsetX, -20);
+assert.equal(fogFrontAtOne.offsetY, 0);
+assert.equal(fogFrontAtOne.wrapDistance, 1237);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(fogFrontAtOne.destinations)),
+  [
+    {x: -10, y: 0, w: 1280, h: 720},
+    {x: 1227, y: 0, w: 1280, h: 720}
+  ]
+);
+assert.equal(visuals.getFogMapping(1219 / 6, mapping, "back").offsetX, 0);
+assert.equal(visuals.getFogMapping(1237 / 10, mapping, "front").offsetX, 0);
 
 for (const essentialFile of [
   "swamp_background_skybox.png",
@@ -460,7 +503,7 @@ assert.match(
 );
 assert.doesNotMatch(
   visualSource,
-  /Math\.random\(|coast|desert|volcano|snow_background/i
+  /Math\.random\(|Math\.sin\(|coast|desert|volcano|snow_background/i
 );
 
 for (const relativePath of [
@@ -476,10 +519,7 @@ for (const relativePath of [
   "js/visual-platform-kit.js",
   "js/visual-decor-kit.js",
   "js/visual-portal-kit.js",
-  "js/visual-coast-assets.js",
   "js/visual-desert-assets.js",
-  "js/visual-meadow-assets.js",
-  "js/visual-snow-assets.js",
   "js/visual-volcano-assets.js"
 ]) {
   const current = read(relativePath);
@@ -494,4 +534,4 @@ for (const relativePath of [
   );
 }
 
-console.log("Swamp six-layer background order, sine fog motion, alpha edges and fallback tests passed.");
+console.log("Swamp six-layer background order, continuous fog wrapping, alpha edges and fallback tests passed.");

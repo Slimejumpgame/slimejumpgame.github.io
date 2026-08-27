@@ -413,7 +413,6 @@ for (const relativePath of [
   "js/platforms.js",
   "js/player.js",
   "js/renderer.js",
-  "js/visual-coast-assets.js",
   "js/visual-desert-assets.js",
   "js/visual-volcano-assets.js"
 ]) {

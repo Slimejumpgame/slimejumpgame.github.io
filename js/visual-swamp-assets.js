@@ -27,12 +27,10 @@ const SWAMP_ASSET_VISUALS = (() => {
     "treesMiddle",
     "treesFront"
   ]);
-  const FOG_BACK_X_AMPLITUDE = 16;
-  const FOG_BACK_X_PERIOD_SECONDS = 26;
-  const FOG_BACK_X_PHASE = 0;
-  const FOG_FRONT_X_AMPLITUDE = 26;
-  const FOG_FRONT_X_PERIOD_SECONDS = 16;
-  const FOG_FRONT_X_PHASE = 1.2;
+  const FOG_BACK_LEFT_SPEED = 6;
+  const FOG_BACK_WRAP_OVERLAP = 61;
+  const FOG_FRONT_LEFT_SPEED = 10;
+  const FOG_FRONT_WRAP_OVERLAP = 43;
   const WAVE_01_X_SPEED = 10;
   const WAVE_02_RISE_SPEED = 6;
   const backgroundAssets = {};
@@ -144,25 +142,29 @@ const SWAMP_ASSET_VISUALS = (() => {
     if (!mapping) return null;
     const safeTime = Number.isFinite(visualTime) ? visualTime : 0;
     const isFront = layer === "front";
-    const amplitude = isFront
-      ? FOG_FRONT_X_AMPLITUDE
-      : FOG_BACK_X_AMPLITUDE;
-    const periodSeconds = isFront
-      ? FOG_FRONT_X_PERIOD_SECONDS
-      : FOG_BACK_X_PERIOD_SECONDS;
-    const phase = isFront ? FOG_FRONT_X_PHASE : FOG_BACK_X_PHASE;
-    const offsetX = Math.sin(
-      safeTime * Math.PI * 2 / periodSeconds + phase
-    ) * amplitude;
+    const leftSpeed = isFront
+      ? FOG_FRONT_LEFT_SPEED
+      : FOG_BACK_LEFT_SPEED;
+    const overlap = isFront
+      ? FOG_FRONT_WRAP_OVERLAP
+      : FOG_BACK_WRAP_OVERLAP;
+    const wrapDistance = BACKGROUND_REFERENCE.w - overlap;
+    const travel = (
+      (safeTime * leftSpeed) % wrapDistance + wrapDistance
+    ) % wrapDistance;
+    const offsetX = travel === 0 ? 0 : -travel;
     return Object.freeze({
       offsetX,
       offsetY: 0,
-      destination: Object.freeze({
-        x: offsetX * mapping.scaleX,
-        y: 0,
-        w: mapping.destination.w,
-        h: mapping.destination.h
-      })
+      wrapDistance,
+      destinations: Object.freeze([0, wrapDistance].map(copyOffset => (
+        Object.freeze({
+          x: (offsetX + copyOffset) * mapping.scaleX,
+          y: 0,
+          w: mapping.destination.w,
+          h: mapping.destination.h
+        })
+      )))
     });
   }
 
@@ -197,12 +199,16 @@ const SWAMP_ASSET_VISUALS = (() => {
     drawBackgroundLayer(context, "treesBack", mapping);
     if (isBackgroundLayerReady("fogBack")) {
       const fogBack = getFogMapping(visualTime, mapping, "back");
-      drawBackgroundLayer(context, "fogBack", mapping, fogBack.destination);
+      for (const destination of fogBack.destinations) {
+        drawBackgroundLayer(context, "fogBack", mapping, destination);
+      }
     }
     drawBackgroundLayer(context, "treesMiddle", mapping);
     if (isBackgroundLayerReady("fogFront")) {
       const fogFront = getFogMapping(visualTime, mapping, "front");
-      drawBackgroundLayer(context, "fogFront", mapping, fogFront.destination);
+      for (const destination of fogFront.destinations) {
+        drawBackgroundLayer(context, "fogFront", mapping, destination);
+      }
     }
     drawBackgroundLayer(context, "treesFront", mapping);
     context.restore();
@@ -406,20 +412,21 @@ const SWAMP_ASSET_VISUALS = (() => {
       alphaUsage: Object.freeze({...backgroundAlphaUsage}),
       fogAnimation: Object.freeze({
         back: Object.freeze({
-          xAmplitude: FOG_BACK_X_AMPLITUDE,
-          xPeriodSeconds: FOG_BACK_X_PERIOD_SECONDS,
-          xPhase: FOG_BACK_X_PHASE,
-          yAmplitude: 0,
-          drawCopies: 1
+          leftSpeed: FOG_BACK_LEFT_SPEED,
+          ySpeed: 0,
+          wrapDistance: BACKGROUND_REFERENCE.w - FOG_BACK_WRAP_OVERLAP,
+          overlap: FOG_BACK_WRAP_OVERLAP,
+          drawCopies: 2
         }),
         front: Object.freeze({
-          xAmplitude: FOG_FRONT_X_AMPLITUDE,
-          xPeriodSeconds: FOG_FRONT_X_PERIOD_SECONDS,
-          xPhase: FOG_FRONT_X_PHASE,
-          yAmplitude: 0,
-          drawCopies: 1
+          leftSpeed: FOG_FRONT_LEFT_SPEED,
+          ySpeed: 0,
+          wrapDistance: BACKGROUND_REFERENCE.w - FOG_FRONT_WRAP_OVERLAP,
+          overlap: FOG_FRONT_WRAP_OVERLAP,
+          drawCopies: 2
         }),
-        wrapMode: "single-sine-no-wrap",
+        direction: "right-to-left",
+        wrapMode: "horizontal-continuous",
         blendMode: "source-over"
       })
     }),

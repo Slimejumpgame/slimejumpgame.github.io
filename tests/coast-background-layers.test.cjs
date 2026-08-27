@@ -177,8 +177,31 @@ assert.deepEqual(status.expectedNativeSize, {w: 1280, h: 720});
 assert.ok(Object.values(status.validNativeSizes).every(Boolean));
 assert.equal(status.alphaThreshold, 8);
 assert.deepEqual(status.shipContentBounds, shipBounds);
+assert.deepEqual(status.cloudAnimation, {
+  back: {
+    leftSpeed: 6,
+    ySpeed: 0,
+    wrapDistance: 1221,
+    overlap: 59,
+    drawCopies: 2
+  },
+  front: {
+    leftSpeed: 12,
+    ySpeed: 0,
+    wrapDistance: 1245,
+    overlap: 35,
+    drawCopies: 2
+  },
+  direction: "right-to-left",
+  wrapMode: "horizontal-continuous"
+});
+assert.ok(
+  status.cloudAnimation.front.leftSpeed >
+  status.cloudAnimation.back.leftSpeed
+);
 
 const atZero = captureBackground(visuals, 0);
+const atOne = captureBackground(visuals, 1);
 const later = captureBackground(visuals, 3.75);
 assert.equal(atZero.result, true);
 assert.deepEqual(
@@ -195,18 +218,24 @@ assert.deepEqual(
 );
 assert.deepEqual(atZero.drawCalls[0].slice(5), [0, 0, 1280, 720]);
 assert.deepEqual(atZero.drawCalls[4].slice(5), [0, 75, 1280, 720]);
-for (const pair of [[1, 2], [5, 6]]) {
+for (const [pair, wrapDistance] of [
+  [[1, 2], 1221],
+  [[5, 6], 1245]
+]) {
   const first = atZero.drawCalls[pair[0]];
   const second = atZero.drawCalls[pair[1]];
   assert.equal(first[6], 0);
   assert.equal(second[6], 0);
-  assert.equal(second[5], first[5] + 1280);
+  assert.equal(second[5], first[5] + wrapDistance);
   assert.ok(first[5] <= 0);
   assert.ok(second[5] + second[7] >= 1280);
 }
-assert.notEqual(atZero.drawCalls[1][5], later.drawCalls[1][5]);
-assert.notEqual(atZero.drawCalls[5][5], later.drawCalls[5][5]);
-assert.notEqual(later.drawCalls[1][5], later.drawCalls[5][5]);
+assert.deepEqual(atOne.drawCalls[1].slice(5), [-6, 0, 1280, 720]);
+assert.deepEqual(atOne.drawCalls[2].slice(5), [1215, 0, 1280, 720]);
+assert.deepEqual(atOne.drawCalls[5].slice(5), [-12, 0, 1280, 720]);
+assert.deepEqual(atOne.drawCalls[6].slice(5), [1233, 0, 1280, 720]);
+assert.ok(later.drawCalls[1][5] < atOne.drawCalls[1][5]);
+assert.ok(later.drawCalls[5][5] < atOne.drawCalls[5][5]);
 assert.ok(atZero.propertyWrites.some(([name, value]) => (
   name === "imageSmoothingEnabled" && value === true
 )));
@@ -273,8 +302,7 @@ for (const relativePath of [
   "js/level-generator.js",
   "js/physics.js",
   "js/platforms.js",
-  "js/player.js",
-  "js/visual-meadow-assets.js"
+  "js/player.js"
 ]) {
   const current = read(relativePath);
   const baseline = execFileSync("git", ["show", `HEAD:${relativePath}`], {

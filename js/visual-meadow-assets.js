@@ -199,11 +199,10 @@
       "background_clouds_front",
       "bottom_spike_tile"
     ]);
-    const CLOUD_BACK_DRIFT_AMPLITUDE = 15;
-    const CLOUD_BACK_DRIFT_PERIOD_SECONDS = 22;
-    const CLOUD_FRONT_DRIFT_AMPLITUDE = 22;
-    const CLOUD_FRONT_DRIFT_PERIOD_SECONDS = 15;
-    const CLOUD_FRONT_DRIFT_PHASE = Math.PI / 3;
+    const CLOUD_BACK_LEFT_SPEED = 6;
+    const CLOUD_BACK_WRAP_OVERLAP = 8;
+    const CLOUD_FRONT_LEFT_SPEED = 12;
+    const CLOUD_FRONT_WRAP_OVERLAP = 29;
     const assets = {};
 
 
@@ -281,9 +280,39 @@
       return true;
     }
 
-    function getCloudDriftOffset(time, amplitude, periodSeconds, phase = 0) {
+    function getCloudWrapDestinations(time, width, leftSpeed, overlap) {
       const safeTime = Number.isFinite(time) ? time : 0;
-      return Math.sin(safeTime * Math.PI * 2 / periodSeconds + phase) * amplitude;
+      const cloudWidth = SOURCE_SIZES.background_clouds_back.w;
+      const wrapDistance = cloudWidth - overlap;
+      const travel = (
+        (safeTime * leftSpeed) % wrapDistance + wrapDistance
+      ) % wrapDistance;
+      const offsetX = travel === 0 ? 0 : -travel;
+      const scaleX = width / cloudWidth;
+      return Object.freeze([0, wrapDistance].map(copyOffset => (
+        (offsetX + copyOffset) * scaleX
+      )));
+    }
+
+    function drawWrappedCloudLayer(
+      context,
+      name,
+      width,
+      height,
+      visualTime,
+      leftSpeed,
+      overlap
+    ) {
+      if (!isReady(name)) return false;
+      for (const offsetX of getCloudWrapDestinations(
+        visualTime,
+        width,
+        leftSpeed,
+        overlap
+      )) {
+        drawBackgroundLayer(context, name, width, height, offsetX);
+      }
+      return true;
     }
 
     function drawBackground(context, width, height, visualTime = 0) {
@@ -294,29 +323,24 @@
 
       if (isReady("background_sky_base") && isReady("background_landscape")) {
         drawBackgroundLayer(context, "background_sky_base", width, height);
-        drawBackgroundLayer(
+        drawWrappedCloudLayer(
           context,
           "background_clouds_back",
           width,
           height,
-          getCloudDriftOffset(
-            visualTime,
-            CLOUD_BACK_DRIFT_AMPLITUDE,
-            CLOUD_BACK_DRIFT_PERIOD_SECONDS
-          )
+          visualTime,
+          CLOUD_BACK_LEFT_SPEED,
+          CLOUD_BACK_WRAP_OVERLAP
         );
         drawBackgroundLayer(context, "background_landscape", width, height);
-        drawBackgroundLayer(
+        drawWrappedCloudLayer(
           context,
           "background_clouds_front",
           width,
           height,
-          getCloudDriftOffset(
-            visualTime,
-            CLOUD_FRONT_DRIFT_AMPLITUDE,
-            CLOUD_FRONT_DRIFT_PERIOD_SECONDS,
-            CLOUD_FRONT_DRIFT_PHASE
-          )
+          visualTime,
+          CLOUD_FRONT_LEFT_SPEED,
+          CLOUD_FRONT_WRAP_OVERLAP
         );
       } else if (isReady("background")) {
         context.drawImage(

@@ -246,8 +246,10 @@ assert.deepEqual(status.animation, {
 const backgroundStatus = JSON.parse(JSON.stringify(fixture.api.getBackgroundStatus()));
 assert.equal(backgroundStatus.ready, true);
 assert.equal(backgroundStatus.starPulseAnimation.count, 26);
-assert.equal(backgroundStatus.cloudAnimation.back.xAmplitude, 24);
-assert.equal(backgroundStatus.cloudAnimation.front.xAmplitude, 18);
+assert.equal(backgroundStatus.cloudAnimation.back.leftSpeed, 6);
+assert.equal(backgroundStatus.cloudAnimation.front.leftSpeed, 12);
+assert.equal(backgroundStatus.cloudAnimation.back.drawCopies, 2);
+assert.equal(backgroundStatus.cloudAnimation.front.drawCopies, 2);
 
 const atZero = drawAt(fixture, 0);
 const pngDrawsAtZero = hazardDraws(atZero);

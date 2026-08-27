@@ -26,12 +26,10 @@ const NIGHT_ASSET_VISUALS = (() => {
     "moon",
     "landscape"
   ]);
-  const BACK_CLOUD_X_AMPLITUDE = 24;
-  const BACK_CLOUD_X_PERIOD_SECONDS = 36;
-  const BACK_CLOUD_X_PHASE = 0;
-  const FRONT_CLOUD_X_AMPLITUDE = 18;
-  const FRONT_CLOUD_X_PERIOD_SECONDS = 24;
-  const FRONT_CLOUD_X_PHASE = 1.1;
+  const BACK_CLOUD_LEFT_SPEED = 6;
+  const BACK_CLOUD_WRAP_OVERLAP = 65;
+  const FRONT_CLOUD_LEFT_SPEED = 12;
+  const FRONT_CLOUD_WRAP_OVERLAP = 45;
   const HAZARD_WAVE_01_X_SPEED = 10;
   const HAZARD_WAVE_02_X_SPEED = -16;
   const STAR_PULSE_MINIMUM_FACTOR = 0.20;
@@ -172,25 +170,29 @@ const NIGHT_ASSET_VISUALS = (() => {
     if (!mapping) return null;
     const safeTime = Number.isFinite(visualTime) ? visualTime : 0;
     const isFront = layer === "front";
-    const amplitude = isFront
-      ? FRONT_CLOUD_X_AMPLITUDE
-      : BACK_CLOUD_X_AMPLITUDE;
-    const periodSeconds = isFront
-      ? FRONT_CLOUD_X_PERIOD_SECONDS
-      : BACK_CLOUD_X_PERIOD_SECONDS;
-    const phase = isFront ? FRONT_CLOUD_X_PHASE : BACK_CLOUD_X_PHASE;
-    const offsetX = Math.sin(
-      safeTime * Math.PI * 2 / periodSeconds + phase
-    ) * amplitude;
+    const leftSpeed = isFront
+      ? FRONT_CLOUD_LEFT_SPEED
+      : BACK_CLOUD_LEFT_SPEED;
+    const overlap = isFront
+      ? FRONT_CLOUD_WRAP_OVERLAP
+      : BACK_CLOUD_WRAP_OVERLAP;
+    const wrapDistance = BACKGROUND_REFERENCE.w - overlap;
+    const travel = (
+      (safeTime * leftSpeed) % wrapDistance + wrapDistance
+    ) % wrapDistance;
+    const offsetX = travel === 0 ? 0 : -travel;
     return Object.freeze({
       offsetX,
       offsetY: 0,
-      destination: Object.freeze({
-        x: offsetX * mapping.scaleX,
-        y: 0,
-        w: mapping.destination.w,
-        h: mapping.destination.h
-      })
+      wrapDistance,
+      destinations: Object.freeze([0, wrapDistance].map(copyOffset => (
+        Object.freeze({
+          x: (offsetX + copyOffset) * mapping.scaleX,
+          y: 0,
+          w: mapping.destination.w,
+          h: mapping.destination.h
+        })
+      )))
     });
   }
 
@@ -291,23 +293,17 @@ const NIGHT_ASSET_VISUALS = (() => {
     }
     if (isBackgroundLayerReady("cloudsBack")) {
       const cloudsBack = getCloudMapping(safeTime, mapping, "back");
-      drawBackgroundLayer(
-        context,
-        "cloudsBack",
-        mapping,
-        cloudsBack.destination
-      );
+      for (const destination of cloudsBack.destinations) {
+        drawBackgroundLayer(context, "cloudsBack", mapping, destination);
+      }
     }
     drawBackgroundLayer(context, "moon", mapping);
     drawBackgroundLayer(context, "landscape", mapping);
     if (isBackgroundLayerReady("cloudsFront")) {
       const cloudsFront = getCloudMapping(safeTime, mapping, "front");
-      drawBackgroundLayer(
-        context,
-        "cloudsFront",
-        mapping,
-        cloudsFront.destination
-      );
+      for (const destination of cloudsFront.destinations) {
+        drawBackgroundLayer(context, "cloudsFront", mapping, destination);
+      }
     }
     context.restore();
     return true;
@@ -512,20 +508,21 @@ const NIGHT_ASSET_VISUALS = (() => {
       alphaUsage: Object.freeze({...backgroundAlphaUsage}),
       cloudAnimation: Object.freeze({
         back: Object.freeze({
-          xAmplitude: BACK_CLOUD_X_AMPLITUDE,
-          xPeriodSeconds: BACK_CLOUD_X_PERIOD_SECONDS,
-          xPhase: BACK_CLOUD_X_PHASE,
-          yAmplitude: 0,
-          drawCopies: 1
+          leftSpeed: BACK_CLOUD_LEFT_SPEED,
+          ySpeed: 0,
+          wrapDistance: BACKGROUND_REFERENCE.w - BACK_CLOUD_WRAP_OVERLAP,
+          overlap: BACK_CLOUD_WRAP_OVERLAP,
+          drawCopies: 2
         }),
         front: Object.freeze({
-          xAmplitude: FRONT_CLOUD_X_AMPLITUDE,
-          xPeriodSeconds: FRONT_CLOUD_X_PERIOD_SECONDS,
-          xPhase: FRONT_CLOUD_X_PHASE,
-          yAmplitude: 0,
-          drawCopies: 1
+          leftSpeed: FRONT_CLOUD_LEFT_SPEED,
+          ySpeed: 0,
+          wrapDistance: BACKGROUND_REFERENCE.w - FRONT_CLOUD_WRAP_OVERLAP,
+          overlap: FRONT_CLOUD_WRAP_OVERLAP,
+          drawCopies: 2
         }),
-        wrapMode: "single-sine-no-wrap"
+        direction: "right-to-left",
+        wrapMode: "horizontal-continuous"
       }),
       starPulses: STAR_PULSES,
       starPulseAnimation: Object.freeze({
