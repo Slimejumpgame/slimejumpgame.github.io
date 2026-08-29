@@ -32,6 +32,18 @@ const ABANDONED_MINE_ASSET_VISUALS = (() => {
     })
   });
   const ASSET_NAMES = Object.freeze(Object.keys(ASSET_CONTRACTS));
+  const HAZARD_ASSET_NAME = "hazardMain";
+  const HAZARD_CONTRACT = Object.freeze({
+    path:
+      "assets/environments/abandonedMine/hazards/abandonedMine_hazard_main.png",
+    size: Object.freeze({w: 1650, h: 60}),
+    source: Object.freeze({x: 0, y: 0, w: 1650, h: 60}),
+    destination: Object.freeze({x: 235, y: 690, w: 825, h: 30})
+  });
+  const ALL_ASSET_CONTRACTS = Object.freeze({
+    ...ASSET_CONTRACTS,
+    [HAZARD_ASSET_NAME]: HAZARD_CONTRACT
+  });
   const MINECART_SCALE = 0.68;
   const WHEEL_CENTERS = Object.freeze([
     Object.freeze({x: 60, y: 85}),
@@ -88,7 +100,7 @@ const ABANDONED_MINE_ASSET_VISUALS = (() => {
 
   function hasValidSize(name) {
     const image = assets[name]?.image;
-    const expected = ASSET_CONTRACTS[name]?.size;
+    const expected = ALL_ASSET_CONTRACTS[name]?.size;
     return Boolean(
       image?.complete &&
       expected &&
@@ -109,7 +121,7 @@ const ABANDONED_MINE_ASSET_VISUALS = (() => {
     image.src = contract.path;
   }
 
-  for (const [name, contract] of Object.entries(ASSET_CONTRACTS)) {
+  for (const [name, contract] of Object.entries(ALL_ASSET_CONTRACTS)) {
     loadAsset(name, contract);
   }
 
@@ -118,8 +130,53 @@ const ABANDONED_MINE_ASSET_VISUALS = (() => {
   }
 
   const backgroundReadyPromise = Promise.all(
-    Object.values(assets).map(record => record.ready)
+    ASSET_NAMES.map(name => assets[name].ready)
   ).then(() => isBackgroundReady());
+
+  function isHazardReady() {
+    return hasValidSize(HAZARD_ASSET_NAME);
+  }
+
+  const hazardReadyPromise = assets[HAZARD_ASSET_NAME].ready.then(
+    () => isHazardReady()
+  );
+
+  function getBottomHazardMapping(rect) {
+    const destination = HAZARD_CONTRACT.destination;
+    if (
+      !rect ||
+      rect.x !== destination.x ||
+      rect.y !== destination.y ||
+      rect.w !== destination.w ||
+      rect.h !== destination.h
+    ) return null;
+    return Object.freeze({
+      source: HAZARD_CONTRACT.source,
+      destination
+    });
+  }
+
+  function drawBottomDeathHazard(context, rect) {
+    if (!context || !isHazardReady()) return false;
+    const mapping = getBottomHazardMapping(rect);
+    if (!mapping) return false;
+    context.save();
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    context.drawImage(
+      assets[HAZARD_ASSET_NAME].image,
+      mapping.source.x,
+      mapping.source.y,
+      mapping.source.w,
+      mapping.source.h,
+      mapping.destination.x,
+      mapping.destination.y,
+      mapping.destination.w,
+      mapping.destination.h
+    );
+    context.restore();
+    return true;
+  }
 
   function positiveModulo(value, divisor) {
     return ((value % divisor) + divisor) % divisor;
@@ -362,6 +419,20 @@ const ABANDONED_MINE_ASSET_VISUALS = (() => {
     getMinecartMapping,
     getLanternMapping,
     drawBackground,
+    whenHazardReady: () => hazardReadyPromise,
+    isHazardReady,
+    getBottomHazardMapping,
+    drawBottomDeathHazard,
+    getHazardStatus: () => Object.freeze({
+      ready: isHazardReady(),
+      path: HAZARD_CONTRACT.path,
+      expectedNativeSize: HAZARD_CONTRACT.size,
+      validNativeSize: hasValidSize(HAZARD_ASSET_NAME),
+      source: HAZARD_CONTRACT.source,
+      destination: HAZARD_CONTRACT.destination,
+      layerCount: 1,
+      animated: false
+    }),
     getBackgroundStatus: () => Object.freeze({
       ready: isBackgroundReady(),
       paths: Object.freeze(Object.fromEntries(

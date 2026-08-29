@@ -10,8 +10,12 @@ const root = path.resolve(__dirname, "..");
 const read = relativePath => fs.readFileSync(path.join(root, relativePath), "utf8");
 const visualSource = read("js/visual-abandoned-mine-assets.js");
 const rendererSource = read("js/renderer.js");
+const hazardsSource = read("js/hazards.js");
+const levelGeneratorSource = read("js/level-generator.js");
 const indexSource = read("index.html");
 const backgroundDirectory = "assets/environments/abandonedMine/background";
+const hazardPath =
+  "assets/environments/abandonedMine/hazards/abandonedMine_hazard_main.png";
 const assetPaths = Object.freeze({
   main: `${backgroundDirectory}/abandonedMine_background_main.png`,
   front: `${backgroundDirectory}/abandonedMine_background_front.png`,
@@ -26,6 +30,9 @@ const expectedSizes = Object.freeze({
   minecartFull: Object.freeze({w: 192, h: 96}),
   minecartWheel: Object.freeze({w: 40, h: 40})
 });
+const hazardSize = Object.freeze({w: 1650, h: 60});
+const allAssetPaths = Object.freeze({...assetPaths, hazardMain: hazardPath});
+const allExpectedSizes = Object.freeze({...expectedSizes, hazardMain: hazardSize});
 
 function decodePng(relativePath) {
   const bytes = fs.readFileSync(path.join(root, relativePath));
@@ -145,6 +152,10 @@ assert.ok(decodedAssets.front.visiblePixels > 100000);
 assert.equal(decodedAssets.minecartEmpty.colorType, 6);
 assert.equal(decodedAssets.minecartFull.colorType, 6);
 assert.equal(decodedAssets.minecartWheel.colorType, 6);
+const decodedHazard = decodePng(hazardPath);
+assert.equal(decodedHazard.width, hazardSize.w);
+assert.equal(decodedHazard.height, hazardSize.h);
+assert.equal(decodedHazard.colorType, 6);
 
 function createRecordingContext() {
   const calls = [];
@@ -201,11 +212,11 @@ function loadFixture({failedFile = null, invalidFile = null} = {}) {
         this.onerror?.();
         return;
       }
-      const entry = Object.entries(assetPaths).find(([, assetPath]) => (
+      const entry = Object.entries(allAssetPaths).find(([, assetPath]) => (
         assetPath === value
       ));
       assert.ok(entry, `unexpected asset path ${value}`);
-      const expected = expectedSizes[entry[0]];
+      const expected = allExpectedSizes[entry[0]];
       this.complete = true;
       this.naturalWidth = file === invalidFile ? expected.w - 1 : expected.w;
       this.naturalHeight = expected.h;
@@ -266,10 +277,20 @@ function captureBackground(fixture, visualTime, width = 1280, height = 720) {
   return {drawn, calls: fixture.recording.calls.map(call => [...call])};
 }
 
+function captureHazard(fixture, visualTime, rect) {
+  fixture.recording.calls.length = 0;
+  const drawn = fixture.api.drawBottomDeathHazard(
+    fixture.recording.context,
+    rect,
+    visualTime
+  );
+  return {drawn, calls: fixture.recording.calls.map(call => [...call])};
+}
+
 const fixture = loadFixture();
 assert.equal(fixture.getRegisteredVisuals(), fixture.api);
 assert.equal(fixture.api.platformMarker, fixture.platformVisuals.platformMarker);
-assert.deepEqual(fixture.loadedPaths, Object.values(assetPaths));
+assert.deepEqual(fixture.loadedPaths, Object.values(allAssetPaths));
 
 const status = JSON.parse(JSON.stringify(fixture.api.getBackgroundStatus()));
 assert.equal(status.ready, true);
@@ -329,6 +350,69 @@ assert.ok(status.lanterns.main.every(point => (
 assert.ok(status.lanterns.front.every(point => (
   hasWarmPixelNear(decodedAssets.front, point)
 )));
+
+const hazardRect = Object.freeze({
+  x: 235,
+  y: 690,
+  w: 825,
+  h: 30,
+  isBottomDeathHazard: true
+});
+const hazardStatus = JSON.parse(JSON.stringify(fixture.api.getHazardStatus()));
+assert.deepEqual(hazardStatus, {
+  ready: true,
+  path: hazardPath,
+  expectedNativeSize: hazardSize,
+  validNativeSize: true,
+  source: {x: 0, y: 0, w: 1650, h: 60},
+  destination: {x: 235, y: 690, w: 825, h: 30},
+  layerCount: 1,
+  animated: false
+});
+assert.deepEqual(
+  JSON.parse(JSON.stringify(fixture.api.getBottomHazardMapping(hazardRect))),
+  {
+    source: {x: 0, y: 0, w: 1650, h: 60},
+    destination: {x: 235, y: 690, w: 825, h: 30}
+  }
+);
+const hazardAtZero = captureHazard(fixture, 0, hazardRect);
+const hazardAtLaterTime = captureHazard(fixture, 123.45, hazardRect);
+assert.equal(hazardAtZero.drawn, true);
+assert.deepEqual(
+  hazardAtLaterTime.calls,
+  hazardAtZero.calls,
+  "the Abandoned Mine hazard must not depend on visual time"
+);
+const hazardDrawCalls = hazardAtZero.calls.filter(call => call[0] === "drawImage");
+assert.equal(hazardDrawCalls.length, 1);
+assert.equal(hazardDrawCalls[0][1].src, hazardPath);
+assert.deepEqual(hazardDrawCalls[0].slice(2), [
+  0, 0, 1650, 60, 235, 690, 825, 30
+]);
+assert.equal(captureHazard(
+  fixture,
+  0,
+  {...hazardRect, y: 689}
+).drawn, false);
+assert.equal(
+  Boolean(fixture.api.drawBottomDeathHazard(
+    fixture.recording.context,
+    hazardRect,
+    0
+  )) ? 0 : 1,
+  0,
+  "a successful asset draw must suppress the generic fallback"
+);
+
+for (const mode of ["failedFile", "invalidFile"]) {
+  const unavailableHazard = loadFixture({
+    [mode]: path.posix.basename(hazardPath)
+  });
+  assert.equal(unavailableHazard.api.isBackgroundReady(), true);
+  assert.equal(unavailableHazard.api.isHazardReady(), false);
+  assert.equal(captureHazard(unavailableHazard, 0, hazardRect).drawn, false);
+}
 
 const cartsAtOne = JSON.parse(JSON.stringify(fixture.api.getMinecartMapping(1)));
 const cartsAtOneAgain = JSON.parse(JSON.stringify(fixture.api.getMinecartMapping(1)));
@@ -474,10 +558,18 @@ assert.match(
   rendererDrawSource,
   /biomePlatformVisuals\.drawBackground\(ctx, W, H, worldTime\)[\s\S]*?if \(!assetBackgroundDrawn\) \{[\s\S]*?drawBackground\(biome\)/
 );
+assert.match(
+  hazardsSource,
+  /biomeVisuals\.drawBottomDeathHazard\(ctx, rect, worldTime\)[\s\S]*?if \(!assetHazardDrawn\) renderer\(rect, biome\.hazard\);/
+);
+assert.match(
+  levelGeneratorSource,
+  /spikes\.push\(\{x: 235, y: 690, w: 825, h: 30, isBottomDeathHazard: true\}\);/
+);
 assert.doesNotMatch(visualSource, /Math\.random\(|getImageData|createElement|particle|dust/i);
 assert.match(visualSource, /wheelRotation = signedDistance \/ effectiveWheelRadius/);
 assert.match(visualSource, /context\.rotate\(wheel\.rotation\)/);
 
 console.log(
-  "Abandoned Mine static layers, minecarts, rolling wheels, lantern flicker, transparency and fallback tests passed."
+  "Abandoned Mine background, carts, lanterns and static hazard tests passed."
 );
