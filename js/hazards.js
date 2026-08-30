@@ -4,6 +4,10 @@
     const count = Math.max(2, Math.floor(s.w / 24));
     const step = s.w / count;
     if (
+      (
+        typeof isFairyTaleGraphicsMode !== "function" ||
+        isFairyTaleGraphicsMode()
+      ) &&
       typeof MEADOW_ASSET_VISUALS !== "undefined" &&
       MEADOW_ASSET_VISUALS.drawBottomSpikeHazard(ctx, s, count, step)
     ) return;

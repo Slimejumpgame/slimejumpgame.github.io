@@ -504,6 +504,10 @@
     if (
       !visualBiome?.id ||
       state === "menu" ||
+      (
+        typeof isFairyTaleGraphicsMode === "function" &&
+        !isFairyTaleGraphicsMode()
+      ) ||
       typeof isTutorialStage !== "function" ||
       typeof BIOME_PLATFORM_VISUALS === "undefined"
     ) return null;
@@ -515,6 +519,10 @@
     if (
       !visualBiome?.id ||
       state === "menu" ||
+      (
+        typeof isFairyTaleGraphicsMode === "function" &&
+        !isFairyTaleGraphicsMode()
+      ) ||
       typeof isTutorialStage !== "function" ||
       typeof BIOME_DECOR_VISUALS === "undefined"
     ) return null;
@@ -526,6 +534,10 @@
     if (
       !visualBiome?.id ||
       state === "menu" ||
+      (
+        typeof isFairyTaleGraphicsMode === "function" &&
+        !isFairyTaleGraphicsMode()
+      ) ||
       typeof isTutorialStage !== "function" ||
       typeof BIOME_PORTAL_VISUALS === "undefined"
     ) return null;
@@ -925,6 +937,10 @@
   }
 
   function drawFallingPlatformAsset(context, platform, drawX = platform.x) {
+    if (
+      typeof isFairyTaleGraphicsMode === "function" &&
+      !isFairyTaleGraphicsMode()
+    ) return false;
     if (!platform?.fragile || platform.h !== FALLING_PLATFORM_DRAW_HEIGHT) {
       return false;
     }
@@ -1071,6 +1087,10 @@
   }
 
   function drawIcePlatformAsset(context, platform, drawX = platform.x) {
+    if (
+      typeof isFairyTaleGraphicsMode === "function" &&
+      !isFairyTaleGraphicsMode()
+    ) return false;
     if (!platform?.ice || platform.h !== ICE_PLATFORM_COLLISION_HEIGHT) {
       return false;
     }
@@ -1172,6 +1192,10 @@
 
   function drawSpikePlatformAsset(context, platform, drawX, count, step) {
     if (
+      typeof isFairyTaleGraphicsMode === "function" &&
+      !isFairyTaleGraphicsMode()
+    ) return false;
+    if (
       !platform?.spikePlatform ||
       !isSpikePlatformAssetReady() ||
       count < 1 ||
@@ -1213,6 +1237,10 @@
       ctx.shadowColor = "#4ddcff";
       ctx.shadowBlur = 18;
       if (
+        (
+          typeof isFairyTaleGraphicsMode !== "function" ||
+          isFairyTaleGraphicsMode()
+        ) &&
         bouncePadImage.complete &&
         bouncePadImage.naturalWidth > 0 &&
         bouncePadImage.naturalHeight > 0
@@ -1342,6 +1370,10 @@
   }
 
   function drawConveyorPlatformAsset(context, platform, drawX = platform.x) {
+    if (
+      typeof isFairyTaleGraphicsMode === "function" &&
+      !isFairyTaleGraphicsMode()
+    ) return false;
     if (!platform?.conveyor || platform.h !== CONVEYOR_PLATFORM_DRAW_HEIGHT) {
       return false;
     }
@@ -2058,6 +2090,10 @@
       ctx.shadowColor = "#ffe95c";
       ctx.shadowBlur = 18;
       if (
+        (
+          typeof isFairyTaleGraphicsMode !== "function" ||
+          isFairyTaleGraphicsMode()
+        ) &&
         collectibleStarImage.complete &&
         collectibleStarImage.naturalWidth > 0 &&
         collectibleStarImage.naturalHeight > 0
@@ -3858,7 +3894,10 @@
   }
 
   function drawSlimeBody(context, palette, radius, options = {}) {
-    const tintedBody = getTintedSlimeBody(palette);
+    const tintedBody = (
+      typeof isFairyTaleGraphicsMode !== "function" ||
+      isFairyTaleGraphicsMode()
+    ) ? getTintedSlimeBody(palette) : null;
     context.save();
     if (Number.isFinite(options.glowBlur) && options.glowBlur > 0) {
       context.shadowColor = palette.glow;
@@ -3926,7 +3965,13 @@
 
   function drawSlimeFace(context, palette, faceState, options = {}) {
     const image = slimeFaceImages[faceState];
-    if (isSlimeFaceImageReady(image)) {
+    if (
+      (
+        typeof isFairyTaleGraphicsMode !== "function" ||
+        isFairyTaleGraphicsMode()
+      ) &&
+      isSlimeFaceImageReady(image)
+    ) {
       context.save();
       context.imageSmoothingEnabled = true;
       context.imageSmoothingQuality = "high";

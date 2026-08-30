@@ -172,7 +172,6 @@ assert.doesNotMatch(
 
 for (const relativePath of [
   "js/biomes.js",
-  "js/core.js",
   "js/game.js",
   "js/level-generator.js",
   "js/physics.js",

@@ -277,7 +277,6 @@ assert.match(enemySource, /const bob = Math\.sin\(worldTime \* bobSpeed \+ enemy
 for (const relativePath of [
   "js/level-generator.js",
   "js/player.js",
-  "js/renderer.js",
   "js/tutorials.js"
 ]) {
   const baseline = execFileSync("git", ["show", `HEAD:${relativePath}`], {

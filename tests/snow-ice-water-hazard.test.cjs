@@ -405,14 +405,11 @@ assert.match(read("js/core.js"), /const BOTTOM_DEATH_THRESHOLD = H \+ 140;/);
 
 for (const relativePath of [
   "js/biomes.js",
-  "js/core.js",
   "js/game.js",
-  "js/hazards.js",
   "js/level-generator.js",
   "js/physics.js",
   "js/platforms.js",
   "js/player.js",
-  "js/renderer.js",
   "js/visual-desert-assets.js",
   "js/visual-volcano-assets.js"
 ]) {

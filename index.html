@@ -187,13 +187,21 @@
               </span>
               <span>Highscores</span>
             </button>
+            <a class="privacyLink" href="https://slimejumpgame.github.io/datenschutz.html" target="_blank" rel="noopener noreferrer external">Datenschutz</a>
           </nav>
         </div>
         <div class="mainMenuAudio" role="group" aria-label="Audioeinstellungen">
           <button id="musicBtn" class="iconBtn audioToggle uiButton active" aria-label="Musik ein oder aus" title="Musik an oder aus">♫</button>
           <button id="sfxBtn" class="iconBtn audioToggle uiButton active" aria-label="Soundeffekte ein oder aus" title="Soundeffekte an oder aus">FX</button>
         </div>
-        <a class="privacyLink" href="https://slimejumpgame.github.io/datenschutz.html" target="_blank" rel="noopener noreferrer external">Datenschutz</a>
+        <div class="mainMenuGraphics" role="group" aria-label="Grafikmodus">
+          <button id="fairyTaleGraphicsBtn" class="graphicsModeButton iconBtn uiButton uiButton--primary active" type="button" aria-pressed="true" aria-label="Grafikmodus Fairy Tale">
+            <span class="graphicsModeButtonLabel graphicsModeButtonLabel--stacked">FAIRY<br>TALE</span>
+          </button>
+          <button id="legacyGraphicsBtn" class="graphicsModeButton iconBtn uiButton uiButton--secondary" type="button" aria-pressed="false" aria-label="Grafikmodus Legacy">
+            <span class="graphicsModeButtonLabel">LEGACY</span>
+          </button>
+        </div>
       </section>
 
       <section id="wardrobeScreen" class="menuScreen menuScreen--detail hidden" aria-label="Garderobe">
@@ -655,8 +663,14 @@
         <div id="pausePanel" class="pausePanel uiPanel">
           <h2 id="pauseTitle">PAUSE</h2>
           <button id="resumeBtn" class="uiButton uiButton--primary" type="button">Fortsetzen</button>
-          <button id="pauseMusicBtn" class="iconBtn audioToggle uiButton active" type="button">♫</button>
-          <button id="pauseSfxBtn" class="iconBtn audioToggle uiButton active" type="button">FX</button>
+          <div class="pauseSettingsRow pauseAudioRow" role="group" aria-label="Audioeinstellungen">
+            <button id="pauseMusicBtn" class="iconBtn audioToggle uiButton active" type="button">♫</button>
+            <button id="pauseSfxBtn" class="iconBtn audioToggle uiButton active" type="button">FX</button>
+          </div>
+          <div class="pauseSettingsRow pauseGraphicsRow" role="group" aria-label="Grafikmodus">
+            <button id="pauseFairyTaleGraphicsBtn" class="graphicsModeButton uiButton uiButton--primary active" type="button" aria-pressed="true">FAIRY TALE</button>
+            <button id="pauseLegacyGraphicsBtn" class="graphicsModeButton uiButton uiButton--secondary" type="button" aria-pressed="false">LEGACY</button>
+          </div>
           <button id="endRunBtn" class="uiButton uiButton--danger" type="button">Run beenden</button>
         </div>
       </section>

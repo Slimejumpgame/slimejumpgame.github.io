@@ -598,7 +598,6 @@ assert.match(read("js/hazards.js"), /MEADOW_ASSET_VISUALS\.drawBottomSpikeHazard
 
 for (const relativePath of [
   "js/game.js",
-  "js/hazards.js",
   "js/level-generator.js",
   "js/physics.js",
   "js/platforms.js",

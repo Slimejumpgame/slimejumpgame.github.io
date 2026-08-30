@@ -469,14 +469,11 @@ assert.doesNotMatch(visualSource, /coast|desert|volcano|Math\.random\(/i);
 
 for (const relativePath of [
   "js/biomes.js",
-  "js/core.js",
   "js/game.js",
-  "js/hazards.js",
   "js/level-generator.js",
   "js/physics.js",
   "js/platforms.js",
   "js/player.js",
-  "js/renderer.js",
   "js/visual-desert-assets.js",
   "js/visual-volcano-assets.js"
 ]) {

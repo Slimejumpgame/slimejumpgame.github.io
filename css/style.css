@@ -710,12 +710,29 @@ canvas.aiming {
 }
 
 #resumeBtn,
-#pauseMusicBtn,
-#pauseSfxBtn,
 #endRunBtn {
   width: 100%;
   min-height: clamp(50px, 12dvh, 68px);
   font-size: clamp(17px, 4dvh, 25px);
+}
+
+.pauseSettingsRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(7px, 1.4vw, 10px);
+}
+
+.pauseSettingsRow .uiButton {
+  width: 100%;
+  min-width: 0;
+  min-height: clamp(46px, 10dvh, 58px);
+  padding-inline: clamp(6px, 1.4vw, 12px);
+  font-size: clamp(13px, 3dvh, 19px);
+}
+
+.pauseGraphicsRow .graphicsModeButton {
+  font-size: clamp(10px, 2.4dvh, 15px);
+  line-height: 1.05;
 }
 
 .endRunConfirmOverlay {
@@ -2351,9 +2368,8 @@ p {
 }
 
 .privacyLink {
-  position: absolute;
-  right: max(6px, env(safe-area-inset-right));
-  bottom: max(4px, env(safe-area-inset-bottom));
+  position: static;
+  align-self: center;
   z-index: 6;
   padding: 3px 8px;
   border: 1px solid rgba(226, 211, 246, 0.2);
@@ -3776,6 +3792,15 @@ p {
   gap: clamp(5px, 0.7vw, 9px);
 }
 
+.mainMenuGraphics {
+  position: absolute;
+  right: max(clamp(8px, 1.5vw, 18px), env(safe-area-inset-right));
+  bottom: max(clamp(7px, 1.2vh, 14px), env(safe-area-inset-bottom));
+  z-index: 7;
+  display: flex;
+  gap: clamp(5px, 0.7vw, 9px);
+}
+
 .mainMenuAudio .iconBtn {
   width: clamp(46px, 4.4vw, 58px);
   min-width: 46px;
@@ -3784,6 +3809,27 @@ p {
   border-radius: clamp(10px, 1vw, 14px);
   font-size: clamp(15px, 1.6vw, 20px);
   touch-action: manipulation;
+}
+
+.mainMenuGraphics .graphicsModeButton {
+  width: clamp(46px, 4.4vw, 58px);
+  min-width: 46px;
+  min-height: 48px;
+  padding: 0 4px;
+  border-radius: clamp(10px, 1vw, 14px);
+  font-size: clamp(8px, 0.78vw, 10px);
+  line-height: 1.02;
+  letter-spacing: 0;
+  touch-action: manipulation;
+}
+
+.graphicsModeButtonLabel {
+  display: block;
+  white-space: nowrap;
+}
+
+.graphicsModeButtonLabel--stacked {
+  line-height: 0.96;
 }
 
 .recentAchievements {
@@ -4970,10 +5016,20 @@ p {
     touch-action: pan-y;
   }
 
-  .wardrobePanel,
-  .mainMenuActions {
+  .wardrobePanel {
     width: min(100%, 420px);
     margin: 0 auto;
+  }
+
+  .mainMenuActions {
+    width: min(calc(100% - 116px), 420px);
+    margin: 0 auto;
+  }
+
+  .mainMenuAudio,
+  .mainMenuGraphics {
+    flex-direction: column;
+    gap: 3px;
   }
 
   .wardrobeScreenBody {
@@ -5407,6 +5463,25 @@ p {
 
   .mainMenuActions .uiButton--large {
     min-height: clamp(34px, 9vh, 42px);
+  }
+
+  .mainMenuActions .privacyLink {
+    padding: 2px 6px;
+    font-size: clamp(7px, 2vh, 9px);
+  }
+
+  .mainMenuGraphics .graphicsModeButton {
+    min-height: clamp(38px, 11vh, 48px);
+  }
+
+  .pausePanel {
+    gap: clamp(5px, 1.2dvh, 8px);
+    padding-block: clamp(10px, 2.5dvh, 18px);
+  }
+
+  .pausePanel h2 {
+    margin-bottom: 2px;
+    font-size: clamp(27px, 8dvh, 42px);
   }
 
   .recentAchievements {

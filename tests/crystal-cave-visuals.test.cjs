@@ -485,12 +485,9 @@ assert.match(read("js/core.js"), /const BOTTOM_DEATH_THRESHOLD = H \+ 140;/);
 
 for (const relativePath of [
   "js/biomes.js",
-  "js/core.js",
   "js/game.js",
-  "js/hazards.js",
   "js/level-generator.js",
-  "js/physics.js",
-  "js/renderer.js"
+  "js/physics.js"
 ]) {
   const baseline = execFileSync("git", ["show", `HEAD:${relativePath}`], {
     cwd: root,

@@ -62,6 +62,24 @@
   }
 
   const DEV_MODE = loadLocalDevModeEnabled();
+  const GRAPHICS_MODE_STORAGE_KEY = "slimejumperGraphicsMode";
+  const GRAPHICS_MODE_FAIRY_TALE = "fairyTale";
+  const GRAPHICS_MODE_LEGACY = "legacy";
+
+  function isValidGraphicsMode(mode) {
+    return mode === GRAPHICS_MODE_FAIRY_TALE || mode === GRAPHICS_MODE_LEGACY;
+  }
+
+  function loadGraphicsMode() {
+    try {
+      const storedMode = localStorage.getItem(GRAPHICS_MODE_STORAGE_KEY);
+      return isValidGraphicsMode(storedMode)
+        ? storedMode
+        : GRAPHICS_MODE_FAIRY_TALE;
+    } catch (_) {
+      return GRAPHICS_MODE_FAIRY_TALE;
+    }
+  }
 
   const ui = {
     level: document.getElementById("levelLabel"),
@@ -224,6 +242,10 @@
     resumeBtn: document.getElementById("resumeBtn"),
     pauseMusicBtn: document.getElementById("pauseMusicBtn"),
     pauseSfxBtn: document.getElementById("pauseSfxBtn"),
+    fairyTaleGraphicsBtn: document.getElementById("fairyTaleGraphicsBtn"),
+    legacyGraphicsBtn: document.getElementById("legacyGraphicsBtn"),
+    pauseFairyTaleGraphicsBtn: document.getElementById("pauseFairyTaleGraphicsBtn"),
+    pauseLegacyGraphicsBtn: document.getElementById("pauseLegacyGraphicsBtn"),
     endRunBtn: document.getElementById("endRunBtn"),
     endRunConfirmOverlay: document.getElementById("endRunConfirmOverlay"),
     endRunConfirmCancelBtn: document.getElementById("endRunConfirmCancelBtn"),
@@ -264,6 +286,60 @@
     devPerkInspector: document.getElementById("devPerkInspector"),
     devUpdateScreenTestBtn: document.getElementById("devUpdateScreenTestBtn")
   };
+
+  let graphicsMode = loadGraphicsMode();
+
+  function isFairyTaleGraphicsMode() {
+    return graphicsMode === GRAPHICS_MODE_FAIRY_TALE;
+  }
+
+  function updateGraphicsModeButtons() {
+    const buttonModes = [
+      [ui.fairyTaleGraphicsBtn, GRAPHICS_MODE_FAIRY_TALE],
+      [ui.legacyGraphicsBtn, GRAPHICS_MODE_LEGACY],
+      [ui.pauseFairyTaleGraphicsBtn, GRAPHICS_MODE_FAIRY_TALE],
+      [ui.pauseLegacyGraphicsBtn, GRAPHICS_MODE_LEGACY]
+    ];
+    for (const [button, mode] of buttonModes) {
+      if (!button) continue;
+      const active = graphicsMode === mode;
+      button.classList.toggle("active", active);
+      button.classList.toggle("uiButton--primary", active);
+      button.classList.toggle("uiButton--secondary", !active);
+      button.setAttribute("aria-pressed", String(active));
+    }
+  }
+
+  function setGraphicsMode(mode) {
+    if (!isValidGraphicsMode(mode)) return false;
+    const changed = graphicsMode !== mode;
+    graphicsMode = mode;
+    try {
+      localStorage.setItem(GRAPHICS_MODE_STORAGE_KEY, graphicsMode);
+    } catch (_) {}
+    updateGraphicsModeButtons();
+    if (
+      changed &&
+      typeof refreshMenuBiomeBackgroundForGraphicsMode === "function"
+    ) {
+      refreshMenuBiomeBackgroundForGraphicsMode();
+    }
+    return true;
+  }
+
+  ui.fairyTaleGraphicsBtn?.addEventListener("click", () => {
+    setGraphicsMode(GRAPHICS_MODE_FAIRY_TALE);
+  });
+  ui.legacyGraphicsBtn?.addEventListener("click", () => {
+    setGraphicsMode(GRAPHICS_MODE_LEGACY);
+  });
+  ui.pauseFairyTaleGraphicsBtn?.addEventListener("click", () => {
+    setGraphicsMode(GRAPHICS_MODE_FAIRY_TALE);
+  });
+  ui.pauseLegacyGraphicsBtn?.addEventListener("click", () => {
+    setGraphicsMode(GRAPHICS_MODE_LEGACY);
+  });
+  updateGraphicsModeButtons();
 
   let generatedLevel = null;
   let pendingGameOverScore = null;

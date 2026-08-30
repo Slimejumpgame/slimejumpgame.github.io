@@ -63,9 +63,11 @@ assert.deepEqual(
 let randomCalls = 0;
 let registryResolveCalls = 0;
 let menuHidden = false;
+const graphicsState = {mode: "fairyTale"};
 let menuContext = null;
 const drawTimes = [];
 const contextCalls = [];
+const legacyDraws = [];
 const math = Object.create(Math);
 math.random = () => {
   randomCalls++;
@@ -80,7 +82,8 @@ const menuCanvas = {
   getContext(type) {
     assert.equal(type, "2d");
     menuContext = {
-      clearRect(...args) { contextCalls.push(["clearRect", ...args]); }
+      clearRect(...args) { contextCalls.push(["clearRect", ...args]); },
+      drawImage(...args) { contextCalls.push(["drawImage", ...args]); }
     };
     return menuContext;
   }
@@ -129,6 +132,14 @@ const context = vm.createContext({
   Math: math,
   console,
   document,
+  graphicsState,
+  canvas: {kind: "game-canvas"},
+  drawBackground(biome) {
+    legacyDraws.push(biome.id);
+  },
+  isFairyTaleGraphicsMode() {
+    return graphicsState.mode === "fairyTale";
+  },
   ui: {
     menu: {
       classList: {
@@ -144,7 +155,12 @@ vm.runInContext(`${menuSource}
   globalThis.menuBackgroundForTest = {
     initializeMenuBiomeBackground,
     updateMenuBiomeBackground,
-    pauseMenuBiomeBackgroundClock
+    pauseMenuBiomeBackgroundClock,
+    refreshMenuBiomeBackgroundForGraphicsMode,
+    setGraphicsMode(mode) {
+      graphicsState.mode = mode;
+      refreshMenuBiomeBackgroundForGraphicsMode();
+    }
   };
 `, context, {filename: "main-menu-background-fixture.js"});
 
@@ -195,6 +211,21 @@ assert.deepEqual(drawTimes, [0.016, 0.04, 0.04, 0.05, 0.05]);
 assert.equal(randomCalls, 1);
 assert.deepEqual(contextCalls, []);
 
+context.menuBackgroundForTest.setGraphicsMode("legacy");
+assert.equal(context.menuBackgroundForTest.updateMenuBiomeBackground(13000), true);
+assert.deepEqual(legacyDraws, ["pirateHarbor"]);
+assert.deepEqual(contextCalls, [["drawImage", context.canvas, 0, 0, 1280, 720]]);
+assert.deepEqual(drawTimes, [0.016, 0.04, 0.04, 0.05, 0.05]);
+assert.equal(context.menuBackgroundForTest.updateMenuBiomeBackground(19000), true);
+assert.deepEqual(legacyDraws, ["pirateHarbor"]);
+
+context.menuBackgroundForTest.setGraphicsMode("fairyTale");
+assert.equal(context.menuBackgroundForTest.updateMenuBiomeBackground(20000), true);
+assert.equal(context.menuBackgroundForTest.updateMenuBiomeBackground(20010), true);
+assert.deepEqual(drawTimes.slice(0, -1), [0.016, 0.04, 0.04, 0.05, 0.05, 0.05]);
+assert.ok(Math.abs(drawTimes.at(-1) - 0.06) < Number.EPSILON);
+assert.equal(randomCalls, 1);
+
 assert.doesNotMatch(menuSource, /requestAnimationFrame/);
 assert.doesNotMatch(menuSource, /setTimeout|setInterval/);
 assert.doesNotMatch(menuSource, /clearRect/);
@@ -203,6 +234,10 @@ assert.doesNotMatch(menuSource, /drawPlatforms|drawBottomDeathHazard|drawHUD/);
 assert.match(
   menuSource,
   /BIOME_PLATFORM_VISUALS\.resolve\([\s\S]*?selectedBiome\.id/
+);
+assert.match(
+  menuSource,
+  /drawBackground\(menuBiomeBackgroundState\.selectedBiome\)[\s\S]*?context\.drawImage\(canvas, 0, 0, W, H\)/
 );
 assert.match(
   gameSource,

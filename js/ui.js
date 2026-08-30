@@ -567,7 +567,9 @@
       visuals: null,
       elapsedSeconds: 0,
       lastVisibleFrameTime: null,
-      warnedAboutRenderFailure: false
+      renderedGraphicsMode: null,
+      warnedAboutRenderFailure: false,
+      warnedAboutLegacyRenderFailure: false
     };
     menuBackdrop.dataset.biomeId = selectedBiome.id;
     menuBackdrop.prepend(menuBackground);
@@ -587,11 +589,59 @@
     }
   }
 
+  function refreshMenuBiomeBackgroundForGraphicsMode() {
+    if (!menuBiomeBackgroundState) return false;
+    menuBiomeBackgroundState.renderedGraphicsMode = null;
+    pauseMenuBiomeBackgroundClock();
+    return true;
+  }
+
+  function isFairyTaleMenuGraphicsMode() {
+    return typeof isFairyTaleGraphicsMode !== "function" ||
+      isFairyTaleGraphicsMode();
+  }
+
+  function drawLegacyMenuBiomeBackgroundSnapshot() {
+    if (
+      !menuBiomeBackgroundState ||
+      typeof drawBackground !== "function" ||
+      typeof menuBiomeBackgroundState.context?.drawImage !== "function"
+    ) return false;
+    try {
+      drawBackground(menuBiomeBackgroundState.selectedBiome);
+      menuBiomeBackgroundState.context.drawImage(canvas, 0, 0, W, H);
+      return true;
+    } catch (error) {
+      if (!menuBiomeBackgroundState.warnedAboutLegacyRenderFailure) {
+        menuBiomeBackgroundState.warnedAboutLegacyRenderFailure = true;
+        console.warn("Legacy-Menü-Hintergrund konnte nicht gerendert werden:", error);
+      }
+      return false;
+    }
+  }
+
   function updateMenuBiomeBackground(now) {
     if (!menuBiomeBackgroundState) return false;
     if (!isMenuBiomeBackgroundVisible()) {
       pauseMenuBiomeBackgroundClock();
       return false;
+    }
+
+    if (!isFairyTaleMenuGraphicsMode()) {
+      pauseMenuBiomeBackgroundClock();
+      if (menuBiomeBackgroundState.renderedGraphicsMode === "legacy") {
+        return true;
+      }
+      const snapshotDrawn = drawLegacyMenuBiomeBackgroundSnapshot();
+      if (snapshotDrawn) {
+        menuBiomeBackgroundState.renderedGraphicsMode = "legacy";
+      }
+      return snapshotDrawn;
+    }
+
+    if (menuBiomeBackgroundState.renderedGraphicsMode !== "fairyTale") {
+      pauseMenuBiomeBackgroundClock();
+      menuBiomeBackgroundState.renderedGraphicsMode = "fairyTale";
     }
 
     const frameTime = Number(now);

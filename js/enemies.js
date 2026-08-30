@@ -147,6 +147,10 @@
       ctx.shadowColor = visual.glow;
       ctx.shadowBlur = 20;
       if (
+        (
+          typeof isFairyTaleGraphicsMode !== "function" ||
+          isFairyTaleGraphicsMode()
+        ) &&
         image.complete &&
         image.naturalWidth > 0 &&
         image.naturalHeight > 0

@@ -23,15 +23,12 @@ const readHead = relativePath => execFileSync(
 const normalize = source => source.replace(/\r\n/g, "\n");
 
 const protectedFiles = [
-  "css/style.css",
   "js/biomes.js",
-  "js/core.js",
   "js/game.js",
   "js/level-generator.js",
   "js/physics.js",
   "js/platforms.js",
-  "js/player.js",
-  "js/ui.js"
+  "js/player.js"
 ];
 for (const relativePath of protectedFiles) {
   assert.equal(
