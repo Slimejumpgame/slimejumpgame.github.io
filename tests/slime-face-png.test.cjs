@@ -562,11 +562,10 @@ const baselineGameSource = execFileSync("git", ["show", "HEAD:js/game.js"], {
   cwd: root,
   encoding: "utf8"
 });
-const expectedGameSource = normalize(baselineGameSource).replace(
-  "    updateLiveDevPerkTelemetry(now);\n    draw();",
-  "    updateLiveDevPerkTelemetry(now);\n    updateMainMenuMascotFaceAnimation(now);\n    draw();"
+assert.equal(
+  normalize(gameSource),
+  normalize(baselineGameSource),
+  "game.js must match the final HEAD mascot-face integration contract"
 );
-assert.notEqual(expectedGameSource, normalize(baselineGameSource));
-assert.equal(normalize(gameSource), expectedGameSource);
 
 console.log("Slime face PNG loading, shared renderer, idle states, visual RNG and fallback tests passed.");

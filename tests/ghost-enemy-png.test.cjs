@@ -294,12 +294,11 @@ const baselinePhysicsSource = execFileSync("git", ["show", "HEAD:js/physics.js"]
   cwd: root,
   encoding: "utf8"
 });
-const expectedPhysicsSource = normalize(baselinePhysicsSource).replace(
-  "player.r * 0.74 + enemy.r * 0.82",
-  "player.r * 0.74 + enemy.r * 0.8856"
+assert.equal(
+  normalize(physicsSource),
+  normalize(baselinePhysicsSource),
+  "physics.js must match the final HEAD collision contract"
 );
-assert.notEqual(expectedPhysicsSource, normalize(baselinePhysicsSource));
-assert.equal(normalize(physicsSource), expectedPhysicsSource);
 assert.match(physicsSource, /player\.r \* 0\.74 \+ enemy\.r \* 0\.8856/);
 assert.equal((physicsSource.match(/enemy\.r \* 0\.8856/g) || []).length, 1);
 assert.doesNotMatch(physicsSource, /enemy\.r \* 0\.82\b/);

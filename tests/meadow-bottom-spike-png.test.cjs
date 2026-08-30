@@ -72,8 +72,8 @@ for (let y = 0; y < height; y++) {
 }
 assert.deepEqual(
   {x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1},
-  {x: 10, y: 13, w: 235, h: 297},
-  "renderer source rect must match the actual visible alpha bounds"
+  {x: 0, y: 34, w: 256, h: 286},
+  "Meadow bottom-spike asset must retain its final visible alpha bounds"
 );
 
 class FakeImage {

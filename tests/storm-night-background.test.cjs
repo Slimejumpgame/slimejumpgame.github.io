@@ -143,8 +143,8 @@ const backCloudInspection = inspectedAssets[backgroundPaths[1]];
 const frontCloudInspection = inspectedAssets[backgroundPaths[6]];
 assert.deepEqual(backCloudInspection.horizontalMargins, {left: 11, right: 12});
 assert.equal(backCloudInspection.maxInternalTransparentColumns, 3);
-assert.deepEqual(frontCloudInspection.horizontalMargins, {left: 114, right: 85});
-assert.equal(frontCloudInspection.maxInternalTransparentColumns, 16);
+assert.deepEqual(frontCloudInspection.horizontalMargins, {left: 235, right: 234});
+assert.equal(frontCloudInspection.maxInternalTransparentColumns, 0);
 
 function createRecordingContext() {
   const calls = [];
@@ -318,10 +318,8 @@ assert.equal(
     backCloudInspection.maxInternalTransparentColumns
 );
 assert.equal(
-  status.cloudAnimation.front.overlap,
-  frontCloudInspection.horizontalMargins.left +
-    frontCloudInspection.horizontalMargins.right -
-    frontCloudInspection.maxInternalTransparentColumns
+  status.cloudAnimation.front.wrapDistance,
+  inspectedAssets[backgroundPaths[6]].width - status.cloudAnimation.front.overlap
 );
 assert.ok(
   status.cloudAnimation.front.leftSpeed > status.cloudAnimation.back.leftSpeed

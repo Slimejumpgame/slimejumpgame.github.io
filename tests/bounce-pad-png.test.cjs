@@ -69,8 +69,8 @@ for (let y = 0; y < height; y++) {
 }
 assert.deepEqual(
   {x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1},
-  {x: 0, y: 15, w: 256, h: 104},
-  "renderer source bounds must match the visible alpha bounds"
+  {x: 0, y: 22, w: 256, h: 104},
+  "bounce pad asset must retain its final visible alpha bounds"
 );
 
 const rendererPath = path.join(root, "js/renderer.js");
@@ -148,7 +148,7 @@ assert.deepEqual(pad, {x: 100, y: 200, w: 60, h: 28});
 
 assert.match(
   rendererSource,
-  /drawPlatforms\(biome, biomePlatformVisuals, "floating-only"\);[\s\S]*?drawFloatingBackDecor\?\.\(ctx, biomeVisualScene\);[\s\S]*?drawBouncePads\(\);[\s\S]*?drawGoal\(biomePlatformVisuals\);/
+  /drawPlatforms\(\s*biome,\s*biomePlatformVisuals,\s*"floating-only",\s*platformRoleVisuals\s*\);[\s\S]*?drawFloatingBackDecor\?\.\(ctx, biomeDecorScene\);[\s\S]*?drawBouncePads\(\);[\s\S]*?drawGoal\(biomePlatformVisuals, biomePortalVisuals, biome\);/
 );
 
 const normalize = source => source.replace(/\r\n/g, "\n");

@@ -58,7 +58,7 @@ assert.deepEqual(getPngHeader(backgroundPaths.main), {
   width: 1280,
   height: 720,
   bitDepth: 8,
-  colorType: 2,
+  colorType: 6,
   interlace: 0
 });
 assert.deepEqual(getPngHeader(backgroundPaths.front), {

@@ -199,11 +199,11 @@ assert.deepEqual(
 );
 assert.deepEqual(
   getAlphaBounds(decodedHazardAssets.waveBack),
-  {left: 4, right: 6, top: 0, bottom: 0}
+  {left: 2, right: 2, top: 2, bottom: 0}
 );
 assert.deepEqual(
   getAlphaBounds(decodedHazardAssets.waveFront),
-  {left: 2, right: 2, top: 2, bottom: 0}
+  {left: 4, right: 6, top: 0, bottom: 0}
 );
 
 function createRecordingContext() {

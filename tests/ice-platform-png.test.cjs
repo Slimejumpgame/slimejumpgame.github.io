@@ -194,6 +194,7 @@ const rendererContext = vm.createContext({
   drawGhostStepFadeOutline: () => {},
   drawStandardPlatformDetails: () => {},
   getFallingPlatformActivationDelay: () => 1,
+  getSpikePlatformSlotVisual: () => ({phase: "CLOSED", openness: 0}),
   getPlatforms: () => rendererContext.platforms,
   isStandardPlatform: platform => !(
     platform.fragile || platform.moving || platform.conveyor || platform.fade ||

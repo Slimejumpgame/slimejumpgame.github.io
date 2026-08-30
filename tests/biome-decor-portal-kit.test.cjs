@@ -532,8 +532,10 @@ assert.equal(invalidPortal.getStatus().path,
   "assets/environments/desert/portal/desert_goal_portal.png");
 
 const rendererSource = read("js/renderer.js");
-assert.match(rendererSource, /BIOME_DECOR_VISUALS\.resolve\(biome\.id\)/);
-assert.match(rendererSource, /BIOME_PORTAL_VISUALS\.resolve\(biome\.id\)/);
+assert.match(rendererSource, /function getActiveBiomeDecorVisuals\(biome\)/);
+assert.match(rendererSource, /BIOME_DECOR_VISUALS\.resolve\(visualBiome\.id\)/);
+assert.match(rendererSource, /function getActiveBiomePortalVisuals\(biome\)/);
+assert.match(rendererSource, /BIOME_PORTAL_VISUALS\.resolve\(visualBiome\.id\)/);
 assert.match(rendererSource, /function drawGoal\(\s*platformVisuals = null,\s*portalVisuals = null,\s*biome = null\s*\)/);
 assert.match(rendererSource, /drawGoal\(biomePlatformVisuals, biomePortalVisuals, biome\)/);
 assert.match(rendererSource, /const goalBiome = biome \?\? getBiomeForLevel\(levelIndex \+ 1\)/);

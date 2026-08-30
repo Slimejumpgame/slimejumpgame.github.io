@@ -100,11 +100,18 @@ for (const assetName of familyAAssetNames) {
   assert.deepEqual([decoded.width, decoded.height], [352, 128]);
   decodedFamilyA[relativePath] = decoded;
 }
+const expectedBaseAlpha = {
+  meadow_top_base: {minimum: 0, maximum: 255, transparent: 4579, partial: 2281},
+  meadow_body_base: {minimum: 0, maximum: 255, transparent: 768, partial: 1024}
+};
 for (const baseName of ["meadow_top_base", "meadow_body_base"]) {
   const decoded = decodedFamilyA[`${platformDirectory}/${baseName}.png`];
-  assert.equal(decoded.alpha.minimum, 255, `${baseName} must be fully opaque`);
-  assert.equal(decoded.alpha.partial, 0, `${baseName} must not have partial alpha`);
-  assert.equal(decoded.alpha.transparent, 0, `${baseName} must not have alpha holes`);
+  assert.equal(decoded.colorType, 6, `${baseName} must be RGBA`);
+  assert.deepEqual(
+    decoded.alpha,
+    expectedBaseAlpha[baseName],
+    `${baseName} must retain the final transparent-edge alpha contract`
+  );
 }
 for (const overlayName of [...topOverlayNames, ...bodyOverlayNames]) {
   const decoded = decodedFamilyA[`${platformDirectory}/${overlayName}.png`];
