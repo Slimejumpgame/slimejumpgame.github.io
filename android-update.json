@@ -1,9 +1,9 @@
 {
   "android": {
-    "versionCode": 17,
-    "versionName": "2.72",
+    "versionCode": 18,
+    "versionName": "2.73",
     "notes": [
-      "🛠️ Slime Soar v2.72 ist da – mit weiteren Bugfixes und Verbesserungen am Spielgefühl.",
+      "🛠️ Slime Soar v2.73 ist da – mit weiteren Bugfixes und Verbesserungen am Spielgefühl.",
       "🏆 Gold-Ausstattung wird jetzt korrekt im globalen Leaderboard gespeichert und dargestellt. Gold-Slime, goldene Hüte und goldene Bärte bleiben auch bei späteren Outfit-Wechseln korrekt im Highscore erhalten.",
       "📈 Die Schwierigkeitskurve wurde überarbeitet. Die maximale Generator-Schwierigkeit wird jetzt erst ab Level 100 statt bereits ab Level 50 erreicht – für einen gleichmäßigeren und zugänglicheren Schwierigkeitsanstieg.",
       "⚡ Fähigkeiten können im Hauptmenü jetzt jederzeit zuverlässig gekauft, aktiviert, deaktiviert und neu zusammengestellt werden. Die bestehenden Kosten und das Maximum von drei aktiven Fähigkeiten bleiben unverändert.",
