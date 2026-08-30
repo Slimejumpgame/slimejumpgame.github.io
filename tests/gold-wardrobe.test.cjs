@@ -620,8 +620,10 @@ function assertUiDevCompletionAndScope() {
     "js/physics.js",
     "android-update.json"
   ]) {
-    const normalizeAuthorizedAudioChanges = source => relativePath === "js/audio.js"
-      ? source
+    const normalizeAuthorizedAudioChanges = source => {
+      const normalizedSource = source.replace(/\r\n/g, "\n");
+      return relativePath === "js/audio.js"
+      ? normalizedSource
         .replace(
           /  const LIFECYCLE_GAIN_RAMP_SECONDS = 0\.025;[\s\S]*?(?=  function getAudio\(\))/, ""
         )
@@ -641,10 +643,11 @@ function assertUiDevCompletionAndScope() {
           /(function playLaunch\(\) \{ tone\(240, 0\.12, "triangle", )[0-9.]+(, 520\); \})/,
           "$1<launch-gain>$2"
         )
-      : source;
+      : normalizedSource;
+    };
     assert.equal(
-      normalizeAuthorizedAudioChanges(read(relativePath)).replace(/\r\n/g, "\n"),
-      normalizeAuthorizedAudioChanges(readHead(relativePath)).replace(/\r\n/g, "\n")
+      normalizeAuthorizedAudioChanges(read(relativePath)),
+      normalizeAuthorizedAudioChanges(readHead(relativePath))
     );
   }
   for (const helper of [

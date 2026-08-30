@@ -264,7 +264,7 @@ function assertRefreshAndResponsiveLayout() {
   const rightGroup = extract(
     html,
     "          <div class=\"menuRankStarsGroup\">",
-    "        </div>\n        <header class=\"menuHero\">"
+    "        <header class=\"menuHero\">"
   );
   assert.ok(
     rightGroup.indexOf("personalGlobalRank") < rightGroup.indexOf("starBalanceValue"),

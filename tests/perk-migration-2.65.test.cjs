@@ -15,6 +15,7 @@ function createStorage(initialValues = {}) {
   const values = new Map(Object.entries(initialValues).map(([key, value]) => [key, String(value)]));
   let failure = null;
   let mutationCount = 0;
+  const setCounts = new Map();
   return {
     getItem(key) { return values.has(key) ? values.get(key) : null; },
     setItem(key, value) {
@@ -23,6 +24,7 @@ function createStorage(initialValues = {}) {
         throw new Error(`simulated set failure: ${key}`);
       }
       mutationCount++;
+      setCounts.set(key, (setCounts.get(key) ?? 0) + 1);
       values.set(key, String(value));
     },
     removeItem(key) {
@@ -35,16 +37,25 @@ function createStorage(initialValues = {}) {
     },
     failOnce(type, key) { failure = {type, key}; },
     snapshot() { return Object.fromEntries(values); },
-    getMutationCount() { return mutationCount; }
+    getMutationCount() { return mutationCount; },
+    getSetCount(key) { return setCounts.get(key) ?? 0; }
   };
+}
+
+function initializeFreshStarEconomy(localStorage) {
+  localStorage.setItem("slimejumperStarBalance", "0");
+  localStorage.setItem("slimejumperStarEconomyVersion", "star-economy-v1");
 }
 
 function runMigration(localStorage, activeRunIds = ["air_brake"]) {
   let active = activeRunIds.slice();
+  let resetCalls = 0;
+  let starBalanceWrites = 0;
   let balance = Math.floor(Number(localStorage.getItem("slimejumperStarBalance")) || 0);
   const window = {
     SlimePerks: {
       resetTemporaryStateForMigration() {
+        resetCalls++;
         active = [];
         return true;
       },
@@ -53,6 +64,7 @@ function runMigration(localStorage, activeRunIds = ["air_brake"]) {
     SlimeStarEconomy: {
       getBalance() { return balance; },
       applyPerkMigrationBalance(targetBalance) {
+        starBalanceWrites++;
         const previousBalance = balance;
         balance = targetBalance;
         try {
@@ -70,7 +82,7 @@ function runMigration(localStorage, activeRunIds = ["air_brake"]) {
     {window, localStorage, console, Number, JSON, Object},
     {filename: "js/slime-perk-migration.js"}
   );
-  return {activeRunIds: active, balance};
+  return {activeRunIds: active, balance, resetCalls, starBalanceWrites};
 }
 
 function createExistingPlayerStorage() {
@@ -79,7 +91,7 @@ function createExistingPlayerStorage() {
     slimejumperSelectedPerks: '["air_brake","star_shield"]',
     slimejumperAirHopConflictPurchaseInfoSeen: "true",
     slimejumperAirBrakeConflictPurchaseInfoSeen: "true",
-    slimejumperStarBalance: "820",
+    slimejumperStarBalance: "347",
     slimejumperStarEconomyVersion: "star-economy-v1",
     slimejumperPlayerLevel: "73",
     slimejumperPlayerLevelXP: "4567",
@@ -92,25 +104,79 @@ function createExistingPlayerStorage() {
     slimejumperSelectedSlimeBeard: "wizard",
     slimejumperAchievements: '[{"id":"first_jump","unlockedAt":1}]',
     slimejumperAchievementProgress: JSON.stringify({lifetimeStars: 999, lifetimeDeaths: 12}),
+    slimejumperSelectedAchievementBadges: '["first_jump"]',
+    slimejumperCallingCardBadgesConfigured: "true",
     slimejumperHighestCheckpointLevel: "190",
     slimejumperBest: "123456",
     slimejumperBestLevel: "211",
     slimejumperRecentScores: '[{"score":123456}]',
     slimejumperHighscoresV14: '[{"score":123456}]',
-    slimejumperPrestigePermanentWardrobeUnlocks: '{"color":["gold"]}'
+    slimejumperPrestigePermanentWardrobeUnlocks: '{"color":["gold"]}',
+    slimejumperGlobalRankBestV1: "123456",
+    slimejumperGlobalRankBestPayloadV1: '{"score":123456}',
+    slimejumperGraphicsMode: "legacy",
+    slimejumperMainMenuOnboardingSeenVersion: "main-menu-onboarding-v1"
   });
+}
+
+function assertFreshInstallKeepsZeroBalance() {
+  const storage = createStorage();
+  initializeFreshStarEconomy(storage);
+  const starSetsBeforeMigration = storage.getSetCount("slimejumperStarBalance");
+
+  const result = runMigration(storage, []);
+  const afterFirstStart = storage.snapshot();
+  assert.equal(afterFirstStart.slimejumperStarBalance, "0");
+  assert.equal(afterFirstStart.slimejumperPerkMigrationVersion, "perk-migration-2.65");
+  assert.equal(afterFirstStart.slimejumperPerkMigrationTransaction, undefined);
+  assert.deepEqual(JSON.parse(afterFirstStart.slimejumperUnlockedPerks), []);
+  assert.deepEqual(JSON.parse(afterFirstStart.slimejumperSelectedPerks), []);
+  assert.deepEqual(result.activeRunIds, []);
+  assert.equal(result.resetCalls, 1);
+  assert.equal(result.starBalanceWrites, 0);
+  assert.equal(storage.getSetCount("slimejumperStarBalance"), starSetsBeforeMigration);
+
+  const mutationsBeforeReload = storage.getMutationCount();
+  const reloadResult = runMigration(storage, ["star_shield"]);
+  assert.deepEqual(storage.snapshot(), afterFirstStart);
+  assert.equal(storage.getMutationCount(), mutationsBeforeReload);
+  assert.deepEqual(reloadResult.activeRunIds, ["star_shield"]);
+  assert.equal(reloadResult.resetCalls, 0);
+  assert.equal(reloadResult.starBalanceWrites, 0);
+  assert.equal(storage.getSetCount("slimejumperStarBalance"), starSetsBeforeMigration);
+}
+
+function assertFreshInstallWithUiPreferencesKeepsZeroBalance() {
+  const storage = createStorage({
+    slimejumperGraphicsMode: "legacy",
+    slimejumperMainMenuOnboardingSeenVersion: "main-menu-onboarding-v1"
+  });
+  initializeFreshStarEconomy(storage);
+
+  const result = runMigration(storage, []);
+  const after = storage.snapshot();
+  assert.equal(after.slimejumperStarBalance, "0");
+  assert.equal(after.slimejumperGraphicsMode, "legacy");
+  assert.equal(
+    after.slimejumperMainMenuOnboardingSeenVersion,
+    "main-menu-onboarding-v1"
+  );
+  assert.equal(result.starBalanceWrites, 0);
 }
 
 function assertSuccessfulMigrationAndReloads() {
   const storage = createExistingPlayerStorage();
   const before = storage.snapshot();
-  const result = runMigration(storage);
+  const result = runMigration(storage, ["air_brake"]);
   const after = storage.snapshot();
 
-  assert.equal(after.slimejumperStarBalance, "2320");
+  assert.equal(after.slimejumperStarBalance, "347");
   assert.deepEqual(JSON.parse(after.slimejumperUnlockedPerks), []);
   assert.deepEqual(JSON.parse(after.slimejumperSelectedPerks), []);
   assert.deepEqual(result.activeRunIds, []);
+  assert.equal(result.resetCalls, 1);
+  assert.equal(result.starBalanceWrites, 0);
+  assert.equal(storage.getSetCount("slimejumperStarBalance"), 0);
   assert.equal(after.slimejumperAirHopConflictPurchaseInfoSeen, undefined);
   assert.equal(after.slimejumperAirBrakeConflictPurchaseInfoSeen, undefined);
   assert.equal(after.slimejumperPerkMigrationVersion, "perk-migration-2.65");
@@ -121,7 +187,6 @@ function assertSuccessfulMigrationAndReloads() {
     "slimejumperSelectedPerks",
     "slimejumperAirHopConflictPurchaseInfoSeen",
     "slimejumperAirBrakeConflictPurchaseInfoSeen",
-    "slimejumperStarBalance",
     "slimejumperPerkMigrationVersion"
   ]);
   Object.entries(before).forEach(([key, value]) => {
@@ -132,49 +197,66 @@ function assertSuccessfulMigrationAndReloads() {
   assert.equal(
     JSON.parse(after.slimejumperAchievementProgress).lifetimeStars,
     999,
-    "lifetimeStars must not receive the migration bonus"
+    "lifetimeStars must remain unchanged"
   );
 
   const afterFirstRun = storage.snapshot();
-  runMigration(storage, ["star_shield"]);
+  const firstReload = runMigration(storage, ["star_shield"]);
   assert.deepEqual(storage.snapshot(), afterFirstRun, "first reload must not mutate storage");
-  runMigration(storage, ["ghost_step"]);
+  assert.deepEqual(firstReload.activeRunIds, ["star_shield"]);
+  assert.equal(firstReload.resetCalls, 0);
+  assert.equal(firstReload.starBalanceWrites, 0);
+  const secondReload = runMigration(storage, ["ghost_step"]);
   assert.deepEqual(storage.snapshot(), afterFirstRun, "second reload must not mutate storage");
+  assert.deepEqual(secondReload.activeRunIds, ["ghost_step"]);
+  assert.equal(secondReload.resetCalls, 0);
+  assert.equal(secondReload.starBalanceWrites, 0);
 }
 
-function assertRecoveryAfterTransactionWrite() {
+function assertRecoveryAfterPerkWriteFailure() {
   const storage = createExistingPlayerStorage();
   storage.failOnce("set", "slimejumperUnlockedPerks");
-  runMigration(storage);
+  const interruptedResult = runMigration(storage);
 
   const interrupted = storage.snapshot();
-  const transaction = JSON.parse(interrupted.slimejumperPerkMigrationTransaction);
-  assert.equal(transaction.originalBalance, 820);
-  assert.equal(transaction.targetBalance, 2320);
-  assert.equal(interrupted.slimejumperStarBalance, "820");
+  assert.equal(interrupted.slimejumperStarBalance, "347");
   assert.equal(interrupted.slimejumperPerkMigrationVersion, undefined);
+  assert.equal(interruptedResult.starBalanceWrites, 0);
+  assert.equal(storage.getSetCount("slimejumperStarBalance"), 0);
 
-  runMigration(storage);
-  assert.equal(storage.snapshot().slimejumperStarBalance, "2320");
+  const recoveredResult = runMigration(storage);
+  assert.equal(storage.snapshot().slimejumperStarBalance, "347");
   assert.equal(storage.snapshot().slimejumperPerkMigrationVersion, "perk-migration-2.65");
+  assert.equal(recoveredResult.starBalanceWrites, 0);
+  assert.equal(storage.getSetCount("slimejumperStarBalance"), 0);
 }
 
-function assertRecoveryAfterBalanceWrite() {
+function assertRecoveryOfPreviousBonusTransactionWithoutPayout() {
   const storage = createExistingPlayerStorage();
+  storage.setItem(
+    "slimejumperPerkMigrationTransaction",
+    JSON.stringify({
+      version: "perk-migration-2.65",
+      originalBalance: 347,
+      targetBalance: 1847
+    })
+  );
   storage.failOnce("set", "slimejumperPerkMigrationVersion");
-  runMigration(storage);
+  const interruptedResult = runMigration(storage);
 
   const interrupted = storage.snapshot();
-  assert.equal(interrupted.slimejumperStarBalance, "2320");
+  assert.equal(interrupted.slimejumperStarBalance, "347");
   assert.equal(interrupted.slimejumperPerkMigrationVersion, undefined);
-  assert.equal(
-    JSON.parse(interrupted.slimejumperPerkMigrationTransaction).targetBalance,
-    2320
-  );
+  assert.equal(JSON.parse(interrupted.slimejumperPerkMigrationTransaction).targetBalance, 1847);
+  assert.equal(interruptedResult.starBalanceWrites, 0);
+  assert.equal(storage.getSetCount("slimejumperStarBalance"), 0);
 
-  runMigration(storage);
-  assert.equal(storage.snapshot().slimejumperStarBalance, "2320");
+  const recoveredResult = runMigration(storage);
+  assert.equal(storage.snapshot().slimejumperStarBalance, "347");
   assert.equal(storage.snapshot().slimejumperPerkMigrationVersion, "perk-migration-2.65");
+  assert.equal(storage.snapshot().slimejumperPerkMigrationTransaction, undefined);
+  assert.equal(recoveredResult.starBalanceWrites, 0);
+  assert.equal(storage.getSetCount("slimejumperStarBalance"), 0);
 }
 
 function assertCompletedMarkerIsMutationFree() {
@@ -186,9 +268,13 @@ function assertCompletedMarkerIsMutationFree() {
   });
   const before = storage.snapshot();
   const mutationsBefore = storage.getMutationCount();
-  runMigration(storage, ["air_brake"]);
+  const result = runMigration(storage, ["air_brake"]);
   assert.deepEqual(storage.snapshot(), before);
   assert.equal(storage.getMutationCount(), mutationsBefore);
+  assert.deepEqual(result.activeRunIds, ["air_brake"]);
+  assert.equal(result.resetCalls, 0);
+  assert.equal(result.starBalanceWrites, 0);
+  assert.equal(storage.getSetCount("slimejumperStarBalance"), 0);
 }
 
 function assertRealTemporaryPerkReset() {
@@ -209,29 +295,6 @@ function assertRealTemporaryPerkReset() {
   assert.deepEqual(Array.from(window.SlimePerks.getActiveRunPerkIds()), []);
   assert.equal(window.SlimePerks.isDevUnlockOverrideActive(), false);
   assert.equal(window.SlimePerks.isDevForceNextLuckyStarPending(), false);
-}
-
-function assertRealStarBalanceSetter() {
-  const source = read("js/slime-achievements.js");
-  const start = source.indexOf("  function saveStarBalance()");
-  const end = source.indexOf("  function cloneAchievementProgress()", start);
-  assert.ok(start >= 0 && end > start);
-  const localStorage = createStorage({slimejumperStarBalance: "820"});
-  const context = vm.createContext({localStorage});
-  vm.runInContext(`
-    const STAR_BALANCE_STORAGE_KEY = "slimejumperStarBalance";
-    let starBalance = 820;
-  ` + source.slice(start, end) + `
-    globalThis.balanceTestApi = {
-      applyPerkMigrationBalance,
-      getBalance: () => starBalance
-    };
-  `, context, {filename: "js/slime-achievements-migration-balance-test-slice.js"});
-  assert.equal(context.balanceTestApi.applyPerkMigrationBalance(2320), true);
-  assert.equal(context.balanceTestApi.getBalance(), 2320);
-  assert.equal(localStorage.getItem("slimejumperStarBalance"), "2320");
-  assert.equal(context.balanceTestApi.applyPerkMigrationBalance(-1), false);
-  assert.equal(context.balanceTestApi.getBalance(), 2320);
 }
 
 function assertStarShieldUsesNewId() {
@@ -287,25 +350,41 @@ function assertIdsAndStartupOrder() {
 
   const html = read("index.html");
   const prestigeIndex = html.indexOf("./js/slime-prestige.js");
+  const progressIndex = html.indexOf("./js/slime-player-progress.js");
   const achievementsIndex = html.indexOf("./js/slime-achievements.js");
   const migrationIndex = html.indexOf("./js/slime-perk-migration.js");
   const playerIndex = html.indexOf("./js/player.js");
   assert.ok(prestigeIndex >= 0 && prestigeIndex < achievementsIndex);
+  assert.ok(prestigeIndex < progressIndex && progressIndex < achievementsIndex);
   assert.ok(achievementsIndex < migrationIndex && migrationIndex < playerIndex);
+  assert.match(
+    read("js/slime-achievements.js"),
+    /function loadStarBalance\(\) \{\s+let balance = 0;/
+  );
   assert.match(read("js/slime-achievements.js"), /recoverInterruptedRun[\s\S]*?checkStateAchievements/);
 
   const resetSource = read("js/slime-progress-reset.js");
+  const migrationSource = read("js/slime-perk-migration.js");
   assert.match(resetSource, /RESET_VERSION = "progress-reset-2\.43"/);
   assert.match(resetSource, /PREFERENCE_RESET_VERSION = "preferences-reset-2\.58"/);
-  assert.doesNotMatch(read("js/slime-perk-migration.js"), /highscore|leaderboard|supabase/i);
+  assert.doesNotMatch(migrationSource, /highscore|leaderboard|supabase/i);
+  assert.doesNotMatch(
+    migrationSource,
+    /\b1500\b|STAR_BONUS|SlimeStarEconomy|applyPerkMigrationBalance/
+  );
+  assert.doesNotMatch(
+    read("js/slime-player-progress.js"),
+    /hadStoredProgressBeforeInitialization/
+  );
 }
 
+assertFreshInstallKeepsZeroBalance();
+assertFreshInstallWithUiPreferencesKeepsZeroBalance();
 assertSuccessfulMigrationAndReloads();
-assertRecoveryAfterTransactionWrite();
-assertRecoveryAfterBalanceWrite();
+assertRecoveryAfterPerkWriteFailure();
+assertRecoveryOfPreviousBonusTransactionWithoutPayout();
 assertCompletedMarkerIsMutationFree();
 assertRealTemporaryPerkReset();
-assertRealStarBalanceSetter();
 assertStarShieldUsesNewId();
 assertIdsAndStartupOrder();
 

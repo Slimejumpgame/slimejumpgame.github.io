@@ -94,7 +94,7 @@
       <section id="mainMenuScreen" class="menuScreen menuScreen--main" aria-label="Hauptmenü">
         <div class="menuStatusBar" aria-label="Persönliche Spielwerte">
           <div class="menuBestProgressGroup">
-            <span class="menuStatusBadge menuStatusBadge--best" aria-label="Persönlicher Highscore">
+            <span id="menuPersonalBest" class="menuStatusBadge menuStatusBadge--best" aria-label="Persönlicher Highscore">
               <span aria-hidden="true">🏆</span>
               <strong id="personalBestValue">0</strong>
             </span>
@@ -116,7 +116,7 @@
               <span>RANG</span>
               <strong id="personalGlobalRankValue">—</strong>
             </span>
-            <span class="menuStatusBadge menuStatusBadge--stars" aria-label="Verfügbares Stern-Guthaben">
+            <span id="menuStarBalance" class="menuStatusBadge menuStatusBadge--stars" aria-label="Verfügbares Stern-Guthaben">
               <span aria-hidden="true">⭐</span>
               <strong id="starBalanceValue">0</strong>
             </span>
@@ -187,13 +187,21 @@
               </span>
               <span>Highscores</span>
             </button>
+            <a class="privacyLink" href="https://slimejumpgame.github.io/datenschutz.html" target="_blank" rel="noopener noreferrer external">Datenschutz</a>
           </nav>
         </div>
         <div class="mainMenuAudio" role="group" aria-label="Audioeinstellungen">
           <button id="musicBtn" class="iconBtn audioToggle uiButton active" aria-label="Musik ein oder aus" title="Musik an oder aus">♫</button>
           <button id="sfxBtn" class="iconBtn audioToggle uiButton active" aria-label="Soundeffekte ein oder aus" title="Soundeffekte an oder aus">FX</button>
         </div>
-        <a class="privacyLink" href="https://slimejumpgame.github.io/datenschutz.html" target="_blank" rel="noopener noreferrer external">Datenschutz</a>
+        <div id="mainMenuGraphics" class="mainMenuGraphics" role="group" aria-label="Grafikmodus">
+          <button id="fairyTaleGraphicsBtn" class="graphicsModeButton iconBtn uiButton uiButton--primary active" type="button" aria-pressed="true" aria-label="Grafikmodus Fairy Tale">
+            <span class="graphicsModeButtonLabel graphicsModeButtonLabel--stacked">FAIRY<br>TALE</span>
+          </button>
+          <button id="legacyGraphicsBtn" class="graphicsModeButton iconBtn uiButton uiButton--secondary" type="button" aria-pressed="false" aria-label="Grafikmodus Legacy">
+            <span class="graphicsModeButtonLabel">LEGACY</span>
+          </button>
+        </div>
       </section>
 
       <section id="wardrobeScreen" class="menuScreen menuScreen--detail hidden" aria-label="Garderobe">
@@ -397,6 +405,32 @@
           <div id="highscoreRows"></div>
         </div>
       </section>
+    </div>
+  </section>
+
+  <section id="mainMenuOnboardingOverlay" class="mainMenuOnboardingOverlay hidden" role="dialog" aria-modal="true" aria-labelledby="mainMenuOnboardingTitle" aria-describedby="mainMenuOnboardingText" aria-hidden="true">
+    <div id="mainMenuOnboardingSafeArea" class="mainMenuOnboardingSafeArea" aria-hidden="true"></div>
+    <div class="mainMenuOnboardingDim mainMenuOnboardingDim--top" data-onboarding-dim="top" aria-hidden="true"></div>
+    <div class="mainMenuOnboardingDim mainMenuOnboardingDim--right" data-onboarding-dim="right" aria-hidden="true"></div>
+    <div class="mainMenuOnboardingDim mainMenuOnboardingDim--bottom" data-onboarding-dim="bottom" aria-hidden="true"></div>
+    <div class="mainMenuOnboardingDim mainMenuOnboardingDim--left" data-onboarding-dim="left" aria-hidden="true"></div>
+    <div id="mainMenuOnboardingHighlight" class="mainMenuOnboardingHighlight" aria-hidden="true"></div>
+    <div id="mainMenuOnboardingBubble" class="mainMenuOnboardingBubble uiPanel" data-placement="bottom">
+      <div class="dialogAccent mainMenuOnboardingAccent" aria-hidden="true"></div>
+      <div class="mainMenuOnboardingHeading">
+        <h2 id="mainMenuOnboardingTitle">BESTWERT</h2>
+        <span id="mainMenuOnboardingCount" class="mainMenuOnboardingCount">1 / 10</span>
+      </div>
+      <p id="mainMenuOnboardingText" class="mainMenuOnboardingText"></p>
+      <div id="mainMenuOnboardingNavigation" class="mainMenuOnboardingNavigation">
+        <button id="mainMenuOnboardingBackBtn" class="uiButton uiButton--secondary" type="button">ZURÜCK</button>
+        <button id="mainMenuOnboardingNextBtn" class="uiButton uiButton--primary" type="button">WEITER</button>
+        <button id="mainMenuOnboardingSkipBtn" class="uiButton uiButton--secondary mainMenuOnboardingSkip" type="button">ÜBERSPRINGEN</button>
+      </div>
+      <div id="mainMenuOnboardingDecision" class="mainMenuOnboardingDecision hidden">
+        <button id="mainMenuOnboardingLaterBtn" class="uiButton uiButton--secondary" type="button">SPÄTER NOCHMAL</button>
+        <button id="mainMenuOnboardingNeverBtn" class="uiButton uiButton--primary" type="button">NICHT MEHR ANZEIGEN</button>
+      </div>
     </div>
   </section>
 
@@ -655,8 +689,14 @@
         <div id="pausePanel" class="pausePanel uiPanel">
           <h2 id="pauseTitle">PAUSE</h2>
           <button id="resumeBtn" class="uiButton uiButton--primary" type="button">Fortsetzen</button>
-          <button id="pauseMusicBtn" class="iconBtn audioToggle uiButton active" type="button">♫</button>
-          <button id="pauseSfxBtn" class="iconBtn audioToggle uiButton active" type="button">FX</button>
+          <div class="pauseSettingsRow pauseAudioRow" role="group" aria-label="Audioeinstellungen">
+            <button id="pauseMusicBtn" class="iconBtn audioToggle uiButton active" type="button">♫</button>
+            <button id="pauseSfxBtn" class="iconBtn audioToggle uiButton active" type="button">FX</button>
+          </div>
+          <div class="pauseSettingsRow pauseGraphicsRow" role="group" aria-label="Grafikmodus">
+            <button id="pauseFairyTaleGraphicsBtn" class="graphicsModeButton uiButton uiButton--primary active" type="button" aria-pressed="true">FAIRY TALE</button>
+            <button id="pauseLegacyGraphicsBtn" class="graphicsModeButton uiButton uiButton--secondary" type="button" aria-pressed="false">LEGACY</button>
+          </div>
           <button id="endRunBtn" class="uiButton uiButton--danger" type="button">Run beenden</button>
         </div>
       </section>
@@ -721,6 +761,29 @@
   <script src="./js/slime-checkpoint-bonus.js"></script>
   <script src="./js/hazards.js"></script>
   <script src="./js/tutorials.js"></script>
+  <script src="./js/visual-platform-kit.js"></script>
+  <script src="./js/visual-decor-kit.js"></script>
+  <script src="./js/visual-portal-kit.js"></script>
+  <script src="./js/visual-meadow-assets.js"></script>
+  <script src="./js/visual-coast-assets.js"></script>
+  <script src="./js/visual-desert-assets.js"></script>
+  <script src="./js/visual-volcano-assets.js"></script>
+  <script src="./js/visual-snow-assets.js"></script>
+  <script src="./js/visual-swamp-assets.js"></script>
+  <script src="./js/visual-crystal-cave-assets.js"></script>
+  <script src="./js/visual-night-assets.js"></script>
+  <script src="./js/visual-autumn-assets.js"></script>
+  <script src="./js/visual-sky-assets.js"></script>
+  <script src="./js/visual-storm-night-assets.js"></script>
+  <script src="./js/visual-neon-city-assets.js"></script>
+  <script src="./js/visual-mushroom-cave-assets.js"></script>
+  <script src="./js/visual-abandoned-mine-assets.js"></script>
+  <script src="./js/visual-bamboo-night-assets.js"></script>
+  <script src="./js/visual-pirate-harbor-assets.js"></script>
+  <script src="./js/visual-alien-jungle-assets.js"></script>
+  <script src="./js/visual-enchanted-garden-assets.js"></script>
+  <script src="./js/visual-red-moon-assets.js"></script>
+  <script src="./js/visual-underground-temple-assets.js"></script>
   <script src="./js/renderer.js"></script>
   <script src="./js/game.js"></script>
 </body>

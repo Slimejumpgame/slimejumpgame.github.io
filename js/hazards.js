@@ -3,6 +3,14 @@
   function drawSpikeHazard(s, hazard) {
     const count = Math.max(2, Math.floor(s.w / 24));
     const step = s.w / count;
+    if (
+      (
+        typeof isFairyTaleGraphicsMode !== "function" ||
+        isFairyTaleGraphicsMode()
+      ) &&
+      typeof MEADOW_ASSET_VISUALS !== "undefined" &&
+      MEADOW_ASSET_VISUALS.drawBottomSpikeHazard(ctx, s, count, step)
+    ) return;
     ctx.fillStyle = hazard.fill;
     ctx.strokeStyle = hazard.stroke;
     ctx.lineWidth = 3;
@@ -201,13 +209,18 @@
     cloudAbyss: drawCloudAbyssHazard
   };
 
-  function drawDeathZone(rect, biome) {
+  function drawDeathZone(rect, biome, biomeVisuals = null) {
     const renderer = DEATH_ZONE_RENDERERS[biome.hazard.type] || drawSpikeHazard;
     ctx.save();
     ctx.beginPath();
     ctx.rect(rect.x, rect.y, rect.w, rect.h);
     ctx.clip();
-    renderer(rect, biome.hazard);
+    const assetHazardDrawn = Boolean(
+      biomeVisuals &&
+      typeof biomeVisuals.drawBottomDeathHazard === "function" &&
+      biomeVisuals.drawBottomDeathHazard(ctx, rect, worldTime)
+    );
+    if (!assetHazardDrawn) renderer(rect, biome.hazard);
     ctx.restore();
   }
 

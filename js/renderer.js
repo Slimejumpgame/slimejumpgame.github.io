@@ -3,6 +3,264 @@
   const tutorialDragHandImage = new Image();
   tutorialDragHandImage.src = "assets/tutorial/tutorial-drag-hand.png";
 
+  const SLIME_BODY_ASSET_PATH = "assets/slime/slime_body.png";
+  const SLIME_BODY_SOURCE_SIZE = 256;
+  const SLIME_BODY_DRAW_SIZE = 80;
+  const SLIME_BODY_REFERENCE_RADIUS = 30;
+  const SLIME_BODY_DARK_TONE_LUMINANCE = 96;
+  const SLIME_BODY_MAIN_TONE_LUMINANCE = 176;
+  const slimeBodyImage = new Image();
+  const slimeBodyTintCache = new Map();
+  const slimeBodyPendingPreviews = new Map();
+  let slimeBodySourcePixels = null;
+  slimeBodyImage.decoding = "async";
+  slimeBodyImage.onload = prepareSlimeBodySourcePixels;
+  slimeBodyImage.onerror = () => {
+    slimeBodySourcePixels = null;
+    slimeBodyTintCache.clear();
+    slimeBodyPendingPreviews.clear();
+  };
+  slimeBodyImage.src = SLIME_BODY_ASSET_PATH;
+
+  const SLIME_FACE_SOURCE_SIZE = 256;
+  const SLIME_FACE_DRAW_SIZE = 80;
+  const SLIME_FACE_ACTION_SPEED = 720;
+  const SLIME_FACE_IDLE_SPEED_LIMIT = 30;
+  const SLIME_FACE_IDLE_SQUISH_EPSILON = 0.01;
+  const SLIME_FACE_IDLE_INTERVAL_MIN = 1.8;
+  const SLIME_FACE_IDLE_INTERVAL_MAX = 9;
+  const SLIME_FACE_BLINK_DURATION_MIN = 0.08;
+  const SLIME_FACE_BLINK_DURATION_MAX = 0.14;
+  const SLIME_FACE_TRANSITION_BLINK_DURATION_MIN = 0.04;
+  const SLIME_FACE_TRANSITION_BLINK_DURATION_MAX = 0.07;
+  const SLIME_FACE_LOOK_DURATION_MIN = 0.5;
+  const SLIME_FACE_LOOK_DURATION_MAX = 1.2;
+  const SLIME_FACE_BLINK_EVENT_WEIGHT = 0.4;
+  const SLIME_FACE_LEFT_EVENT_WEIGHT = 0.3;
+  const SLIME_FACE_STATES = Object.freeze({
+    NORMAL: "normal",
+    ACTION: "action",
+    BLINK: "blink",
+    LEFT: "left",
+    RIGHT: "right"
+  });
+  const SLIME_FACE_IDLE_PHASES = Object.freeze({
+    NONE: "none",
+    BLINK: "blink",
+    LOOK_TRANSITION_IN: "look-transition-in",
+    LOOK: "look",
+    LOOK_TRANSITION_OUT: "look-transition-out"
+  });
+  const SLIME_FACE_ASSET_PATHS = Object.freeze({
+    [SLIME_FACE_STATES.NORMAL]: "assets/slime/face/slime_face_normal.png",
+    [SLIME_FACE_STATES.ACTION]: "assets/slime/face/slime_face_action.png",
+    [SLIME_FACE_STATES.BLINK]: "assets/slime/face/slime_face_blink.png",
+    [SLIME_FACE_STATES.LEFT]: "assets/slime/face/slime_face_left.png",
+    [SLIME_FACE_STATES.RIGHT]: "assets/slime/face/slime_face_right.png"
+  });
+  const slimeFacePendingPreviews = new Map();
+  const slimeFaceImages = Object.fromEntries(
+    Object.entries(SLIME_FACE_ASSET_PATHS).map(([faceState, path]) => {
+      const image = new Image();
+      image.decoding = "async";
+      image.onload = () => handleSlimeFaceImageLoad(faceState, image);
+      image.onerror = () => handleSlimeFaceImageError(faceState);
+      image.src = path;
+      return [faceState, image];
+    })
+  );
+  let slimeFaceVisualRandomState = 0;
+  let slimeFaceIdleEvent = SLIME_FACE_STATES.NORMAL;
+  let slimeFaceIdlePhase = SLIME_FACE_IDLE_PHASES.NONE;
+  let slimeFaceIdleLookTarget = SLIME_FACE_STATES.NORMAL;
+  let slimeFaceIdleEventEndsAt = 0;
+  let slimeFaceNextIdleEventAt = null;
+
+  const COLLECTIBLE_STAR_ASSET_PATH = "assets/collectibles/star_collectible.png";
+  const COLLECTIBLE_STAR_DRAW_SIZE = 60;
+  const collectibleStarImage = new Image();
+  collectibleStarImage.src = COLLECTIBLE_STAR_ASSET_PATH;
+
+  const BOUNCE_PAD_ASSET_PATH = "assets/gameplay/bounce_pad.png";
+  const BOUNCE_PAD_SOURCE_BOUNDS = Object.freeze({x: 0, y: 15, w: 256, h: 104});
+  const bouncePadImage = new Image();
+  bouncePadImage.src = BOUNCE_PAD_ASSET_PATH;
+
+  const GLOBAL_WHOLE_PLATFORM_SOURCE_SIZE = Object.freeze({w: 512, h: 128});
+  const FALLING_PLATFORM_WHOLE_ASSET_CONTRACT = Object.freeze({
+    path: "assets/platforms/falling_platform.png",
+    canvas: GLOBAL_WHOLE_PLATFORM_SOURCE_SIZE
+  });
+  const ICE_PLATFORM_WHOLE_ASSET_CONTRACT = Object.freeze({
+    path: "assets/platforms/ice_platform.png",
+    canvas: GLOBAL_WHOLE_PLATFORM_SOURCE_SIZE
+  });
+  const CONVEYOR_PLATFORM_WHOLE_ASSET_CONTRACT = Object.freeze({
+    path: "assets/platforms/conveyor_platform.png",
+    canvas: GLOBAL_WHOLE_PLATFORM_SOURCE_SIZE,
+    defaultDirection: 1,
+    beltChannelSource: Object.freeze({
+      x: 50,
+      y: 43,
+      w: 412,
+      h: 39,
+      stripeLean: 37
+    })
+  });
+
+  function createGlobalWholePlatformAsset(contract) {
+    const record = {image: new Image(), contentFit: null};
+    record.image.decoding = "async";
+    record.image.onload = () => {
+      record.contentFit = (
+        record.image.naturalWidth === contract.canvas.w &&
+        record.image.naturalHeight === contract.canvas.h
+      ) ? analyzeWholePlatformImage(record.image, contract.canvas) : null;
+    };
+    record.image.onerror = () => {
+      record.contentFit = null;
+    };
+    record.image.src = contract.path;
+    return record;
+  }
+
+  const fallingPlatformWholeAsset = createGlobalWholePlatformAsset(
+    FALLING_PLATFORM_WHOLE_ASSET_CONTRACT
+  );
+  const icePlatformWholeAsset = createGlobalWholePlatformAsset(
+    ICE_PLATFORM_WHOLE_ASSET_CONTRACT
+  );
+  const conveyorPlatformWholeAsset = createGlobalWholePlatformAsset(
+    CONVEYOR_PLATFORM_WHOLE_ASSET_CONTRACT
+  );
+
+  const FALLING_PLATFORM_ASSET_CONTRACT = Object.freeze({
+    left: Object.freeze({
+      path: "assets/platforms/falling_platform_left.png",
+      canvas: Object.freeze({w: 120, h: 130}),
+      source: Object.freeze({x: 4, y: 26, w: 116, h: 77}),
+      drawWidth: 24
+    }),
+    middle: Object.freeze({
+      path: "assets/platforms/falling_platform_middle.png",
+      canvas: Object.freeze({w: 260, h: 130}),
+      source: Object.freeze({x: 0, y: 26, w: 260, h: 77}),
+      drawWidth: 52
+    }),
+    right: Object.freeze({
+      path: "assets/platforms/falling_platform_right.png",
+      canvas: Object.freeze({w: 120, h: 130}),
+      source: Object.freeze({x: 0, y: 26, w: 116, h: 77}),
+      drawWidth: 24
+    })
+  });
+  const FALLING_PLATFORM_DRAW_HEIGHT = 26;
+  const FALLING_PLATFORM_SEAM_OVERLAP = 1;
+  const fallingPlatformImages = Object.fromEntries(
+    Object.entries(FALLING_PLATFORM_ASSET_CONTRACT).map(([name, contract]) => {
+      const image = new Image();
+      image.src = contract.path;
+      return [name, image];
+    })
+  );
+
+  const ICE_PLATFORM_ASSET_CONTRACT = Object.freeze({
+    left: Object.freeze({
+      path: "assets/platforms/ice_platform_left.png",
+      canvas: Object.freeze({w: 128, h: 168}),
+      source: Object.freeze({x: 0, y: 31, w: 128, h: 103}),
+      drawWidth: 24
+    }),
+    middle: Object.freeze({
+      path: "assets/platforms/ice_platform_middle.png",
+      canvas: Object.freeze({w: 268, h: 168}),
+      source: Object.freeze({x: 0, y: 31, w: 268, h: 103}),
+      drawWidth: 52
+    }),
+    right: Object.freeze({
+      path: "assets/platforms/ice_platform_right.png",
+      canvas: Object.freeze({w: 128, h: 168}),
+      source: Object.freeze({x: 0, y: 31, w: 128, h: 103}),
+      drawWidth: 24
+    })
+  });
+  const ICE_PLATFORM_COLLISION_HEIGHT = 26;
+  const ICE_PLATFORM_DRAW_HEIGHT = 32;
+  const ICE_PLATFORM_SEAM_OVERLAP = 1;
+  const icePlatformImages = Object.fromEntries(
+    Object.entries(ICE_PLATFORM_ASSET_CONTRACT).map(([name, contract]) => {
+      const image = new Image();
+      image.src = contract.path;
+      return [name, image];
+    })
+  );
+  // Robust Ice alpha starts at source-local row 2. The old 26/32 body ratio
+  // leaves the intentional lower 6px Icicle zone at its original scale.
+  const ICE_PLATFORM_BODY_SOURCE_TOP = 2;
+  const ICE_PLATFORM_BODY_SOURCE_BOTTOM =
+    ICE_PLATFORM_ASSET_CONTRACT.middle.source.h *
+    ICE_PLATFORM_COLLISION_HEIGHT / ICE_PLATFORM_DRAW_HEIGHT;
+
+  const CONVEYOR_PLATFORM_ASSET_CONTRACT = Object.freeze({
+    left: Object.freeze({
+      path: "assets/platforms/conveyor_left.png",
+      canvas: Object.freeze({w: 320, h: 1024}),
+      source: Object.freeze({x: 0, y: 240, w: 320, h: 476}),
+      drawWidth: 24
+    }),
+    middle: Object.freeze({
+      path: "assets/platforms/conveyor_middle.png",
+      canvas: Object.freeze({w: 1408, h: 1024}),
+      source: Object.freeze({x: 0, y: 228, w: 1408, h: 476}),
+      drawWidth: 52
+    }),
+    right: Object.freeze({
+      path: "assets/platforms/conveyor_right.png",
+      canvas: Object.freeze({w: 320, h: 1024}),
+      source: Object.freeze({x: 0, y: 240, w: 320, h: 476}),
+      drawWidth: 24
+    })
+  });
+  const CONVEYOR_PLATFORM_DRAW_HEIGHT = 26;
+  const CONVEYOR_PLATFORM_SEAM_OVERLAP = 1;
+  const CONVEYOR_PLATFORM_BELT_CHANNEL = Object.freeze({
+    top: 7,
+    height: 9,
+    stripeSpacing: 32,
+    stripeWidth: 4,
+    stripeLean: 6
+  });
+  const conveyorPlatformImages = Object.fromEntries(
+    Object.entries(CONVEYOR_PLATFORM_ASSET_CONTRACT).map(([name, contract]) => {
+      const image = new Image();
+      image.src = contract.path;
+      return [name, image];
+    })
+  );
+
+  const SPECIAL_PLATFORM_EDGE_OVERHANG = 1;
+  const SPECIAL_PLATFORM_BODY_TOP_OFFSET = -1;
+  const SPECIAL_PLATFORM_BODY_DRAW_HEIGHT = 28;
+
+  const SPIKE_PLATFORM_ASSET_CONTRACT = Object.freeze({
+    path: "assets/platforms/spike_platform_spike.png",
+    canvas: Object.freeze({w: 256, h: 320}),
+    source: Object.freeze({x: 14, y: 12, w: 228, h: 299})
+  });
+  const SPIKE_PLATFORM_FULL_DRAW_HEIGHT = 26;
+  const SPIKE_PLATFORM_FULL_DRAW_WIDTH =
+    SPIKE_PLATFORM_FULL_DRAW_HEIGHT *
+    SPIKE_PLATFORM_ASSET_CONTRACT.source.w /
+    SPIKE_PLATFORM_ASSET_CONTRACT.source.h;
+  const SPIKE_PLATFORM_BASELINE_OFFSET = 6;
+  const SPIKE_PLATFORM_SLOT_TRANSITION_DURATION = 0.12;
+  const SPIKE_PLATFORM_WARNING_DURATION = 0.62;
+  const SPIKE_PLATFORM_EXTEND_DURATION = 0.28;
+  const SPIKE_PLATFORM_DANGER_DURATION = 1.08;
+  const SPIKE_PLATFORM_RETRACT_DURATION = 0.30;
+  const spikePlatformImage = new Image();
+  spikePlatformImage.src = SPIKE_PLATFORM_ASSET_CONTRACT.path;
+
   const TUTORIAL_DRAG_HAND_RENDER_SIZE = 108;
   const TUTORIAL_DRAG_HAND_FINGERTIP_X_RATIO = 496 / 1254;
   const TUTORIAL_DRAG_HAND_FINGERTIP_Y_RATIO = 24 / 1254;
@@ -230,6 +488,82 @@
     );
   }
 
+  function getActiveVisualBiome(biome) {
+    if (
+      typeof isTutorialStage === "function" &&
+      isTutorialStage() &&
+      typeof BIOMES !== "undefined"
+    ) {
+      return BIOMES.find(candidate => candidate?.id === "meadow") ?? biome;
+    }
+    return biome;
+  }
+
+  function getActiveBiomePlatformVisuals(biome) {
+    const visualBiome = getActiveVisualBiome(biome);
+    if (
+      !visualBiome?.id ||
+      state === "menu" ||
+      (
+        typeof isFairyTaleGraphicsMode === "function" &&
+        !isFairyTaleGraphicsMode()
+      ) ||
+      typeof isTutorialStage !== "function" ||
+      typeof BIOME_PLATFORM_VISUALS === "undefined"
+    ) return null;
+    return BIOME_PLATFORM_VISUALS.resolve(visualBiome.id);
+  }
+
+  function getActiveBiomeDecorVisuals(biome) {
+    const visualBiome = getActiveVisualBiome(biome);
+    if (
+      !visualBiome?.id ||
+      state === "menu" ||
+      (
+        typeof isFairyTaleGraphicsMode === "function" &&
+        !isFairyTaleGraphicsMode()
+      ) ||
+      typeof isTutorialStage !== "function" ||
+      typeof BIOME_DECOR_VISUALS === "undefined"
+    ) return null;
+    return BIOME_DECOR_VISUALS.resolve(visualBiome.id);
+  }
+
+  function getActiveBiomePortalVisuals(biome) {
+    const visualBiome = getActiveVisualBiome(biome);
+    if (
+      !visualBiome?.id ||
+      state === "menu" ||
+      (
+        typeof isFairyTaleGraphicsMode === "function" &&
+        !isFairyTaleGraphicsMode()
+      ) ||
+      typeof isTutorialStage !== "function" ||
+      typeof BIOME_PORTAL_VISUALS === "undefined"
+    ) return null;
+    return BIOME_PORTAL_VISUALS.resolve(visualBiome.id);
+  }
+
+  let decorAttemptLevel = null;
+  let decorAttemptNonce = 0;
+  let decorAttemptLives = null;
+  let decorAttemptShots = null;
+
+  function getDecorAttemptNonce(level) {
+    if (level !== decorAttemptLevel) {
+      decorAttemptLevel = level;
+      decorAttemptNonce = 0;
+    } else if (
+      (decorAttemptLives !== null && lives !== decorAttemptLives) ||
+      (decorAttemptShots !== null && shots < decorAttemptShots)
+    ) {
+      decorAttemptNonce = (decorAttemptNonce + 1) >>> 0;
+    }
+    decorAttemptLives = lives;
+    decorAttemptShots = shots;
+    return decorAttemptNonce;
+  }
+
   function drawEarthPlatformDetail(x, y, w, h, style) {
     ctx.fillStyle = style.detailColor;
     ctx.globalAlpha = 0.42;
@@ -433,27 +767,799 @@
     ctx.restore();
   }
 
-  function drawGhostStepFadeOutline(platform, x) {
-    if (!platform?.fade || !isGhostStepActive()) return;
+  function isGlobalWholePlatformAssetReady(record, contract) {
+    return Boolean(
+      record?.contentFit &&
+      record.image.complete &&
+      record.image.naturalWidth === contract.canvas.w &&
+      record.image.naturalHeight === contract.canvas.h
+    );
+  }
 
+  function drawGlobalWholePlatformAsset(
+    context,
+    record,
+    contract,
+    platform,
+    drawX,
+    flipX = false
+  ) {
+    if (!isGlobalWholePlatformAssetReady(record, contract)) return false;
+    context.save();
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    const drawn = drawWholePlatformImage(
+      context,
+      record.image,
+      record.contentFit,
+      contract.canvas,
+      platform,
+      drawX,
+      flipX
+    );
+    context.restore();
+    return drawn;
+  }
+
+  function drawSpecialPlatformOuterCapExtensions(
+    context,
+    images,
+    contract,
+    seamOverlap,
+    drawX,
+    platformWidth,
+    destinationY,
+    destinationHeight
+  ) {
+    const edge = SPECIAL_PLATFORM_EDGE_OVERHANG;
+    context.save();
+    context.beginPath();
+    context.rect(drawX - edge, destinationY, edge, destinationHeight);
+    context.rect(drawX + platformWidth, destinationY, edge, destinationHeight);
+    context.clip();
+    context.drawImage(
+      images.left,
+      contract.left.source.x,
+      contract.left.source.y,
+      contract.left.source.w,
+      contract.left.source.h,
+      drawX - edge,
+      destinationY,
+      contract.left.drawWidth + seamOverlap,
+      destinationHeight
+    );
+    context.drawImage(
+      images.right,
+      contract.right.source.x,
+      contract.right.source.y,
+      contract.right.source.w,
+      contract.right.source.h,
+      drawX + platformWidth - contract.right.drawWidth + edge,
+      destinationY,
+      contract.right.drawWidth,
+      destinationHeight
+    );
+    context.restore();
+  }
+
+  function areLegacyFallingPlatformAssetsReady() {
+    return Object.entries(FALLING_PLATFORM_ASSET_CONTRACT).every(([name, contract]) => {
+      const image = fallingPlatformImages[name];
+      return (
+        image.complete &&
+        image.naturalWidth === contract.canvas.w &&
+        image.naturalHeight === contract.canvas.h
+      );
+    });
+  }
+
+  function drawLegacyFallingPlatformAsset(context, platform, drawX = platform.x) {
+    const contract = FALLING_PLATFORM_ASSET_CONTRACT;
+    if (
+      !platform?.fragile ||
+      platform.h !== FALLING_PLATFORM_DRAW_HEIGHT ||
+      platform.w < contract.left.drawWidth + contract.right.drawWidth ||
+      !areLegacyFallingPlatformAssetsReady()
+    ) return false;
+
+    const destinationY = platform.y + SPECIAL_PLATFORM_BODY_TOP_OFFSET;
+    const middleStartX = drawX + contract.left.drawWidth;
+    const middleEndX = drawX + platform.w - contract.right.drawWidth;
+
+    context.save();
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    drawSpecialPlatformOuterCapExtensions(
+      context,
+      fallingPlatformImages,
+      contract,
+      FALLING_PLATFORM_SEAM_OVERLAP,
+      drawX,
+      platform.w,
+      destinationY,
+      SPECIAL_PLATFORM_BODY_DRAW_HEIGHT
+    );
+    context.drawImage(
+      fallingPlatformImages.left,
+      contract.left.source.x,
+      contract.left.source.y,
+      contract.left.source.w,
+      contract.left.source.h,
+      drawX,
+      destinationY,
+      contract.left.drawWidth + FALLING_PLATFORM_SEAM_OVERLAP,
+      SPECIAL_PLATFORM_BODY_DRAW_HEIGHT
+    );
+
+    let destinationX = middleStartX;
+    while (destinationX < middleEndX) {
+      const destinationWidth = Math.min(
+        contract.middle.drawWidth,
+        middleEndX - destinationX
+      );
+      const sourceWidth = contract.middle.source.w * (
+        destinationWidth / contract.middle.drawWidth
+      );
+      context.drawImage(
+        fallingPlatformImages.middle,
+        contract.middle.source.x,
+        contract.middle.source.y,
+        sourceWidth,
+        contract.middle.source.h,
+        destinationX,
+        destinationY,
+        destinationWidth + FALLING_PLATFORM_SEAM_OVERLAP,
+        SPECIAL_PLATFORM_BODY_DRAW_HEIGHT
+      );
+      destinationX += destinationWidth;
+    }
+
+    context.drawImage(
+      fallingPlatformImages.right,
+      contract.right.source.x,
+      contract.right.source.y,
+      contract.right.source.w,
+      contract.right.source.h,
+      drawX + platform.w - contract.right.drawWidth,
+      destinationY,
+      contract.right.drawWidth,
+      SPECIAL_PLATFORM_BODY_DRAW_HEIGHT
+    );
+    context.restore();
+    return true;
+  }
+
+  function areFallingPlatformAssetsReady() {
+    return isGlobalWholePlatformAssetReady(
+      fallingPlatformWholeAsset,
+      FALLING_PLATFORM_WHOLE_ASSET_CONTRACT
+    ) || areLegacyFallingPlatformAssetsReady();
+  }
+
+  function drawFallingPlatformAsset(context, platform, drawX = platform.x) {
+    if (
+      typeof isFairyTaleGraphicsMode === "function" &&
+      !isFairyTaleGraphicsMode()
+    ) return false;
+    if (!platform?.fragile || platform.h !== FALLING_PLATFORM_DRAW_HEIGHT) {
+      return false;
+    }
+    if (drawGlobalWholePlatformAsset(
+      context,
+      fallingPlatformWholeAsset,
+      FALLING_PLATFORM_WHOLE_ASSET_CONTRACT,
+      platform,
+      drawX
+    )) return true;
+    return drawLegacyFallingPlatformAsset(context, platform, drawX);
+  }
+
+  function areLegacyIcePlatformAssetsReady() {
+    return Object.entries(ICE_PLATFORM_ASSET_CONTRACT).every(([name, contract]) => {
+      const image = icePlatformImages[name];
+      return (
+        image.complete &&
+        image.naturalWidth === contract.canvas.w &&
+        image.naturalHeight === contract.canvas.h
+      );
+    });
+  }
+
+  function drawLegacyIcePlatformAsset(context, platform, drawX = platform.x) {
+    const contract = ICE_PLATFORM_ASSET_CONTRACT;
+    if (
+      !platform?.ice ||
+      platform.h !== ICE_PLATFORM_COLLISION_HEIGHT ||
+      platform.w < contract.left.drawWidth + contract.right.drawWidth ||
+      !areLegacyIcePlatformAssetsReady()
+    ) return false;
+
+    const middleStartX = drawX + contract.left.drawWidth;
+    const middleEndX = drawX + platform.w - contract.right.drawWidth;
+
+    const bodySourceHeight = ICE_PLATFORM_BODY_SOURCE_BOTTOM - ICE_PLATFORM_BODY_SOURCE_TOP;
+    const bodyScale = SPECIAL_PLATFORM_BODY_DRAW_HEIGHT / bodySourceHeight;
+    const bodyClipY = platform.y + SPECIAL_PLATFORM_BODY_TOP_OFFSET;
+    const bodyImageY = bodyClipY - ICE_PLATFORM_BODY_SOURCE_TOP * bodyScale;
+    const bodyImageHeight = contract.middle.source.h * bodyScale;
+    const bodyBottomY = bodyClipY + SPECIAL_PLATFORM_BODY_DRAW_HEIGHT;
+
+    const overhangScale = ICE_PLATFORM_DRAW_HEIGHT / contract.middle.source.h;
+    const overhangImageY = bodyBottomY - ICE_PLATFORM_BODY_SOURCE_BOTTOM * overhangScale;
+    const overhangImageHeight = contract.middle.source.h * overhangScale;
+    const overhangClipHeight =
+      (contract.middle.source.h - ICE_PLATFORM_BODY_SOURCE_BOTTOM) * overhangScale;
+
+    const drawIceTiles = (destinationY, destinationHeight) => {
+      drawSpecialPlatformOuterCapExtensions(
+        context,
+        icePlatformImages,
+        contract,
+        ICE_PLATFORM_SEAM_OVERLAP,
+        drawX,
+        platform.w,
+        destinationY,
+        destinationHeight
+      );
+      context.drawImage(
+        icePlatformImages.left,
+        contract.left.source.x,
+        contract.left.source.y,
+        contract.left.source.w,
+        contract.left.source.h,
+        drawX,
+        destinationY,
+        contract.left.drawWidth + ICE_PLATFORM_SEAM_OVERLAP,
+        destinationHeight
+      );
+
+      let destinationX = middleStartX;
+      while (destinationX < middleEndX) {
+        const destinationWidth = Math.min(
+          contract.middle.drawWidth,
+          middleEndX - destinationX
+        );
+        const sourceWidth = contract.middle.source.w * (
+          destinationWidth / contract.middle.drawWidth
+        );
+        context.drawImage(
+          icePlatformImages.middle,
+          contract.middle.source.x,
+          contract.middle.source.y,
+          sourceWidth,
+          contract.middle.source.h,
+          destinationX,
+          destinationY,
+          destinationWidth + ICE_PLATFORM_SEAM_OVERLAP,
+          destinationHeight
+        );
+        destinationX += destinationWidth;
+      }
+
+      context.drawImage(
+        icePlatformImages.right,
+        contract.right.source.x,
+        contract.right.source.y,
+        contract.right.source.w,
+        contract.right.source.h,
+        drawX + platform.w - contract.right.drawWidth,
+        destinationY,
+        contract.right.drawWidth,
+        destinationHeight
+      );
+    };
+
+    context.save();
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    context.save();
+    context.beginPath();
+    context.rect(
+      drawX - SPECIAL_PLATFORM_EDGE_OVERHANG,
+      bodyClipY,
+      platform.w + SPECIAL_PLATFORM_EDGE_OVERHANG * 2,
+      SPECIAL_PLATFORM_BODY_DRAW_HEIGHT
+    );
+    context.clip();
+    drawIceTiles(bodyImageY, bodyImageHeight);
+    context.restore();
+
+    context.save();
+    context.beginPath();
+    context.rect(
+      drawX - SPECIAL_PLATFORM_EDGE_OVERHANG,
+      bodyBottomY,
+      platform.w + SPECIAL_PLATFORM_EDGE_OVERHANG * 2,
+      overhangClipHeight
+    );
+    context.clip();
+    drawIceTiles(overhangImageY, overhangImageHeight);
+    context.restore();
+    context.restore();
+    return true;
+  }
+
+  function areIcePlatformAssetsReady() {
+    return isGlobalWholePlatformAssetReady(
+      icePlatformWholeAsset,
+      ICE_PLATFORM_WHOLE_ASSET_CONTRACT
+    ) || areLegacyIcePlatformAssetsReady();
+  }
+
+  function drawIcePlatformAsset(context, platform, drawX = platform.x) {
+    if (
+      typeof isFairyTaleGraphicsMode === "function" &&
+      !isFairyTaleGraphicsMode()
+    ) return false;
+    if (!platform?.ice || platform.h !== ICE_PLATFORM_COLLISION_HEIGHT) {
+      return false;
+    }
+    if (drawGlobalWholePlatformAsset(
+      context,
+      icePlatformWholeAsset,
+      ICE_PLATFORM_WHOLE_ASSET_CONTRACT,
+      platform,
+      drawX
+    )) return true;
+    return drawLegacyIcePlatformAsset(context, platform, drawX);
+  }
+
+  function drawCanvasBouncePadFallback(pad) {
+    ctx.fillStyle = "#47cde9";
+    roundedRect(pad.x, pad.y, pad.w, pad.h, 9);
+    ctx.fill();
+    ctx.fillStyle = "#d1fbff";
+    const triangleStartX = pad.x + pad.w / 2 - 16;
+    for (let triangleIndex = 0; triangleIndex < 2; triangleIndex++) {
+      const x = triangleStartX + triangleIndex * 18;
+      ctx.beginPath();
+      ctx.moveTo(x, pad.y + 20);
+      ctx.lineTo(x + 7, pad.y + 8);
+      ctx.lineTo(x + 14, pad.y + 20);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  function isSpikePlatformAssetReady() {
+    const contract = SPIKE_PLATFORM_ASSET_CONTRACT;
+    return (
+      spikePlatformImage.complete &&
+      spikePlatformImage.naturalWidth === contract.canvas.w &&
+      spikePlatformImage.naturalHeight === contract.canvas.h
+    );
+  }
+
+  function getSpikePlatformSlotVisual(spikeData, visualTime = worldTime) {
+    const extension = clamp(spikeData?.extension ?? 0, 0, 1);
+    const fallbackOpen = Boolean(
+      spikeData?.warning || spikeData?.dangerous || extension > 0.02
+    );
+    const cycle = Number(spikeData?.cycle);
+    const startTime = Number(spikeData?.startTime);
+    if (!Number.isFinite(cycle) || cycle <= 0 || !Number.isFinite(startTime)) {
+      return Object.freeze({
+        phase: fallbackOpen ? "OPEN" : "CLOSED",
+        openness: fallbackOpen ? 1 : 0
+      });
+    }
+
+    const phaseOffset = Number.isFinite(Number(spikeData?.phaseOffset))
+      ? Number(spikeData.phaseOffset)
+      : 0;
+    const elapsed = Math.max(0, (Number(visualTime) || 0) - startTime) + phaseOffset;
+    const cycleTime = ((elapsed % cycle) + cycle) % cycle;
+    const activeDurations =
+      SPIKE_PLATFORM_WARNING_DURATION +
+      SPIKE_PLATFORM_EXTEND_DURATION +
+      SPIKE_PLATFORM_DANGER_DURATION +
+      SPIKE_PLATFORM_RETRACT_DURATION;
+    const safeDuration = Math.max(1.5, cycle - activeDurations);
+    const openingStart = Math.max(
+      0,
+      safeDuration - SPIKE_PLATFORM_SLOT_TRANSITION_DURATION
+    );
+
+    if (cycleTime >= openingStart && cycleTime < safeDuration) {
+      const progress = clamp(
+        (cycleTime - openingStart) /
+          Math.max(Number.EPSILON, safeDuration - openingStart),
+        0,
+        1
+      );
+      return Object.freeze({
+        phase: "OPENING",
+        openness: progress * progress * (3 - 2 * progress)
+      });
+    }
+
+    if (cycleTime >= safeDuration) {
+      return Object.freeze({phase: "OPEN", openness: 1});
+    }
+
+    if (elapsed >= cycle && cycleTime < SPIKE_PLATFORM_SLOT_TRANSITION_DURATION) {
+      const progress = clamp(
+        cycleTime / SPIKE_PLATFORM_SLOT_TRANSITION_DURATION,
+        0,
+        1
+      );
+      const easedProgress = progress * progress * (3 - 2 * progress);
+      return Object.freeze({phase: "CLOSING", openness: 1 - easedProgress});
+    }
+
+    return Object.freeze({phase: "CLOSED", openness: 0});
+  }
+
+  function drawSpikePlatformAsset(context, platform, drawX, count, step) {
+    if (
+      typeof isFairyTaleGraphicsMode === "function" &&
+      !isFairyTaleGraphicsMode()
+    ) return false;
+    if (
+      !platform?.spikePlatform ||
+      !isSpikePlatformAssetReady() ||
+      count < 1 ||
+      step <= 0
+    ) return false;
+
+    const extension = clamp(platform.spikeData?.extension ?? 0, 0, 1);
+    if (extension <= 0.02) return true;
+
+    const source = SPIKE_PLATFORM_ASSET_CONTRACT.source;
+    const visibleSourceHeight = source.h * extension;
+    const visibleDrawHeight = SPIKE_PLATFORM_FULL_DRAW_HEIGHT * extension;
+    const baselineY = platform.y + SPIKE_PLATFORM_BASELINE_OFFSET;
+
+    context.save();
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    for (let i = 0; i < count; i++) {
+      const centerX = drawX + (i + 0.5) * step;
+      context.drawImage(
+        spikePlatformImage,
+        source.x,
+        source.y,
+        source.w,
+        visibleSourceHeight,
+        centerX - SPIKE_PLATFORM_FULL_DRAW_WIDTH / 2,
+        baselineY - visibleDrawHeight,
+        SPIKE_PLATFORM_FULL_DRAW_WIDTH,
+        visibleDrawHeight
+      );
+    }
+    context.restore();
+    return true;
+  }
+
+  function drawBouncePads() {
+    for (const pad of currentLevel().pads) {
+      ctx.save();
+      ctx.shadowColor = "#4ddcff";
+      ctx.shadowBlur = 18;
+      if (
+        (
+          typeof isFairyTaleGraphicsMode !== "function" ||
+          isFairyTaleGraphicsMode()
+        ) &&
+        bouncePadImage.complete &&
+        bouncePadImage.naturalWidth > 0 &&
+        bouncePadImage.naturalHeight > 0
+      ) {
+        const source = BOUNCE_PAD_SOURCE_BOUNDS;
+        ctx.drawImage(
+          bouncePadImage,
+          source.x,
+          source.y,
+          source.w,
+          source.h,
+          pad.x,
+          pad.y,
+          pad.w,
+          pad.h
+        );
+      } else {
+        drawCanvasBouncePadFallback(pad);
+      }
+      ctx.restore();
+    }
+  }
+
+  function areLegacyConveyorPlatformAssetsReady() {
+    return Object.entries(CONVEYOR_PLATFORM_ASSET_CONTRACT).every(([name, contract]) => {
+      const image = conveyorPlatformImages[name];
+      return (
+        image.complete &&
+        image.naturalWidth === contract.canvas.w &&
+        image.naturalHeight === contract.canvas.h
+      );
+    });
+  }
+
+  function drawLegacyConveyorPlatformAsset(context, platform, drawX = platform.x) {
+    const contract = CONVEYOR_PLATFORM_ASSET_CONTRACT;
+    if (
+      !platform?.conveyor ||
+      platform.h !== CONVEYOR_PLATFORM_DRAW_HEIGHT ||
+      platform.w < contract.left.drawWidth + contract.right.drawWidth ||
+      !areLegacyConveyorPlatformAssetsReady()
+    ) return false;
+
+    const destinationY = platform.y + SPECIAL_PLATFORM_BODY_TOP_OFFSET;
+    const middleStartX = drawX + contract.left.drawWidth;
+    const middleEndX = drawX + platform.w - contract.right.drawWidth;
+    const direction = Math.sign(platform.conveyorSpeed) || 1;
+
+    context.save();
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    drawSpecialPlatformOuterCapExtensions(
+      context,
+      conveyorPlatformImages,
+      contract,
+      CONVEYOR_PLATFORM_SEAM_OVERLAP,
+      drawX,
+      platform.w,
+      destinationY,
+      SPECIAL_PLATFORM_BODY_DRAW_HEIGHT
+    );
+    context.drawImage(
+      conveyorPlatformImages.left,
+      contract.left.source.x,
+      contract.left.source.y,
+      contract.left.source.w,
+      contract.left.source.h,
+      drawX,
+      destinationY,
+      contract.left.drawWidth + CONVEYOR_PLATFORM_SEAM_OVERLAP,
+      SPECIAL_PLATFORM_BODY_DRAW_HEIGHT
+    );
+
+    let destinationX = middleStartX;
+    while (destinationX < middleEndX) {
+      const destinationWidth = Math.min(
+        contract.middle.drawWidth,
+        middleEndX - destinationX
+      );
+      const sourceWidth = contract.middle.source.w * (
+        destinationWidth / contract.middle.drawWidth
+      );
+      const sourceX = direction < 0
+        ? contract.middle.source.x + contract.middle.source.w - sourceWidth
+        : contract.middle.source.x;
+      const drawWidth = destinationWidth + CONVEYOR_PLATFORM_SEAM_OVERLAP;
+      if (direction < 0) {
+        context.save();
+        context.translate(destinationX * 2 + drawWidth, 0);
+        context.scale(-1, 1);
+      }
+      context.drawImage(
+        conveyorPlatformImages.middle,
+        sourceX,
+        contract.middle.source.y,
+        sourceWidth,
+        contract.middle.source.h,
+        destinationX,
+        destinationY,
+        drawWidth,
+        SPECIAL_PLATFORM_BODY_DRAW_HEIGHT
+      );
+      if (direction < 0) context.restore();
+      destinationX += destinationWidth;
+    }
+
+    context.drawImage(
+      conveyorPlatformImages.right,
+      contract.right.source.x,
+      contract.right.source.y,
+      contract.right.source.w,
+      contract.right.source.h,
+      drawX + platform.w - contract.right.drawWidth,
+      destinationY,
+      contract.right.drawWidth,
+      SPECIAL_PLATFORM_BODY_DRAW_HEIGHT
+    );
+    context.restore();
+    return true;
+  }
+
+  function areConveyorPlatformAssetsReady() {
+    return isGlobalWholePlatformAssetReady(
+      conveyorPlatformWholeAsset,
+      CONVEYOR_PLATFORM_WHOLE_ASSET_CONTRACT
+    ) || areLegacyConveyorPlatformAssetsReady();
+  }
+
+  function drawConveyorPlatformAsset(context, platform, drawX = platform.x) {
+    if (
+      typeof isFairyTaleGraphicsMode === "function" &&
+      !isFairyTaleGraphicsMode()
+    ) return false;
+    if (!platform?.conveyor || platform.h !== CONVEYOR_PLATFORM_DRAW_HEIGHT) {
+      return false;
+    }
+    const direction = Math.sign(platform.conveyorSpeed) ||
+      CONVEYOR_PLATFORM_WHOLE_ASSET_CONTRACT.defaultDirection;
+    if (drawGlobalWholePlatformAsset(
+      context,
+      conveyorPlatformWholeAsset,
+      CONVEYOR_PLATFORM_WHOLE_ASSET_CONTRACT,
+      platform,
+      drawX,
+      direction < 0
+    )) return true;
+    return drawLegacyConveyorPlatformAsset(context, platform, drawX);
+  }
+
+  function drawConveyorPlatformBeltOverlay(context, platform, drawX = platform.x) {
+    const contract = CONVEYOR_PLATFORM_ASSET_CONTRACT;
+    const channel = CONVEYOR_PLATFORM_BELT_CHANNEL;
+    if (
+      !platform?.conveyor ||
+      platform.h !== CONVEYOR_PLATFORM_DRAW_HEIGHT ||
+      platform.w <= contract.left.drawWidth + contract.right.drawWidth
+    ) return false;
+
+    const direction = Math.sign(platform.conveyorSpeed) || 1;
+    const beltOffset = (
+      worldTime * Math.abs(platform.conveyorSpeed) * 0.72 +
+      platform.conveyorData.phase
+    ) % channel.stripeSpacing;
+    const wholeReady = isGlobalWholePlatformAssetReady(
+      conveyorPlatformWholeAsset,
+      CONVEYOR_PLATFORM_WHOLE_ASSET_CONTRACT
+    );
+    const wholeMapping = wholeReady ? getWholePlatformImageMapping(
+      conveyorPlatformWholeAsset.contentFit,
+      CONVEYOR_PLATFORM_WHOLE_ASSET_CONTRACT.canvas,
+      platform,
+      drawX,
+      direction < 0
+    ) : null;
+    const wholeChannel = CONVEYOR_PLATFORM_WHOLE_ASSET_CONTRACT.beltChannelSource;
+    const wholeChannelX = direction < 0
+      ? CONVEYOR_PLATFORM_WHOLE_ASSET_CONTRACT.canvas.w -
+        wholeChannel.x - wholeChannel.w
+      : wholeChannel.x;
+    const middleStartX = wholeMapping
+      ? wholeMapping.drawX + wholeChannelX * wholeMapping.scale
+      : drawX + contract.left.drawWidth;
+    const middleWidth = wholeMapping
+      ? wholeChannel.w * wholeMapping.scale
+      : platform.w - contract.left.drawWidth - contract.right.drawWidth;
+    const destinationScaleY =
+      SPECIAL_PLATFORM_BODY_DRAW_HEIGHT / CONVEYOR_PLATFORM_DRAW_HEIGHT;
+    const channelTop = wholeMapping
+      ? wholeMapping.drawY + wholeChannel.y * wholeMapping.scale
+      : platform.y + SPECIAL_PLATFORM_BODY_TOP_OFFSET +
+        channel.top * destinationScaleY;
+    const channelHeight = wholeMapping
+      ? wholeChannel.h * wholeMapping.scale
+      : channel.height * destinationScaleY;
+    const channelBottom = channelTop + channelHeight;
+    const stripeLean = wholeMapping
+      ? wholeChannel.stripeLean * wholeMapping.scale
+      : channel.stripeLean;
+
+    context.save();
+    context.beginPath();
+    context.rect(middleStartX, channelTop, middleWidth, channelHeight);
+    context.clip();
+    context.fillStyle = "rgba(188,198,210,0.42)";
+
+    for (
+      let x = middleStartX - channel.stripeSpacing * 2 + beltOffset * direction;
+      x < middleStartX + middleWidth + channel.stripeSpacing * 2;
+      x += channel.stripeSpacing
+    ) {
+      const topLeft = direction > 0
+        ? x - channel.stripeWidth / 2
+        : x + stripeLean - channel.stripeWidth / 2;
+      const bottomLeft = direction > 0
+        ? x + stripeLean - channel.stripeWidth / 2
+        : x - channel.stripeWidth / 2;
+      context.beginPath();
+      context.moveTo(topLeft, channelTop);
+      context.lineTo(topLeft + channel.stripeWidth, channelTop);
+      context.lineTo(bottomLeft + channel.stripeWidth, channelBottom);
+      context.lineTo(bottomLeft, channelBottom);
+      context.closePath();
+      context.fill();
+    }
+    context.restore();
+    return true;
+  }
+
+  function drawVectorPlatformSurface(biome, platform, drawX) {
+    ctx.fillStyle = platform.fragile
+      ? "#815142"
+      : platform.moving
+        ? "#5e7592"
+        : platform.conveyor
+          ? "#4a4f5b"
+          : platform.fade
+            ? biome.platform.body
+            : platform.ice
+              ? "#75bad1"
+              : platform.spikePlatform
+                ? biome.platform.body
+                : isStandardPlatform(platform)
+                  ? biome.platform.body
+                  : "#3c5872";
+    roundedRect(drawX, platform.y, platform.w, platform.h, 10);
+    ctx.fill();
+
+    ctx.fillStyle = platform.fragile
+      ? "#ff9d61"
+      : platform.moving
+        ? "#a7d2ff"
+        : platform.conveyor
+          ? "#ffad45"
+          : platform.fade
+            ? biome.platform.top
+            : platform.ice
+              ? "#e8fbff"
+              : platform.spikePlatform
+                ? biome.platform.top
+                : isStandardPlatform(platform)
+                  ? biome.platform.top
+                  : "#77c68a";
+    roundedRect(drawX, platform.y, platform.w, Math.min(12, platform.h), 8);
+    ctx.fill();
+  }
+
+  function drawVectorPlatformFallbackRegion(
+    biome,
+    platform,
+    drawX,
+    region
+  ) {
     ctx.save();
-    ctx.globalAlpha = 1;
-    ctx.strokeStyle = "rgba(221,205,255,0.92)";
-    ctx.lineWidth = 2.5;
-    ctx.shadowColor = "rgba(190,158,255,0.72)";
-    ctx.shadowBlur = 6;
-    roundedRect(x - 1, platform.y - 1, platform.w + 2, platform.h + 2, 11);
-    ctx.stroke();
+    ctx.beginPath();
+    ctx.rect(region.x, region.y, region.w, region.h);
+    ctx.clip();
+    drawVectorPlatformSurface(biome, platform, drawX);
+    if (platform.spikePlatform) {
+      drawStandardPlatformDetails(
+        drawX,
+        platform.y,
+        platform.w,
+        platform.h,
+        biome.platform
+      );
+    } else if (isStandardPlatform(platform) || platform.fade) {
+      drawStandardPlatformDetails(
+        drawX,
+        platform.y,
+        platform.w,
+        platform.h,
+        biome.platform
+      );
+    }
     ctx.restore();
   }
 
-  function drawPlatforms(biome) {
+  function drawPlatforms(
+    biome,
+    platformVisuals = null,
+    platformPass = "all",
+    platformRoleVisuals = platformVisuals
+  ) {
     const level = currentLevel();
     const platforms = getPlatforms();
 
     for (const p of platforms) {
+      if (platformRoleVisuals && platformPass !== "all") {
+        const isFloatingKitPlatform =
+          platformRoleVisuals.resolvePlatformRole(p) === "FLOATING";
+        if (
+          (platformPass === "without-floating" && isFloatingKitPlatform) ||
+          (platformPass === "floating-only" && !isFloatingKitPlatform)
+        ) continue;
+      }
       let drawX = p.x;
       const standardPlatform = isStandardPlatform(p);
+      const biomeBasePlatform = standardPlatform || p.fade || p.spikePlatform;
+      let biomeAssetPlatform = false;
       if (
         p.fragile &&
         p.fallingPlatform.triggered &&
@@ -472,57 +1578,49 @@
 
       ctx.save();
       if (p.fade) ctx.globalAlpha = p.fadeData.opacity;
+      const fallingAssetPlatform = Boolean(
+        p.fragile && drawFallingPlatformAsset(ctx, p, drawX)
+      );
+      const iceAssetPlatform = Boolean(
+        p.ice && drawIcePlatformAsset(ctx, p, drawX)
+      );
+      const conveyorAssetPlatform = Boolean(
+        p.conveyor && drawConveyorPlatformAsset(ctx, p, drawX)
+      );
+      biomeAssetPlatform = Boolean(
+        !fallingAssetPlatform &&
+        !iceAssetPlatform &&
+        !conveyorAssetPlatform &&
+        platformVisuals &&
+        !p.lastBubbleSupport &&
+        platformVisuals.drawPlatformBase(
+          ctx,
+          p,
+          drawX,
+          level.seed,
+          region => drawVectorPlatformFallbackRegion(
+            biome,
+            p,
+            drawX,
+            region
+          )
+        )
+      );
 
-      ctx.fillStyle = p.fragile
-        ? "#815142"
-        : p.moving
-          ? "#5e7592"
-          : p.conveyor
-            ? "#4a4f5b"
-            : p.fade
-              ? "#584f87"
-              : p.ice
-                ? "#75bad1"
-                : p.spikePlatform
-                  ? "#5b4e58"
-                  : standardPlatform
-                    ? biome.platform.body
-                    : "#3c5872";
-      roundedRect(drawX, p.y, p.w, p.h, 10);
-      ctx.fill();
-
-      ctx.fillStyle = p.fragile
-        ? "#ff9d61"
-        : p.moving
-          ? "#a7d2ff"
-          : p.conveyor
-            ? "#ffad45"
-            : p.fade
-              ? "#d5b9ff"
-              : p.ice
-                ? "#e8fbff"
-                : p.spikePlatform
-                  ? (p.spikeData.dangerous
-                      ? "#ff705d"
-                      : p.spikeData.warning
-                        ? "#ffc15c"
-                        : "#d98a69")
-                  : standardPlatform
-                    ? biome.platform.top
-                    : "#77c68a";
-      roundedRect(drawX, p.y, p.w, Math.min(12, p.h), 8);
-      ctx.fill();
-
-      if (p.fade) {
-        ctx.strokeStyle = "rgba(230,215,255,0.8)";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([8, 8]);
-        roundedRect(drawX + 4, p.y + 4, p.w - 8, p.h - 8, 7);
-        ctx.stroke();
-        ctx.setLineDash([]);
+      if (
+        !fallingAssetPlatform &&
+        !iceAssetPlatform &&
+        !conveyorAssetPlatform &&
+        !biomeAssetPlatform
+      ) {
+        drawVectorPlatformSurface(biome, p, drawX);
       }
 
-      if (p.ice) {
+      if (p.spikePlatform && !biomeAssetPlatform) {
+        drawStandardPlatformDetails(drawX, p.y, p.w, p.h, biome.platform);
+      }
+
+      if (p.ice && !iceAssetPlatform) {
         ctx.strokeStyle = "rgba(255,255,255,0.82)";
         ctx.lineWidth = 2;
         for (let x = drawX + 18; x < drawX + p.w - 10; x += 34) {
@@ -535,86 +1633,110 @@
 
       if (p.spikePlatform) {
         const spikeData = p.spikeData;
+        const count = Math.max(3, Math.floor(p.w / 25));
+        const step = p.w / count;
+        const slotVisual = getSpikePlatformSlotVisual(spikeData, worldTime);
 
-        // Dunkle Schlitze zeigen auch im sicheren Zustand klar, dass hier etwas
-        // aus der Plattform herausfahren kann.
-        ctx.fillStyle = "rgba(43,27,32,0.82)";
-        const slotSpacing = 24;
-        for (let x = drawX + 15; x < drawX + p.w - 8; x += slotSpacing) {
-          roundedRect(x - 6, p.y + 4, 12, 5, 2.5);
-          ctx.fill();
+        const slotWidth = Math.min(
+          step - 4,
+          SPIKE_PLATFORM_FULL_DRAW_WIDTH + 2
+        );
+        if (slotVisual.openness > 0) {
+          ctx.save();
+          ctx.globalAlpha *= slotVisual.openness;
+          ctx.fillStyle = "rgba(43,27,32,0.82)";
+          for (let i = 0; i < count; i++) {
+            const cellCenterX = drawX + (i + 0.5) * step;
+            roundedRect(cellCenterX - slotWidth / 2, p.y + 4, slotWidth, 5, 2.5);
+            ctx.fill();
+          }
+          ctx.restore();
         }
 
         if (spikeData.warning && !spikeData.dangerous) {
           const pulse = 0.38 + (Math.sin(worldTime * 15) + 1) * 0.22;
+          ctx.save();
+          ctx.shadowColor = "rgba(255,196,86,0.90)";
+          ctx.shadowBlur = 12;
           ctx.fillStyle = `rgba(255,196,86,${pulse})`;
           roundedRect(drawX + 3, p.y + 1, p.w - 6, 9, 6);
           ctx.fill();
+          ctx.restore();
         }
 
         if (spikeData.extension > 0.02) {
           const spikeHeight = 25 * spikeData.extension;
-          const count = Math.max(3, Math.floor(p.w / 25));
-          const step = p.w / count;
-          ctx.fillStyle = "#dce8ed";
-          ctx.strokeStyle = spikeData.dangerous ? "#ff6d57" : "#d58a67";
-          ctx.lineWidth = 2.5;
-          for (let i = 0; i < count; i++) {
-            const left = drawX + i * step + 2;
-            const right = drawX + (i + 1) * step - 2;
-            const center = (left + right) / 2;
-            ctx.beginPath();
-            ctx.moveTo(left, p.y + 6);
-            ctx.lineTo(center, p.y + 5 - spikeHeight);
-            ctx.lineTo(right, p.y + 6);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
+          if (!drawSpikePlatformAsset(ctx, p, drawX, count, step)) {
+            ctx.fillStyle = "#dce8ed";
+            ctx.strokeStyle = spikeData.dangerous ? "#ff6d57" : "#d58a67";
+            ctx.lineWidth = 2.5;
+            for (let i = 0; i < count; i++) {
+              const left = drawX + i * step + 2;
+              const right = drawX + (i + 1) * step - 2;
+              const center = (left + right) / 2;
+              ctx.beginPath();
+              ctx.moveTo(left, p.y + 6);
+              ctx.lineTo(center, p.y + 5 - spikeHeight);
+              ctx.lineTo(right, p.y + 6);
+              ctx.closePath();
+              ctx.fill();
+              ctx.stroke();
+            }
           }
         }
       }
 
       if (p.conveyor) {
-        const direction = Math.sign(p.conveyorSpeed) || 1;
-        const spacing = 31;
-        const beltOffset = (
-          worldTime * Math.abs(p.conveyorSpeed) * 0.72 +
-          p.conveyorData.phase
-        ) % spacing;
+        if (conveyorAssetPlatform) {
+          drawConveyorPlatformBeltOverlay(ctx, p, drawX);
+        } else {
+          const direction = Math.sign(p.conveyorSpeed) || 1;
+          const spacing = 31;
+          const beltOffset = (
+            worldTime * Math.abs(p.conveyorSpeed) * 0.72 +
+            p.conveyorData.phase
+          ) % spacing;
 
-        ctx.save();
-        roundedRect(drawX + 2, p.y + 1, p.w - 4, Math.min(11, p.h - 2), 7);
-        ctx.clip();
-        ctx.strokeStyle = "rgba(255,255,255,0.88)";
-        ctx.lineWidth = 3;
-        ctx.lineCap = "round";
+          ctx.save();
+          roundedRect(drawX + 2, p.y + 1, p.w - 4, Math.min(11, p.h - 2), 7);
+          ctx.clip();
+          ctx.strokeStyle = "rgba(255,255,255,0.88)";
+          ctx.lineWidth = 3;
+          ctx.lineCap = "round";
 
-        for (
-          let x = drawX - spacing * 2 + beltOffset * direction;
-          x < drawX + p.w + spacing * 2;
-          x += spacing
-        ) {
-          ctx.beginPath();
-          if (direction > 0) {
-            ctx.moveTo(x - 7, p.y + 3);
-            ctx.lineTo(x, p.y + 6);
-            ctx.lineTo(x - 7, p.y + 9);
-          } else {
-            ctx.moveTo(x + 7, p.y + 3);
-            ctx.lineTo(x, p.y + 6);
-            ctx.lineTo(x + 7, p.y + 9);
+          for (
+            let x = drawX - spacing * 2 + beltOffset * direction;
+            x < drawX + p.w + spacing * 2;
+            x += spacing
+          ) {
+            ctx.beginPath();
+            if (direction > 0) {
+              ctx.moveTo(x - 7, p.y + 3);
+              ctx.lineTo(x, p.y + 6);
+              ctx.lineTo(x - 7, p.y + 9);
+            } else {
+              ctx.moveTo(x + 7, p.y + 3);
+              ctx.lineTo(x, p.y + 6);
+              ctx.lineTo(x + 7, p.y + 9);
+            }
+            ctx.stroke();
           }
-          ctx.stroke();
-        }
-        ctx.restore();
+          ctx.restore();
 
-        ctx.fillStyle = "rgba(15,18,24,0.7)";
-        for (let x = drawX + 15; x < drawX + p.w - 8; x += 30) {
-          ctx.beginPath();
-          ctx.arc(x, p.y + Math.min(20, p.h * 0.67), 5, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.fillStyle = "rgba(15,18,24,0.7)";
+          for (let x = drawX + 15; x < drawX + p.w - 8; x += 30) {
+            ctx.beginPath();
+            ctx.arc(x, p.y + Math.min(20, p.h * 0.67), 5, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
-      } else if (!p.fade && !p.ice && !p.spikePlatform) {
+      } else if (
+        !p.fade &&
+        !p.ice &&
+        !p.spikePlatform &&
+        !fallingAssetPlatform &&
+        !biomeAssetPlatform
+      ) {
         ctx.fillStyle = "rgba(0,0,0,0.16)";
         for (let x = drawX + 18; x < drawX + p.w - 8; x += 38) {
           ctx.beginPath();
@@ -623,74 +1745,89 @@
         }
       }
 
-      if (standardPlatform) {
+      if (biomeBasePlatform && !p.spikePlatform && !biomeAssetPlatform) {
         drawStandardPlatformDetails(drawX, p.y, p.w, p.h, biome.platform);
       }
 
       if (p.fragile) {
-        ctx.strokeStyle = "rgba(65,26,20,0.78)";
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(drawX + p.w * 0.28, p.y + 3);
-        ctx.lineTo(drawX + p.w * 0.38, p.y + 13);
-        ctx.lineTo(drawX + p.w * 0.33, p.y + 23);
-        ctx.moveTo(drawX + p.w * 0.67, p.y + 2);
-        ctx.lineTo(drawX + p.w * 0.58, p.y + 12);
-        ctx.lineTo(drawX + p.w * 0.64, p.y + 23);
-        ctx.stroke();
+        if (!fallingAssetPlatform) {
+          ctx.strokeStyle = "rgba(65,26,20,0.78)";
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(drawX + p.w * 0.28, p.y + 3);
+          ctx.lineTo(drawX + p.w * 0.38, p.y + 13);
+          ctx.lineTo(drawX + p.w * 0.33, p.y + 23);
+          ctx.moveTo(drawX + p.w * 0.67, p.y + 2);
+          ctx.lineTo(drawX + p.w * 0.58, p.y + 12);
+          ctx.lineTo(drawX + p.w * 0.64, p.y + 23);
+          ctx.stroke();
+        }
         drawAnchorStepWarningBorder(p.fallingPlatform, drawX);
       }
 
-      drawGhostStepFadeOutline(p, drawX);
-
       ctx.restore();
     }
 
-    for (const pad of level.pads) {
-      ctx.save();
-      ctx.shadowColor = "#4ddcff";
-      ctx.shadowBlur = 18;
-      ctx.fillStyle = "#47cde9";
-      roundedRect(pad.x, pad.y, pad.w, pad.h, 9);
-      ctx.fill();
-      ctx.fillStyle = "#d1fbff";
-      const triangleStartX = pad.x + pad.w / 2 - 16;
-      for (let triangleIndex = 0; triangleIndex < 2; triangleIndex++) {
-        const x = triangleStartX + triangleIndex * 18;
-        ctx.beginPath();
-        ctx.moveTo(x, pad.y + 20);
-        ctx.lineTo(x + 7, pad.y + 8);
-        ctx.lineTo(x + 14, pad.y + 20);
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.restore();
-    }
+    if (platformPass === "without-floating") return;
 
-    for (const s of level.spikes) drawDeathZone(s, biome);
+    for (const s of level.spikes) drawDeathZone(s, biome, platformVisuals);
   }
 
-  function drawGoal() {
+  function drawGoal(
+    platformVisuals = null,
+    portalVisuals = null,
+    biome = null
+  ) {
     const level = currentLevel();
+    const goalBiome = biome ?? getBiomeForLevel(levelIndex + 1);
     const g = level.goal;
-    const pulse = 1 + Math.sin(worldTime * 4) * 0.06;
-    ctx.save();
-    ctx.translate(g.x + g.w / 2, g.y + g.h / 2);
-    ctx.scale(pulse, pulse);
-    ctx.shadowColor = "#b76cff";
-    ctx.shadowBlur = 35;
-    ctx.fillStyle = "rgba(157,83,255,0.35)";
-    ctx.beginPath();
-    ctx.ellipse(0, 0, g.w / 2, g.h / 2, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#dfc0ff";
-    ctx.lineWidth = 9;
-    ctx.stroke();
-    ctx.fillStyle = "rgba(20,7,43,0.72)";
-    ctx.beginPath();
-    ctx.ellipse(0, 0, g.w * 0.29, g.h * 0.35, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    const assetGoalPlatform = platformVisuals
+      ? level.platforms.find(platform => (
+        platformVisuals.resolvePlatformRole(platform) === "GOAL_TOWER"
+      ))
+      : null;
+    const biomeAssetPortal = Boolean(
+      portalVisuals &&
+      typeof portalVisuals.drawPortal === "function" &&
+      portalVisuals.drawPortal(ctx, g, worldTime)
+    );
+    if (
+      biomeAssetPortal &&
+      assetGoalPlatform &&
+      typeof platformVisuals.drawGoalTopForeground === "function"
+    ) {
+      platformVisuals.drawGoalTopForeground(
+        ctx,
+        assetGoalPlatform,
+        level.seed,
+        region => drawVectorPlatformFallbackRegion(
+          goalBiome,
+          assetGoalPlatform,
+          assetGoalPlatform.x,
+          region
+        )
+      );
+    }
+    if (!biomeAssetPortal) {
+      const pulse = 1 + Math.sin(worldTime * 4) * 0.06;
+      ctx.save();
+      ctx.translate(g.x + g.w / 2, g.y + g.h / 2);
+      ctx.scale(pulse, pulse);
+      ctx.shadowColor = "#b76cff";
+      ctx.shadowBlur = 35;
+      ctx.fillStyle = "rgba(157,83,255,0.35)";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, g.w / 2, g.h / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#dfc0ff";
+      ctx.lineWidth = 9;
+      ctx.stroke();
+      ctx.fillStyle = "rgba(20,7,43,0.72)";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, g.w * 0.29, g.h * 0.35, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
 
     const goalLabel = typeof level.goalLabel === "string"
       ? level.goalLabel.trim()
@@ -815,11 +1952,11 @@
     ctx.restore();
   }
 
-  function drawTutorialDragHand() {
-    if (!shouldShowTutorialDragHand()) return;
+  function getTutorialDragHandVisualState() {
+    if (!shouldShowTutorialDragHand()) return null;
 
-    const cycleDuration = 4.6;
-    const elapsed = getTutorialDragHandElapsed() % cycleDuration;
+    const timeline = getTutorialDragHandTimelineState();
+    const elapsed = timeline.elapsed;
     const startX = W * 0.58;
     const startY = H * 0.20;
     const endX = startX - 125;
@@ -837,44 +1974,79 @@
     let trailAlpha = 0;
     let touchAlpha = 0;
 
-    if (elapsed < 0.45) {
-      const progress = smooth(elapsed / 0.45);
+    if (elapsed < TUTORIAL_DRAG_HAND_TIMING.approachEnd) {
+      const progress = smooth(elapsed / TUTORIAL_DRAG_HAND_TIMING.approachEnd);
       handY = startY - 10 * (1 - progress);
       handAlpha = progress;
-    } else if (elapsed < 0.9) {
-      const progress = smooth((elapsed - 0.45) / 0.45);
+    } else if (elapsed < TUTORIAL_DRAG_HAND_TIMING.fingerDownEnd) {
+      const progress = smooth(
+        (elapsed - TUTORIAL_DRAG_HAND_TIMING.approachEnd) /
+        (TUTORIAL_DRAG_HAND_TIMING.fingerDownEnd - TUTORIAL_DRAG_HAND_TIMING.approachEnd)
+      );
       handY = startY + 10 * progress;
       handScale = 1 - progress * 0.08;
       handAlpha = 1;
       touchAlpha = progress;
-    } else if (elapsed < 2.15) {
-      const progress = smooth((elapsed - 0.9) / 1.25);
+    } else if (elapsed < TUTORIAL_DRAG_HAND_TIMING.dragEnd) {
+      const progress = smooth(
+        (elapsed - TUTORIAL_DRAG_HAND_TIMING.fingerDownEnd) /
+        (TUTORIAL_DRAG_HAND_TIMING.dragEnd - TUTORIAL_DRAG_HAND_TIMING.fingerDownEnd)
+      );
       handX = startX + (endX - startX) * progress;
       handY = touchY + (endY - touchY) * progress;
       handScale = 0.92 + progress * 0.08;
       handAlpha = 1;
       trailAlpha = progress;
       touchAlpha = 1;
-    } else if (elapsed < 2.6) {
+    } else if (!timeline.released) {
       handX = endX;
       handY = endY;
       handAlpha = 1;
       trailAlpha = 1;
       touchAlpha = 1;
-    } else if (elapsed < 3.15) {
-      const progress = smooth((elapsed - 2.6) / 0.55);
+    } else if (timeline.visible) {
+      const progress = smooth(
+        (elapsed - TUTORIAL_DRAG_HAND_TIMING.releaseAt) /
+        (TUTORIAL_DRAG_HAND_TIMING.liftEnd - TUTORIAL_DRAG_HAND_TIMING.releaseAt)
+      );
       handX = endX;
       handY = endY - 15 * progress;
       handScale = 1 + progress * 0.06;
       handAlpha = 1 - progress;
-      trailAlpha = 1 - progress;
-      touchAlpha = 1 - progress;
     } else {
-      return;
+      return null;
     }
 
     const contactX = startX;
     const contactY = touchY;
+    return Object.freeze({
+      elapsed,
+      released: timeline.released,
+      contactX,
+      contactY,
+      handX,
+      handY,
+      handScale,
+      handAlpha,
+      trailAlpha,
+      touchAlpha
+    });
+  }
+
+  function drawTutorialDragHand() {
+    const visualState = getTutorialDragHandVisualState();
+    if (!visualState) return;
+
+    const {
+      contactX,
+      contactY,
+      handX,
+      handY,
+      handScale,
+      handAlpha,
+      trailAlpha,
+      touchAlpha
+    } = visualState;
     if (touchAlpha > 0) {
       ctx.save();
       ctx.globalAlpha = touchAlpha;
@@ -892,6 +2064,23 @@
     drawTutorialDragHandImage(handX, handY, handScale, handAlpha);
   }
 
+  function drawCanvasCollectibleStarFallback(context) {
+    context.fillStyle = "#ffe66a";
+    context.strokeStyle = "#fff6b0";
+    context.lineWidth = 3;
+    context.beginPath();
+    for (let n = 0; n < 10; n++) {
+      const radius = n % 2 === 0 ? 23 : 10;
+      const a = -Math.PI / 2 + n * Math.PI / 5;
+      const x = Math.cos(a) * radius;
+      const y = Math.sin(a) * radius;
+      n === 0 ? context.moveTo(x, y) : context.lineTo(x, y);
+    }
+    context.closePath();
+    context.fill();
+    context.stroke();
+  }
+
   function drawStars() {
     currentLevel().stars.forEach((s, i) => {
       if (collected[i]) return;
@@ -900,20 +2089,26 @@
       ctx.rotate(worldTime * 1.5 + i);
       ctx.shadowColor = "#ffe95c";
       ctx.shadowBlur = 18;
-      ctx.fillStyle = "#ffe66a";
-      ctx.strokeStyle = "#fff6b0";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      for (let n = 0; n < 10; n++) {
-        const radius = n % 2 === 0 ? 23 : 10;
-        const a = -Math.PI / 2 + n * Math.PI / 5;
-        const x = Math.cos(a) * radius;
-        const y = Math.sin(a) * radius;
-        n === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      if (
+        (
+          typeof isFairyTaleGraphicsMode !== "function" ||
+          isFairyTaleGraphicsMode()
+        ) &&
+        collectibleStarImage.complete &&
+        collectibleStarImage.naturalWidth > 0 &&
+        collectibleStarImage.naturalHeight > 0
+      ) {
+        const halfSize = COLLECTIBLE_STAR_DRAW_SIZE / 2;
+        ctx.drawImage(
+          collectibleStarImage,
+          -halfSize,
+          -halfSize,
+          COLLECTIBLE_STAR_DRAW_SIZE,
+          COLLECTIBLE_STAR_DRAW_SIZE
+        );
+      } else {
+        drawCanvasCollectibleStarFallback(ctx);
       }
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
       ctx.restore();
     });
   }
@@ -978,43 +2173,37 @@
     }
   }
 
-  function drawTrajectory() {
-    if (!aiming) {
-      setCurrentAimBouncePreviewHit(false);
-      return;
-    }
-    const launch = getSlingshotLaunch();
-    if (launch.dragDistance <= MIN_LAUNCH_DRAG) {
-      setCurrentAimBouncePreviewHit(false);
-      return;
-    }
-
+  function drawSlingshotPreview(
+    origin,
+    previewDrag,
+    launch,
+    {bouncePreviewActive = false, pads = [], previewRadius = 0} = {}
+  ) {
+    if (!origin || !previewDrag || launch.dragDistance <= MIN_LAUNCH_DRAG) return null;
     ctx.save();
     ctx.lineCap = "round";
 
     ctx.strokeStyle = "rgba(255,255,255,0.55)";
     ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.moveTo(player.x, player.y);
-    ctx.lineTo(player.x - drag.x, player.y - drag.y);
+    ctx.moveTo(origin.x, origin.y);
+    ctx.lineTo(origin.x - previewDrag.x, origin.y - previewDrag.y);
     ctx.stroke();
 
     const ratio = launch.forceRatio;
     ctx.strokeStyle = ratio > 0.82 ? "#ff7b78" : ratio > 0.55 ? "#ffe66a" : "#7cff90";
     ctx.lineWidth = 8;
     ctx.beginPath();
-    ctx.moveTo(player.x, player.y);
+    ctx.moveTo(origin.x, origin.y);
     ctx.lineTo(
-      player.x + launch.vx * (0.58 / 5.7),
-      player.y + launch.vy * (0.58 / 5.7)
+      origin.x + launch.vx * (0.58 / 5.7),
+      origin.y + launch.vy * (0.58 / 5.7)
     );
     ctx.stroke();
 
-    let x = player.x, y = player.y;
+    let x = origin.x, y = origin.y;
     let vx = launch.vx, vy = launch.vy;
     let bounceHit = null;
-    const bouncePreviewActive =
-      window.SlimePerks?.isActiveForRun?.("bounce_master") === true;
     for (let i = 0; i < 18; i++) {
       const t = 0.055;
       const startX = x;
@@ -1024,13 +2213,13 @@
       y += vy * t;
 
       if (bouncePreviewActive && !bounceHit && vy > 0) {
-        for (const pad of currentLevel().pads) {
+        for (const pad of pads) {
           const contact = findFirstSweptCircleRectContact(
             startX,
             startY,
             x,
             y,
-            player.r,
+            previewRadius,
             pad
           );
           if (
@@ -1069,9 +2258,74 @@
       if (bounceHit) break;
     }
 
-    setCurrentAimBouncePreviewHit(Boolean(bounceHit));
-    if (bounceHit) drawPostBounceTrajectory(bounceHit);
     ctx.restore();
+    return Object.freeze({bounceHit});
+  }
+
+  function getTutorialSlingshotLaunch(previewDrag) {
+    const dragDistance = Math.hypot(previewDrag.x, previewDrag.y);
+    const dragRatio = clamp(dragDistance / MAX_DRAG_DISTANCE, 0, 1);
+    const forceRatio = dragRatio * dragRatio * (3 - 2 * dragRatio);
+    const launchSpeed = MAX_LAUNCH_SPEED * forceRatio;
+    const directionScale = dragDistance > 0 ? launchSpeed / dragDistance : 0;
+    return Object.freeze({
+      dragDistance,
+      forceRatio,
+      vx: previewDrag.x * directionScale,
+      vy: previewDrag.y * directionScale
+    });
+  }
+
+  function drawTutorialAimLine() {
+    if (aiming) return false;
+    const visualState = getTutorialDragHandVisualState();
+    if (
+      !visualState ||
+      visualState.released ||
+      visualState.elapsed < TUTORIAL_DRAG_HAND_TIMING.fingerDownEnd
+    ) return false;
+
+    const previewDrag = Object.freeze({
+      x: visualState.contactX - visualState.handX,
+      y: visualState.contactY - visualState.handY
+    });
+    const launch = getTutorialSlingshotLaunch(previewDrag);
+    return Boolean(drawSlingshotPreview(
+      Object.freeze({x: player.x, y: player.y}),
+      previewDrag,
+      launch
+    ));
+  }
+
+  function drawTrajectory() {
+    if (!aiming) {
+      setCurrentAimBouncePreviewHit(false);
+      return;
+    }
+    const launch = getSlingshotLaunch();
+    if (launch.dragDistance <= MIN_LAUNCH_DRAG) {
+      setCurrentAimBouncePreviewHit(false);
+      return;
+    }
+
+    const preview = drawSlingshotPreview(
+      Object.freeze({x: player.x, y: player.y}),
+      drag,
+      launch,
+      {
+        bouncePreviewActive:
+          window.SlimePerks?.isActiveForRun?.("bounce_master") === true,
+        pads: currentLevel().pads,
+        previewRadius: player.r
+      }
+    );
+    const bounceHit = preview?.bounceHit ?? null;
+    setCurrentAimBouncePreviewHit(Boolean(bounceHit));
+    if (bounceHit) {
+      ctx.save();
+      drawPostBounceTrajectory(bounceHit);
+      ctx.restore();
+    }
   }
 
   function roundedCosmeticRectPath(context, x, y, width, height, radius) {
@@ -2472,6 +3726,446 @@
     context.restore();
   }
 
+  function prepareSlimeBodySourcePixels() {
+    if (
+      slimeBodyImage.naturalWidth !== SLIME_BODY_SOURCE_SIZE ||
+      slimeBodyImage.naturalHeight !== SLIME_BODY_SOURCE_SIZE
+    ) {
+      slimeBodySourcePixels = null;
+      slimeBodyTintCache.clear();
+      slimeBodyPendingPreviews.clear();
+      return;
+    }
+
+    try {
+      const sourceCanvas = document.createElement("canvas");
+      sourceCanvas.width = SLIME_BODY_SOURCE_SIZE;
+      sourceCanvas.height = SLIME_BODY_SOURCE_SIZE;
+      const sourceContext = sourceCanvas.getContext("2d", {willReadFrequently: true});
+      if (!sourceContext) throw new Error("Slime body source canvas unavailable");
+      sourceContext.drawImage(slimeBodyImage, 0, 0);
+      slimeBodySourcePixels = sourceContext.getImageData(
+        0,
+        0,
+        SLIME_BODY_SOURCE_SIZE,
+        SLIME_BODY_SOURCE_SIZE
+      );
+      slimeBodyTintCache.clear();
+      redrawPendingSlimeBodyPreviews();
+    } catch {
+      slimeBodySourcePixels = null;
+      slimeBodyTintCache.clear();
+      slimeBodyPendingPreviews.clear();
+    }
+  }
+
+  function parseSlimeBodyHexColor(value, fallback) {
+    const match = /^#([0-9a-f]{6})$/i.exec(String(value ?? ""));
+    if (!match) return fallback;
+    const numeric = Number.parseInt(match[1], 16);
+    return [numeric >> 16, numeric >> 8 & 0xff, numeric & 0xff];
+  }
+
+  function mixSlimeBodyColor(from, to, ratio) {
+    const t = Math.max(0, Math.min(1, ratio));
+    return [
+      Math.round(from[0] + (to[0] - from[0]) * t),
+      Math.round(from[1] + (to[1] - from[1]) * t),
+      Math.round(from[2] + (to[2] - from[2]) * t)
+    ];
+  }
+
+  function getSlimeBodyToneColor(luminance, tones) {
+    if (luminance <= SLIME_BODY_DARK_TONE_LUMINANCE) {
+      return mixSlimeBodyColor(
+        tones.outline,
+        tones.dark,
+        luminance / SLIME_BODY_DARK_TONE_LUMINANCE
+      );
+    }
+    if (luminance <= SLIME_BODY_MAIN_TONE_LUMINANCE) {
+      return mixSlimeBodyColor(
+        tones.dark,
+        tones.main,
+        (luminance - SLIME_BODY_DARK_TONE_LUMINANCE) /
+          (SLIME_BODY_MAIN_TONE_LUMINANCE - SLIME_BODY_DARK_TONE_LUMINANCE)
+      );
+    }
+    return mixSlimeBodyColor(
+      tones.main,
+      tones.light,
+      (luminance - SLIME_BODY_MAIN_TONE_LUMINANCE) /
+        (255 - SLIME_BODY_MAIN_TONE_LUMINANCE)
+    );
+  }
+
+  function getSlimeBodyTintCacheKey(palette) {
+    return [palette.outline, palette.dark, palette.main, palette.light].join("|");
+  }
+
+  function getTintedSlimeBody(palette) {
+    if (
+      !slimeBodySourcePixels ||
+      !slimeBodyImage.complete ||
+      slimeBodyImage.naturalWidth !== SLIME_BODY_SOURCE_SIZE ||
+      slimeBodyImage.naturalHeight !== SLIME_BODY_SOURCE_SIZE
+    ) return null;
+
+    const cacheKey = getSlimeBodyTintCacheKey(palette);
+    const cachedCanvas = slimeBodyTintCache.get(cacheKey);
+    if (cachedCanvas) return cachedCanvas;
+
+    try {
+      const tintedCanvas = document.createElement("canvas");
+      tintedCanvas.width = SLIME_BODY_SOURCE_SIZE;
+      tintedCanvas.height = SLIME_BODY_SOURCE_SIZE;
+      const tintedContext = tintedCanvas.getContext("2d");
+      if (!tintedContext) return null;
+      const tintedPixels = tintedContext.createImageData(
+        SLIME_BODY_SOURCE_SIZE,
+        SLIME_BODY_SOURCE_SIZE
+      );
+      const sourceData = slimeBodySourcePixels.data;
+      const targetData = tintedPixels.data;
+      const tones = {
+        outline: parseSlimeBodyHexColor(palette.outline, [16, 28, 20]),
+        dark: parseSlimeBodyHexColor(palette.dark, [40, 168, 84]),
+        main: parseSlimeBodyHexColor(palette.main, [112, 246, 138]),
+        light: parseSlimeBodyHexColor(palette.light, [197, 255, 203])
+      };
+
+      for (let offset = 0; offset < sourceData.length; offset += 4) {
+        const alpha = sourceData[offset + 3];
+        if (alpha === 0) continue;
+        const luminance =
+          sourceData[offset] * 0.2126 +
+          sourceData[offset + 1] * 0.7152 +
+          sourceData[offset + 2] * 0.0722;
+        const color = getSlimeBodyToneColor(luminance, tones);
+        targetData[offset] = color[0];
+        targetData[offset + 1] = color[1];
+        targetData[offset + 2] = color[2];
+        targetData[offset + 3] = alpha;
+      }
+
+      tintedContext.putImageData(tintedPixels, 0, 0);
+      slimeBodyTintCache.set(cacheKey, tintedCanvas);
+      return tintedCanvas;
+    } catch {
+      return null;
+    }
+  }
+
+  function drawVectorSlimeBody(context, palette, radius, options) {
+    const preview = options.preview === true;
+    const scale = radius / SLIME_BODY_REFERENCE_RADIUS;
+    const gradient = preview
+      ? context.createRadialGradient(-9 * scale, -10 * scale, 2 * scale, 0, 0, radius)
+      : context.createRadialGradient(-10 * scale, -12 * scale, 3 * scale, 0, 0, radius);
+    gradient.addColorStop(0, palette.light);
+    gradient.addColorStop(preview ? 0.34 : 0.32, palette.main);
+    gradient.addColorStop(1, palette.dark);
+    context.fillStyle = gradient;
+    context.strokeStyle = palette.outline;
+    context.lineWidth = (preview ? 4 : 5) * scale;
+    context.beginPath();
+    context.arc(0, 0, radius, 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
+
+    if (preview && options.gold !== true) return;
+    context.shadowBlur = 0;
+    context.fillStyle = options.gold === true
+      ? palette.specular ?? "#fff1b0"
+      : "rgba(255,255,255,0.65)";
+    context.globalAlpha = options.gold === true ? 0.82 : 1;
+    context.beginPath();
+    context.ellipse(
+      (preview ? -11 : -10) * scale,
+      (preview ? -13 : -12) * scale,
+      (preview ? 7 : 8) * scale,
+      (preview ? 4 : 5) * scale,
+      -0.5,
+      0,
+      Math.PI * 2
+    );
+    context.fill();
+    context.globalAlpha = 1;
+  }
+
+  function drawSlimeBody(context, palette, radius, options = {}) {
+    const tintedBody = (
+      typeof isFairyTaleGraphicsMode !== "function" ||
+      isFairyTaleGraphicsMode()
+    ) ? getTintedSlimeBody(palette) : null;
+    context.save();
+    if (Number.isFinite(options.glowBlur) && options.glowBlur > 0) {
+      context.shadowColor = palette.glow;
+      context.shadowBlur = options.glowBlur;
+    }
+
+    if (tintedBody) {
+      const drawSize = SLIME_BODY_DRAW_SIZE * radius / SLIME_BODY_REFERENCE_RADIUS;
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+      context.drawImage(tintedBody, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+      context.restore();
+      return true;
+    }
+
+    drawVectorSlimeBody(context, palette, radius, options);
+    context.restore();
+    return false;
+  }
+
+  function isSlimeFaceImageReady(image) {
+    return Boolean(
+      image?.complete &&
+      image.naturalWidth === SLIME_FACE_SOURCE_SIZE &&
+      image.naturalHeight === SLIME_FACE_SOURCE_SIZE
+    );
+  }
+
+  function handleSlimeFaceImageLoad(faceState, image) {
+    if (!isSlimeFaceImageReady(image)) {
+      handleSlimeFaceImageError(faceState);
+      return;
+    }
+    redrawPendingSlimeFacePreviews();
+  }
+
+  function handleSlimeFaceImageError(faceState) {
+    if (faceState === SLIME_FACE_STATES.NORMAL) {
+      slimeFacePendingPreviews.clear();
+    }
+  }
+
+  function drawCanvasSlimeFace(context, palette, faceState, options = {}) {
+    const preview = options.preview === true;
+    context.fillStyle = palette.face ?? "#0b2c1a";
+    context.beginPath();
+    context.arc(-10, -2, preview ? 4 : 4.5, 0, Math.PI * 2);
+    context.arc(10, -2, preview ? 4 : 4.5, 0, Math.PI * 2);
+    context.fill();
+
+    // The previous preview fallback only contained the two open eyes.
+    if (preview) return;
+
+    context.strokeStyle = palette.face ?? "#0b2c1a";
+    context.lineWidth = 3;
+    context.lineCap = "round";
+    context.beginPath();
+    if (faceState === SLIME_FACE_STATES.ACTION) {
+      context.arc(0, 10, 7, 0, Math.PI * 2);
+    } else {
+      context.arc(0, 5, 11, 0.15, Math.PI - 0.15);
+    }
+    context.stroke();
+  }
+
+  function drawSlimeFace(context, palette, faceState, options = {}) {
+    const image = slimeFaceImages[faceState];
+    if (
+      (
+        typeof isFairyTaleGraphicsMode !== "function" ||
+        isFairyTaleGraphicsMode()
+      ) &&
+      isSlimeFaceImageReady(image)
+    ) {
+      context.save();
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+      context.drawImage(
+        image,
+        -SLIME_FACE_DRAW_SIZE / 2,
+        -SLIME_FACE_DRAW_SIZE / 2,
+        SLIME_FACE_DRAW_SIZE,
+        SLIME_FACE_DRAW_SIZE
+      );
+      context.restore();
+      return true;
+    }
+
+    drawCanvasSlimeFace(context, palette, faceState, options);
+    return false;
+  }
+
+  function normalizeSlimePreviewFaceState(faceState) {
+    if (
+      faceState === SLIME_FACE_STATES.BLINK ||
+      faceState === SLIME_FACE_STATES.LEFT ||
+      faceState === SLIME_FACE_STATES.RIGHT
+    ) return faceState;
+    return SLIME_FACE_STATES.NORMAL;
+  }
+
+  function seedSlimeFaceVisualRandom() {
+    let seed = 0;
+    try {
+      const randomValues = new Uint32Array(1);
+      globalThis.crypto?.getRandomValues?.(randomValues);
+      seed = randomValues[0] >>> 0;
+    } catch (_) {}
+    if (seed === 0) seed = (Date.now() ^ 0xa511e9b3) >>> 0;
+    slimeFaceVisualRandomState = seed || 0x6d2b79f5;
+  }
+
+  function nextSlimeFaceVisualRandom() {
+    if (slimeFaceVisualRandomState === 0) seedSlimeFaceVisualRandom();
+    let randomState = slimeFaceVisualRandomState;
+    randomState ^= randomState << 13;
+    randomState ^= randomState >>> 17;
+    randomState ^= randomState << 5;
+    slimeFaceVisualRandomState = randomState >>> 0;
+    return slimeFaceVisualRandomState / 4294967296;
+  }
+
+  function getSlimeFaceVisualRange(random, min, max) {
+    return min + (max - min) * random();
+  }
+
+  function resetSlimeFaceIdleAnimation() {
+    slimeFaceIdleEvent = SLIME_FACE_STATES.NORMAL;
+    slimeFaceIdlePhase = SLIME_FACE_IDLE_PHASES.NONE;
+    slimeFaceIdleLookTarget = SLIME_FACE_STATES.NORMAL;
+    slimeFaceIdleEventEndsAt = 0;
+    slimeFaceNextIdleEventAt = null;
+  }
+
+  function isSlimeFaceIdleEligible(speed) {
+    return state === "playing" &&
+      !aiming &&
+      player.onGround &&
+      hasValidAimSupport() &&
+      speed < SLIME_FACE_IDLE_SPEED_LIMIT &&
+      Math.abs(player.squish) <= SLIME_FACE_IDLE_SQUISH_EPSILON &&
+      !airHopFlightActive;
+  }
+
+  function scheduleNextSlimeFaceIdleEvent(random) {
+    slimeFaceNextIdleEventAt = worldTime + getSlimeFaceVisualRange(
+      random,
+      SLIME_FACE_IDLE_INTERVAL_MIN,
+      SLIME_FACE_IDLE_INTERVAL_MAX
+    );
+  }
+
+  function beginSlimeFaceIdleEvent(random) {
+    const eventRoll = random();
+    if (eventRoll < SLIME_FACE_BLINK_EVENT_WEIGHT) {
+      slimeFaceIdleEvent = SLIME_FACE_STATES.BLINK;
+      slimeFaceIdlePhase = SLIME_FACE_IDLE_PHASES.BLINK;
+      slimeFaceIdleEventEndsAt = worldTime + getSlimeFaceVisualRange(
+        random,
+        SLIME_FACE_BLINK_DURATION_MIN,
+        SLIME_FACE_BLINK_DURATION_MAX
+      );
+    } else {
+      slimeFaceIdleLookTarget = eventRoll <
+          SLIME_FACE_BLINK_EVENT_WEIGHT + SLIME_FACE_LEFT_EVENT_WEIGHT
+        ? SLIME_FACE_STATES.LEFT
+        : SLIME_FACE_STATES.RIGHT;
+      slimeFaceIdleEvent = SLIME_FACE_STATES.BLINK;
+      slimeFaceIdlePhase = SLIME_FACE_IDLE_PHASES.LOOK_TRANSITION_IN;
+      slimeFaceIdleEventEndsAt = worldTime + getSlimeFaceVisualRange(
+        random,
+        SLIME_FACE_TRANSITION_BLINK_DURATION_MIN,
+        SLIME_FACE_TRANSITION_BLINK_DURATION_MAX
+      );
+    }
+    slimeFaceNextIdleEventAt = null;
+  }
+
+  function advanceSlimeFaceIdleEvent(random) {
+    if (slimeFaceIdlePhase === SLIME_FACE_IDLE_PHASES.LOOK_TRANSITION_IN) {
+      slimeFaceIdleEvent = slimeFaceIdleLookTarget;
+      slimeFaceIdlePhase = SLIME_FACE_IDLE_PHASES.LOOK;
+      slimeFaceIdleEventEndsAt = worldTime + getSlimeFaceVisualRange(
+        random,
+        SLIME_FACE_LOOK_DURATION_MIN,
+        SLIME_FACE_LOOK_DURATION_MAX
+      );
+      return;
+    }
+
+    if (slimeFaceIdlePhase === SLIME_FACE_IDLE_PHASES.LOOK) {
+      slimeFaceIdleEvent = SLIME_FACE_STATES.BLINK;
+      slimeFaceIdlePhase = SLIME_FACE_IDLE_PHASES.LOOK_TRANSITION_OUT;
+      slimeFaceIdleEventEndsAt = worldTime + getSlimeFaceVisualRange(
+        random,
+        SLIME_FACE_TRANSITION_BLINK_DURATION_MIN,
+        SLIME_FACE_TRANSITION_BLINK_DURATION_MAX
+      );
+      return;
+    }
+
+    slimeFaceIdleEvent = SLIME_FACE_STATES.NORMAL;
+    slimeFaceIdlePhase = SLIME_FACE_IDLE_PHASES.NONE;
+    slimeFaceIdleLookTarget = SLIME_FACE_STATES.NORMAL;
+    slimeFaceIdleEventEndsAt = 0;
+    scheduleNextSlimeFaceIdleEvent(random);
+  }
+
+  function getSlimeFaceState(speed, random = nextSlimeFaceVisualRandom) {
+    if (speed > SLIME_FACE_ACTION_SPEED) {
+      resetSlimeFaceIdleAnimation();
+      return SLIME_FACE_STATES.ACTION;
+    }
+
+    if (!isSlimeFaceIdleEligible(speed)) {
+      resetSlimeFaceIdleAnimation();
+      return SLIME_FACE_STATES.NORMAL;
+    }
+
+    if (slimeFaceIdlePhase !== SLIME_FACE_IDLE_PHASES.NONE) {
+      if (worldTime < slimeFaceIdleEventEndsAt) return slimeFaceIdleEvent;
+      advanceSlimeFaceIdleEvent(random);
+      return slimeFaceIdleEvent;
+    }
+
+    if (slimeFaceNextIdleEventAt === null) {
+      scheduleNextSlimeFaceIdleEvent(random);
+      return SLIME_FACE_STATES.NORMAL;
+    }
+    if (worldTime < slimeFaceNextIdleEventAt) return SLIME_FACE_STATES.NORMAL;
+
+    beginSlimeFaceIdleEvent(random);
+    return slimeFaceIdleEvent;
+  }
+
+  function redrawPendingSlimeFacePreviews() {
+    const normalFace = slimeFaceImages[SLIME_FACE_STATES.NORMAL];
+    if (!isSlimeFaceImageReady(normalFace) || slimeFacePendingPreviews.size === 0) return;
+    const pendingPreviews = [...slimeFacePendingPreviews.values()];
+    slimeFacePendingPreviews.clear();
+    for (const preview of pendingPreviews) {
+      if (preview.canvasElement.isConnected === false) continue;
+      drawSlimeCharacterPreview(
+        preview.canvasElement,
+        preview.cosmetic,
+        preview.beard,
+        preview.color,
+        preview.options
+      );
+    }
+  }
+
+  function redrawPendingSlimeBodyPreviews() {
+    if (!slimeBodySourcePixels || slimeBodyPendingPreviews.size === 0) return;
+    const pendingPreviews = [...slimeBodyPendingPreviews.values()];
+    slimeBodyPendingPreviews.clear();
+    for (const preview of pendingPreviews) {
+      if (preview.canvasElement.isConnected === false) continue;
+      drawSlimeCharacterPreview(
+        preview.canvasElement,
+        preview.cosmetic,
+        preview.beard,
+        preview.color,
+        preview.options
+      );
+    }
+  }
+
   function drawSlimeCharacterPreview(
     canvasElement,
     cosmetic = "none",
@@ -2496,6 +4190,7 @@
       : canvasElement.width / 2;
     const centerY = Number.isFinite(options.centerY) ? options.centerY : 48;
     const scale = Number.isFinite(options.scale) ? options.scale : 0.66;
+    const previewFaceState = normalizeSlimePreviewFaceState(options.faceState);
     previewContext.clearRect(0, 0, canvasElement.width, canvasElement.height);
     previewContext.save();
     previewContext.translate(centerX, centerY);
@@ -2504,32 +4199,39 @@
     drawStaticPrestigeTrail(previewContext, prestigeTrail, prestigeTrailRadius);
     drawPrestigeAura(previewContext, prestigeAura, prestigeEffectRadius);
 
-    const bodyGradient = previewContext.createRadialGradient(-9, -10, 2, 0, 0, 30);
-    bodyGradient.addColorStop(0, palette.light);
-    bodyGradient.addColorStop(0.34, palette.main);
-    bodyGradient.addColorStop(1, palette.dark);
-    previewContext.fillStyle = bodyGradient;
-    previewContext.strokeStyle = palette.outline;
-    previewContext.lineWidth = 4;
-    previewContext.beginPath();
-    previewContext.arc(0, 0, 30, 0, Math.PI * 2);
-    previewContext.fill();
-    previewContext.stroke();
-
-    if (options.goldSlime === true) {
-      previewContext.fillStyle = palette.specular ?? "#fff1b0";
-      previewContext.globalAlpha = 0.82;
-      previewContext.beginPath();
-      previewContext.ellipse(-11, -13, 7, 4, -0.5, 0, Math.PI * 2);
-      previewContext.fill();
-      previewContext.globalAlpha = 1;
+    const pngBodyDrawn = drawSlimeBody(previewContext, palette, 30, {
+      preview: true,
+      gold: options.goldSlime === true
+    });
+    if (pngBodyDrawn) {
+      slimeBodyPendingPreviews.delete(canvasElement);
+    } else {
+      slimeBodyPendingPreviews.set(canvasElement, {
+        canvasElement,
+        cosmetic,
+        beard,
+        color,
+        options: {...options}
+      });
     }
 
-    previewContext.fillStyle = palette.face ?? "#0b2c1a";
-    previewContext.beginPath();
-    previewContext.arc(-10, -2, 4, 0, Math.PI * 2);
-    previewContext.arc(10, -2, 4, 0, Math.PI * 2);
-    previewContext.fill();
+    const pngFaceDrawn = drawSlimeFace(
+      previewContext,
+      palette,
+      previewFaceState,
+      {preview: true}
+    );
+    if (pngFaceDrawn) {
+      slimeFacePendingPreviews.delete(canvasElement);
+    } else {
+      slimeFacePendingPreviews.set(canvasElement, {
+        canvasElement,
+        cosmetic,
+        beard,
+        color,
+        options: {...options}
+      });
+    }
     drawSlimeBeard(
       previewContext,
       normalizeSlimeBeard(beard),
@@ -2710,46 +4412,13 @@
     drawLastBubbleProtection(ctx, player.r);
     drawStarShieldProtection(ctx, player.r);
 
-    ctx.shadowColor = palette.glow;
-    ctx.shadowBlur = 22;
-    const g = ctx.createRadialGradient(-10, -12, 3, 0, 0, player.r);
-    g.addColorStop(0, palette.light);
-    g.addColorStop(0.32, palette.main);
-    g.addColorStop(1, palette.dark);
-    ctx.fillStyle = g;
-    ctx.strokeStyle = palette.outline;
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.arc(0, 0, player.r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+    drawSlimeBody(ctx, palette, player.r, {
+      glowBlur: 22,
+      gold: goldAppearance.slime
+    });
 
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = goldAppearance.slime
-      ? palette.specular ?? "#fff1b0"
-      : "rgba(255,255,255,0.65)";
-    ctx.globalAlpha = goldAppearance.slime ? 0.82 : 1;
-    ctx.beginPath();
-    ctx.ellipse(-10, -12, 8, 5, -0.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-
-    ctx.fillStyle = palette.face ?? "#0b2c1a";
-    ctx.beginPath();
-    ctx.arc(-10, -2, 4.5, 0, Math.PI * 2);
-    ctx.arc(10, -2, 4.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = palette.face ?? "#0b2c1a";
-    ctx.lineWidth = 3;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    if (speed > 720) {
-      ctx.arc(0, 10, 7, 0, Math.PI * 2);
-    } else {
-      ctx.arc(0, 5, 11, 0.15, Math.PI - 0.15);
-    }
-    ctx.stroke();
+    const faceState = getSlimeFaceState(speed);
+    drawSlimeFace(ctx, palette, faceState);
     const activeBeard = getActiveSlimeBeard();
     const activeCosmetic = getActiveSlimeCosmetic();
     drawSlimeBeard(ctx, activeBeard, player.r, {
@@ -2778,15 +4447,55 @@
     const sy = shake ? (Math.random() - 0.5) * shake : 0;
     ctx.translate(sx, sy);
 
-    const biome = getBiomeForLevel(levelIndex + 1);
-    drawBackground(biome);
-    drawPlatforms(biome);
-    drawGoal();
+    const biome = getActiveVisualBiome(getBiomeForLevel(levelIndex + 1));
+    const biomePlatformVisuals = getActiveBiomePlatformVisuals(biome);
+    const biomeDecorVisuals = getActiveBiomeDecorVisuals(biome);
+    const biomePortalVisuals = getActiveBiomePortalVisuals(biome);
+    const biomeDecorLevel = biomeDecorVisuals ? currentLevel() : null;
+    const biomeDecorScene = typeof biomeDecorVisuals?.getScene === "function"
+      ? biomeDecorVisuals.getScene(
+        biomeDecorLevel,
+        getDecorAttemptNonce(biomeDecorLevel)
+      )
+      : null;
+    const assetBackgroundDrawn = Boolean(
+      biomePlatformVisuals &&
+      typeof biomePlatformVisuals.drawBackground === "function" &&
+      biomePlatformVisuals.drawBackground(ctx, W, H, worldTime)
+    );
+    if (!assetBackgroundDrawn) {
+      drawBackground(biome);
+    }
+    const platformRoleVisuals = biomePlatformVisuals ?? biomeDecorVisuals;
+    if (platformRoleVisuals) {
+      drawPlatforms(
+        biome,
+        biomePlatformVisuals,
+        "without-floating",
+        platformRoleVisuals
+      );
+      biomeDecorVisuals?.drawStartGoalBackDecor?.(ctx, biomeDecorScene);
+      drawPlatforms(
+        biome,
+        biomePlatformVisuals,
+        "floating-only",
+        platformRoleVisuals
+      );
+      biomeDecorVisuals?.drawFloatingBackDecor?.(ctx, biomeDecorScene);
+      drawBouncePads();
+    } else {
+      drawPlatforms(biome);
+      drawBouncePads();
+    }
+    drawGoal(biomePlatformVisuals, biomePortalVisuals, biome);
+    biomeDecorVisuals?.drawGoalSeamCoverProps?.(ctx, biomeDecorScene);
     drawStars();
     drawEnemies();
     drawTrajectory();
+    drawTutorialAimLine();
     drawPlayer();
     drawParticles();
+    biomeDecorVisuals?.drawTopFrontDecor?.(ctx, biomeDecorScene);
     drawTutorialDragHand();
     drawTutorialHeadline();
 

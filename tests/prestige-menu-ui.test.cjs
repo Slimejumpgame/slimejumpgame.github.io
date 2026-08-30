@@ -425,6 +425,7 @@ function assertMainMenuAuraPreviewParity() {
     prestigeTrail: "prestige-trail-p5",
     prestigeEffectRadius: 30,
     prestigeTrailRadius: 20,
+    faceState: "normal",
     goldSlime: false,
     goldCosmetic: false,
     goldBeard: false
