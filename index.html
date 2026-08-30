@@ -94,7 +94,7 @@
       <section id="mainMenuScreen" class="menuScreen menuScreen--main" aria-label="Hauptmenü">
         <div class="menuStatusBar" aria-label="Persönliche Spielwerte">
           <div class="menuBestProgressGroup">
-            <span class="menuStatusBadge menuStatusBadge--best" aria-label="Persönlicher Highscore">
+            <span id="menuPersonalBest" class="menuStatusBadge menuStatusBadge--best" aria-label="Persönlicher Highscore">
               <span aria-hidden="true">🏆</span>
               <strong id="personalBestValue">0</strong>
             </span>
@@ -116,7 +116,7 @@
               <span>RANG</span>
               <strong id="personalGlobalRankValue">—</strong>
             </span>
-            <span class="menuStatusBadge menuStatusBadge--stars" aria-label="Verfügbares Stern-Guthaben">
+            <span id="menuStarBalance" class="menuStatusBadge menuStatusBadge--stars" aria-label="Verfügbares Stern-Guthaben">
               <span aria-hidden="true">⭐</span>
               <strong id="starBalanceValue">0</strong>
             </span>
@@ -194,7 +194,7 @@
           <button id="musicBtn" class="iconBtn audioToggle uiButton active" aria-label="Musik ein oder aus" title="Musik an oder aus">♫</button>
           <button id="sfxBtn" class="iconBtn audioToggle uiButton active" aria-label="Soundeffekte ein oder aus" title="Soundeffekte an oder aus">FX</button>
         </div>
-        <div class="mainMenuGraphics" role="group" aria-label="Grafikmodus">
+        <div id="mainMenuGraphics" class="mainMenuGraphics" role="group" aria-label="Grafikmodus">
           <button id="fairyTaleGraphicsBtn" class="graphicsModeButton iconBtn uiButton uiButton--primary active" type="button" aria-pressed="true" aria-label="Grafikmodus Fairy Tale">
             <span class="graphicsModeButtonLabel graphicsModeButtonLabel--stacked">FAIRY<br>TALE</span>
           </button>
@@ -405,6 +405,32 @@
           <div id="highscoreRows"></div>
         </div>
       </section>
+    </div>
+  </section>
+
+  <section id="mainMenuOnboardingOverlay" class="mainMenuOnboardingOverlay hidden" role="dialog" aria-modal="true" aria-labelledby="mainMenuOnboardingTitle" aria-describedby="mainMenuOnboardingText" aria-hidden="true">
+    <div id="mainMenuOnboardingSafeArea" class="mainMenuOnboardingSafeArea" aria-hidden="true"></div>
+    <div class="mainMenuOnboardingDim mainMenuOnboardingDim--top" data-onboarding-dim="top" aria-hidden="true"></div>
+    <div class="mainMenuOnboardingDim mainMenuOnboardingDim--right" data-onboarding-dim="right" aria-hidden="true"></div>
+    <div class="mainMenuOnboardingDim mainMenuOnboardingDim--bottom" data-onboarding-dim="bottom" aria-hidden="true"></div>
+    <div class="mainMenuOnboardingDim mainMenuOnboardingDim--left" data-onboarding-dim="left" aria-hidden="true"></div>
+    <div id="mainMenuOnboardingHighlight" class="mainMenuOnboardingHighlight" aria-hidden="true"></div>
+    <div id="mainMenuOnboardingBubble" class="mainMenuOnboardingBubble uiPanel" data-placement="bottom">
+      <div class="dialogAccent mainMenuOnboardingAccent" aria-hidden="true"></div>
+      <div class="mainMenuOnboardingHeading">
+        <h2 id="mainMenuOnboardingTitle">BESTWERT</h2>
+        <span id="mainMenuOnboardingCount" class="mainMenuOnboardingCount">1 / 10</span>
+      </div>
+      <p id="mainMenuOnboardingText" class="mainMenuOnboardingText"></p>
+      <div id="mainMenuOnboardingNavigation" class="mainMenuOnboardingNavigation">
+        <button id="mainMenuOnboardingBackBtn" class="uiButton uiButton--secondary" type="button">ZURÜCK</button>
+        <button id="mainMenuOnboardingNextBtn" class="uiButton uiButton--primary" type="button">WEITER</button>
+        <button id="mainMenuOnboardingSkipBtn" class="uiButton uiButton--secondary mainMenuOnboardingSkip" type="button">ÜBERSPRINGEN</button>
+      </div>
+      <div id="mainMenuOnboardingDecision" class="mainMenuOnboardingDecision hidden">
+        <button id="mainMenuOnboardingLaterBtn" class="uiButton uiButton--secondary" type="button">SPÄTER NOCHMAL</button>
+        <button id="mainMenuOnboardingNeverBtn" class="uiButton uiButton--primary" type="button">NICHT MEHR ANZEIGEN</button>
+      </div>
     </div>
   </section>
 

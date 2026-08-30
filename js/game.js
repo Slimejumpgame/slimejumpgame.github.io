@@ -950,6 +950,9 @@
     showMenuScreen("main");
     updateHighScores();
     ui.menu.classList.remove("hidden");
+    if (typeof beginMainMenuOnboardingEntry === "function") {
+      beginMainMenuOnboardingEntry();
+    }
     renderDevPerkInspector();
     return true;
   }
@@ -1648,4 +1651,8 @@
   initializeDevMode();
   resetLevel(true);
   requestAnimationFrame(frame);
-  void initializeAndroidUpdateCheck();
+  void initializeAndroidUpdateCheck().finally(() => {
+    if (typeof beginMainMenuOnboardingEntry === "function") {
+      beginMainMenuOnboardingEntry();
+    }
+  });

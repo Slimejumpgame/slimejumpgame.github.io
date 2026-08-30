@@ -188,6 +188,7 @@
       ui.updateNotesList.appendChild(item);
     });
 
+    pauseMainMenuOnboardingForModal();
     updateScreenPreviousFocus = document.activeElement;
     ui.updateOverlay.classList.remove("hidden");
     ui.updateOverlay.setAttribute("aria-hidden", "false");
@@ -201,6 +202,630 @@
     ui.updateOverlay.setAttribute("aria-hidden", "true");
     updateScreenPreviousFocus?.focus?.();
     updateScreenPreviousFocus = null;
+    if (!resumeMainMenuOnboardingAfterModal()) {
+      maybeStartMainMenuOnboarding();
+    }
+  }
+
+  const MAIN_MENU_ONBOARDING_VERSION = "main-menu-onboarding-v1";
+  const MAIN_MENU_ONBOARDING_STORAGE_KEY =
+    "slimejumperMainMenuOnboardingSeenVersion";
+  const MAIN_MENU_ONBOARDING_STEPS = Object.freeze([
+    Object.freeze({
+      id: "best",
+      title: "BESTWERT",
+      targetId: "menuPersonalBest",
+      text: "Hier siehst du deinen persönlichen Bestwert. Versuche, ihn mit jedem Run weiter zu verbessern."
+    }),
+    Object.freeze({
+      id: "xp",
+      title: "XP & PRESTIGE",
+      targetId: "menuXPProgress",
+      text: "Hier sammelst du XP und steigst im Spielerlevel auf. Ab Level 100 und vollem letzten XP-Balken wird Prestige bereit. Deine permanenten Prestige-Belohnungen siehst du schon vorher unter Garderobe → Prestige-Garderobe."
+    }),
+    Object.freeze({
+      id: "stars",
+      title: "STERNE",
+      targetId: "menuStarBalance",
+      text: "Sterne bringen Punkte und sind deine Währung für Garderobe und Fähigkeiten. Sammelst du alle Pflichtsterne eines Levels ohne zu sterben, zählt das als Perfect Run. Drei in Folge geben dir ein zusätzliches Leben."
+    }),
+    Object.freeze({
+      id: "rank",
+      title: "RANG",
+      targetId: "personalGlobalRank",
+      text: "Hier siehst du deinen Platz im globalen Bestscore-Ranking. Je besser dein eingereichter Bestscore, desto höher dein Rang; ohne verfügbaren Rang steht hier —."
+    }),
+    Object.freeze({
+      id: "callingCard",
+      title: "CALLING CARD",
+      targetId: "recentAchievements",
+      text: "Das ist deine Calling Card. Anfangs zeigt sie deine letzten Erfolge; im Erfolge-Menü kannst du bis zu fünf Lieblings-Badges wählen. Sie erscheinen auch im Leaderboard und bringen keinen Spielvorteil."
+    }),
+    Object.freeze({
+      id: "achievements",
+      title: "ERFOLGE",
+      targetId: "achievementsBtn",
+      text: "Unter Erfolge findest du freigeschaltete Herausforderungen und Auszeichnungen. Dort wählst du auch die Badges für deine Calling Card."
+    }),
+    Object.freeze({
+      id: "wardrobe",
+      title: "GARDEROBE",
+      targetId: "wardrobeBtn",
+      text: "In der Garderobe passt du deinen Slime an. Dort findest du Farben, Hüte, Bärte, Gold-Garderobe und Prestige-Garderobe."
+    }),
+    Object.freeze({
+      id: "perks",
+      title: "FÄHIGKEITEN",
+      targetId: "perksBtn",
+      text: "Hier schaltest du mit Sternen Fähigkeiten frei. Du kannst bis zu drei gleichzeitig auswählen; deine Auswahl gilt für den nächsten Run."
+    }),
+    Object.freeze({
+      id: "highscores",
+      title: "HIGHSCORES",
+      targetId: "highScoresBtn",
+      text: "Hier findest du die besten Scores. Online werden die globalen Top 10 angezeigt; falls das nicht verfügbar ist, zeigt das Spiel lokale Bestwerte."
+    }),
+    Object.freeze({
+      id: "graphics",
+      title: "GRAFIKSTIL",
+      targetId: "mainMenuGraphics",
+      text: "Hier wechselst du den Grafikstil. FAIRY TALE nutzt die neue Grafik, LEGACY den ursprünglichen klassischen Look. Das Gameplay bleibt in beiden Modi gleich."
+    })
+  ]);
+  const MAIN_MENU_ONBOARDING_PLACEMENTS = Object.freeze([
+    "top",
+    "bottom",
+    "left",
+    "right"
+  ]);
+  const MAIN_MENU_ONBOARDING_HIGHLIGHT_PADDING = 6;
+  const MAIN_MENU_ONBOARDING_BUBBLE_GAP = 14;
+  let mainMenuOnboardingActive = false;
+  let mainMenuOnboardingPaused = false;
+  let mainMenuOnboardingDecisionOpen = false;
+  let mainMenuOnboardingStepIndex = 0;
+  let mainMenuOnboardingEntryId = 0;
+  let mainMenuOnboardingSuppressedEntryId = -1;
+  let mainMenuOnboardingPreviousFocus = null;
+  let mainMenuOnboardingMenuWasInert = false;
+  let mainMenuOnboardingLayoutFrame = null;
+  let mainMenuOnboardingFocusPending = false;
+  let mainMenuOnboardingResizeObserver = null;
+  let mainMenuOnboardingTarget = null;
+
+  function hasSeenCurrentMainMenuOnboarding() {
+    try {
+      return localStorage.getItem(MAIN_MENU_ONBOARDING_STORAGE_KEY) ===
+        MAIN_MENU_ONBOARDING_VERSION;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function persistCurrentMainMenuOnboardingVersion() {
+    try {
+      localStorage.setItem(
+        MAIN_MENU_ONBOARDING_STORAGE_KEY,
+        MAIN_MENU_ONBOARDING_VERSION
+      );
+      return localStorage.getItem(MAIN_MENU_ONBOARDING_STORAGE_KEY) ===
+        MAIN_MENU_ONBOARDING_VERSION;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function getMainMenuOnboardingTarget(stepIndex = mainMenuOnboardingStepIndex) {
+    const step = MAIN_MENU_ONBOARDING_STEPS[stepIndex];
+    return step ? document.getElementById(step.targetId) : null;
+  }
+
+  function isMainMenuOnboardingTargetMeasurable(target) {
+    if (!target || target.closest?.(".hidden")) return false;
+    const rect = target.getBoundingClientRect?.();
+    return Boolean(
+      rect &&
+      Number.isFinite(rect.left) &&
+      Number.isFinite(rect.top) &&
+      rect.width > 0 &&
+      rect.height > 0
+    );
+  }
+
+  function areMainMenuOnboardingTargetsMeasurable() {
+    return MAIN_MENU_ONBOARDING_STEPS.every((_, index) =>
+      isMainMenuOnboardingTargetMeasurable(getMainMenuOnboardingTarget(index))
+    );
+  }
+
+  function hasHigherPriorityMainMenuModal() {
+    const activeModal = Array.from(
+      document.querySelectorAll?.('[aria-modal="true"]') ?? []
+    ).some(modal =>
+      modal !== ui.mainMenuOnboardingOverlay &&
+      !modal.classList.contains("hidden") &&
+      modal.getAttribute("aria-hidden") !== "true"
+    );
+    return activeModal || Boolean(ui.message && !ui.message.classList.contains("hidden"));
+  }
+
+  function canStartMainMenuOnboarding() {
+    return Boolean(
+      state === "menu" &&
+      isMainMenuVisible() &&
+      !ui.mainMenuScreen.hasAttribute("inert") &&
+      !hasHigherPriorityMainMenuModal() &&
+      areMainMenuOnboardingTargetsMeasurable()
+    );
+  }
+
+  function setMainMenuOnboardingPopupPause(paused) {
+    window.SlimeAchievements?.setPopupsPaused?.(paused);
+  }
+
+  function setMainMenuOnboardingInteractionLock(locked) {
+    if (!ui.mainMenuScreen) return;
+    if (locked) {
+      ui.mainMenuScreen.setAttribute("inert", "");
+    } else if (!mainMenuOnboardingMenuWasInert) {
+      ui.mainMenuScreen.removeAttribute("inert");
+    }
+  }
+
+  function cancelMainMenuOnboardingLayout() {
+    if (mainMenuOnboardingLayoutFrame !== null) {
+      window.cancelAnimationFrame(mainMenuOnboardingLayoutFrame);
+      mainMenuOnboardingLayoutFrame = null;
+    }
+  }
+
+  function disconnectMainMenuOnboardingObserver() {
+    mainMenuOnboardingResizeObserver?.disconnect();
+    mainMenuOnboardingResizeObserver = null;
+  }
+
+  function observeMainMenuOnboardingLayout() {
+    disconnectMainMenuOnboardingObserver();
+    const ResizeObserverConstructor = window.ResizeObserver;
+    if (
+      typeof ResizeObserverConstructor !== "function" ||
+      !mainMenuOnboardingTarget ||
+      !ui.mainMenuOnboardingBubble
+    ) return;
+    mainMenuOnboardingResizeObserver = new ResizeObserverConstructor(
+      scheduleMainMenuOnboardingLayout
+    );
+    mainMenuOnboardingResizeObserver.observe(mainMenuOnboardingTarget);
+    mainMenuOnboardingResizeObserver.observe(ui.mainMenuOnboardingBubble);
+  }
+
+  function getMainMenuOnboardingSafeRect() {
+    const fallbackMargin = 8;
+    const fallback = {
+      left: fallbackMargin,
+      top: fallbackMargin,
+      right: Math.max(fallbackMargin, window.innerWidth - fallbackMargin),
+      bottom: Math.max(fallbackMargin, window.innerHeight - fallbackMargin)
+    };
+    const measured = ui.mainMenuOnboardingSafeArea?.getBoundingClientRect?.();
+    const base = measured?.width > 0 && measured?.height > 0
+      ? measured
+      : fallback;
+    const visualViewport = window.visualViewport;
+    if (!visualViewport) return base;
+    const visualRight = visualViewport.offsetLeft + visualViewport.width;
+    const visualBottom = visualViewport.offsetTop + visualViewport.height;
+    return {
+      left: Math.max(base.left, visualViewport.offsetLeft),
+      top: Math.max(base.top, visualViewport.offsetTop),
+      right: Math.min(base.right, visualRight),
+      bottom: Math.min(base.bottom, visualBottom)
+    };
+  }
+
+  function clampMainMenuOnboardingPosition(value, minimum, maximum) {
+    return Math.max(minimum, Math.min(value, Math.max(minimum, maximum)));
+  }
+
+  function setMainMenuOnboardingRect(element, left, top, width, height) {
+    if (!element) return;
+    element.style.left = `${Math.max(0, left)}px`;
+    element.style.top = `${Math.max(0, top)}px`;
+    element.style.width = `${Math.max(0, width)}px`;
+    element.style.height = `${Math.max(0, height)}px`;
+  }
+
+  function updateMainMenuOnboardingSpotlight(targetRect) {
+    const viewportWidth = Math.max(0, window.innerWidth);
+    const viewportHeight = Math.max(0, window.innerHeight);
+    const holeLeft = Math.max(
+      0,
+      targetRect.left - MAIN_MENU_ONBOARDING_HIGHLIGHT_PADDING
+    );
+    const holeTop = Math.max(
+      0,
+      targetRect.top - MAIN_MENU_ONBOARDING_HIGHLIGHT_PADDING
+    );
+    const holeRight = Math.min(
+      viewportWidth,
+      targetRect.right + MAIN_MENU_ONBOARDING_HIGHLIGHT_PADDING
+    );
+    const holeBottom = Math.min(
+      viewportHeight,
+      targetRect.bottom + MAIN_MENU_ONBOARDING_HIGHLIGHT_PADDING
+    );
+    const holeWidth = Math.max(0, holeRight - holeLeft);
+    const holeHeight = Math.max(0, holeBottom - holeTop);
+    const dimElements = Object.fromEntries(
+      Array.from(ui.mainMenuOnboardingOverlay.querySelectorAll("[data-onboarding-dim]"))
+        .map(element => [element.dataset.onboardingDim, element])
+    );
+
+    setMainMenuOnboardingRect(dimElements.top, 0, 0, viewportWidth, holeTop);
+    setMainMenuOnboardingRect(
+      dimElements.bottom,
+      0,
+      holeBottom,
+      viewportWidth,
+      viewportHeight - holeBottom
+    );
+    setMainMenuOnboardingRect(
+      dimElements.left,
+      0,
+      holeTop,
+      holeLeft,
+      holeHeight
+    );
+    setMainMenuOnboardingRect(
+      dimElements.right,
+      holeRight,
+      holeTop,
+      viewportWidth - holeRight,
+      holeHeight
+    );
+    setMainMenuOnboardingRect(
+      ui.mainMenuOnboardingHighlight,
+      holeLeft,
+      holeTop,
+      holeWidth,
+      holeHeight
+    );
+  }
+
+  function getMainMenuOnboardingPlacementCandidate(
+    placement,
+    targetRect,
+    bubbleRect,
+    safeRect
+  ) {
+    const targetCenterX = targetRect.left + targetRect.width / 2;
+    const targetCenterY = targetRect.top + targetRect.height / 2;
+    let left = targetCenterX - bubbleRect.width / 2;
+    let top = targetCenterY - bubbleRect.height / 2;
+    let availableArea = 0;
+
+    if (placement === "top") {
+      top = targetRect.top - MAIN_MENU_ONBOARDING_BUBBLE_GAP - bubbleRect.height;
+      availableArea = Math.max(
+        0,
+        targetRect.top - MAIN_MENU_ONBOARDING_BUBBLE_GAP - safeRect.top
+      ) * Math.max(0, safeRect.right - safeRect.left);
+    } else if (placement === "bottom") {
+      top = targetRect.bottom + MAIN_MENU_ONBOARDING_BUBBLE_GAP;
+      availableArea = Math.max(
+        0,
+        safeRect.bottom - targetRect.bottom - MAIN_MENU_ONBOARDING_BUBBLE_GAP
+      ) * Math.max(0, safeRect.right - safeRect.left);
+    } else if (placement === "left") {
+      left = targetRect.left - MAIN_MENU_ONBOARDING_BUBBLE_GAP - bubbleRect.width;
+      availableArea = Math.max(
+        0,
+        targetRect.left - MAIN_MENU_ONBOARDING_BUBBLE_GAP - safeRect.left
+      ) * Math.max(0, safeRect.bottom - safeRect.top);
+    } else {
+      left = targetRect.right + MAIN_MENU_ONBOARDING_BUBBLE_GAP;
+      availableArea = Math.max(
+        0,
+        safeRect.right - targetRect.right - MAIN_MENU_ONBOARDING_BUBBLE_GAP
+      ) * Math.max(0, safeRect.bottom - safeRect.top);
+    }
+
+    const overflow =
+      Math.max(0, safeRect.left - left) +
+      Math.max(0, left + bubbleRect.width - safeRect.right) +
+      Math.max(0, safeRect.top - top) +
+      Math.max(0, top + bubbleRect.height - safeRect.bottom);
+    return {
+      placement,
+      left,
+      top,
+      fits: overflow === 0,
+      availableArea,
+      overflow
+    };
+  }
+
+  function updateMainMenuOnboardingBubble(targetRect) {
+    const bubble = ui.mainMenuOnboardingBubble;
+    if (!bubble) return;
+    bubble.style.visibility = "hidden";
+    bubble.style.left = "0px";
+    bubble.style.top = "0px";
+    const bubbleRect = bubble.getBoundingClientRect();
+    const safeRect = getMainMenuOnboardingSafeRect();
+    const candidates = MAIN_MENU_ONBOARDING_PLACEMENTS.map(placement =>
+      getMainMenuOnboardingPlacementCandidate(
+        placement,
+        targetRect,
+        bubbleRect,
+        safeRect
+      )
+    );
+    const fittingCandidates = candidates.filter(candidate => candidate.fits);
+    const candidate = (fittingCandidates.length > 0
+      ? fittingCandidates
+      : candidates
+    ).sort((left, right) =>
+      right.availableArea - left.availableArea || left.overflow - right.overflow
+    )[0];
+    if (!candidate) return;
+
+    const left = clampMainMenuOnboardingPosition(
+      candidate.left,
+      safeRect.left,
+      safeRect.right - bubbleRect.width
+    );
+    const top = clampMainMenuOnboardingPosition(
+      candidate.top,
+      safeRect.top,
+      safeRect.bottom - bubbleRect.height
+    );
+    const pointsVertically = candidate.placement === "left" ||
+      candidate.placement === "right";
+    const pointerCenter = pointsVertically
+      ? targetRect.top + targetRect.height / 2 - top
+      : targetRect.left + targetRect.width / 2 - left;
+    const pointerLimit = pointsVertically ? bubbleRect.height : bubbleRect.width;
+    const pointerOffset = clampMainMenuOnboardingPosition(
+      pointerCenter,
+      22,
+      Math.max(22, pointerLimit - 22)
+    );
+
+    bubble.dataset.placement = candidate.placement;
+    bubble.style.setProperty("--onboarding-tail-offset", `${pointerOffset}px`);
+    bubble.style.left = `${left}px`;
+    bubble.style.top = `${top}px`;
+    bubble.style.visibility = "visible";
+  }
+
+  function layoutMainMenuOnboarding() {
+    if (!mainMenuOnboardingActive || mainMenuOnboardingPaused) return;
+    const target = getMainMenuOnboardingTarget();
+    if (!isMainMenuOnboardingTargetMeasurable(target)) return;
+    mainMenuOnboardingTarget = target;
+    const targetRect = target.getBoundingClientRect();
+    updateMainMenuOnboardingSpotlight(targetRect);
+    updateMainMenuOnboardingBubble(targetRect);
+    if (mainMenuOnboardingFocusPending) {
+      mainMenuOnboardingFocusPending = false;
+      focusMainMenuOnboardingAction();
+    }
+  }
+
+  function scheduleMainMenuOnboardingLayout() {
+    if (
+      !mainMenuOnboardingActive ||
+      mainMenuOnboardingPaused ||
+      mainMenuOnboardingLayoutFrame !== null
+    ) return;
+    mainMenuOnboardingLayoutFrame = window.requestAnimationFrame(() => {
+      mainMenuOnboardingLayoutFrame = null;
+      layoutMainMenuOnboarding();
+    });
+  }
+
+  function focusMainMenuOnboardingAction() {
+    const button = mainMenuOnboardingDecisionOpen
+      ? ui.mainMenuOnboardingLaterBtn
+      : ui.mainMenuOnboardingNextBtn;
+    button?.focus();
+  }
+
+  function renderMainMenuOnboardingStep() {
+    const step = MAIN_MENU_ONBOARDING_STEPS[mainMenuOnboardingStepIndex];
+    if (!step || !ui.mainMenuOnboardingOverlay) return false;
+    mainMenuOnboardingDecisionOpen = false;
+    ui.mainMenuOnboardingBubble.style.visibility = "hidden";
+    ui.mainMenuOnboardingOverlay.dataset.step = step.id;
+    ui.mainMenuOnboardingTitle.textContent = step.title;
+    ui.mainMenuOnboardingText.textContent = step.text;
+    ui.mainMenuOnboardingCount.textContent =
+      `${mainMenuOnboardingStepIndex + 1} / ${MAIN_MENU_ONBOARDING_STEPS.length}`;
+    ui.mainMenuOnboardingBackBtn.disabled = mainMenuOnboardingStepIndex === 0;
+    ui.mainMenuOnboardingNextBtn.textContent =
+      mainMenuOnboardingStepIndex === MAIN_MENU_ONBOARDING_STEPS.length - 1
+        ? "FERTIG"
+        : "WEITER";
+    ui.mainMenuOnboardingNavigation.classList.remove("hidden");
+    ui.mainMenuOnboardingDecision.classList.add("hidden");
+    mainMenuOnboardingTarget = getMainMenuOnboardingTarget();
+    observeMainMenuOnboardingLayout();
+    mainMenuOnboardingFocusPending = true;
+    scheduleMainMenuOnboardingLayout();
+    return true;
+  }
+
+  function showMainMenuOnboardingDecision() {
+    if (!mainMenuOnboardingActive || mainMenuOnboardingPaused) return false;
+    mainMenuOnboardingDecisionOpen = true;
+    ui.mainMenuOnboardingBubble.style.visibility = "hidden";
+    ui.mainMenuOnboardingOverlay.dataset.step = "decision";
+    ui.mainMenuOnboardingTitle.textContent = "ERKLÄRUNG BEENDET";
+    ui.mainMenuOnboardingText.textContent =
+      "Möchtest du dir diese Menü-Erklärung später noch einmal ansehen?";
+    ui.mainMenuOnboardingCount.textContent =
+      `${mainMenuOnboardingStepIndex + 1} / ${MAIN_MENU_ONBOARDING_STEPS.length}`;
+    ui.mainMenuOnboardingNavigation.classList.add("hidden");
+    ui.mainMenuOnboardingDecision.classList.remove("hidden");
+    observeMainMenuOnboardingLayout();
+    mainMenuOnboardingFocusPending = true;
+    scheduleMainMenuOnboardingLayout();
+    return true;
+  }
+
+  function endMainMenuOnboarding({restoreFocus = true} = {}) {
+    if (!mainMenuOnboardingActive) return false;
+    cancelMainMenuOnboardingLayout();
+    disconnectMainMenuOnboardingObserver();
+    ui.mainMenuOnboardingOverlay.classList.add("hidden");
+    ui.mainMenuOnboardingOverlay.setAttribute("aria-hidden", "true");
+    setMainMenuOnboardingInteractionLock(false);
+    setMainMenuOnboardingPopupPause(false);
+    mainMenuOnboardingActive = false;
+    mainMenuOnboardingPaused = false;
+    mainMenuOnboardingDecisionOpen = false;
+    mainMenuOnboardingFocusPending = false;
+    mainMenuOnboardingTarget = null;
+    const previousFocus = mainMenuOnboardingPreviousFocus;
+    mainMenuOnboardingPreviousFocus = null;
+    if (restoreFocus) {
+      const focusTarget = previousFocus && previousFocus !== document.body
+        ? previousFocus
+        : ui.startBtn;
+      focusTarget?.focus?.();
+    }
+    return true;
+  }
+
+  function startMainMenuOnboarding() {
+    if (mainMenuOnboardingActive || !canStartMainMenuOnboarding()) return false;
+    mainMenuOnboardingActive = true;
+    mainMenuOnboardingPaused = false;
+    mainMenuOnboardingDecisionOpen = false;
+    mainMenuOnboardingStepIndex = 0;
+    mainMenuOnboardingPreviousFocus = document.activeElement;
+    mainMenuOnboardingMenuWasInert = ui.mainMenuScreen.hasAttribute("inert");
+    ui.mainMenuOnboardingOverlay.classList.remove("hidden");
+    ui.mainMenuOnboardingOverlay.setAttribute("aria-hidden", "false");
+    setMainMenuOnboardingInteractionLock(true);
+    setMainMenuOnboardingPopupPause(true);
+    return renderMainMenuOnboardingStep();
+  }
+
+  function maybeStartMainMenuOnboarding() {
+    if (
+      mainMenuOnboardingActive ||
+      mainMenuOnboardingEntryId <= 0 ||
+      mainMenuOnboardingSuppressedEntryId === mainMenuOnboardingEntryId ||
+      hasSeenCurrentMainMenuOnboarding() ||
+      !canStartMainMenuOnboarding()
+    ) return false;
+    return startMainMenuOnboarding();
+  }
+
+  function beginMainMenuOnboardingEntry() {
+    mainMenuOnboardingEntryId += 1;
+    return maybeStartMainMenuOnboarding();
+  }
+
+  function pauseMainMenuOnboardingForModal() {
+    if (!mainMenuOnboardingActive || mainMenuOnboardingPaused) return false;
+    mainMenuOnboardingPaused = true;
+    mainMenuOnboardingFocusPending = false;
+    cancelMainMenuOnboardingLayout();
+    disconnectMainMenuOnboardingObserver();
+    ui.mainMenuOnboardingOverlay.classList.add("hidden");
+    ui.mainMenuOnboardingOverlay.setAttribute("aria-hidden", "true");
+    setMainMenuOnboardingInteractionLock(false);
+    setMainMenuOnboardingPopupPause(false);
+    return true;
+  }
+
+  function resumeMainMenuOnboardingAfterModal() {
+    if (
+      !mainMenuOnboardingActive ||
+      !mainMenuOnboardingPaused ||
+      state !== "menu" ||
+      !isMainMenuVisible() ||
+      hasHigherPriorityMainMenuModal()
+    ) return false;
+    mainMenuOnboardingPaused = false;
+    ui.mainMenuOnboardingBubble.style.visibility = "hidden";
+    ui.mainMenuOnboardingOverlay.classList.remove("hidden");
+    ui.mainMenuOnboardingOverlay.setAttribute("aria-hidden", "false");
+    setMainMenuOnboardingInteractionLock(true);
+    setMainMenuOnboardingPopupPause(true);
+    mainMenuOnboardingTarget = getMainMenuOnboardingTarget();
+    observeMainMenuOnboardingLayout();
+    mainMenuOnboardingFocusPending = true;
+    scheduleMainMenuOnboardingLayout();
+    return true;
+  }
+
+  function showPreviousMainMenuOnboardingStep() {
+    if (
+      !mainMenuOnboardingActive ||
+      mainMenuOnboardingPaused ||
+      mainMenuOnboardingDecisionOpen ||
+      mainMenuOnboardingStepIndex <= 0
+    ) return false;
+    mainMenuOnboardingStepIndex -= 1;
+    return renderMainMenuOnboardingStep();
+  }
+
+  function showNextMainMenuOnboardingStep() {
+    if (
+      !mainMenuOnboardingActive ||
+      mainMenuOnboardingPaused ||
+      mainMenuOnboardingDecisionOpen
+    ) return false;
+    if (mainMenuOnboardingStepIndex >= MAIN_MENU_ONBOARDING_STEPS.length - 1) {
+      return showMainMenuOnboardingDecision();
+    }
+    mainMenuOnboardingStepIndex += 1;
+    return renderMainMenuOnboardingStep();
+  }
+
+  function postponeMainMenuOnboarding() {
+    if (!mainMenuOnboardingActive) return false;
+    mainMenuOnboardingSuppressedEntryId = mainMenuOnboardingEntryId;
+    return endMainMenuOnboarding();
+  }
+
+  function dismissMainMenuOnboardingPermanently() {
+    if (!mainMenuOnboardingActive) return false;
+    persistCurrentMainMenuOnboardingVersion();
+    mainMenuOnboardingSuppressedEntryId = mainMenuOnboardingEntryId;
+    return endMainMenuOnboarding();
+  }
+
+  function getMainMenuOnboardingFocusableButtons() {
+    if (!ui.mainMenuOnboardingOverlay) return [];
+    return Array.from(
+      ui.mainMenuOnboardingOverlay.querySelectorAll("button:not([disabled])")
+    ).filter(button => !button.closest(".hidden"));
+  }
+
+  function handleMainMenuOnboardingKeydown(event) {
+    if (!mainMenuOnboardingActive || mainMenuOnboardingPaused) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      if (!mainMenuOnboardingDecisionOpen) showMainMenuOnboardingDecision();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = getMainMenuOnboardingFocusableButtons();
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
   }
 
   function openUpdateStorePage() {
@@ -3372,6 +3997,39 @@
 
   ui.updateOpenStoreBtn?.addEventListener("click", openUpdateStorePage);
   ui.updateLaterBtn?.addEventListener("click", closeUpdateScreen);
+  ui.mainMenuOnboardingBackBtn?.addEventListener(
+    "click",
+    showPreviousMainMenuOnboardingStep
+  );
+  ui.mainMenuOnboardingNextBtn?.addEventListener(
+    "click",
+    showNextMainMenuOnboardingStep
+  );
+  ui.mainMenuOnboardingSkipBtn?.addEventListener(
+    "click",
+    showMainMenuOnboardingDecision
+  );
+  ui.mainMenuOnboardingLaterBtn?.addEventListener(
+    "click",
+    postponeMainMenuOnboarding
+  );
+  ui.mainMenuOnboardingNeverBtn?.addEventListener(
+    "click",
+    dismissMainMenuOnboardingPermanently
+  );
+  ui.mainMenuOnboardingOverlay?.addEventListener(
+    "keydown",
+    handleMainMenuOnboardingKeydown
+  );
+  window.addEventListener("resize", scheduleMainMenuOnboardingLayout, {passive: true});
+  window.addEventListener("orientationchange", scheduleMainMenuOnboardingLayout, {
+    passive: true
+  });
+  window.visualViewport?.addEventListener(
+    "resize",
+    scheduleMainMenuOnboardingLayout,
+    {passive: true}
+  );
   ui.perkConflictPurchaseInfoConfirmBtn?.addEventListener(
     "click",
     closePerkConflictPurchaseInfo
