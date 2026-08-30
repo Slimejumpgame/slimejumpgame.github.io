@@ -22,8 +22,7 @@ const assetPaths = Object.freeze({
   ocean: `${backgroundDirectory}/pirateHarbor_background_ocean.png`,
   sun: `${backgroundDirectory}/pirateHarbor_background_sun.png`,
   cloudsFront: `${backgroundDirectory}/pirateHarbor_background_clouds_front.png`,
-  shipMain: `${backgroundDirectory}/pirateHarbor_background_ship_main.png`,
-  front: `${backgroundDirectory}/pirateHarbor_background_front.png`
+  shipMain: `${backgroundDirectory}/pirateHarbor_background_ship_main.png`
 });
 const backgroundSize = Object.freeze({w: 1280, h: 720});
 const hazardPath =
@@ -490,7 +489,6 @@ assert.equal(translationsAtOne[1][1], 765);
 assert.equal(translationsAtTwo[0][1], 867);
 assert.equal(translationsAtTwo[1][1], 765);
 assert.equal(atOne.calls.filter(call => call[0] === "rotate").length, 2);
-assert.equal(drawsAtOne.some(call => call[1].src === assetPaths.front), false);
 const distantDraw = drawsAtOne.find(call => (
   call[1].src === assetPaths.shipDistant
 ));
@@ -535,23 +533,13 @@ assert.deepEqual(
 );
 assert.equal(captureHazard(fixture, {...hazardRect, y: 689}).drawn, false);
 
-for (const relativePath of Object.values(assetPaths).filter(path => (
-  path !== assetPaths.front
-))) {
+for (const relativePath of Object.values(assetPaths)) {
   const unavailable = loadFixture({
     failedFile: path.posix.basename(relativePath)
   });
   assert.equal(unavailable.api.isBackgroundReady(), false);
   assert.equal(captureBackground(unavailable, 1).drawn, false);
 }
-const unavailableFront = loadFixture({
-  failedFile: path.posix.basename(assetPaths.front)
-});
-assert.equal(unavailableFront.api.isBackgroundReady(), true);
-assert.equal(captureBackground(unavailableFront, 1).drawn, true);
-assert.equal(captureBackground(unavailableFront, 1).calls.some(call => (
-  call[0] === "drawImage" && call[1].src === assetPaths.front
-)), false);
 const opaqueOcean = loadFixture({
   opaqueFile: path.posix.basename(assetPaths.ocean)
 });
@@ -583,6 +571,7 @@ assert.match(
 );
 assert.match(biomeSource, /pirateHarbor: drawPirateHarborBackground/);
 assert.match(visualSource, /BIOME_PLATFORM_VISUALS\.register\("pirateHarbor"/);
+assert.doesNotMatch(visualSource, /pirateHarbor_background_front\.png/);
 assert.doesNotMatch(visualSource, /Math\.random\(/);
 assert.doesNotMatch(visualSource, /0\.185/);
 assert.doesNotMatch(visualSource, /294\.385|395\.7675|370\.3|365\.5/);

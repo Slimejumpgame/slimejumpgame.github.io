@@ -18,9 +18,7 @@ const PIRATE_HARBOR_ASSET_VISUALS = (() => {
     cloudsFront:
       "assets/environments/pirateHarbor/background/pirateHarbor_background_clouds_front.png",
     shipMain:
-      "assets/environments/pirateHarbor/background/pirateHarbor_background_ship_main.png",
-    front:
-      "assets/environments/pirateHarbor/background/pirateHarbor_background_front.png"
+      "assets/environments/pirateHarbor/background/pirateHarbor_background_ship_main.png"
   });
   const BACKGROUND_ASSET_NAMES = Object.freeze(Object.keys(BACKGROUND_PATHS));
   const REQUIRED_BACKGROUND_ASSET_NAMES = Object.freeze([

@@ -537,14 +537,16 @@
     return true;
   }
 
+  let menuBiomeBackgroundState = null;
+
   function initializeMenuBiomeBackground() {
     const menuBackdrop = document.querySelector(".menuBackdrop");
     if (
       !menuBackdrop ||
+      menuBiomeBackgroundState ||
       menuBackdrop.querySelector(".menuBiomeBackground") ||
       !Array.isArray(BIOMES) ||
-      BIOMES.length === 0 ||
-      typeof drawBackground !== "function"
+      BIOMES.length === 0
     ) {
       return;
     }
@@ -559,20 +561,79 @@
     menuBackground.height = H;
     menuBackground.setAttribute("aria-hidden", "true");
     menuBackground.dataset.biomeId = selectedBiome.id;
+    menuBiomeBackgroundState = {
+      selectedBiome,
+      context: menuBackgroundContext,
+      visuals: null,
+      elapsedSeconds: 0,
+      lastVisibleFrameTime: null,
+      warnedAboutRenderFailure: false
+    };
+    menuBackdrop.dataset.biomeId = selectedBiome.id;
+    menuBackdrop.prepend(menuBackground);
+  }
+
+  function isMenuBiomeBackgroundVisible() {
+    return Boolean(
+      ui.menu &&
+      !ui.menu.classList.contains("hidden") &&
+      document.hidden !== true
+    );
+  }
+
+  function pauseMenuBiomeBackgroundClock() {
+    if (menuBiomeBackgroundState) {
+      menuBiomeBackgroundState.lastVisibleFrameTime = null;
+    }
+  }
+
+  function updateMenuBiomeBackground(now) {
+    if (!menuBiomeBackgroundState) return false;
+    if (!isMenuBiomeBackgroundVisible()) {
+      pauseMenuBiomeBackgroundClock();
+      return false;
+    }
+
+    const frameTime = Number(now);
+    if (!Number.isFinite(frameTime)) return false;
+    if (menuBiomeBackgroundState.lastVisibleFrameTime !== null) {
+      menuBiomeBackgroundState.elapsedSeconds += Math.max(
+        0,
+        (frameTime - menuBiomeBackgroundState.lastVisibleFrameTime) / 1000
+      );
+    }
+    menuBiomeBackgroundState.lastVisibleFrameTime = frameTime;
+
+    if (!menuBiomeBackgroundState.visuals) {
+      if (typeof BIOME_PLATFORM_VISUALS === "undefined") return false;
+      const visuals = BIOME_PLATFORM_VISUALS.resolve(
+        menuBiomeBackgroundState.selectedBiome.id
+      );
+      if (!visuals || typeof visuals.drawBackground !== "function") return false;
+      menuBiomeBackgroundState.visuals = visuals;
+    }
 
     try {
-      // Ausschließlich den zentralen Biom-Hintergrund rendern und als statischen
-      // Session-Snapshot übernehmen. Gameplay-Objekte werden nicht gezeichnet.
-      drawBackground(selectedBiome);
-      menuBackgroundContext.drawImage(canvas, 0, 0, W, H);
-      menuBackdrop.dataset.biomeId = selectedBiome.id;
-      menuBackdrop.prepend(menuBackground);
+      return Boolean(menuBiomeBackgroundState.visuals.drawBackground(
+        menuBiomeBackgroundState.context,
+        W,
+        H,
+        menuBiomeBackgroundState.elapsedSeconds
+      ));
     } catch (error) {
-      console.warn("Menü-Biom-Hintergrund konnte nicht gerendert werden:", error);
+      if (!menuBiomeBackgroundState.warnedAboutRenderFailure) {
+        menuBiomeBackgroundState.warnedAboutRenderFailure = true;
+        console.warn("Menü-Biom-Hintergrund konnte nicht gerendert werden:", error);
+      }
+      return false;
     }
   }
 
   initializeMenuBiomeBackground();
+  document.addEventListener?.(
+    "visibilitychange",
+    pauseMenuBiomeBackgroundClock
+  );
 
   function getActiveSlimeColor() {
     return DEV_MODE && devPreviewSlimeColor
@@ -798,6 +859,9 @@
     timestamp,
     random = nextMainMenuMascotFaceVisualRandom
   ) {
+    if (typeof updateMenuBiomeBackground === "function") {
+      updateMenuBiomeBackground(timestamp);
+    }
     if (!isMainMenuMascotFaceAnimationVisible()) {
       if (mainMenuMascotFaceAnimationActive) resetMainMenuMascotFaceAnimation();
       return false;
