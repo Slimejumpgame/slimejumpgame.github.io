@@ -3,12 +3,11 @@
     "versionCode": 18,
     "versionName": "2.73",
     "notes": [
-      "🛠️ Slime Soar v2.73 ist da – mit weiteren Bugfixes und Verbesserungen am Spielgefühl.",
-      "🏆 Gold-Ausstattung wird jetzt korrekt im globalen Leaderboard gespeichert und dargestellt. Gold-Slime, goldene Hüte und goldene Bärte bleiben auch bei späteren Outfit-Wechseln korrekt im Highscore erhalten.",
-      "📈 Die Schwierigkeitskurve wurde überarbeitet. Die maximale Generator-Schwierigkeit wird jetzt erst ab Level 100 statt bereits ab Level 50 erreicht – für einen gleichmäßigeren und zugänglicheren Schwierigkeitsanstieg.",
-      "⚡ Fähigkeiten können im Hauptmenü jetzt jederzeit zuverlässig gekauft, aktiviert, deaktiviert und neu zusammengestellt werden. Die bestehenden Kosten und das Maximum von drei aktiven Fähigkeiten bleiben unverändert.",
-      "🎯 Die Schussvorhersage wurde besser sichtbar gemacht. Die Flugbahnpunkte besitzen jetzt eine dunkle Umrandung und bleiben dadurch auch vor hellen Hintergründen wie Schnee und Wolken deutlich erkennbar.",
-      "💚 Danke fürs Testen von Slime Soar! Euer Feedback hilft dabei, das Spiel mit jedem Update weiter zu verbessern."
+      "✨ Slime Soar v2.73 – das große Grafik-Update ist da!",
+      "🌍 Alle 20 Biome wurden komplett überarbeitet – mit neuen Hintergründen, Plattformen, Portalen, Effekten und Dekorationen.",
+      "🎨 Mit FAIRY TALE und LEGACY kannst du jederzeit zwischen dem neuen und dem klassischen Grafikstil wechseln.",
+      "💡 Ein neues Menü-Onboarding erklärt dir beim ersten Start die wichtigsten Funktionen.",
+      "🛠️ Dazu kommen zahlreiche Verbesserungen und Bugfixes. Dein bisheriger Fortschritt bleibt vollständig erhalten."
     ]
   }
 }
