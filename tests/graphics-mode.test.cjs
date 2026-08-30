@@ -59,6 +59,8 @@ function createGraphicsFixture({storedMode = null, readError = false, writeError
   ].map(id => [id, createButton()]));
   const writes = [];
   let refreshes = 0;
+  let mascotRefreshes = 0;
+  const refreshOrder = [];
   const context = vm.createContext({
     console,
     document: {
@@ -79,9 +81,20 @@ function createGraphicsFixture({storedMode = null, readError = false, writeError
     },
     refreshMenuBiomeBackgroundForGraphicsMode() {
       refreshes++;
+      refreshOrder.push("background");
+    },
+    renderMenuMascot() {
+      mascotRefreshes++;
+      refreshOrder.push("mascot");
     },
     getGraphicsModeRefreshCount() {
       return refreshes;
+    },
+    getMascotRefreshCount() {
+      return mascotRefreshes;
+    },
+    getGraphicsModeRefreshOrder() {
+      return refreshOrder;
     }
   });
   vm.runInContext(`${graphicsSource}
@@ -90,7 +103,9 @@ function createGraphicsFixture({storedMode = null, readError = false, writeError
       setGraphicsMode,
       isFairyTaleGraphicsMode,
       buttons: ui,
-      getRefreshes: getGraphicsModeRefreshCount
+      getRefreshes: getGraphicsModeRefreshCount,
+      getMascotRefreshes: getMascotRefreshCount,
+      getRefreshOrder: getGraphicsModeRefreshOrder
     };
   `, context, {filename: "graphics-mode-core-fixture.js"});
   return {api: context.graphicsModeTestApi, buttons, writes};
@@ -128,6 +143,8 @@ for (const setup of [
   assert.equal(api.getMode(), "legacy");
   assert.deepEqual(writes, [["slimejumperGraphicsMode", "legacy"]]);
   assert.equal(api.getRefreshes(), 1);
+  assert.equal(api.getMascotRefreshes(), 1);
+  assert.deepEqual(Array.from(api.getRefreshOrder()), ["background", "mascot"]);
   assertButtonPair(buttons.fairyTaleGraphicsBtn, buttons.legacyGraphicsBtn, "legacy");
   assertButtonPair(
     buttons.pauseFairyTaleGraphicsBtn,
@@ -147,6 +164,8 @@ for (const setup of [
   assert.equal(api.getMode(), "fairyTale");
   assert.deepEqual(writes, [["slimejumperGraphicsMode", "fairyTale"]]);
   assert.equal(api.getRefreshes(), 1);
+  assert.equal(api.getMascotRefreshes(), 1);
+  assert.deepEqual(Array.from(api.getRefreshOrder()), ["background", "mascot"]);
   assertButtonPair(buttons.fairyTaleGraphicsBtn, buttons.legacyGraphicsBtn, "fairyTale");
   assertButtonPair(
     buttons.pauseFairyTaleGraphicsBtn,
@@ -159,7 +178,15 @@ for (const setup of [
   const {api, buttons} = createGraphicsFixture({writeError: true});
   assert.equal(api.setGraphicsMode("legacy"), true);
   assert.equal(api.getMode(), "legacy");
+  assert.equal(api.getMascotRefreshes(), 1);
   assertButtonPair(buttons.fairyTaleGraphicsBtn, buttons.legacyGraphicsBtn, "legacy");
+}
+
+{
+  const {api} = createGraphicsFixture();
+  assert.equal(api.setGraphicsMode("fairyTale"), true);
+  assert.equal(api.getRefreshes(), 0);
+  assert.equal(api.getMascotRefreshes(), 0);
 }
 
 const setterStart = graphicsSource.indexOf("  function setGraphicsMode(");
@@ -169,6 +196,7 @@ assert.doesNotMatch(
   setterSource,
   /resetLevel|generateProceduralLevel|currentLevel|generatedLevel|worldTime|player|lives|score|seed|checkpoint|achievement/i
 );
+assert.doesNotMatch(setterSource, /setTimeout|setInterval|requestAnimationFrame/);
 assert.doesNotMatch(coreSource, /slimejumperGraphicsMode[\s\S]{0,120}removeItem/);
 
 const resolverStart = rendererSource.indexOf("  function getActiveBiomePlatformVisuals");
@@ -513,6 +541,10 @@ assert.match(htmlSource, /class="pauseSettingsRow pauseGraphicsRow"[\s\S]*?pause
 assert.match(cssSource, /\.mainMenuGraphics\s*\{[\s\S]*?right:[\s\S]*?env\(safe-area-inset-right\)/);
 assert.match(cssSource, /\.pauseSettingsRow\s*\{[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
 assert.match(cssSource, /@media \(orientation: portrait\)[\s\S]*?\.mainMenuAudio,[\s\S]*?\.mainMenuGraphics[\s\S]*?flex-direction: column/);
+assert.match(
+  cssSource,
+  /@media \(orientation: landscape\) and \(hover: none\) and \(pointer: coarse\) \{\s*#mainMenuScreen \.privacyLink\s*\{\s*margin-top: clamp\(8px, 2\.8dvh, 14px\);/
+);
 
 assert.match(physicsSource, /function update\(dt\) \{\s*if \(state !== "playing"\) return;/);
 for (const relativePath of [

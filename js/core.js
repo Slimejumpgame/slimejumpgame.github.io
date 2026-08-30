@@ -318,11 +318,11 @@
       localStorage.setItem(GRAPHICS_MODE_STORAGE_KEY, graphicsMode);
     } catch (_) {}
     updateGraphicsModeButtons();
-    if (
-      changed &&
-      typeof refreshMenuBiomeBackgroundForGraphicsMode === "function"
-    ) {
-      refreshMenuBiomeBackgroundForGraphicsMode();
+    if (changed) {
+      if (typeof refreshMenuBiomeBackgroundForGraphicsMode === "function") {
+        refreshMenuBiomeBackgroundForGraphicsMode();
+      }
+      if (typeof renderMenuMascot === "function") renderMenuMascot();
     }
     return true;
   }

@@ -5722,6 +5722,10 @@ p {
 
 /* Large, scrollable customization controls for touch-first landscape menus. */
 @media (orientation: landscape) and (hover: none) and (pointer: coarse) {
+  #mainMenuScreen .privacyLink {
+    margin-top: clamp(8px, 2.8dvh, 14px);
+  }
+
   .wardrobeCategoryMenu {
     width: min(100%, 410px);
     gap: clamp(5px, 1.6dvh, 8px);
