@@ -8,6 +8,8 @@
   const SKIP_CHECKPOINT_INTRO_STORAGE_KEY = "slimejumperSkipCheckpointIntro";
   const CHECKPOINT_SCORE_MULTIPLIER_STEP = 0.05;
   const MAX_CHECKPOINT_SCORE_MULTIPLIER = 2;
+  let storyReturnState = null;
+  let storyCompletionRecoveryInProgress = false;
 
   function normalizeCheckpointLevel(value) {
     const numericValue = Number(value);
@@ -453,6 +455,26 @@
 
     ui.checkpointLevelOneBtn.disabled = true;
     ui.checkpointLevelBtn.disabled = true;
+    if (
+      selectedLevel === 1 &&
+      window.SlimeStory?.isActiveCycle?.() === true &&
+      window.SlimeStory?.shouldShowIntro?.() === true
+    ) {
+      const opened = window.SlimeStory.showIntro({
+        onComplete: async () => {
+          const started = await startGame(1);
+          if (!started) {
+            ui.checkpointLevelOneBtn.disabled = false;
+            ui.checkpointLevelBtn.disabled = false;
+            ui.checkpointOverlay.classList.remove("hidden");
+          }
+        }
+      });
+      if (opened) {
+        ui.checkpointOverlay.classList.add("hidden");
+        return true;
+      }
+    }
     const started = await startGame(selectedLevel, {
       fromCheckpoint: selectedLevel > 1
     });
@@ -466,7 +488,36 @@
 
   function startFromPlay() {
     if (!shouldSkipTutorialFromPlay()) return startTutorialSequence();
+    if (
+      window.SlimeStory?.isDevTestEnabled?.() === true ||
+      (window.SlimeStory?.isActiveCycle?.() === true && getHighestCheckpointLevel() === 0)
+    ) {
+      return startLevelOneWithStoryIntro();
+    }
     return openCheckpointStartFlow({showIntro: true});
+  }
+
+  function startLevelOneWithStoryIntro() {
+    if (window.SlimeStory?.shouldShowIntro?.() !== true) return startGame(1);
+    const opened = window.SlimeStory.showIntro({
+      onComplete: () => { void startGame(1); }
+    });
+    return opened || startGame(1);
+  }
+
+  function setStoryPresentationActive(active) {
+    if (active) {
+      if (state === "story") return;
+      storyReturnState = state;
+      stopAiming();
+      activeTouchId = null;
+      shake = 0;
+      state = "story";
+      return;
+    }
+    if (state === "story") state = storyReturnState || "menu";
+    storyReturnState = null;
+    lastTime = performance.now();
   }
 
   function updateDevTutorialToggle() {
@@ -474,6 +525,22 @@
     const tutorialEnabled = !shouldSkipTutorialFromPlay();
     ui.devTutorialToggleBtn.textContent = `Einführung: ${tutorialEnabled ? "AN" : "AUS"}`;
     ui.devTutorialToggleBtn.setAttribute("aria-pressed", String(tutorialEnabled));
+  }
+
+  function updateDevStoryTestToggle() {
+    if (!ui.devStoryTestBtn) return;
+    const enabled = window.SlimeStory?.isDevTestEnabled?.() === true;
+    ui.devStoryTestBtn.textContent = `STORY TEST: ${enabled ? "AN" : "AUS"}`;
+    ui.devStoryTestBtn.setAttribute("aria-pressed", String(enabled));
+  }
+
+  function toggleDevStoryTest() {
+    if (!DEV_MODE || !ui.devStoryTestBtn || !window.SlimeStory) return false;
+    const updated = window.SlimeStory.setDevTestEnabled(
+      !window.SlimeStory.isDevTestEnabled()
+    );
+    updateDevStoryTestToggle();
+    return updated;
   }
 
   function toggleDevTutorial() {
@@ -513,6 +580,7 @@
       window.SlimeStarEconomy?.isPurchaseInProgress?.() === true ||
       window.SlimeRunRecovery?.isBlocked?.() === true ||
       window.SlimeRunRecovery?.hasStoredRecord?.() === true ||
+      window.SlimeStory?.isPresenting?.() === true ||
       ui.menu.classList.contains("hidden") ||
       ui.mainMenuScreen.classList.contains("hidden")
     ) {
@@ -827,6 +895,8 @@
     ui.devNextLevelBtn.addEventListener("click", () => startDevLevel(levelIndex + 2));
     updateDevTutorialToggle();
     ui.devTutorialToggleBtn.addEventListener("click", toggleDevTutorial);
+    updateDevStoryTestToggle();
+    ui.devStoryTestBtn?.addEventListener("click", toggleDevStoryTest);
     ui.devPlayerLevel100Btn.addEventListener("click", () => {
       setDevPlayerProgress(window.SlimePlayerProgress.maxPlayerLevel, 0);
     });
@@ -893,6 +963,7 @@
 
     document.addEventListener("keydown", event => {
       if (event.key !== "PageUp" && event.key !== "PageDown") return;
+      if (window.SlimeStory?.isPresenting?.() === true) return;
       event.preventDefault();
       const offset = event.key === "PageUp" ? 1 : -1;
       startDevLevel(levelIndex + 1 + offset);
@@ -1066,6 +1137,12 @@
       } catch (_) {}
     }
     hideTutorialCompletePrompt();
+    if (
+      window.SlimeStory?.isActiveCycle?.() === true ||
+      window.SlimeStory?.isDevTestEnabled?.() === true
+    ) {
+      return startLevelOneWithStoryIntro();
+    }
     return startGame(1);
   }
 
@@ -1158,17 +1235,24 @@
       "Nächstes Zufallslevel",
       "next"
     );
-    if (checkpointBonusPending) {
-      const opened = window.SlimeCheckpointBonus?.openPending?.({
-        onComplete: continueLevelEndFlow
-      }) === true;
-      if (!opened) {
-        state = "checkpointBonus";
-        console.error("[CheckpointBonus] Persistierter Bonus konnte nicht geöffnet werden.");
+    const continueAfterStory = () => {
+      if (checkpointBonusPending) {
+        const opened = window.SlimeCheckpointBonus?.openPending?.({
+          onComplete: continueLevelEndFlow
+        }) === true;
+        if (!opened) {
+          state = "checkpointBonus";
+          console.error("[CheckpointBonus] Persistierter Bonus konnte nicht geöffnet werden.");
+        }
+        return;
       }
-      return;
-    }
-    continueLevelEndFlow();
+      continueLevelEndFlow();
+    };
+    const storyOpened = window.SlimeStory?.handleLevelCompleted?.({
+      levelNumber: completedLevel,
+      onComplete: continueAfterStory
+    }) === true;
+    if (!storyOpened) continueAfterStory();
   }
 
   function captureHighScoreGoldAppearanceSnapshot() {
@@ -1592,8 +1676,10 @@
     updateMusicMute();
 
     if (!musicMuted) {
-      if (state === "playing" || state === "gamePaused") setMusicForLevel(levelIndex + 1);
-      else setMusicMode("menu");
+      if (window.SlimeStoryAudio?.isActive?.() !== true) {
+        if (state === "playing" || state === "gamePaused") setMusicForLevel(levelIndex + 1);
+        else setMusicMode("menu");
+      }
       startBackgroundMusic();
     }
   });
@@ -1630,6 +1716,11 @@
     lastTime = performance.now();
   });
 
+  window.SlimeStory?.configure?.({
+    setPresentationActive: setStoryPresentationActive,
+    devModeEnabled: DEV_MODE && IS_LOCALHOST_TEST_ENVIRONMENT
+  });
+
   window.SlimeCheckpointBonus?.configureGame?.({
     getHighestCheckpoint: getHighestCheckpointLevel,
     getLives: () => lives,
@@ -1637,7 +1728,8 @@
       lives = Math.max(0, Math.min(MAX_LIVES, Math.floor(Number(value) || 0)));
     },
     updateHUD,
-    isRunAvailable: () => state === "playing" || state === "checkpointBonus",
+    isRunAvailable: () =>
+      state === "playing" || state === "checkpointBonus" || storyCompletionRecoveryInProgress,
     setGameState(nextState) {
       if (["checkpointBonus", "menu"].includes(nextState)) state = nextState;
     }
@@ -1650,6 +1742,24 @@
   showMenuScreen("main");
   initializeDevMode();
   resetLevel(true);
+  if (window.SlimeStory?.hasPendingCompletionStory?.() === true) {
+    storyCompletionRecoveryInProgress = true;
+    const resumed = window.SlimeStory.resumePendingCompletion({
+      onComplete() {
+        const opened = window.SlimeCheckpointBonus?.openPending?.({
+          onComplete() {
+            storyCompletionRecoveryInProgress = false;
+            state = "menu";
+          }
+        }) === true;
+        if (!opened) {
+          storyCompletionRecoveryInProgress = false;
+          state = "menu";
+        }
+      }
+    });
+    if (!resumed) storyCompletionRecoveryInProgress = false;
+  }
   requestAnimationFrame(frame);
   void initializeAndroidUpdateCheck().finally(() => {
     if (typeof beginMainMenuOnboardingEntry === "function") {

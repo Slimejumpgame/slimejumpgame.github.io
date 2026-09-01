@@ -343,7 +343,12 @@ function assertEngineAndScopeRemainStable() {
   assert.deepEqual(
     [...audioSource.matchAll(/["']([^"']+\.(?:mp3|ogg|wav|m4a|aac|flac|opus))["']/gi)]
       .map(match => match[1]),
-    ["assets/music/menu/main_menu.mp3"]
+    [
+      "assets/music/menu/main_menu.mp3",
+      "assets/music/story/story_intro.mp3",
+      "assets/music/story/story_middle.mp3",
+      "assets/music/story/story_ending.mp3"
+    ]
   );
   assert.ok(audioSource.includes("`assets/music/biomes/${biomeId}.mp3`"));
   assert.doesNotMatch(audioSource, /assets\/music\/biomes\/(?:meadow|coast)\.mp3/);

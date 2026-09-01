@@ -50,7 +50,15 @@
   const SFX_VOLUME_MULTIPLIER = 1.30;
   const MUSIC_BUS_VOLUME = 0.33; // V1.9: +50 % gegenüber V1.8 (0.22 -> 0.33)
   const EXTERNAL_BIOME_MUSIC_GAIN = 0.10;
+  const STORY_MUSIC_GAIN = 0.10;
+  const STORY_MUSIC_FADE_IN_SECONDS = 0.30;
+  const STORY_MUSIC_FADE_OUT_SECONDS = 0.40;
   const MAIN_MENU_MUSIC_PATH = "assets/music/menu/main_menu.mp3";
+  const STORY_MUSIC_PATHS = Object.freeze({
+    intro: "assets/music/story/story_intro.mp3",
+    middle: "assets/music/story/story_middle.mp3",
+    ending: "assets/music/story/story_ending.mp3"
+  });
 
   const menuExternalMusicTrack = {
     path: MAIN_MENU_MUSIC_PATH,
@@ -59,7 +67,16 @@
     failed: false
   };
   const externalBiomeMusicTracks = new Map();
+  const storyMusicTracks = new Map(Object.entries(STORY_MUSIC_PATHS).map(
+    ([sequenceName, path]) => [sequenceName, {path, audio: null, source: null, failed: false}]
+  ));
   let externalBiomeMusicGainNode = null;
+  let storyMusicGainNode = null;
+  let activeStoryMusicSequence = null;
+  let storyMusicPlaybackStarted = false;
+  let storyMusicStopping = false;
+  let storyMusicStopTimer = null;
+  let storyMusicGeneration = 0;
 
   function tone(freq, duration = 0.08, type = "sine", volume = 0.05, endFreq = null) {
     if (sfxMuted) return;
@@ -358,7 +375,161 @@
     }
   }
 
+  function stopTrackAudio(track) {
+    if (!track?.audio) return;
+    track.audio.pause();
+    try { track.audio.currentTime = 0; } catch (error) { /* Noch nicht abspielbereit. */ }
+  }
+
+  function stopAllNormalExternalMusic() {
+    stopTrackAudio(menuExternalMusicTrack);
+    for (const track of externalBiomeMusicTracks.values()) stopTrackAudio(track);
+  }
+
+  function stopAllStoryTrackAudio() {
+    for (const track of storyMusicTracks.values()) stopTrackAudio(track);
+    storyMusicPlaybackStarted = false;
+  }
+
+  function markStoryMusicFailed(sequenceName) {
+    const track = storyMusicTracks.get(sequenceName);
+    if (!track || track.failed) return;
+    track.failed = true;
+    stopTrackAudio(track);
+    if (activeStoryMusicSequence === sequenceName) storyMusicPlaybackStarted = false;
+  }
+
+  function getStoryMusic(sequenceName) {
+    const track = storyMusicTracks.get(sequenceName);
+    if (!track || track.failed) return null;
+    if (track.audio) return track.audio;
+
+    try {
+      if (typeof window.Audio !== "function") throw new Error("Audio element unavailable");
+
+      track.audio = new window.Audio();
+      track.audio.loop = false;
+      track.audio.preload = "none";
+      track.audio.addEventListener("error", () => markStoryMusicFailed(sequenceName), {once: true});
+      track.audio.addEventListener("ended", () => {
+        if (activeStoryMusicSequence === sequenceName) storyMusicPlaybackStarted = false;
+      });
+
+      const a = getAudio();
+      const bus = getMusicBus();
+      if (!a || !bus || typeof a.createMediaElementSource !== "function") {
+        throw new Error("Media element audio source unavailable");
+      }
+
+      if (!storyMusicGainNode) {
+        storyMusicGainNode = a.createGain();
+        storyMusicGainNode.gain.value = 0;
+        storyMusicGainNode.connect(bus);
+      }
+
+      track.source = a.createMediaElementSource(track.audio);
+      track.source.connect(storyMusicGainNode);
+      track.audio.src = track.path;
+      return track.audio;
+    } catch (error) {
+      markStoryMusicFailed(sequenceName);
+      return null;
+    }
+  }
+
+  function playStoryMusic(sequenceName) {
+    const audio = getStoryMusic(sequenceName);
+    if (!audio || !storyMusicGainNode) return false;
+
+    try {
+      const now = audioCtx.currentTime;
+      const gain = storyMusicGainNode.gain;
+      gain.cancelScheduledValues(now);
+      gain.setValueAtTime(0, now);
+      gain.linearRampToValueAtTime(
+        STORY_MUSIC_GAIN,
+        now + STORY_MUSIC_FADE_IN_SECONDS
+      );
+      try { audio.currentTime = 0; } catch (error) { /* Noch nicht abspielbereit. */ }
+      const playAttempt = audio.play();
+      storyMusicPlaybackStarted = true;
+      playAttempt?.catch?.(() => {
+        if (activeStoryMusicSequence !== sequenceName) return;
+        stopTrackAudio(storyMusicTracks.get(sequenceName));
+        storyMusicPlaybackStarted = false;
+      });
+      return true;
+    } catch (error) {
+      stopTrackAudio(storyMusicTracks.get(sequenceName));
+      storyMusicPlaybackStarted = false;
+      return false;
+    }
+  }
+
+  function startStoryMusic(sequenceName) {
+    if (!storyMusicTracks.has(sequenceName)) return false;
+
+    storyMusicGeneration++;
+    if (storyMusicStopTimer !== null) window.clearTimeout(storyMusicStopTimer);
+    storyMusicStopTimer = null;
+    storyMusicStopping = false;
+    stopAllStoryTrackAudio();
+
+    if (musicTimer) window.clearTimeout(musicTimer);
+    musicTimer = null;
+    stopActiveMusicVoices();
+    stopAllNormalExternalMusic();
+
+    activeStoryMusicSequence = sequenceName;
+    if (musicMuted) return true;
+
+    const a = getAudio();
+    if (!a || !getMusicBus()) return true;
+    musicStarted = true;
+    return playStoryMusic(sequenceName);
+  }
+
+  function finishStoryMusicStop(sequenceName, generation) {
+    if (
+      generation !== storyMusicGeneration ||
+      activeStoryMusicSequence !== sequenceName
+    ) return;
+
+    stopTrackAudio(storyMusicTracks.get(sequenceName));
+    if (storyMusicGainNode) storyMusicGainNode.gain.value = 0;
+    activeStoryMusicSequence = null;
+    storyMusicPlaybackStarted = false;
+    storyMusicStopping = false;
+    storyMusicStopTimer = null;
+    if (musicStarted) startCurrentMusicSource();
+  }
+
+  function stopStoryMusic(sequenceName = activeStoryMusicSequence) {
+    if (!sequenceName || activeStoryMusicSequence !== sequenceName) return false;
+    if (storyMusicStopping) return true;
+
+    const generation = storyMusicGeneration;
+    const track = storyMusicTracks.get(sequenceName);
+    if (!storyMusicPlaybackStarted || !track?.audio || !storyMusicGainNode || !audioCtx) {
+      finishStoryMusicStop(sequenceName, generation);
+      return true;
+    }
+
+    storyMusicStopping = true;
+    const now = audioCtx.currentTime;
+    const gain = storyMusicGainNode.gain;
+    gain.cancelScheduledValues(now);
+    gain.setValueAtTime(gain.value, now);
+    gain.linearRampToValueAtTime(0, now + STORY_MUSIC_FADE_OUT_SECONDS);
+    storyMusicStopTimer = window.setTimeout(
+      () => finishStoryMusicStop(sequenceName, generation),
+      STORY_MUSIC_FADE_OUT_SECONDS * 1000
+    );
+    return true;
+  }
+
   function startCurrentMusicSource() {
+    if (activeStoryMusicSequence) return;
     const track = getExternalMusicTrack(musicMode);
     if (track && !track.failed) {
       if (playExternalMusic(musicMode) || musicTimer) return;
@@ -367,7 +538,7 @@
   }
 
   function scheduleMusicStep() {
-    if (!musicStarted) return;
+    if (!musicStarted || activeStoryMusicSequence) return;
     const externalTrack = getExternalMusicTrack(musicMode);
     if (externalTrack && !externalTrack.failed) return;
 
@@ -404,6 +575,16 @@
     if (!a) return;
     getMusicBus();
 
+    if (activeStoryMusicSequence) {
+      if (!musicStarted) {
+        musicStarted = true;
+        musicStep = 0;
+      }
+      if (!musicMuted && !storyMusicPlaybackStarted && !storyMusicStopping) {
+        playStoryMusic(activeStoryMusicSequence);
+      }
+      return;
+    }
     if (musicStarted) return;
     musicStarted = true;
     musicStep = 0;
@@ -463,6 +644,12 @@
     ui.pauseSfxBtn.setAttribute("aria-label", sfxMuted ? "Soundeffekte einschalten" : "Soundeffekte ausschalten");
     ui.pauseSfxBtn.setAttribute("aria-pressed", String(!sfxMuted));
   }
+
+  window.SlimeStoryAudio = Object.freeze({
+    start: startStoryMusic,
+    stop: stopStoryMusic,
+    isActive: () => activeStoryMusicSequence !== null
+  });
 
   function playLaunch() { tone(240, 0.12, "triangle", 0.0924, 520); }
   function playBounce() { tone(150, 0.07, "sine", 0.035, 105); }

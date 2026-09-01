@@ -278,6 +278,7 @@
     devNextLevelBtn: document.getElementById("devNextLevelBtn"),
     devModeToggleBtn: document.getElementById("devModeToggleBtn"),
     devTutorialToggleBtn: document.getElementById("devTutorialToggleBtn"),
+    devStoryTestBtn: document.getElementById("devStoryTestBtn"),
     devShopTestBtn: document.getElementById("devShopTestBtn"),
     devGoldSlimeTestBtn: document.getElementById("devGoldSlimeTestBtn"),
     devGoldHatsTestBtn: document.getElementById("devGoldHatsTestBtn"),

@@ -716,6 +716,180 @@ canvas.aiming {
   font-size: clamp(17px, 4dvh, 25px);
 }
 
+/* Story V1: eigenständige DOM-Ebene, bewusst unabhängig vom Canvas-Renderer. */
+.storyOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right))
+    max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+  overflow: auto;
+  color: #fff;
+  background:
+    radial-gradient(circle at 50% 34%, rgba(64, 100, 126, 0.38), transparent 52%),
+    rgba(4, 10, 18, 0.96);
+  opacity: 0;
+  transition: opacity 300ms ease;
+  overscroll-behavior: contain;
+  touch-action: manipulation;
+}
+
+.storyOverlay.storyOverlayVisible {
+  opacity: 1;
+}
+
+.storyOverlay.hidden {
+  display: none;
+}
+
+.storySequencePanel {
+  width: min(100%, 1040px);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 300ms ease, transform 300ms ease;
+}
+
+.storySequencePanel.storySlideVisible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.storyMediaFrame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 2px solid rgba(218, 238, 255, 0.48);
+  border-radius: 18px 18px 0 0;
+  background: #081522;
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.52);
+}
+
+.storyImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #081522;
+}
+
+.storyImageFallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 700;
+}
+
+.storyProgress {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(4, 10, 18, 0.78);
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.storyCopyPanel {
+  padding: 18px clamp(16px, 3.4vw, 34px) 20px;
+  border: 2px solid rgba(218, 238, 255, 0.36);
+  border-top: 0;
+  border-radius: 0 0 18px 18px;
+  background: linear-gradient(180deg, rgba(16, 35, 53, 0.98), rgba(8, 20, 33, 0.98));
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.52);
+}
+
+.storyText,
+.storyEndingNote {
+  margin: 0;
+  white-space: pre-line;
+  text-align: center;
+  line-height: 1.48;
+}
+
+.storyText {
+  min-height: 3em;
+  font-size: clamp(1rem, 2.2vw, 1.28rem);
+  font-weight: 700;
+}
+
+.storyEndingNote {
+  margin-top: 10px;
+  color: #ffe69a;
+  font-size: 0.94rem;
+  font-weight: 800;
+}
+
+.storyActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 17px;
+}
+
+.storyActions .uiButton {
+  min-width: 132px;
+}
+
+.storyFragmentPanel {
+  width: min(92vw, 540px);
+  padding: clamp(24px, 5vw, 42px);
+  border: 2px solid rgba(255, 235, 150, 0.58);
+  border-radius: 24px;
+  text-align: center;
+  background: radial-gradient(circle at 50% 34%, #274e57, #0a1825 74%);
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.62), inset 0 0 34px rgba(116, 255, 221, 0.12);
+}
+
+.storyFragmentPanel h2 {
+  margin: 0 0 8px;
+  color: #fff0a9;
+  font-size: clamp(1.45rem, 5vw, 2.3rem);
+  letter-spacing: 0.04em;
+}
+
+.storyFragmentPanel canvas {
+  display: block;
+  width: min(260px, 72vw);
+  height: auto;
+  margin: 0 auto;
+  cursor: default;
+}
+
+.storyFragmentPanel p {
+  margin: 4px 0 20px;
+  font-size: clamp(1rem, 2.5vw, 1.2rem);
+  font-weight: 750;
+}
+
+@media (max-height: 680px) and (orientation: landscape) {
+  .storySequencePanel {
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(270px, 0.8fr);
+    align-items: stretch;
+  }
+
+  .storyMediaFrame {
+    border-radius: 18px 0 0 18px;
+  }
+
+  .storyCopyPanel {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-top: 2px solid rgba(218, 238, 255, 0.36);
+    border-left: 0;
+    border-radius: 0 18px 18px 0;
+  }
+}
+
 .pauseSettingsRow {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

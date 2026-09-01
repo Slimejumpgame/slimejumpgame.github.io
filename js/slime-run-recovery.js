@@ -5,6 +5,7 @@
   const ACTIVE_RUN_RECOVERY_FORMAT_VERSION = "active-run-recovery-v1";
   const ACTIVE_RUN_STATUS = "active";
   const COMPLETED_RUN_STATUS = "completed";
+  const STORY_PRESENTATION_RUN_STATUS = "story_presentation";
 
   let recoveryBlocked = false;
 
@@ -61,6 +62,15 @@
       return {kind: "completed", record};
     }
     if (
+      record.status === STORY_PRESENTATION_RUN_STATUS &&
+      isObject(record.achievementSnapshot) &&
+      isObject(record.wardrobeSnapshot) &&
+      ((record.storyLevel === 100 && record.storySequence === "middle") ||
+        (record.storyLevel === 200 && record.storySequence === "ending"))
+    ) {
+      return {kind: "story", record};
+    }
+    if (
       record.status !== ACTIVE_RUN_STATUS ||
       !isObject(record.achievementSnapshot) ||
       !isObject(record.wardrobeSnapshot)
@@ -70,6 +80,20 @@
     }
 
     return {kind: "active", record};
+  }
+
+  function writeRecoveryRecord(record, errorMessage) {
+    try {
+      const serializedRecord = JSON.stringify(record);
+      localStorage.setItem(ACTIVE_RUN_RECOVERY_STORAGE_KEY, serializedRecord);
+      if (localStorage.getItem(ACTIVE_RUN_RECOVERY_STORAGE_KEY) !== serializedRecord) {
+        throw new Error("geschriebener Datensatz konnte nicht verifiziert werden");
+      }
+      return true;
+    } catch (error) {
+      console.error(errorMessage, error);
+      return false;
+    }
   }
 
   function beginActiveRun({achievementSnapshot, wardrobeSnapshot} = {}) {
@@ -89,17 +113,38 @@
       wardrobeSnapshot
     };
 
-    try {
-      const serializedRecord = JSON.stringify(record);
-      localStorage.setItem(ACTIVE_RUN_RECOVERY_STORAGE_KEY, serializedRecord);
-      if (localStorage.getItem(ACTIVE_RUN_RECOVERY_STORAGE_KEY) !== serializedRecord) {
-        throw new Error("geschriebener Datensatz konnte nicht verifiziert werden");
-      }
-      return true;
-    } catch (error) {
-      console.error("[RunRecovery] Pre-Run-Snapshot konnte nicht persistent gespeichert werden:", error);
+    return writeRecoveryRecord(
+      record,
+      "[RunRecovery] Pre-Run-Snapshot konnte nicht persistent gespeichert werden:"
+    );
+  }
+
+  function protectStoryPresentation({levelNumber, sequence} = {}) {
+    const storyLevel = Math.floor(Number(levelNumber));
+    if (!((storyLevel === 100 && sequence === "middle") ||
+      (storyLevel === 200 && sequence === "ending"))) {
       return false;
     }
+
+    const storedRecovery = readRecoveryRecord();
+    if (storedRecovery.kind !== "active") return false;
+    return writeRecoveryRecord({
+      ...storedRecovery.record,
+      status: STORY_PRESENTATION_RUN_STATUS,
+      storyLevel,
+      storySequence: sequence
+    }, "[RunRecovery] Story-Schutz konnte nicht persistent gespeichert werden:");
+  }
+
+  function resumeAfterStoryPresentation() {
+    const storedRecovery = readRecoveryRecord();
+    if (storedRecovery.kind === "none" || storedRecovery.kind === "active") return true;
+    if (storedRecovery.kind !== "story") return false;
+    const {storyLevel: _storyLevel, storySequence: _storySequence, ...record} = storedRecovery.record;
+    return writeRecoveryRecord({
+      ...record,
+      status: ACTIVE_RUN_STATUS
+    }, "[RunRecovery] Run konnte nach der Story nicht fortgesetzt werden:");
   }
 
   function markRunCompleted() {
@@ -170,6 +215,19 @@
       recoveryBlocked = !cleared;
       return {found: true, recovered: false, blocked: !cleared};
     }
+    if (storedRecovery.kind === "story") {
+      const cleared = removeRecoveryRecord();
+      recoveryBlocked = !cleared;
+      if (cleared) {
+        console.info("[RunRecovery] Abgeschlossene Meilenstein-Belohnungen bleiben nach unterbrochener Story erhalten.");
+      }
+      return {
+        found: true,
+        recovered: false,
+        storyPending: true,
+        blocked: !cleared
+      };
+    }
 
     const {achievementSnapshot, wardrobeSnapshot} = storedRecovery.record;
     let snapshotsAreValid = false;
@@ -214,6 +272,8 @@
     storageKey: ACTIVE_RUN_RECOVERY_STORAGE_KEY,
     formatVersion: ACTIVE_RUN_RECOVERY_FORMAT_VERSION,
     beginActiveRun,
+    protectStoryPresentation,
+    resumeAfterStoryPresentation,
     markRunCompleted,
     clearAfterRollback,
     neutralizeForMenu,
