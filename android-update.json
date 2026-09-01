@@ -1,13 +1,13 @@
 {
   "android": {
-    "versionCode": 18,
-    "versionName": "2.73",
+    "versionCode": 19,
+    "versionName": "2.74",
     "notes": [
-      "✨ Slime Soar v2.73 – das große Grafik-Update ist da!",
-      "🌍 Alle 20 Biome wurden komplett überarbeitet – mit neuen Hintergründen, Plattformen, Portalen, Effekten und Dekorationen.",
-      "🎨 Mit FAIRY TALE und LEGACY kannst du jederzeit zwischen dem neuen und dem klassischen Grafikstil wechseln.",
-      "💡 Ein neues Menü-Onboarding erklärt dir beim ersten Start die wichtigsten Funktionen.",
-      "🛠️ Dazu kommen zahlreiche Verbesserungen und Bugfixes. Dein bisheriger Fortschritt bleibt vollständig erhalten."
+      "⚡ Slime Soar v2.74 – deutlich schnellere Ladezeiten!",
+      "🚀 Grafik-Assets werden jetzt per Lazy Loading effizienter geladen.",
+      "🎯 Schwierigkeitskurve überarbeitet.",
+      "💡 Mechanik-Erklärungen optisch verbessert.",
+      "🛠️ Kleinere UI-Verbesserungen und Optimierungen."
     ]
   }
 }

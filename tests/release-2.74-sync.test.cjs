@@ -136,7 +136,7 @@ for (const relativePath of PRE_VISUAL_UPDATE_PNG_FILES) {
 }
 const visualUpdatePngFiles = assetPngFiles
   .filter(relativePath => !PRE_VISUAL_UPDATE_PNG_FILES.includes(relativePath));
-assert.equal(visualUpdatePngFiles.length, 511, "Root must contain all 511 visual-update PNGs");
+assert.equal(visualUpdatePngFiles.length, 524, "Root must contain all 524 release PNGs");
 for (const relativePath of SPLIT_PLATFORM_FALLBACK_FILES) {
   assert.ok(rootPayloadFiles.includes(relativePath), `Split fallback missing: ${relativePath}`);
 }
@@ -178,11 +178,11 @@ if (runAndroidContract) {
 }
 
 const gradle = read(projectRoot, "android/app/build.gradle");
-assert.match(gradle, /versionCode 18/);
-assert.match(gradle, /versionName "2\.73"/);
+assert.match(gradle, /versionCode 19/);
+assert.match(gradle, /versionName "2\.74"/);
 const publishedUpdate = JSON.parse(read(projectRoot, "android-update.json"));
-assert.equal(publishedUpdate.android.versionCode, 18);
-assert.equal(publishedUpdate.android.versionName, "2.73");
+assert.equal(publishedUpdate.android.versionCode, 19);
+assert.equal(publishedUpdate.android.versionName, "2.74");
 
 const index = read(projectRoot, "index.html");
 const biomes = read(projectRoot, "js/biomes.js");
@@ -300,7 +300,7 @@ assert.match(
   /@media \(orientation: landscape\) and \(hover: none\) and \(pointer: coarse\) \{[\s\S]*?#mainMenuScreen \.menuStatusBadge--rank\s*\{[\s\S]*?border-radius: clamp\(9px, 2\.5dvh, 13px\);[\s\S]*?background: rgba\(16, 28, 45, 0\.82\);/
 );
 const highscores = read(projectRoot, "js/slime-jump-highscores.js");
-assert.match(highscores, /const GAME_VERSION = "2\.73";/);
+assert.match(highscores, /const GAME_VERSION = "2\.74";/);
 
 const reset = read(projectRoot, "js/slime-progress-reset.js");
 const migration = read(projectRoot, "js/slime-perk-migration.js");
@@ -309,8 +309,8 @@ assert.match(reset, /const PREFERENCE_RESET_VERSION = "preferences-reset-2\.58";
 assert.match(migration, /const MIGRATION_VERSION = "perk-migration-2\.65";/);
 
 console.log(
-  `v2.73 release sync ${requestedPhase} passed (${rootPayloadFiles.length} web files, ` +
-  `${visualModuleFiles.length} visual modules, ${visualUpdatePngFiles.length} visual PNGs, ` +
+  `v2.74 release sync ${requestedPhase} passed (${rootPayloadFiles.length} web files, ` +
+  `${visualModuleFiles.length} visual modules, ${visualUpdatePngFiles.length} release PNGs, ` +
   `${biomeIds.length} biomes, ${newMusicThemeIds.length} new music themes, ` +
   `${achievementIds.length} achievements).`
 );
