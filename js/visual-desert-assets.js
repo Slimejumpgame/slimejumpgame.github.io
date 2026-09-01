@@ -1,7 +1,12 @@
 "use strict";
 
 const DESERT_ASSET_VISUALS = (() => {
-  const desertPlatformVisuals = BIOME_PLATFORM_VISUALS.resolve("desert");
+  const supportsLazyLoading =
+    typeof BIOME_PLATFORM_VISUALS.registerLazy === "function" &&
+    typeof BIOME_PLATFORM_VISUALS.createAssetLoader === "function";
+  const desertPlatformVisuals = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.registerLazy("desert")
+    : BIOME_PLATFORM_VISUALS.resolve("desert");
   const BACKGROUND_REFERENCE = Object.freeze({w: 1280, h: 720});
   const BACKGROUND_PATHS = Object.freeze({
     base: "assets/environments/desert/background/desert_background_base.png",
@@ -105,12 +110,17 @@ const DESERT_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
-    loadBackgroundAsset(name, path);
-  }
-  const backgroundReadyPromise = Promise.all(
-    Object.values(backgroundAssets).map(record => record.ready)
-  ).then(() => isBackgroundReady());
+  let backgroundReadyPromise = null;
+  const backgroundLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+        loadBackgroundAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(backgroundAssets).map(record => record.ready)
+      ).then(() => isBackgroundReady());
+    })
+    : null;
 
   function isBackgroundReady() {
     return hasValidBackgroundSize("base");
@@ -200,6 +210,7 @@ const DESERT_ASSET_VISUALS = (() => {
   }
 
   function drawBackground(context, width, height, visualTime = 0) {
+    requestBackgroundAssets();
     if (!context || !isBackgroundReady()) return false;
     const mapping = getBackgroundMapping(width, height);
     if (!mapping) return false;
@@ -280,12 +291,42 @@ const DESERT_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(QUICKSAND_HAZARD_PATHS)) {
-    loadQuicksandHazardAsset(name, path);
+  let quicksandHazardReadyPromise = null;
+  const hazardLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(QUICKSAND_HAZARD_PATHS)) {
+        loadQuicksandHazardAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(quicksandHazardAssets).map(record => record.ready)
+      ).then(results => results.every(Boolean));
+    })
+    : null;
+
+  function requestBackgroundAssets() {
+    if (backgroundLoader) backgroundReadyPromise = backgroundLoader.request();
+    return backgroundReadyPromise;
   }
-  const quicksandHazardReadyPromise = Promise.all(
-    Object.values(quicksandHazardAssets).map(record => record.ready)
-  ).then(results => results.every(Boolean));
+
+  function requestHazardAssets() {
+    if (hazardLoader) quicksandHazardReadyPromise = hazardLoader.request();
+    return quicksandHazardReadyPromise;
+  }
+
+  if (!supportsLazyLoading) {
+    for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+      loadBackgroundAsset(name, path);
+    }
+    backgroundReadyPromise = Promise.all(
+      Object.values(backgroundAssets).map(record => record.ready)
+    ).then(() => isBackgroundReady());
+    for (const [name, path] of Object.entries(QUICKSAND_HAZARD_PATHS)) {
+      loadQuicksandHazardAsset(name, path);
+    }
+    quicksandHazardReadyPromise = Promise.all(
+      Object.values(quicksandHazardAssets).map(record => record.ready)
+    ).then(results => results.every(Boolean));
+  }
 
   function isQuicksandHazardReady() {
     return Object.keys(QUICKSAND_HAZARD_PATHS).every(
@@ -377,6 +418,7 @@ const DESERT_ASSET_VISUALS = (() => {
   }
 
   function drawBottomDeathHazard(context, rect, visualTime = 0) {
+    requestHazardAssets();
     if (!context || !isQuicksandHazardReady()) return false;
     const mapping = getQuicksandHazardMapping(visualTime, rect);
     if (!mapping) return false;
@@ -396,7 +438,8 @@ const DESERT_ASSET_VISUALS = (() => {
 
   const desertVisuals = Object.freeze({
     ...desertPlatformVisuals,
-    whenBackgroundReady: () => backgroundReadyPromise,
+    requestBackgroundAssets,
+    whenBackgroundReady: requestBackgroundAssets,
     isBackgroundReady,
     isSunGlowReady,
     getBackgroundMapping,
@@ -424,7 +467,8 @@ const DESERT_ASSET_VISUALS = (() => {
         maxBrightness: SUN_GLOW_MAX_BRIGHTNESS
       })
     }),
-    whenQuicksandHazardReady: () => quicksandHazardReadyPromise,
+    requestHazardAssets,
+    whenQuicksandHazardReady: requestHazardAssets,
     isQuicksandHazardReady,
     getQuicksandHazardMapping,
     drawBottomDeathHazard,

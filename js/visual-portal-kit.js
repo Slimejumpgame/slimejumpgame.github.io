@@ -192,7 +192,64 @@ function createBiomePortalVisual(config) {
 
 const BIOME_PORTAL_VISUALS = (() => {
   const visualsByBiome = new Map();
+  const lazyEntriesByBiome = new Map();
+
+  function createLazyEntry(createVisuals) {
+    let visuals = null;
+    let state = "uninitialized";
+    let readyPromise = null;
+    function getVisuals() {
+      if (visuals) return visuals;
+      visuals = createVisuals();
+      state = "loading";
+      readyPromise = Promise.resolve(visuals.whenReady()).then(
+        ready => {
+          state = ready ? "ready" : "failed";
+          return Boolean(ready);
+        },
+        () => {
+          state = "failed";
+          return false;
+        }
+      );
+      return visuals;
+    }
+    const facade = Object.freeze({
+      whenReady: () => {
+        getVisuals();
+        return readyPromise;
+      },
+      isReady: () => getVisuals().isReady(),
+      getMapping: (...args) => getVisuals().getMapping(...args),
+      drawPortal: (...args) => getVisuals().drawPortal(...args),
+      getStatus: () => getVisuals().getStatus(),
+      requestAssets: () => {
+        getVisuals();
+        return readyPromise;
+      },
+      getLoadState: () => state,
+      getVisuals
+    });
+    return Object.freeze({facade, getVisuals});
+  }
+
   return Object.freeze({
+    registerLazy(biomeId, createVisuals = null) {
+      if (typeof biomeId !== "string" || !biomeId.trim()) {
+        throw new TypeError("Lazy biome portal visual registration is invalid");
+      }
+      const normalizedBiomeId = biomeId.trim();
+      const existing = lazyEntriesByBiome.get(normalizedBiomeId);
+      if (existing) return existing.facade;
+      const entry = createLazyEntry(
+        typeof createVisuals === "function"
+          ? createVisuals
+          : () => createBiomePortalVisual({biome: normalizedBiomeId})
+      );
+      lazyEntriesByBiome.set(normalizedBiomeId, entry);
+      visualsByBiome.set(normalizedBiomeId, entry.facade);
+      return entry.facade;
+    },
     register(biomeId, visuals) {
       if (typeof biomeId !== "string" || !biomeId.trim() || !visuals) {
         throw new TypeError("Biome portal visual registration is invalid");
@@ -208,6 +265,7 @@ const BIOME_PORTAL_VISUALS = (() => {
         visuals = createBiomePortalVisual({biome: normalizedBiomeId});
         visualsByBiome.set(normalizedBiomeId, visuals);
       }
+      lazyEntriesByBiome.get(normalizedBiomeId)?.getVisuals();
       return visuals;
     }
   });

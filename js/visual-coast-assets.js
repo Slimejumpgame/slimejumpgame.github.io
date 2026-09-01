@@ -1,7 +1,12 @@
 "use strict";
 
 const COAST_ASSET_VISUALS = (() => {
-  const coastPlatformVisuals = BIOME_PLATFORM_VISUALS.resolve("coast");
+  const supportsLazyLoading =
+    typeof BIOME_PLATFORM_VISUALS.registerLazy === "function" &&
+    typeof BIOME_PLATFORM_VISUALS.createAssetLoader === "function";
+  const coastPlatformVisuals = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.registerLazy("coast")
+    : BIOME_PLATFORM_VISUALS.resolve("coast");
   const BACKGROUND_REFERENCE = Object.freeze({w: 1280, h: 720});
   const BACKGROUND_ALPHA_THRESHOLD = 8;
   const BACKGROUND_PATHS = Object.freeze({
@@ -184,18 +189,59 @@ const COAST_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
-    loadBackgroundAsset(name, path);
+  let backgroundReadyPromise = null;
+  let waterHazardReadyPromise = null;
+  const backgroundLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+        loadBackgroundAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(backgroundAssets).map(record => record.ready)
+      ).then(results => results.every(Boolean));
+    })
+    : null;
+  const waterHazardLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(WATER_HAZARD_PATHS)) {
+        loadWaterHazardAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(waterHazardAssets).map(record => record.ready)
+      ).then(results => results.every(Boolean));
+    })
+    : null;
+
+  function requestBackgroundAssets() {
+    if (backgroundLoader) {
+      backgroundReadyPromise = backgroundLoader.request();
+      return backgroundReadyPromise;
+    }
+    return backgroundReadyPromise;
   }
-  const backgroundReadyPromise = Promise.all(
-    Object.values(backgroundAssets).map(record => record.ready)
-  ).then(results => results.every(Boolean));
-  for (const [name, path] of Object.entries(WATER_HAZARD_PATHS)) {
-    loadWaterHazardAsset(name, path);
+
+  function requestHazardAssets() {
+    if (waterHazardLoader) {
+      waterHazardReadyPromise = waterHazardLoader.request();
+      return waterHazardReadyPromise;
+    }
+    return waterHazardReadyPromise;
   }
-  const waterHazardReadyPromise = Promise.all(
-    Object.values(waterHazardAssets).map(record => record.ready)
-  ).then(results => results.every(Boolean));
+
+  if (!supportsLazyLoading) {
+    for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+      loadBackgroundAsset(name, path);
+    }
+    backgroundReadyPromise = Promise.all(
+      Object.values(backgroundAssets).map(record => record.ready)
+    ).then(results => results.every(Boolean));
+    for (const [name, path] of Object.entries(WATER_HAZARD_PATHS)) {
+      loadWaterHazardAsset(name, path);
+    }
+    waterHazardReadyPromise = Promise.all(
+      Object.values(waterHazardAssets).map(record => record.ready)
+    ).then(results => results.every(Boolean));
+  }
 
   function isBackgroundReady() {
     return Object.keys(BACKGROUND_PATHS).every(hasValidBackgroundSize) &&
@@ -399,6 +445,7 @@ const COAST_ASSET_VISUALS = (() => {
   }
 
   function drawBottomDeathHazard(context, rect, visualTime = 0) {
+    requestHazardAssets();
     if (!context || !isWaterHazardReady()) return false;
     const mapping = getWaterHazardMapping(visualTime, rect);
     if (!mapping) return false;
@@ -441,6 +488,7 @@ const COAST_ASSET_VISUALS = (() => {
   }
 
   function drawBackground(context, width, height, visualTime = 0) {
+    requestBackgroundAssets();
     if (!context || !isBackgroundReady()) return false;
     const mapping = getBackgroundMapping(width, height);
     const shipMapping = getShipMapping(visualTime, width, height);
@@ -480,12 +528,14 @@ const COAST_ASSET_VISUALS = (() => {
 
   const coastVisuals = Object.freeze({
     ...coastPlatformVisuals,
-    whenBackgroundReady: () => backgroundReadyPromise,
+    requestBackgroundAssets,
+    whenBackgroundReady: requestBackgroundAssets,
     isBackgroundReady,
     getBackgroundMapping,
     getShipMapping,
     drawBackground,
-    whenWaterHazardReady: () => waterHazardReadyPromise,
+    requestHazardAssets,
+    whenWaterHazardReady: requestHazardAssets,
     isWaterHazardReady,
     getWaterHazardMapping,
     drawBottomDeathHazard,

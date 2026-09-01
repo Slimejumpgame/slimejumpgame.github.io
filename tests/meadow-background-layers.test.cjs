@@ -136,6 +136,7 @@ const withoutClouds = loadVisuals([
   "meadow_background_clouds_back.png",
   "meadow_background_clouds_front.png"
 ]);
+withoutClouds.requestBackgroundAssets();
 assert.equal(withoutClouds.areAllReady(), true);
 const withoutCloudCalls = captureBackground(withoutClouds, 4);
 assert.equal(withoutCloudCalls.result, true);

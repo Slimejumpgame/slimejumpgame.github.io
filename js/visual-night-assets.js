@@ -1,7 +1,12 @@
 "use strict";
 
 const NIGHT_ASSET_VISUALS = (() => {
-  const nightPlatformVisuals = BIOME_PLATFORM_VISUALS.resolve("night");
+  const supportsLazyLoading =
+    typeof BIOME_PLATFORM_VISUALS.registerLazy === "function" &&
+    typeof BIOME_PLATFORM_VISUALS.createAssetLoader === "function";
+  const nightPlatformVisuals = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.registerLazy("night")
+    : BIOME_PLATFORM_VISUALS.resolve("night");
   const BACKGROUND_REFERENCE = Object.freeze({w: 1280, h: 720});
   const BACKGROUND_PATHS = Object.freeze({
     skybox: "assets/environments/night/background/night_background_skybox.png",
@@ -140,12 +145,17 @@ const NIGHT_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
-    loadBackgroundAsset(name, path);
-  }
-  const backgroundReadyPromise = Promise.all(
-    Object.values(backgroundAssets).map(record => record.ready)
-  ).then(() => isBackgroundReady());
+  let backgroundReadyPromise = null;
+  const backgroundLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+        loadBackgroundAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(backgroundAssets).map(record => record.ready)
+      ).then(() => isBackgroundReady());
+    })
+    : null;
 
   function isBackgroundReady() {
     return ESSENTIAL_BACKGROUND_LAYERS.every(isBackgroundLayerReady);
@@ -273,6 +283,7 @@ const NIGHT_ASSET_VISUALS = (() => {
   }
 
   function drawBackground(context, width, height, visualTime = 0) {
+    requestBackgroundAssets();
     if (!context || !isBackgroundReady()) return false;
     const mapping = getBackgroundMapping(width, height);
     if (!mapping) return false;
@@ -377,12 +388,42 @@ const NIGHT_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(NIGHT_HAZARD_PATHS)) {
-    loadNightHazardAsset(name, path);
+  let nightHazardReadyPromise = null;
+  const hazardLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(NIGHT_HAZARD_PATHS)) {
+        loadNightHazardAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(nightHazardAssets).map(record => record.ready)
+      ).then(() => isNightHazardReady());
+    })
+    : null;
+
+  function requestBackgroundAssets() {
+    if (backgroundLoader) backgroundReadyPromise = backgroundLoader.request();
+    return backgroundReadyPromise;
   }
-  const nightHazardReadyPromise = Promise.all(
-    Object.values(nightHazardAssets).map(record => record.ready)
-  ).then(() => isNightHazardReady());
+
+  function requestHazardAssets() {
+    if (hazardLoader) nightHazardReadyPromise = hazardLoader.request();
+    return nightHazardReadyPromise;
+  }
+
+  if (!supportsLazyLoading) {
+    for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+      loadBackgroundAsset(name, path);
+    }
+    backgroundReadyPromise = Promise.all(
+      Object.values(backgroundAssets).map(record => record.ready)
+    ).then(() => isBackgroundReady());
+    for (const [name, path] of Object.entries(NIGHT_HAZARD_PATHS)) {
+      loadNightHazardAsset(name, path);
+    }
+    nightHazardReadyPromise = Promise.all(
+      Object.values(nightHazardAssets).map(record => record.ready)
+    ).then(() => isNightHazardReady());
+  }
 
   function isNightHazardReady() {
     return isNightHazardLayerReady("base");
@@ -458,6 +499,7 @@ const NIGHT_ASSET_VISUALS = (() => {
   }
 
   function drawBottomDeathHazard(context, rect, visualTime = 0) {
+    requestHazardAssets();
     if (!context || !isNightHazardReady()) return false;
     const mapping = getNightHazardMapping(visualTime, rect);
     if (!mapping) return false;
@@ -481,7 +523,8 @@ const NIGHT_ASSET_VISUALS = (() => {
 
   const nightVisuals = Object.freeze({
     ...nightPlatformVisuals,
-    whenBackgroundReady: () => backgroundReadyPromise,
+    requestBackgroundAssets,
+    whenBackgroundReady: requestBackgroundAssets,
     isBackgroundReady,
     isBackgroundLayerReady,
     getBackgroundMapping,
@@ -532,7 +575,8 @@ const NIGHT_ASSET_VISUALS = (() => {
         drawOrder: "after-stars-before-clouds-back"
       })
     }),
-    whenNightHazardReady: () => nightHazardReadyPromise,
+    requestHazardAssets,
+    whenNightHazardReady: requestHazardAssets,
     isNightHazardReady,
     isNightHazardLayerReady,
     getNightHazardMapping,

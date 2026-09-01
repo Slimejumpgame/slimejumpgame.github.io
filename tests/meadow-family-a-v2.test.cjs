@@ -195,6 +195,7 @@ ${read("js/visual-meadow-assets.js")}
   globalThis.familyATestApi = MEADOW_ASSET_VISUALS;
 `, fixture, {filename: "meadow-family-a-v2-fixture.js"});
 const api = fixture.familyATestApi;
+api.whenReady();
 const manifest = JSON.parse(JSON.stringify(api.getManifest()));
 const delegatedPlatformManifest = JSON.parse(JSON.stringify(
   api.getPlatformKit().getManifest()

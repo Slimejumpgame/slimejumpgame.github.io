@@ -1,7 +1,12 @@
 "use strict";
 
 const VOLCANO_ASSET_VISUALS = (() => {
-  const volcanoPlatformVisuals = BIOME_PLATFORM_VISUALS.resolve("volcano");
+  const supportsLazyLoading =
+    typeof BIOME_PLATFORM_VISUALS.registerLazy === "function" &&
+    typeof BIOME_PLATFORM_VISUALS.createAssetLoader === "function";
+  const volcanoPlatformVisuals = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.registerLazy("volcano")
+    : BIOME_PLATFORM_VISUALS.resolve("volcano");
   const BACKGROUND_REFERENCE = Object.freeze({w: 1280, h: 720});
   const BACKGROUND_PATHS = Object.freeze({
     skyBase: "assets/environments/volcano/background/volcano_background_sky_base.png",
@@ -170,12 +175,17 @@ const VOLCANO_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
-    loadBackgroundAsset(name, path);
-  }
-  const backgroundReadyPromise = Promise.all(
-    Object.values(backgroundAssets).map(record => record.ready)
-  ).then(() => isBackgroundReady());
+  let backgroundReadyPromise = null;
+  const backgroundLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+        loadBackgroundAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(backgroundAssets).map(record => record.ready)
+      ).then(() => isBackgroundReady());
+    })
+    : null;
 
   function isBackgroundReady() {
     return ESSENTIAL_BACKGROUND_LAYERS.every(isBackgroundLayerReady);
@@ -350,6 +360,7 @@ const VOLCANO_ASSET_VISUALS = (() => {
   }
 
   function drawBackground(context, width, height, visualTime = 0) {
+    requestBackgroundAssets();
     if (!context || !isBackgroundReady()) return false;
     const mapping = getBackgroundMapping(width, height);
     if (!mapping) return false;
@@ -449,12 +460,42 @@ const VOLCANO_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(LAVA_HAZARD_PATHS)) {
-    loadLavaHazardAsset(name, path);
+  let lavaHazardReadyPromise = null;
+  const hazardLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(LAVA_HAZARD_PATHS)) {
+        loadLavaHazardAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(lavaHazardAssets).map(record => record.ready)
+      ).then(results => results.every(Boolean));
+    })
+    : null;
+
+  function requestBackgroundAssets() {
+    if (backgroundLoader) backgroundReadyPromise = backgroundLoader.request();
+    return backgroundReadyPromise;
   }
-  const lavaHazardReadyPromise = Promise.all(
-    Object.values(lavaHazardAssets).map(record => record.ready)
-  ).then(results => results.every(Boolean));
+
+  function requestHazardAssets() {
+    if (hazardLoader) lavaHazardReadyPromise = hazardLoader.request();
+    return lavaHazardReadyPromise;
+  }
+
+  if (!supportsLazyLoading) {
+    for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+      loadBackgroundAsset(name, path);
+    }
+    backgroundReadyPromise = Promise.all(
+      Object.values(backgroundAssets).map(record => record.ready)
+    ).then(() => isBackgroundReady());
+    for (const [name, path] of Object.entries(LAVA_HAZARD_PATHS)) {
+      loadLavaHazardAsset(name, path);
+    }
+    lavaHazardReadyPromise = Promise.all(
+      Object.values(lavaHazardAssets).map(record => record.ready)
+    ).then(results => results.every(Boolean));
+  }
 
   function isLavaHazardReady() {
     return Object.keys(LAVA_HAZARD_PATHS).every(
@@ -546,6 +587,7 @@ const VOLCANO_ASSET_VISUALS = (() => {
   }
 
   function drawBottomDeathHazard(context, rect, visualTime = 0) {
+    requestHazardAssets();
     if (!context || !isLavaHazardReady()) return false;
     const mapping = getLavaHazardMapping(visualTime, rect);
     if (!mapping) return false;
@@ -565,7 +607,8 @@ const VOLCANO_ASSET_VISUALS = (() => {
 
   const volcanoVisuals = Object.freeze({
     ...volcanoPlatformVisuals,
-    whenBackgroundReady: () => backgroundReadyPromise,
+    requestBackgroundAssets,
+    whenBackgroundReady: requestBackgroundAssets,
     isBackgroundReady,
     getBackgroundMapping,
     getSmokeMapping,
@@ -612,7 +655,8 @@ const VOLCANO_ASSET_VISUALS = (() => {
         wrapCopies: 4
       })
     }),
-    whenLavaHazardReady: () => lavaHazardReadyPromise,
+    requestHazardAssets,
+    whenLavaHazardReady: requestHazardAssets,
     isLavaHazardReady,
     getLavaHazardMapping,
     drawBottomDeathHazard,

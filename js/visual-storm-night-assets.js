@@ -1,7 +1,12 @@
 "use strict";
 
 const STORM_NIGHT_ASSET_VISUALS = (() => {
-  const stormNightPlatformVisuals = BIOME_PLATFORM_VISUALS.resolve("stormNight");
+  const supportsLazyLoading =
+    typeof BIOME_PLATFORM_VISUALS.registerLazy === "function" &&
+    typeof BIOME_PLATFORM_VISUALS.createAssetLoader === "function";
+  const stormNightPlatformVisuals = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.registerLazy("stormNight")
+    : BIOME_PLATFORM_VISUALS.resolve("stormNight");
   const BACKGROUND_REFERENCE = Object.freeze({w: 1280, h: 720});
   const BACKGROUND_PATHS = Object.freeze({
     skybox: "assets/environments/stormNight/background/stormNight_background_skybox.png",
@@ -99,18 +104,53 @@ const STORM_NIGHT_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
-    loadBackgroundAsset(name, path);
+  let backgroundReadyPromise = null;
+  let stormNightHazardReadyPromise = null;
+  const backgroundLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+        loadBackgroundAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(backgroundAssets).map(record => record.ready)
+      ).then(() => isBackgroundReady());
+    })
+    : null;
+  const hazardLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(STORM_NIGHT_HAZARD_PATHS)) {
+        loadStormNightHazardAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(stormNightHazardAssets).map(record => record.ready)
+      ).then(() => isStormNightHazardReady());
+    })
+    : null;
+
+  function requestBackgroundAssets() {
+    if (backgroundLoader) backgroundReadyPromise = backgroundLoader.request();
+    return backgroundReadyPromise;
   }
-  const backgroundReadyPromise = Promise.all(
-    Object.values(backgroundAssets).map(record => record.ready)
-  ).then(() => isBackgroundReady());
-  for (const [name, path] of Object.entries(STORM_NIGHT_HAZARD_PATHS)) {
-    loadStormNightHazardAsset(name, path);
+
+  function requestHazardAssets() {
+    if (hazardLoader) stormNightHazardReadyPromise = hazardLoader.request();
+    return stormNightHazardReadyPromise;
   }
-  const stormNightHazardReadyPromise = Promise.all(
-    Object.values(stormNightHazardAssets).map(record => record.ready)
-  ).then(() => isStormNightHazardReady());
+
+  if (!supportsLazyLoading) {
+    for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+      loadBackgroundAsset(name, path);
+    }
+    backgroundReadyPromise = Promise.all(
+      Object.values(backgroundAssets).map(record => record.ready)
+    ).then(() => isBackgroundReady());
+    for (const [name, path] of Object.entries(STORM_NIGHT_HAZARD_PATHS)) {
+      loadStormNightHazardAsset(name, path);
+    }
+    stormNightHazardReadyPromise = Promise.all(
+      Object.values(stormNightHazardAssets).map(record => record.ready)
+    ).then(() => isStormNightHazardReady());
+  }
 
   function isBackgroundReady() {
     return ESSENTIAL_BACKGROUND_LAYERS.every(isBackgroundLayerReady);
@@ -349,6 +389,7 @@ const STORM_NIGHT_ASSET_VISUALS = (() => {
   }
 
   function drawBackground(context, width, height, visualTime = 0) {
+    requestBackgroundAssets();
     if (!context || !isBackgroundReady()) return false;
     const mapping = getBackgroundMapping(width, height);
     if (!mapping) return false;
@@ -432,6 +473,7 @@ const STORM_NIGHT_ASSET_VISUALS = (() => {
   }
 
   function drawBottomDeathHazard(context, rect, visualTime = 0) {
+    requestHazardAssets();
     if (!context || !isStormNightHazardReady()) return false;
     const mapping = getStormNightHazardMapping(visualTime, rect);
     if (!mapping) return false;
@@ -453,7 +495,8 @@ const STORM_NIGHT_ASSET_VISUALS = (() => {
 
   const stormNightVisuals = Object.freeze({
     ...stormNightPlatformVisuals,
-    whenBackgroundReady: () => backgroundReadyPromise,
+    requestBackgroundAssets,
+    whenBackgroundReady: requestBackgroundAssets,
     isBackgroundReady,
     isBackgroundLayerReady,
     getBackgroundMapping,
@@ -461,7 +504,8 @@ const STORM_NIGHT_ASSET_VISUALS = (() => {
     getCloudsFrontMapping,
     getLightningState,
     drawBackground,
-    whenStormNightHazardReady: () => stormNightHazardReadyPromise,
+    requestHazardAssets,
+    whenStormNightHazardReady: requestHazardAssets,
     isStormNightHazardReady,
     getStormNightHazardMapping,
     drawBottomDeathHazard,

@@ -476,8 +476,14 @@ ${read("js/visual-meadow-assets.js")}
 const visualApi = visualContext.meadowAssetVisualsForTest;
 assert.equal(
   imageConstructionCount,
+  0,
+  "Meadow module evaluation must register without constructing biome images"
+);
+visualApi.whenReady();
+assert.equal(
+  imageConstructionCount,
   26,
-  "the loader must construct all base assets, platform variants and top-decor sheets once"
+  "the first full Meadow request must construct each base, platform and decor image once"
 );
 assert.equal(visualApi.areAllReady(), true);
 assert.deepEqual(
@@ -1640,7 +1646,8 @@ assert.match(platformKitSource, /const PLATFORM_VISUAL_KIT_CONTRACT = Object\.fr
 assert.match(platformKitSource, /function drawWholeFloatingPlatform/);
 assert.doesNotMatch(platformKitSource, /function drawLegacyFloatingPlatform/);
 assert.match(platformKitSource, /function drawGoalPlatform/);
-assert.match(visualSource, /const meadowPlatformKit = createPlatformVisualKit/);
+assert.match(visualSource, /const createMeadowPlatformKit = \(\) => createPlatformVisualKit/);
+assert.match(visualSource, /BIOME_PLATFORM_VISUALS\.registerLazy\("meadow"/);
 assert.doesNotMatch(visualSource, /function drawFloatingPlatform|function drawGoalPlatform/);
 assert.doesNotMatch(visualSource, /FLOAT_LEFT|FLOAT_MIDDLE|FLOAT_RIGHT/);
 assert.doesNotMatch(visualSource, /START_PLATFORM: Object\.freeze\(\{x:/);

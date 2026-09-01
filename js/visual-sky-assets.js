@@ -1,7 +1,12 @@
 "use strict";
 
 const SKY_ASSET_VISUALS = (() => {
-  const skyPlatformVisuals = BIOME_PLATFORM_VISUALS.resolve("sky");
+  const supportsLazyLoading =
+    typeof BIOME_PLATFORM_VISUALS.registerLazy === "function" &&
+    typeof BIOME_PLATFORM_VISUALS.createAssetLoader === "function";
+  const skyPlatformVisuals = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.registerLazy("sky")
+    : BIOME_PLATFORM_VISUALS.resolve("sky");
   const BACKGROUND_REFERENCE = Object.freeze({w: 1280, h: 720});
   const BACKGROUND_PATHS = Object.freeze({
     skybox: "assets/environments/sky/background/sky_background_skybox.png",
@@ -47,12 +52,36 @@ const SKY_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
-    loadBackgroundAsset(name, path);
+  let backgroundReadyPromise = null;
+  const hazardReadyPromise = Promise.resolve(true);
+  const backgroundLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+        loadBackgroundAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(backgroundAssets).map(record => record.ready)
+      ).then(() => isBackgroundReady());
+    })
+    : null;
+
+  function requestBackgroundAssets() {
+    if (backgroundLoader) backgroundReadyPromise = backgroundLoader.request();
+    return backgroundReadyPromise;
   }
-  const backgroundReadyPromise = Promise.all(
-    Object.values(backgroundAssets).map(record => record.ready)
-  ).then(() => isBackgroundReady());
+
+  function requestHazardAssets() {
+    return hazardReadyPromise;
+  }
+
+  if (!supportsLazyLoading) {
+    for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+      loadBackgroundAsset(name, path);
+    }
+    backgroundReadyPromise = Promise.all(
+      Object.values(backgroundAssets).map(record => record.ready)
+    ).then(() => isBackgroundReady());
+  }
 
   function isBackgroundReady() {
     return ESSENTIAL_BACKGROUND_LAYERS.every(isBackgroundLayerReady);
@@ -157,6 +186,7 @@ const SKY_ASSET_VISUALS = (() => {
   }
 
   function drawBackground(context, width, height, visualTime = 0) {
+    requestBackgroundAssets();
     if (!context || !isBackgroundReady()) return false;
     const mapping = getBackgroundMapping(width, height);
     if (!mapping) return false;
@@ -189,7 +219,9 @@ const SKY_ASSET_VISUALS = (() => {
 
   const skyVisuals = Object.freeze({
     ...skyPlatformVisuals,
-    whenBackgroundReady: () => backgroundReadyPromise,
+    requestBackgroundAssets,
+    requestHazardAssets,
+    whenBackgroundReady: requestBackgroundAssets,
     isBackgroundReady,
     isBackgroundLayerReady,
     getBackgroundMapping,

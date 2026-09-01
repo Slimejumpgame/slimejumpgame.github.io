@@ -1,7 +1,12 @@
 "use strict";
 
 const NEON_CITY_ASSET_VISUALS = (() => {
-  const neonCityPlatformVisuals = BIOME_PLATFORM_VISUALS.resolve("neonCity");
+  const supportsLazyLoading =
+    typeof BIOME_PLATFORM_VISUALS.registerLazy === "function" &&
+    typeof BIOME_PLATFORM_VISUALS.createAssetLoader === "function";
+  const neonCityPlatformVisuals = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.registerLazy("neonCity")
+    : BIOME_PLATFORM_VISUALS.resolve("neonCity");
   const BACKGROUND_REFERENCE = Object.freeze({w: 1280, h: 720});
   const BACKGROUND_PATHS = Object.freeze({
     skybox:
@@ -128,12 +133,17 @@ const NEON_CITY_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
-    loadBackgroundAsset(name, path);
-  }
-  const backgroundReadyPromise = Promise.all(
-    Object.values(backgroundAssets).map(record => record.ready)
-  ).then(() => isBackgroundReady());
+  let backgroundReadyPromise = null;
+  const backgroundLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+        loadBackgroundAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(backgroundAssets).map(record => record.ready)
+      ).then(() => isBackgroundReady());
+    })
+    : null;
 
   function isBackgroundReady() {
     return BACKGROUND_LAYERS.every(hasValidBackgroundSize);
@@ -160,12 +170,42 @@ const NEON_CITY_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(NEON_HAZARD_PATHS)) {
-    loadNeonHazardAsset(name, path);
+  let neonHazardReadyPromise = null;
+  const hazardLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(NEON_HAZARD_PATHS)) {
+        loadNeonHazardAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(neonHazardAssets).map(record => record.ready)
+      ).then(() => isNeonHazardReady());
+    })
+    : null;
+
+  function requestBackgroundAssets() {
+    if (backgroundLoader) backgroundReadyPromise = backgroundLoader.request();
+    return backgroundReadyPromise;
   }
-  const neonHazardReadyPromise = Promise.all(
-    Object.values(neonHazardAssets).map(record => record.ready)
-  ).then(() => isNeonHazardReady());
+
+  function requestHazardAssets() {
+    if (hazardLoader) neonHazardReadyPromise = hazardLoader.request();
+    return neonHazardReadyPromise;
+  }
+
+  if (!supportsLazyLoading) {
+    for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+      loadBackgroundAsset(name, path);
+    }
+    backgroundReadyPromise = Promise.all(
+      Object.values(backgroundAssets).map(record => record.ready)
+    ).then(() => isBackgroundReady());
+    for (const [name, path] of Object.entries(NEON_HAZARD_PATHS)) {
+      loadNeonHazardAsset(name, path);
+    }
+    neonHazardReadyPromise = Promise.all(
+      Object.values(neonHazardAssets).map(record => record.ready)
+    ).then(() => isNeonHazardReady());
+  }
 
   function isNeonHazardReady() {
     return Object.keys(NEON_HAZARD_PATHS).every(hasValidNeonHazardSize);
@@ -404,6 +444,7 @@ const NEON_CITY_ASSET_VISUALS = (() => {
   }
 
   function drawBackground(context, width, height, visualTime = 0) {
+    requestBackgroundAssets();
     if (!context || !isBackgroundReady()) return false;
     const mapping = getBackgroundMapping(width, height);
     if (!mapping) return false;
@@ -448,6 +489,7 @@ const NEON_CITY_ASSET_VISUALS = (() => {
   }
 
   function drawBottomDeathHazard(context, rect, visualTime = 0) {
+    requestHazardAssets();
     if (!context || !isNeonHazardReady()) return false;
     const mapping = getNeonHazardMapping(visualTime, rect);
     if (!mapping) return false;
@@ -473,7 +515,8 @@ const NEON_CITY_ASSET_VISUALS = (() => {
 
   const neonCityVisuals = Object.freeze({
     ...neonCityPlatformVisuals,
-    whenBackgroundReady: () => backgroundReadyPromise,
+    requestBackgroundAssets,
+    whenBackgroundReady: requestBackgroundAssets,
     isBackgroundReady,
     getBackgroundMapping,
     getCloudsMapping,
@@ -565,7 +608,8 @@ const NEON_CITY_ASSET_VISUALS = (() => {
         drawOrder: "after-front-window-glows"
       })
     }),
-    whenNeonHazardReady: () => neonHazardReadyPromise,
+    requestHazardAssets,
+    whenNeonHazardReady: requestHazardAssets,
     isNeonHazardReady,
     getNeonHazardMapping,
     drawBottomDeathHazard,

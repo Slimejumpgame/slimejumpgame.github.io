@@ -1,8 +1,12 @@
 "use strict";
 
 const BAMBOO_NIGHT_ASSET_VISUALS = (() => {
-  const bambooNightPlatformVisuals =
-    BIOME_PLATFORM_VISUALS.resolve("bambooNight");
+  const supportsLazyLoading =
+    typeof BIOME_PLATFORM_VISUALS.registerLazy === "function" &&
+    typeof BIOME_PLATFORM_VISUALS.createAssetLoader === "function";
+  const bambooNightPlatformVisuals = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.registerLazy("bambooNight")
+    : BIOME_PLATFORM_VISUALS.resolve("bambooNight");
   const BACKGROUND_REFERENCE = Object.freeze({w: 1280, h: 720});
   const BACKGROUND_PATHS = Object.freeze({
     skybox:
@@ -128,17 +132,21 @@ const BAMBOO_NIGHT_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
-    loadBackgroundAsset(name, path);
-  }
-
   function isBackgroundReady() {
     return ESSENTIAL_BACKGROUND_LAYERS.every(isBackgroundLayerReady);
   }
 
-  const backgroundReadyPromise = Promise.all(
-    Object.values(backgroundAssets).map(record => record.ready)
-  ).then(() => isBackgroundReady());
+  let backgroundReadyPromise = null;
+  const backgroundLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+        loadBackgroundAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(backgroundAssets).map(record => record.ready)
+      ).then(() => isBackgroundReady());
+    })
+    : null;
 
   function hasValidHazardSize() {
     const image = hazardAsset.image;
@@ -160,13 +168,38 @@ const BAMBOO_NIGHT_ASSET_VISUALS = (() => {
     image.src = HAZARD_CONTRACT.path;
   }
 
-  loadHazardAsset();
-
   function isHazardReady() {
     return hasValidHazardSize();
   }
 
-  const hazardReadyPromise = hazardAsset.ready.then(() => isHazardReady());
+  let hazardReadyPromise = null;
+  const hazardLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      loadHazardAsset();
+      return hazardAsset.ready.then(() => isHazardReady());
+    })
+    : null;
+
+  function requestBackgroundAssets() {
+    if (backgroundLoader) backgroundReadyPromise = backgroundLoader.request();
+    return backgroundReadyPromise;
+  }
+
+  function requestHazardAssets() {
+    if (hazardLoader) hazardReadyPromise = hazardLoader.request();
+    return hazardReadyPromise;
+  }
+
+  if (!supportsLazyLoading) {
+    for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+      loadBackgroundAsset(name, path);
+    }
+    backgroundReadyPromise = Promise.all(
+      Object.values(backgroundAssets).map(record => record.ready)
+    ).then(() => isBackgroundReady());
+    loadHazardAsset();
+    hazardReadyPromise = hazardAsset.ready.then(() => isHazardReady());
+  }
 
   function getBackgroundMapping(width, height) {
     if (
@@ -239,6 +272,7 @@ const BAMBOO_NIGHT_ASSET_VISUALS = (() => {
   }
 
   function drawBackground(context, width, height, visualTime = 0) {
+    requestBackgroundAssets();
     if (!context || !isBackgroundReady()) return false;
     const mapping = getBackgroundMapping(width, height);
     if (!mapping) return false;
@@ -272,6 +306,7 @@ const BAMBOO_NIGHT_ASSET_VISUALS = (() => {
   }
 
   function drawBottomDeathHazard(context, rect) {
+    requestHazardAssets();
     if (!context || !isHazardReady()) return false;
     const mapping = getBottomHazardMapping(rect);
     if (!mapping) return false;
@@ -295,7 +330,8 @@ const BAMBOO_NIGHT_ASSET_VISUALS = (() => {
 
   const bambooNightVisuals = Object.freeze({
     ...bambooNightPlatformVisuals,
-    whenBackgroundReady: () => backgroundReadyPromise,
+    requestBackgroundAssets,
+    whenBackgroundReady: requestBackgroundAssets,
     isBackgroundReady,
     isBackgroundLayerReady,
     getBackgroundMapping,
@@ -342,7 +378,8 @@ const BAMBOO_NIGHT_ASSET_VISUALS = (() => {
         densityAnimation: false
       })
     }),
-    whenHazardReady: () => hazardReadyPromise,
+    requestHazardAssets,
+    whenHazardReady: requestHazardAssets,
     isHazardReady,
     getBottomHazardMapping,
     drawBottomDeathHazard,

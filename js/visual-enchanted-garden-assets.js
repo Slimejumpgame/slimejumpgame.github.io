@@ -1,8 +1,12 @@
 "use strict";
 
 const ENCHANTED_GARDEN_ASSET_VISUALS = (() => {
-  const enchantedGardenPlatformVisuals =
-    BIOME_PLATFORM_VISUALS.resolve("enchantedGarden");
+  const supportsLazyLoading =
+    typeof BIOME_PLATFORM_VISUALS.registerLazy === "function" &&
+    typeof BIOME_PLATFORM_VISUALS.createAssetLoader === "function";
+  const enchantedGardenPlatformVisuals = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.registerLazy("enchantedGarden")
+    : BIOME_PLATFORM_VISUALS.resolve("enchantedGarden");
   const BACKGROUND_REFERENCE = Object.freeze({w: 1280, h: 720});
   const BACKGROUND_PATHS = Object.freeze({
     skybox:
@@ -123,17 +127,21 @@ const ENCHANTED_GARDEN_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
-    loadBackgroundAsset(name, path);
-  }
-
   function isBackgroundReady() {
     return Object.keys(BACKGROUND_PATHS).every(isBackgroundLayerReady);
   }
 
-  const backgroundReadyPromise = Promise.all(
-    Object.values(backgroundAssets).map(record => record.ready)
-  ).then(() => isBackgroundReady());
+  let backgroundReadyPromise = null;
+  const backgroundLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+        loadBackgroundAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(backgroundAssets).map(record => record.ready)
+      ).then(() => isBackgroundReady());
+    })
+    : null;
 
   function hasValidHazardSize() {
     const image = hazardAsset.image;
@@ -155,13 +163,38 @@ const ENCHANTED_GARDEN_ASSET_VISUALS = (() => {
     image.src = HAZARD_CONTRACT.path;
   }
 
-  loadHazardAsset();
-
   function isHazardReady() {
     return hasValidHazardSize();
   }
 
-  const hazardReadyPromise = hazardAsset.ready.then(() => isHazardReady());
+  let hazardReadyPromise = null;
+  const hazardLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      loadHazardAsset();
+      return hazardAsset.ready.then(() => isHazardReady());
+    })
+    : null;
+
+  function requestBackgroundAssets() {
+    if (backgroundLoader) backgroundReadyPromise = backgroundLoader.request();
+    return backgroundReadyPromise;
+  }
+
+  function requestHazardAssets() {
+    if (hazardLoader) hazardReadyPromise = hazardLoader.request();
+    return hazardReadyPromise;
+  }
+
+  if (!supportsLazyLoading) {
+    for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+      loadBackgroundAsset(name, path);
+    }
+    backgroundReadyPromise = Promise.all(
+      Object.values(backgroundAssets).map(record => record.ready)
+    ).then(() => isBackgroundReady());
+    loadHazardAsset();
+    hazardReadyPromise = hazardAsset.ready.then(() => isHazardReady());
+  }
 
   function getBackgroundMapping(width, height) {
     if (
@@ -232,6 +265,7 @@ const ENCHANTED_GARDEN_ASSET_VISUALS = (() => {
   }
 
   function drawBackground(context, width, height, visualTime = 0) {
+    requestBackgroundAssets();
     if (!context || !isBackgroundReady()) return false;
     const mapping = getBackgroundMapping(width, height);
     if (!mapping) return false;
@@ -264,6 +298,7 @@ const ENCHANTED_GARDEN_ASSET_VISUALS = (() => {
   }
 
   function drawBottomDeathHazard(context, rect) {
+    requestHazardAssets();
     if (!context || !isHazardReady()) return false;
     const mapping = getBottomHazardMapping(rect);
     if (!mapping) return false;
@@ -288,7 +323,8 @@ const ENCHANTED_GARDEN_ASSET_VISUALS = (() => {
 
   const enchantedGardenVisuals = Object.freeze({
     ...enchantedGardenPlatformVisuals,
-    whenBackgroundReady: () => backgroundReadyPromise,
+    requestBackgroundAssets,
+    whenBackgroundReady: requestBackgroundAssets,
     isBackgroundReady,
     isBackgroundLayerReady,
     getBackgroundMapping,
@@ -334,7 +370,8 @@ const ENCHANTED_GARDEN_ASSET_VISUALS = (() => {
         wrapMode: "full-width-continuous"
       })
     }),
-    whenHazardReady: () => hazardReadyPromise,
+    requestHazardAssets,
+    whenHazardReady: requestHazardAssets,
     isHazardReady,
     getBottomHazardMapping,
     drawBottomDeathHazard,

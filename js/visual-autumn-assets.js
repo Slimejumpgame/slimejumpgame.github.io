@@ -1,7 +1,12 @@
 "use strict";
 
 const AUTUMN_ASSET_VISUALS = (() => {
-  const autumnPlatformVisuals = BIOME_PLATFORM_VISUALS.resolve("autumn");
+  const supportsLazyLoading =
+    typeof BIOME_PLATFORM_VISUALS.registerLazy === "function" &&
+    typeof BIOME_PLATFORM_VISUALS.createAssetLoader === "function";
+  const autumnPlatformVisuals = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.registerLazy("autumn")
+    : BIOME_PLATFORM_VISUALS.resolve("autumn");
   const BACKGROUND_REFERENCE = Object.freeze({w: 1280, h: 720});
   const BACKGROUND_PATHS = Object.freeze({
     skybox: "assets/environments/autumn/background/autumn_background_skybox.png",
@@ -122,18 +127,53 @@ const AUTUMN_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
-    loadBackgroundAsset(name, path);
+  let backgroundReadyPromise = null;
+  let autumnHazardReadyPromise = null;
+  const backgroundLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+        loadBackgroundAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(backgroundAssets).map(record => record.ready)
+      ).then(() => isBackgroundReady());
+    })
+    : null;
+  const hazardLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(AUTUMN_HAZARD_PATHS)) {
+        loadAutumnHazardAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(autumnHazardAssets).map(record => record.ready)
+      ).then(() => isAutumnHazardReady());
+    })
+    : null;
+
+  function requestBackgroundAssets() {
+    if (backgroundLoader) backgroundReadyPromise = backgroundLoader.request();
+    return backgroundReadyPromise;
   }
-  const backgroundReadyPromise = Promise.all(
-    Object.values(backgroundAssets).map(record => record.ready)
-  ).then(() => isBackgroundReady());
-  for (const [name, path] of Object.entries(AUTUMN_HAZARD_PATHS)) {
-    loadAutumnHazardAsset(name, path);
+
+  function requestHazardAssets() {
+    if (hazardLoader) autumnHazardReadyPromise = hazardLoader.request();
+    return autumnHazardReadyPromise;
   }
-  const autumnHazardReadyPromise = Promise.all(
-    Object.values(autumnHazardAssets).map(record => record.ready)
-  ).then(() => isAutumnHazardReady());
+
+  if (!supportsLazyLoading) {
+    for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+      loadBackgroundAsset(name, path);
+    }
+    backgroundReadyPromise = Promise.all(
+      Object.values(backgroundAssets).map(record => record.ready)
+    ).then(() => isBackgroundReady());
+    for (const [name, path] of Object.entries(AUTUMN_HAZARD_PATHS)) {
+      loadAutumnHazardAsset(name, path);
+    }
+    autumnHazardReadyPromise = Promise.all(
+      Object.values(autumnHazardAssets).map(record => record.ready)
+    ).then(() => isAutumnHazardReady());
+  }
 
   function isBackgroundReady() {
     return ESSENTIAL_BACKGROUND_LAYERS.every(isBackgroundLayerReady);
@@ -235,6 +275,7 @@ const AUTUMN_ASSET_VISUALS = (() => {
   }
 
   function drawBackground(context, width, height, visualTime = 0) {
+    requestBackgroundAssets();
     if (!context || !isBackgroundReady()) return false;
     const mapping = getBackgroundMapping(width, height);
     if (!mapping) return false;
@@ -271,6 +312,7 @@ const AUTUMN_ASSET_VISUALS = (() => {
   }
 
   function drawBottomDeathHazard(context, rect) {
+    requestHazardAssets();
     if (!context || !isAutumnHazardReady()) return false;
     const count = Math.max(
       2,
@@ -300,14 +342,16 @@ const AUTUMN_ASSET_VISUALS = (() => {
 
   const autumnVisuals = Object.freeze({
     ...autumnPlatformVisuals,
-    whenBackgroundReady: () => backgroundReadyPromise,
+    requestBackgroundAssets,
+    whenBackgroundReady: requestBackgroundAssets,
     isBackgroundReady,
     isBackgroundLayerReady,
     getBackgroundMapping,
     getCloudMapping,
     getLeavesMapping,
     drawBackground,
-    whenAutumnHazardReady: () => autumnHazardReadyPromise,
+    requestHazardAssets,
+    whenAutumnHazardReady: requestHazardAssets,
     isAutumnHazardReady,
     drawBottomDeathHazard,
     getAutumnHazardStatus: () => Object.freeze({

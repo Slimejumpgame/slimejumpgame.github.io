@@ -1,8 +1,12 @@
 "use strict";
 
 const PIRATE_HARBOR_ASSET_VISUALS = (() => {
-  const pirateHarborPlatformVisuals =
-    BIOME_PLATFORM_VISUALS.resolve("pirateHarbor");
+  const supportsLazyLoading =
+    typeof BIOME_PLATFORM_VISUALS.registerLazy === "function" &&
+    typeof BIOME_PLATFORM_VISUALS.createAssetLoader === "function";
+  const pirateHarborPlatformVisuals = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.registerLazy("pirateHarbor")
+    : BIOME_PLATFORM_VISUALS.resolve("pirateHarbor");
   const BACKGROUND_REFERENCE = Object.freeze({w: 1280, h: 720});
   const BACKGROUND_PATHS = Object.freeze({
     skybox:
@@ -165,17 +169,21 @@ const PIRATE_HARBOR_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
-    loadBackgroundAsset(name, path);
-  }
-
   function isBackgroundReady() {
     return REQUIRED_BACKGROUND_ASSET_NAMES.every(isBackgroundLayerReady);
   }
 
-  const backgroundReadyPromise = Promise.all(
-    Object.values(backgroundAssets).map(record => record.ready)
-  ).then(() => isBackgroundReady());
+  let backgroundReadyPromise = null;
+  const backgroundLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+        loadBackgroundAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(backgroundAssets).map(record => record.ready)
+      ).then(() => isBackgroundReady());
+    })
+    : null;
 
   function hasValidHazardSize() {
     const image = hazardAsset.image;
@@ -197,13 +205,38 @@ const PIRATE_HARBOR_ASSET_VISUALS = (() => {
     image.src = HAZARD_CONTRACT.path;
   }
 
-  loadHazardAsset();
-
   function isHazardReady() {
     return hasValidHazardSize();
   }
 
-  const hazardReadyPromise = hazardAsset.ready.then(() => isHazardReady());
+  let hazardReadyPromise = null;
+  const hazardLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      loadHazardAsset();
+      return hazardAsset.ready.then(() => isHazardReady());
+    })
+    : null;
+
+  function requestBackgroundAssets() {
+    if (backgroundLoader) backgroundReadyPromise = backgroundLoader.request();
+    return backgroundReadyPromise;
+  }
+
+  function requestHazardAssets() {
+    if (hazardLoader) hazardReadyPromise = hazardLoader.request();
+    return hazardReadyPromise;
+  }
+
+  if (!supportsLazyLoading) {
+    for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+      loadBackgroundAsset(name, path);
+    }
+    backgroundReadyPromise = Promise.all(
+      Object.values(backgroundAssets).map(record => record.ready)
+    ).then(() => isBackgroundReady());
+    loadHazardAsset();
+    hazardReadyPromise = hazardAsset.ready.then(() => isHazardReady());
+  }
 
   function getBackgroundMapping(width, height) {
     if (
@@ -326,6 +359,7 @@ const PIRATE_HARBOR_ASSET_VISUALS = (() => {
   }
 
   function drawBackground(context, width, height, visualTime = 0) {
+    requestBackgroundAssets();
     if (!context || !isBackgroundReady()) return false;
     const mapping = getBackgroundMapping(width, height);
     if (!mapping) return false;
@@ -360,6 +394,7 @@ const PIRATE_HARBOR_ASSET_VISUALS = (() => {
   }
 
   function drawBottomDeathHazard(context, rect) {
+    requestHazardAssets();
     if (!context || !isHazardReady()) return false;
     const mapping = getBottomHazardMapping(rect);
     if (!mapping) return false;
@@ -383,7 +418,8 @@ const PIRATE_HARBOR_ASSET_VISUALS = (() => {
 
   const pirateHarborVisuals = Object.freeze({
     ...pirateHarborPlatformVisuals,
-    whenBackgroundReady: () => backgroundReadyPromise,
+    requestBackgroundAssets,
+    whenBackgroundReady: requestBackgroundAssets,
     isBackgroundReady,
     isBackgroundLayerReady,
     getBackgroundMapping,
@@ -435,7 +471,8 @@ const PIRATE_HARBOR_ASSET_VISUALS = (() => {
         horizontalTravel: false
       })
     }),
-    whenHazardReady: () => hazardReadyPromise,
+    requestHazardAssets,
+    whenHazardReady: requestHazardAssets,
     isHazardReady,
     getBottomHazardMapping,
     drawBottomDeathHazard,

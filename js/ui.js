@@ -1281,10 +1281,13 @@
 
     if (!menuBiomeBackgroundState.visuals) {
       if (typeof BIOME_PLATFORM_VISUALS === "undefined") return false;
-      const visuals = BIOME_PLATFORM_VISUALS.resolve(
-        menuBiomeBackgroundState.selectedBiome.id
-      );
+      const resolveBackground =
+        typeof BIOME_PLATFORM_VISUALS.resolveBackground === "function"
+          ? BIOME_PLATFORM_VISUALS.resolveBackground.bind(BIOME_PLATFORM_VISUALS)
+          : BIOME_PLATFORM_VISUALS.resolve.bind(BIOME_PLATFORM_VISUALS);
+      const visuals = resolveBackground(menuBiomeBackgroundState.selectedBiome.id);
       if (!visuals || typeof visuals.drawBackground !== "function") return false;
+      visuals.requestBackgroundAssets?.();
       menuBiomeBackgroundState.visuals = visuals;
     }
 

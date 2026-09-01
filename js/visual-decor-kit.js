@@ -907,7 +907,62 @@ function createBiomeDecorVisualKit(config) {
 
 const BIOME_DECOR_VISUALS = (() => {
   const visualsByBiome = new Map();
+  const lazyEntriesByBiome = new Map();
+  const lazyMethodNames = Object.freeze([
+    "whenReady", "areAllReady", "isRoleReady", "isAssetReady",
+    "getStatus", "getManifest", "getScene", "resolvePlatformRole",
+    "drawTopBackDecor", "drawStartGoalBackDecor", "drawFloatingBackDecor",
+    "drawGoalSeamCoverProps", "drawTopFrontDecor"
+  ]);
+
+  function createLazyEntry(createKit) {
+    let kit = null;
+    let state = "uninitialized";
+    let readyPromise = null;
+    function getKit() {
+      if (kit) return kit;
+      kit = createKit();
+      state = "loading";
+      readyPromise = Promise.resolve(kit.whenReady()).then(
+        ready => {
+          state = ready ? "ready" : "failed";
+          return Boolean(ready);
+        },
+        () => {
+          state = "failed";
+          return false;
+        }
+      );
+      return kit;
+    }
+    const facade = {};
+    for (const methodName of lazyMethodNames) {
+      facade[methodName] = (...args) => getKit()[methodName](...args);
+    }
+    facade.requestAssets = () => {
+      getKit();
+      return readyPromise;
+    };
+    facade.getLoadState = () => state;
+    facade.getKit = getKit;
+    return Object.freeze({facade: Object.freeze(facade), getKit});
+  }
+
   return Object.freeze({
+    registerLazy(biomeId, createKit) {
+      if (
+        typeof biomeId !== "string" ||
+        !biomeId.trim() ||
+        typeof createKit !== "function"
+      ) throw new TypeError("Lazy biome decor visual registration is invalid");
+      const normalizedBiomeId = biomeId.trim();
+      const existing = lazyEntriesByBiome.get(normalizedBiomeId);
+      if (existing) return existing.facade;
+      const entry = createLazyEntry(createKit);
+      lazyEntriesByBiome.set(normalizedBiomeId, entry);
+      visualsByBiome.set(normalizedBiomeId, entry.facade);
+      return entry.facade;
+    },
     register(biomeId, visuals) {
       if (typeof biomeId !== "string" || !biomeId.trim() || !visuals) {
         throw new TypeError("Biome decor visual registration is invalid");
@@ -923,6 +978,7 @@ const BIOME_DECOR_VISUALS = (() => {
         visuals = createBiomeDecorVisualKit({biome: normalizedBiomeId});
         visualsByBiome.set(normalizedBiomeId, visuals);
       }
+      lazyEntriesByBiome.get(normalizedBiomeId)?.getKit();
       return visuals;
     }
   });

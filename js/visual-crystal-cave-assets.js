@@ -1,7 +1,12 @@
 "use strict";
 
 const CRYSTAL_CAVE_ASSET_VISUALS = (() => {
-  const crystalCavePlatformVisuals = BIOME_PLATFORM_VISUALS.resolve("crystalCave");
+  const supportsLazyLoading =
+    typeof BIOME_PLATFORM_VISUALS.registerLazy === "function" &&
+    typeof BIOME_PLATFORM_VISUALS.createAssetLoader === "function";
+  const crystalCavePlatformVisuals = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.registerLazy("crystalCave")
+    : BIOME_PLATFORM_VISUALS.resolve("crystalCave");
   const BACKGROUND_REFERENCE = Object.freeze({w: 1280, h: 720});
   const BACKGROUND_PATH =
     "assets/environments/crystalCave/background/crystalCave_background_base.png";
@@ -110,11 +115,6 @@ const CRYSTAL_CAVE_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  loadAsset("background", BACKGROUND_PATH);
-  for (const variant of HAZARD_VARIANTS) {
-    loadAsset(variant.name, variant.path);
-  }
-
   function hasValidSize(name, expectedSize) {
     const image = assets[name]?.image;
     return Boolean(
@@ -134,12 +134,47 @@ const CRYSTAL_CAVE_ASSET_VISUALS = (() => {
     ));
   }
 
-  const backgroundReadyPromise = assets.background.ready.then(
-    () => isBackgroundReady()
-  );
-  const bottomSpikeHazardReadyPromise = Promise.all(
-    HAZARD_VARIANTS.map(variant => assets[variant.name].ready)
-  ).then(() => areBottomSpikeHazardsReady());
+  let backgroundReadyPromise = null;
+  let bottomSpikeHazardReadyPromise = null;
+  const backgroundLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      loadAsset("background", BACKGROUND_PATH);
+      return assets.background.ready.then(() => isBackgroundReady());
+    })
+    : null;
+  const hazardLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const variant of HAZARD_VARIANTS) {
+        loadAsset(variant.name, variant.path);
+      }
+      return Promise.all(
+        HAZARD_VARIANTS.map(variant => assets[variant.name].ready)
+      ).then(() => areBottomSpikeHazardsReady());
+    })
+    : null;
+
+  function requestBackgroundAssets() {
+    if (backgroundLoader) backgroundReadyPromise = backgroundLoader.request();
+    return backgroundReadyPromise;
+  }
+
+  function requestHazardAssets() {
+    if (hazardLoader) bottomSpikeHazardReadyPromise = hazardLoader.request();
+    return bottomSpikeHazardReadyPromise;
+  }
+
+  if (!supportsLazyLoading) {
+    loadAsset("background", BACKGROUND_PATH);
+    for (const variant of HAZARD_VARIANTS) {
+      loadAsset(variant.name, variant.path);
+    }
+    backgroundReadyPromise = assets.background.ready.then(
+      () => isBackgroundReady()
+    );
+    bottomSpikeHazardReadyPromise = Promise.all(
+      HAZARD_VARIANTS.map(variant => assets[variant.name].ready)
+    ).then(() => areBottomSpikeHazardsReady());
+  }
 
   function getColorChannels(hexColor) {
     const value = Number.parseInt(hexColor.slice(1), 16);
@@ -237,6 +272,7 @@ const CRYSTAL_CAVE_ASSET_VISUALS = (() => {
   }
 
   function drawBackground(context, width, height, visualTime = 0) {
+    requestBackgroundAssets();
     if (
       !context ||
       !isBackgroundReady() ||
@@ -308,6 +344,7 @@ const CRYSTAL_CAVE_ASSET_VISUALS = (() => {
   }
 
   function drawBottomDeathHazard(context, rect) {
+    requestHazardAssets();
     if (!context || !areBottomSpikeHazardsReady()) return false;
     const mapping = getBottomSpikeHazardMapping(rect);
     if (!mapping) return false;
@@ -336,7 +373,8 @@ const CRYSTAL_CAVE_ASSET_VISUALS = (() => {
 
   const crystalCaveVisuals = Object.freeze({
     ...crystalCavePlatformVisuals,
-    whenBackgroundReady: () => backgroundReadyPromise,
+    requestBackgroundAssets,
+    whenBackgroundReady: requestBackgroundAssets,
     isBackgroundReady,
     getLightMoteMapping,
     drawBackground,
@@ -362,7 +400,8 @@ const CRYSTAL_CAVE_ASSET_VISUALS = (() => {
         drawOrder: "after-crystal-glows"
       })
     }),
-    whenBottomSpikeHazardsReady: () => bottomSpikeHazardReadyPromise,
+    requestHazardAssets,
+    whenBottomSpikeHazardsReady: requestHazardAssets,
     areBottomSpikeHazardsReady,
     getBottomSpikeHazardMapping,
     drawBottomDeathHazard,

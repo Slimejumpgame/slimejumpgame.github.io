@@ -1,7 +1,12 @@
 "use strict";
 
 const SNOW_ASSET_VISUALS = (() => {
-  const snowPlatformVisuals = BIOME_PLATFORM_VISUALS.resolve("snow");
+  const supportsLazyLoading =
+    typeof BIOME_PLATFORM_VISUALS.registerLazy === "function" &&
+    typeof BIOME_PLATFORM_VISUALS.createAssetLoader === "function";
+  const snowPlatformVisuals = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.registerLazy("snow")
+    : BIOME_PLATFORM_VISUALS.resolve("snow");
   const BACKGROUND_REFERENCE = Object.freeze({w: 1280, h: 720});
   const BACKGROUND_PATHS = Object.freeze({
     skyBase: "assets/environments/snow/background/snow_background_sky_base.png",
@@ -114,12 +119,17 @@ const SNOW_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
-    loadBackgroundAsset(name, path);
-  }
-  const backgroundReadyPromise = Promise.all(
-    Object.values(backgroundAssets).map(record => record.ready)
-  ).then(() => isBackgroundReady());
+  let backgroundReadyPromise = null;
+  const backgroundLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+        loadBackgroundAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(backgroundAssets).map(record => record.ready)
+      ).then(() => isBackgroundReady());
+    })
+    : null;
 
   function isBackgroundReady() {
     return ESSENTIAL_BACKGROUND_LAYERS.every(isBackgroundLayerReady);
@@ -224,6 +234,7 @@ const SNOW_ASSET_VISUALS = (() => {
   }
 
   function drawBackground(context, width, height, visualTime = 0) {
+    requestBackgroundAssets();
     if (!context || !isBackgroundReady()) return false;
     const mapping = getBackgroundMapping(width, height);
     if (!mapping) return false;
@@ -321,12 +332,42 @@ const SNOW_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(ICE_WATER_HAZARD_PATHS)) {
-    loadIceWaterHazardAsset(name, path);
+  let iceWaterHazardReadyPromise = null;
+  const hazardLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(ICE_WATER_HAZARD_PATHS)) {
+        loadIceWaterHazardAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(iceWaterHazardAssets).map(record => record.ready)
+      ).then(() => isIceWaterHazardReady());
+    })
+    : null;
+
+  function requestBackgroundAssets() {
+    if (backgroundLoader) backgroundReadyPromise = backgroundLoader.request();
+    return backgroundReadyPromise;
   }
-  const iceWaterHazardReadyPromise = Promise.all(
-    Object.values(iceWaterHazardAssets).map(record => record.ready)
-  ).then(() => isIceWaterHazardReady());
+
+  function requestHazardAssets() {
+    if (hazardLoader) iceWaterHazardReadyPromise = hazardLoader.request();
+    return iceWaterHazardReadyPromise;
+  }
+
+  if (!supportsLazyLoading) {
+    for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+      loadBackgroundAsset(name, path);
+    }
+    backgroundReadyPromise = Promise.all(
+      Object.values(backgroundAssets).map(record => record.ready)
+    ).then(() => isBackgroundReady());
+    for (const [name, path] of Object.entries(ICE_WATER_HAZARD_PATHS)) {
+      loadIceWaterHazardAsset(name, path);
+    }
+    iceWaterHazardReadyPromise = Promise.all(
+      Object.values(iceWaterHazardAssets).map(record => record.ready)
+    ).then(() => isIceWaterHazardReady());
+  }
 
   function isIceWaterHazardReady() {
     return hasValidIceWaterHazardSize("base");
@@ -408,6 +449,7 @@ const SNOW_ASSET_VISUALS = (() => {
   }
 
   function drawBottomDeathHazard(context, rect, visualTime = 0) {
+    requestHazardAssets();
     if (!context || !isIceWaterHazardReady()) return false;
     const mapping = getIceWaterHazardMapping(visualTime, rect);
     if (!mapping) return false;
@@ -436,7 +478,8 @@ const SNOW_ASSET_VISUALS = (() => {
 
   const snowVisuals = Object.freeze({
     ...snowPlatformVisuals,
-    whenBackgroundReady: () => backgroundReadyPromise,
+    requestBackgroundAssets,
+    whenBackgroundReady: requestBackgroundAssets,
     isBackgroundReady,
     getBackgroundMapping,
     getCloudMapping,
@@ -484,7 +527,8 @@ const SNOW_ASSET_VISUALS = (() => {
         wrapCopies: 4
       })
     }),
-    whenIceWaterHazardReady: () => iceWaterHazardReadyPromise,
+    requestHazardAssets,
+    whenIceWaterHazardReady: requestHazardAssets,
     isIceWaterHazardReady,
     isIceWaterWaveReady,
     getIceWaterHazardMapping,

@@ -511,6 +511,13 @@
       typeof isTutorialStage !== "function" ||
       typeof BIOME_PLATFORM_VISUALS === "undefined"
     ) return null;
+    if (typeof requestFairyTaleBiomeGameplayAssets === "function") {
+      const request = requestFairyTaleBiomeGameplayAssets(visualBiome.id);
+      if (request && typeof scheduleNextBiomeVisualPreload === "function") {
+        scheduleNextBiomeVisualPreload(visualBiome.id);
+      }
+      return request?.visuals ?? null;
+    }
     return BIOME_PLATFORM_VISUALS.resolve(visualBiome.id);
   }
 

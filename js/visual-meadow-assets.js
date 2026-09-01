@@ -93,7 +93,10 @@
       ...MEADOW_TOP_OVERLAY_ASSET_NAMES,
       ...MEADOW_BODY_OVERLAY_ASSET_NAMES
     ]);
-    const meadowPlatformKit = createPlatformVisualKit({
+    const supportsLazyLoading =
+      typeof BIOME_PLATFORM_VISUALS.registerLazy === "function" &&
+      typeof BIOME_PLATFORM_VISUALS.createAssetLoader === "function";
+    const createMeadowPlatformKit = () => createPlatformVisualKit({
       biome: "meadow",
       familyA: Object.freeze({
         topBase: Object.freeze({
@@ -131,7 +134,10 @@
       }),
       outlineStyle: "rgba(46,72,28,0.62)"
     });
-    const meadowDecorKit = createBiomeDecorVisualKit({
+    const meadowPlatformKit = supportsLazyLoading
+      ? BIOME_PLATFORM_VISUALS.registerLazy("meadow", createMeadowPlatformKit)
+      : createMeadowPlatformKit();
+    const createMeadowDecorKit = () => createBiomeDecorVisualKit({
       biome: "meadow",
       resolvePlatformRole: meadowPlatformKit.resolvePlatformRole,
       salts: Object.freeze({
@@ -184,21 +190,30 @@
         })
       })
     });
+    const meadowDecorKit =
+      supportsLazyLoading && typeof BIOME_DECOR_VISUALS.registerLazy === "function"
+        ? BIOME_DECOR_VISUALS.registerLazy("meadow", createMeadowDecorKit)
+        : createMeadowDecorKit();
     BIOME_DECOR_VISUALS.register("meadow", meadowDecorKit);
-    const meadowPortalVisuals = BIOME_PORTAL_VISUALS.resolve("meadow");
-    const MEADOW_ASSET_MANIFEST = Object.freeze({
-      biome: "meadow",
-      paths: ASSET_PATHS,
-      sourceSizes: SOURCE_SIZES,
-      platforms: meadowPlatformKit.getManifest(),
-      decor: Object.freeze({gridV2: meadowDecorKit.getManifest()})
-    });
+    const meadowPortalVisuals =
+      supportsLazyLoading && typeof BIOME_PORTAL_VISUALS.registerLazy === "function"
+        ? BIOME_PORTAL_VISUALS.registerLazy("meadow")
+        : BIOME_PORTAL_VISUALS.resolve("meadow");
+    let meadowAssetManifest = null;
     const BOTTOM_SPIKE_SOURCE = Object.freeze({x: 10, y: 13, w: 235, h: 297});
     const OPTIONAL_ASSET_NAMES = Object.freeze([
       "background_clouds_back",
       "background_clouds_front",
       "bottom_spike_tile"
     ]);
+    const BACKGROUND_ASSET_NAMES = Object.freeze([
+      "background",
+      "background_sky_base",
+      "background_clouds_back",
+      "background_landscape",
+      "background_clouds_front"
+    ]);
+    const HAZARD_ASSET_NAMES = Object.freeze(["bottom_spike_tile"]);
     const CLOUD_BACK_LEFT_SPEED = 6;
     const CLOUD_BACK_WRAP_OVERLAP = 8;
     const CLOUD_FRONT_LEFT_SPEED = 12;
@@ -217,21 +232,52 @@
       assets[name] = {image, ready};
     }
 
-    for (const [name, path] of Object.entries(ASSET_PATHS)) {
-      if (
-        !PLATFORM_ASSET_NAMES.includes(name) &&
-        !EXTERNAL_ASSET_NAMES.includes(name)
-      ) loadAsset(name, path);
+    let backgroundReadyPromise = null;
+    let hazardReadyPromise = null;
+    let readyPromise = null;
+    const backgroundLoader = supportsLazyLoading
+      ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+        for (const name of BACKGROUND_ASSET_NAMES) {
+          loadAsset(name, ASSET_PATHS[name]);
+        }
+        return Promise.all(BACKGROUND_ASSET_NAMES.map(name => (
+          assets[name].ready.then(loaded => OPTIONAL_ASSET_NAMES.includes(name) || loaded)
+        ))).then(results => results.every(Boolean));
+      })
+      : null;
+    const hazardLoader = supportsLazyLoading
+      ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+        for (const name of HAZARD_ASSET_NAMES) loadAsset(name, ASSET_PATHS[name]);
+        return Promise.all(HAZARD_ASSET_NAMES.map(name => (
+          assets[name].ready.then(loaded => OPTIONAL_ASSET_NAMES.includes(name) || loaded)
+        ))).then(results => results.every(Boolean));
+      })
+      : null;
+
+    function requestBackgroundAssets() {
+      if (backgroundLoader) backgroundReadyPromise = backgroundLoader.request();
+      return backgroundReadyPromise;
     }
 
-    const readyPromise = Promise.all([
-      meadowPlatformKit.whenReady(),
-      meadowDecorKit.whenReady().then(() => true),
-      meadowPortalVisuals.whenReady().then(() => true),
-      ...Object.entries(assets).map(([name, asset]) => (
-        asset.ready.then(loaded => OPTIONAL_ASSET_NAMES.includes(name) || loaded)
-      ))
-    ]).then(results => results.every(Boolean));
+    function requestHazardAssets() {
+      if (hazardLoader) hazardReadyPromise = hazardLoader.request();
+      return hazardReadyPromise;
+    }
+
+    if (!supportsLazyLoading) {
+      for (const [name, path] of Object.entries(ASSET_PATHS)) {
+        if (
+          !PLATFORM_ASSET_NAMES.includes(name) &&
+          !EXTERNAL_ASSET_NAMES.includes(name)
+        ) loadAsset(name, path);
+      }
+      backgroundReadyPromise = Promise.all(BACKGROUND_ASSET_NAMES.map(name => (
+        assets[name].ready.then(loaded => OPTIONAL_ASSET_NAMES.includes(name) || loaded)
+      ))).then(results => results.every(Boolean));
+      hazardReadyPromise = Promise.all(HAZARD_ASSET_NAMES.map(name => (
+        assets[name].ready.then(loaded => OPTIONAL_ASSET_NAMES.includes(name) || loaded)
+      ))).then(results => results.every(Boolean));
+    }
 
     function isReady(name) {
       if (PLATFORM_ASSET_NAMES.includes(name)) {
@@ -254,6 +300,15 @@
     }
 
     function whenReady() {
+      if (!readyPromise) {
+        readyPromise = Promise.all([
+          meadowPlatformKit.whenReady(),
+          meadowDecorKit.whenReady().then(() => true),
+          meadowPortalVisuals.whenReady().then(() => true),
+          requestBackgroundAssets(),
+          requestHazardAssets()
+        ]).then(results => results.every(Boolean));
+      }
       return readyPromise;
     }
 
@@ -316,6 +371,7 @@
     }
 
     function drawBackground(context, width, height, visualTime = 0) {
+      requestBackgroundAssets();
       const source = SOURCE_SIZES.background;
       context.save();
       context.imageSmoothingEnabled = true;
@@ -391,6 +447,7 @@
     }
 
     function drawBottomSpikeHazard(context, rect, count, step) {
+      requestHazardAssets();
       if (!isReady("bottom_spike_tile")) return false;
 
       context.save();
@@ -436,11 +493,22 @@
     }
 
     function getManifest() {
-      return MEADOW_ASSET_MANIFEST;
+      if (!meadowAssetManifest) {
+        meadowAssetManifest = Object.freeze({
+          biome: "meadow",
+          paths: ASSET_PATHS,
+          sourceSizes: SOURCE_SIZES,
+          platforms: meadowPlatformKit.getManifest(),
+          decor: Object.freeze({gridV2: meadowDecorKit.getManifest()})
+        });
+      }
+      return meadowAssetManifest;
     }
 
     return Object.freeze({
       whenReady,
+      requestBackgroundAssets,
+      requestHazardAssets,
       areAllReady,
       getStatus,
       getManifest,

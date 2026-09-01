@@ -1,8 +1,12 @@
 "use strict";
 
 const ABANDONED_MINE_ASSET_VISUALS = (() => {
-  const abandonedMinePlatformVisuals =
-    BIOME_PLATFORM_VISUALS.resolve("abandonedMine");
+  const supportsLazyLoading =
+    typeof BIOME_PLATFORM_VISUALS.registerLazy === "function" &&
+    typeof BIOME_PLATFORM_VISUALS.createAssetLoader === "function";
+  const abandonedMinePlatformVisuals = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.registerLazy("abandonedMine")
+    : BIOME_PLATFORM_VISUALS.resolve("abandonedMine");
   const BACKGROUND_REFERENCE = Object.freeze({w: 1280, h: 720});
   const ASSET_CONTRACTS = Object.freeze({
     main: Object.freeze({
@@ -121,25 +125,55 @@ const ABANDONED_MINE_ASSET_VISUALS = (() => {
     image.src = contract.path;
   }
 
-  for (const [name, contract] of Object.entries(ALL_ASSET_CONTRACTS)) {
-    loadAsset(name, contract);
-  }
-
   function isBackgroundReady() {
     return ASSET_NAMES.every(hasValidSize);
   }
 
-  const backgroundReadyPromise = Promise.all(
-    ASSET_NAMES.map(name => assets[name].ready)
-  ).then(() => isBackgroundReady());
+  let backgroundReadyPromise = null;
+  const backgroundLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, contract] of Object.entries(ASSET_CONTRACTS)) {
+        loadAsset(name, contract);
+      }
+      return Promise.all(
+        ASSET_NAMES.map(name => assets[name].ready)
+      ).then(() => isBackgroundReady());
+    })
+    : null;
 
   function isHazardReady() {
     return hasValidSize(HAZARD_ASSET_NAME);
   }
 
-  const hazardReadyPromise = assets[HAZARD_ASSET_NAME].ready.then(
-    () => isHazardReady()
-  );
+  let hazardReadyPromise = null;
+  const hazardLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      loadAsset(HAZARD_ASSET_NAME, HAZARD_CONTRACT);
+      return assets[HAZARD_ASSET_NAME].ready.then(() => isHazardReady());
+    })
+    : null;
+
+  function requestBackgroundAssets() {
+    if (backgroundLoader) backgroundReadyPromise = backgroundLoader.request();
+    return backgroundReadyPromise;
+  }
+
+  function requestHazardAssets() {
+    if (hazardLoader) hazardReadyPromise = hazardLoader.request();
+    return hazardReadyPromise;
+  }
+
+  if (!supportsLazyLoading) {
+    for (const [name, contract] of Object.entries(ALL_ASSET_CONTRACTS)) {
+      loadAsset(name, contract);
+    }
+    backgroundReadyPromise = Promise.all(
+      ASSET_NAMES.map(name => assets[name].ready)
+    ).then(() => isBackgroundReady());
+    hazardReadyPromise = assets[HAZARD_ASSET_NAME].ready.then(
+      () => isHazardReady()
+    );
+  }
 
   function getBottomHazardMapping(rect) {
     const destination = HAZARD_CONTRACT.destination;
@@ -157,6 +191,7 @@ const ABANDONED_MINE_ASSET_VISUALS = (() => {
   }
 
   function drawBottomDeathHazard(context, rect) {
+    requestHazardAssets();
     if (!context || !isHazardReady()) return false;
     const mapping = getBottomHazardMapping(rect);
     if (!mapping) return false;
@@ -381,6 +416,7 @@ const ABANDONED_MINE_ASSET_VISUALS = (() => {
   }
 
   function drawBackground(context, width, height, visualTime = 0) {
+    requestBackgroundAssets();
     if (!context || !isBackgroundReady()) return false;
     const mapping = getBackgroundMapping(width, height);
     if (!mapping) return false;
@@ -413,13 +449,15 @@ const ABANDONED_MINE_ASSET_VISUALS = (() => {
 
   const abandonedMineVisuals = Object.freeze({
     ...abandonedMinePlatformVisuals,
-    whenBackgroundReady: () => backgroundReadyPromise,
+    requestBackgroundAssets,
+    whenBackgroundReady: requestBackgroundAssets,
     isBackgroundReady,
     getBackgroundMapping,
     getMinecartMapping,
     getLanternMapping,
     drawBackground,
-    whenHazardReady: () => hazardReadyPromise,
+    requestHazardAssets,
+    whenHazardReady: requestHazardAssets,
     isHazardReady,
     getBottomHazardMapping,
     drawBottomDeathHazard,

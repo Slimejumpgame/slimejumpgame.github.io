@@ -1,7 +1,12 @@
 "use strict";
 
 const SWAMP_ASSET_VISUALS = (() => {
-  const swampPlatformVisuals = BIOME_PLATFORM_VISUALS.resolve("swamp");
+  const supportsLazyLoading =
+    typeof BIOME_PLATFORM_VISUALS.registerLazy === "function" &&
+    typeof BIOME_PLATFORM_VISUALS.createAssetLoader === "function";
+  const swampPlatformVisuals = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.registerLazy("swamp")
+    : BIOME_PLATFORM_VISUALS.resolve("swamp");
   const BACKGROUND_REFERENCE = Object.freeze({w: 1280, h: 720});
   const BACKGROUND_PATHS = Object.freeze({
     skybox: "assets/environments/swamp/background/swamp_background_skybox.png",
@@ -112,12 +117,17 @@ const SWAMP_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
-    loadBackgroundAsset(name, path);
-  }
-  const backgroundReadyPromise = Promise.all(
-    Object.values(backgroundAssets).map(record => record.ready)
-  ).then(() => isBackgroundReady());
+  let backgroundReadyPromise = null;
+  const backgroundLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+        loadBackgroundAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(backgroundAssets).map(record => record.ready)
+      ).then(() => isBackgroundReady());
+    })
+    : null;
 
   function isBackgroundReady() {
     return ESSENTIAL_BACKGROUND_LAYERS.every(isBackgroundLayerReady);
@@ -188,6 +198,7 @@ const SWAMP_ASSET_VISUALS = (() => {
   }
 
   function drawBackground(context, width, height, visualTime = 0) {
+    requestBackgroundAssets();
     if (!context || !isBackgroundReady()) return false;
     const mapping = getBackgroundMapping(width, height);
     if (!mapping) return false;
@@ -283,12 +294,42 @@ const SWAMP_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(TOXIC_HAZARD_PATHS)) {
-    loadToxicHazardAsset(name, path);
+  let toxicHazardReadyPromise = null;
+  const hazardLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(TOXIC_HAZARD_PATHS)) {
+        loadToxicHazardAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(toxicHazardAssets).map(record => record.ready)
+      ).then(() => isToxicHazardReady());
+    })
+    : null;
+
+  function requestBackgroundAssets() {
+    if (backgroundLoader) backgroundReadyPromise = backgroundLoader.request();
+    return backgroundReadyPromise;
   }
-  const toxicHazardReadyPromise = Promise.all(
-    Object.values(toxicHazardAssets).map(record => record.ready)
-  ).then(() => isToxicHazardReady());
+
+  function requestHazardAssets() {
+    if (hazardLoader) toxicHazardReadyPromise = hazardLoader.request();
+    return toxicHazardReadyPromise;
+  }
+
+  if (!supportsLazyLoading) {
+    for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+      loadBackgroundAsset(name, path);
+    }
+    backgroundReadyPromise = Promise.all(
+      Object.values(backgroundAssets).map(record => record.ready)
+    ).then(() => isBackgroundReady());
+    for (const [name, path] of Object.entries(TOXIC_HAZARD_PATHS)) {
+      loadToxicHazardAsset(name, path);
+    }
+    toxicHazardReadyPromise = Promise.all(
+      Object.values(toxicHazardAssets).map(record => record.ready)
+    ).then(() => isToxicHazardReady());
+  }
 
   function isToxicHazardReady() {
     return isToxicHazardLayerReady("base");
@@ -364,6 +405,7 @@ const SWAMP_ASSET_VISUALS = (() => {
   }
 
   function drawBottomDeathHazard(context, rect, visualTime = 0) {
+    requestHazardAssets();
     if (!context || !isToxicHazardReady()) return false;
     const mapping = getToxicHazardMapping(visualTime, rect);
     if (!mapping) return false;
@@ -387,7 +429,8 @@ const SWAMP_ASSET_VISUALS = (() => {
 
   const swampVisuals = Object.freeze({
     ...swampPlatformVisuals,
-    whenBackgroundReady: () => backgroundReadyPromise,
+    requestBackgroundAssets,
+    whenBackgroundReady: requestBackgroundAssets,
     isBackgroundReady,
     getBackgroundMapping,
     getFogMapping,
@@ -430,7 +473,8 @@ const SWAMP_ASSET_VISUALS = (() => {
         blendMode: "source-over"
       })
     }),
-    whenToxicHazardReady: () => toxicHazardReadyPromise,
+    requestHazardAssets,
+    whenToxicHazardReady: requestHazardAssets,
     isToxicHazardReady,
     isToxicHazardLayerReady,
     getToxicHazardMapping,

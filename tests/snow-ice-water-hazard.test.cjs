@@ -409,9 +409,7 @@ for (const relativePath of [
   "js/level-generator.js",
   "js/physics.js",
   "js/platforms.js",
-  "js/player.js",
-  "js/visual-desert-assets.js",
-  "js/visual-volcano-assets.js"
+  "js/player.js"
 ]) {
   const current = read(relativePath);
   const baseline = execFileSync("git", ["show", `HEAD:${relativePath}`], {

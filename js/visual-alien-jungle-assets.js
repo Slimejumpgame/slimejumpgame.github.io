@@ -1,8 +1,12 @@
 "use strict";
 
 const ALIEN_JUNGLE_ASSET_VISUALS = (() => {
-  const alienJunglePlatformVisuals =
-    BIOME_PLATFORM_VISUALS.resolve("alienJungle");
+  const supportsLazyLoading =
+    typeof BIOME_PLATFORM_VISUALS.registerLazy === "function" &&
+    typeof BIOME_PLATFORM_VISUALS.createAssetLoader === "function";
+  const alienJunglePlatformVisuals = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.registerLazy("alienJungle")
+    : BIOME_PLATFORM_VISUALS.resolve("alienJungle");
   const BACKGROUND_REFERENCE = Object.freeze({w: 1280, h: 720});
   const BACKGROUND_PATHS = Object.freeze({
     skybox:
@@ -129,10 +133,6 @@ const ALIEN_JUNGLE_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
-    loadAsset(name, path);
-  }
-
   function hasValidSize(name) {
     const image = assets[name]?.image;
     return Boolean(
@@ -146,9 +146,17 @@ const ALIEN_JUNGLE_ASSET_VISUALS = (() => {
     return Object.keys(BACKGROUND_PATHS).every(hasValidSize);
   }
 
-  const backgroundReadyPromise = Promise.all(
-    Object.values(assets).map(asset => asset.ready)
-  ).then(() => isBackgroundReady());
+  let backgroundReadyPromise = null;
+  const backgroundLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+        loadAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(assets).map(asset => asset.ready)
+      ).then(() => isBackgroundReady());
+    })
+    : null;
 
   function hasValidHazardSize(name) {
     const image = hazardAssets[name]?.image;
@@ -171,17 +179,44 @@ const ALIEN_JUNGLE_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(HAZARD_PATHS)) {
-    loadHazardAsset(name, path);
-  }
-
   function isHazardReady() {
     return Object.keys(HAZARD_PATHS).every(hasValidHazardSize);
   }
 
-  const hazardReadyPromise = Promise.all(
-    Object.values(hazardAssets).map(asset => asset.ready)
-  ).then(() => isHazardReady());
+  let hazardReadyPromise = null;
+  const hazardLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(HAZARD_PATHS)) {
+        loadHazardAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(hazardAssets).map(asset => asset.ready)
+      ).then(() => isHazardReady());
+    })
+    : null;
+
+  function requestBackgroundAssets() {
+    if (backgroundLoader) backgroundReadyPromise = backgroundLoader.request();
+    return backgroundReadyPromise;
+  }
+
+  function requestHazardAssets() {
+    if (hazardLoader) hazardReadyPromise = hazardLoader.request();
+    return hazardReadyPromise;
+  }
+
+  if (!supportsLazyLoading) {
+    for (const [name, path] of Object.entries(BACKGROUND_PATHS)) loadAsset(name, path);
+    backgroundReadyPromise = Promise.all(
+      Object.values(assets).map(asset => asset.ready)
+    ).then(() => isBackgroundReady());
+    for (const [name, path] of Object.entries(HAZARD_PATHS)) {
+      loadHazardAsset(name, path);
+    }
+    hazardReadyPromise = Promise.all(
+      Object.values(hazardAssets).map(asset => asset.ready)
+    ).then(() => isHazardReady());
+  }
 
   function getColorChannels(hexColor) {
     const cached = colorChannelCache.get(hexColor);
@@ -327,6 +362,7 @@ const ALIEN_JUNGLE_ASSET_VISUALS = (() => {
   }
 
   function drawBackground(context, width, height, visualTime = 0) {
+    requestBackgroundAssets();
     if (
       !context ||
       !isBackgroundReady() ||
@@ -465,6 +501,7 @@ const ALIEN_JUNGLE_ASSET_VISUALS = (() => {
   }
 
   function drawBottomDeathHazard(context, rect, visualTime = 0) {
+    requestHazardAssets();
     if (!context || !isHazardReady()) return false;
     const mapping = getBottomHazardMapping(visualTime, rect);
     if (!mapping) return false;
@@ -490,7 +527,8 @@ const ALIEN_JUNGLE_ASSET_VISUALS = (() => {
 
   const alienJungleVisuals = Object.freeze({
     ...alienJunglePlatformVisuals,
-    whenBackgroundReady: () => backgroundReadyPromise,
+    requestBackgroundAssets,
+    whenBackgroundReady: requestBackgroundAssets,
     isBackgroundReady,
     getPlantGlowMapping,
     getFireflyMapping,
@@ -527,7 +565,8 @@ const ALIEN_JUNGLE_ASSET_VISUALS = (() => {
       }),
       renderOrder: BACKGROUND_RENDER_ORDER
     }),
-    whenHazardReady: () => hazardReadyPromise,
+    requestHazardAssets,
+    whenHazardReady: requestHazardAssets,
     isHazardReady,
     getBottomHazardMapping,
     drawBottomDeathHazard,

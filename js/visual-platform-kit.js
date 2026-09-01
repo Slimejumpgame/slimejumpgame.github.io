@@ -879,27 +879,220 @@
     });
   }
 
+  function createLazyBiomeAssetLoader(startLoading) {
+    if (typeof startLoading !== "function") {
+      throw new TypeError("Lazy biome asset loader requires a start function");
+    }
+    let state = "uninitialized";
+    let requestPromise = null;
+    return Object.freeze({
+      request() {
+        if (requestPromise) return requestPromise;
+        state = "loading";
+        try {
+          requestPromise = Promise.resolve(startLoading()).then(
+            ready => {
+              state = ready ? "ready" : "failed";
+              return Boolean(ready);
+            },
+            () => {
+              state = "failed";
+              return false;
+            }
+          );
+        } catch (_) {
+          state = "failed";
+          requestPromise = Promise.resolve(false);
+        }
+        return requestPromise;
+      },
+      getState: () => state
+    });
+  }
+
   const BIOME_PLATFORM_VISUALS = (() => {
     const visualsByBiome = new Map();
+    const platformEntriesByBiome = new Map();
+    const lazyPlatformMethodNames = Object.freeze([
+      "whenReady",
+      "areAllReady",
+      "isAssetReady",
+      "isFamilyAReady",
+      "isFamilyBReady",
+      "isWholeFamilyBReady",
+      "getStatus",
+      "getManifest",
+      "getTopOverlaySelection",
+      "getBodyOverlaySelection",
+      "getWholeFloatingMapping",
+      "resolvePlatformRole",
+      "drawPlatformBase",
+      "drawGoalTopForeground"
+    ]);
+
+    function normalizeBiomeId(biomeId) {
+      return typeof biomeId === "string" && biomeId.trim()
+        ? biomeId.trim()
+        : null;
+    }
+
+    function createLazyPlatformEntry(biomeId, createKit) {
+      let kit = null;
+      let state = "uninitialized";
+      let readyPromise = null;
+
+      function getKit() {
+        if (kit) return kit;
+        kit = createKit();
+        state = "loading";
+        readyPromise = Promise.resolve(kit.whenReady()).then(
+          ready => {
+            state = ready ? "ready" : "failed";
+            return ready;
+          },
+          () => {
+            state = "failed";
+            return false;
+          }
+        );
+        return kit;
+      }
+
+      const facade = {};
+      for (const methodName of lazyPlatformMethodNames) {
+        facade[methodName] = (...args) => getKit()[methodName](...args);
+      }
+      facade.requestPlatformAssets = () => {
+        getKit();
+        return readyPromise;
+      };
+      facade.getPlatformLoadState = () => state;
+      facade.getPlatformKit = getKit;
+
+      return Object.freeze({
+        biomeId,
+        facade: Object.freeze(facade),
+        getKit,
+        getState: () => state,
+        request: facade.requestPlatformAssets
+      });
+    }
+
     return Object.freeze({
-      register(biomeId, visuals) {
-        if (typeof biomeId !== "string" || !biomeId.trim() || !visuals) {
-          throw new TypeError("Biome platform visual registration is invalid");
+      createAssetLoader: createLazyBiomeAssetLoader,
+      registerLazy(biomeId, createKit = null) {
+        const normalizedBiomeId = normalizeBiomeId(biomeId);
+        if (!normalizedBiomeId) {
+          throw new TypeError("Lazy biome platform visual registration is invalid");
         }
-        visualsByBiome.set(biomeId.trim(), visuals);
-        return visuals;
-      },
-      resolve(biomeId) {
-        if (typeof biomeId !== "string" || !biomeId.trim()) return null;
-        const normalizedBiomeId = biomeId.trim();
-        let visuals = visualsByBiome.get(normalizedBiomeId);
-        if (!visuals) {
-          visuals = createPlatformVisualKit(
+        const existing = platformEntriesByBiome.get(normalizedBiomeId);
+        if (existing) return existing.facade;
+        const factory = typeof createKit === "function"
+          ? createKit
+          : () => createPlatformVisualKit(
             createStandardPlatformVisualConfig(normalizedBiomeId)
           );
-          visualsByBiome.set(normalizedBiomeId, visuals);
+        const entry = createLazyPlatformEntry(normalizedBiomeId, factory);
+        platformEntriesByBiome.set(normalizedBiomeId, entry);
+        if (!visualsByBiome.has(normalizedBiomeId)) {
+          visualsByBiome.set(normalizedBiomeId, entry.facade);
         }
+        return entry.facade;
+      },
+      register(biomeId, visuals) {
+        const normalizedBiomeId = normalizeBiomeId(biomeId);
+        if (!normalizedBiomeId || !visuals) {
+          throw new TypeError("Biome platform visual registration is invalid");
+        }
+        visualsByBiome.set(normalizedBiomeId, visuals);
         return visuals;
+      },
+      resolveBackground(biomeId) {
+        const normalizedBiomeId = normalizeBiomeId(biomeId);
+        return normalizedBiomeId
+          ? visualsByBiome.get(normalizedBiomeId) ?? null
+          : null;
+      },
+      resolve(biomeId) {
+        const normalizedBiomeId = normalizeBiomeId(biomeId);
+        if (!normalizedBiomeId) return null;
+        let visuals = visualsByBiome.get(normalizedBiomeId);
+        if (!visuals) {
+          visuals = this.registerLazy(normalizedBiomeId);
+        }
+        platformEntriesByBiome.get(normalizedBiomeId)?.getKit();
+        return visuals;
+      },
+      requestPlatformAssets(biomeId) {
+        const normalizedBiomeId = normalizeBiomeId(biomeId);
+        if (!normalizedBiomeId) return Promise.resolve(false);
+        let entry = platformEntriesByBiome.get(normalizedBiomeId);
+        if (!entry) {
+          this.registerLazy(normalizedBiomeId);
+          entry = platformEntriesByBiome.get(normalizedBiomeId);
+        }
+        return entry.request();
+      },
+      getPlatformLoadState(biomeId) {
+        const normalizedBiomeId = normalizeBiomeId(biomeId);
+        return normalizedBiomeId
+          ? platformEntriesByBiome.get(normalizedBiomeId)?.getState() ?? "uninitialized"
+          : "uninitialized";
       }
     });
   })();
+
+  function getNextBiome(biomeId) {
+    if (!Array.isArray(BIOMES) || BIOMES.length === 0) return null;
+    const currentIndex = BIOMES.findIndex(biome => biome?.id === biomeId);
+    if (currentIndex < 0) return null;
+    return BIOMES[(currentIndex + 1) % BIOMES.length] ?? null;
+  }
+
+  function requestFairyTaleBiomeGameplayAssets(biomeId) {
+    if (
+      !biomeId ||
+      (typeof isFairyTaleGraphicsMode === "function" && !isFairyTaleGraphicsMode())
+    ) return null;
+    const visuals = BIOME_PLATFORM_VISUALS.resolve(biomeId);
+    visuals?.requestBackgroundAssets?.();
+    visuals?.requestHazardAssets?.();
+    const decor = typeof BIOME_DECOR_VISUALS !== "undefined"
+      ? BIOME_DECOR_VISUALS.resolve(biomeId)
+      : null;
+    const portal = typeof BIOME_PORTAL_VISUALS !== "undefined"
+      ? BIOME_PORTAL_VISUALS.resolve(biomeId)
+      : null;
+    return Object.freeze({biomeId, visuals, decor, portal});
+  }
+
+  const scheduledNextBiomePreloads = new Set();
+
+  function scheduleNextBiomeVisualPreload(activeBiomeId) {
+    if (
+      !activeBiomeId ||
+      (typeof isFairyTaleGraphicsMode === "function" && !isFairyTaleGraphicsMode())
+    ) return null;
+    const nextBiome = getNextBiome(activeBiomeId);
+    if (!nextBiome || scheduledNextBiomePreloads.has(nextBiome.id)) return nextBiome;
+    scheduledNextBiomePreloads.add(nextBiome.id);
+    const startPreload = () => {
+      const requested = requestFairyTaleBiomeGameplayAssets(nextBiome.id);
+      if (!requested) scheduledNextBiomePreloads.delete(nextBiome.id);
+    };
+    if (typeof requestIdleCallback === "function") {
+      requestIdleCallback(startPreload, {timeout: 1500});
+    } else if (typeof setTimeout === "function") {
+      setTimeout(startPreload, 0);
+    } else {
+      startPreload();
+    }
+    return nextBiome;
+  }
+
+  function requestCurrentBiomeVisualAssets(levelNumber) {
+    const currentBiome = getBiomeForLevel(levelNumber);
+    const requested = requestFairyTaleBiomeGameplayAssets(currentBiome.id);
+    if (requested) scheduleNextBiomeVisualPreload(currentBiome.id);
+    return requested;
+  }

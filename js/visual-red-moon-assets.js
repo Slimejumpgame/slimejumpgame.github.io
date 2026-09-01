@@ -1,7 +1,12 @@
 "use strict";
 
 const RED_MOON_ASSET_VISUALS = (() => {
-  const redMoonPlatformVisuals = BIOME_PLATFORM_VISUALS.resolve("redMoon");
+  const supportsLazyLoading =
+    typeof BIOME_PLATFORM_VISUALS.registerLazy === "function" &&
+    typeof BIOME_PLATFORM_VISUALS.createAssetLoader === "function";
+  const redMoonPlatformVisuals = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.registerLazy("redMoon")
+    : BIOME_PLATFORM_VISUALS.resolve("redMoon");
   const BACKGROUND_REFERENCE = Object.freeze({w: 1280, h: 720});
   const BACKGROUND_PATHS = Object.freeze({
     skybox:
@@ -134,17 +139,21 @@ const RED_MOON_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
-    loadBackgroundAsset(name, path);
-  }
-
   function isBackgroundReady() {
     return ESSENTIAL_BACKGROUND_LAYERS.every(isBackgroundLayerReady);
   }
 
-  const backgroundReadyPromise = Promise.all(
-    Object.values(backgroundAssets).map(record => record.ready)
-  ).then(() => isBackgroundReady());
+  let backgroundReadyPromise = null;
+  const backgroundLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+        loadBackgroundAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(backgroundAssets).map(record => record.ready)
+      ).then(() => isBackgroundReady());
+    })
+    : null;
 
   function hasValidHazardSize(name) {
     const image = hazardAssets[name]?.image;
@@ -167,17 +176,46 @@ const RED_MOON_ASSET_VISUALS = (() => {
     image.src = path;
   }
 
-  for (const [name, path] of Object.entries(HAZARD_PATHS)) {
-    loadHazardAsset(name, path);
-  }
-
   function isHazardReady() {
     return Object.keys(HAZARD_PATHS).every(hasValidHazardSize);
   }
 
-  const hazardReadyPromise = Promise.all(
-    Object.values(hazardAssets).map(record => record.ready)
-  ).then(() => isHazardReady());
+  let hazardReadyPromise = null;
+  const hazardLoader = supportsLazyLoading
+    ? BIOME_PLATFORM_VISUALS.createAssetLoader(() => {
+      for (const [name, path] of Object.entries(HAZARD_PATHS)) {
+        loadHazardAsset(name, path);
+      }
+      return Promise.all(
+        Object.values(hazardAssets).map(record => record.ready)
+      ).then(() => isHazardReady());
+    })
+    : null;
+
+  function requestBackgroundAssets() {
+    if (backgroundLoader) backgroundReadyPromise = backgroundLoader.request();
+    return backgroundReadyPromise;
+  }
+
+  function requestHazardAssets() {
+    if (hazardLoader) hazardReadyPromise = hazardLoader.request();
+    return hazardReadyPromise;
+  }
+
+  if (!supportsLazyLoading) {
+    for (const [name, path] of Object.entries(BACKGROUND_PATHS)) {
+      loadBackgroundAsset(name, path);
+    }
+    backgroundReadyPromise = Promise.all(
+      Object.values(backgroundAssets).map(record => record.ready)
+    ).then(() => isBackgroundReady());
+    for (const [name, path] of Object.entries(HAZARD_PATHS)) {
+      loadHazardAsset(name, path);
+    }
+    hazardReadyPromise = Promise.all(
+      Object.values(hazardAssets).map(record => record.ready)
+    ).then(() => isHazardReady());
+  }
 
   function getBackgroundMapping(width, height) {
     if (
@@ -248,6 +286,7 @@ const RED_MOON_ASSET_VISUALS = (() => {
   }
 
   function drawBackground(context, width, height, visualTime = 0) {
+    requestBackgroundAssets();
     if (!context || !isBackgroundReady()) return false;
     const mapping = getBackgroundMapping(width, height);
     if (!mapping) return false;
@@ -339,6 +378,7 @@ const RED_MOON_ASSET_VISUALS = (() => {
   }
 
   function drawBottomDeathHazard(context, rect, visualTime = 0) {
+    requestHazardAssets();
     if (!context || !isHazardReady()) return false;
     const mapping = getBottomHazardMapping(visualTime, rect);
     if (!mapping) return false;
@@ -359,7 +399,8 @@ const RED_MOON_ASSET_VISUALS = (() => {
 
   const redMoonVisuals = Object.freeze({
     ...redMoonPlatformVisuals,
-    whenBackgroundReady: () => backgroundReadyPromise,
+    requestBackgroundAssets,
+    whenBackgroundReady: requestBackgroundAssets,
     isBackgroundReady,
     isBackgroundLayerReady,
     getBackgroundMapping,
@@ -407,7 +448,8 @@ const RED_MOON_ASSET_VISUALS = (() => {
         wrapMode: "full-width-continuous"
       })
     }),
-    whenHazardReady: () => hazardReadyPromise,
+    requestHazardAssets,
+    whenHazardReady: requestHazardAssets,
     isHazardReady,
     getBottomHazardMapping,
     drawBottomDeathHazard,

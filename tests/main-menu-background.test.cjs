@@ -233,7 +233,11 @@ assert.doesNotMatch(menuSource, /\bdraw\s*\(/);
 assert.doesNotMatch(menuSource, /drawPlatforms|drawBottomDeathHazard|drawHUD/);
 assert.match(
   menuSource,
-  /BIOME_PLATFORM_VISUALS\.resolve\([\s\S]*?selectedBiome\.id/
+  /BIOME_PLATFORM_VISUALS\.resolveBackground[\s\S]*?selectedBiome\.id/
+);
+assert.match(
+  menuSource,
+  /visuals\.requestBackgroundAssets\?\.\(\)/
 );
 assert.match(
   menuSource,
