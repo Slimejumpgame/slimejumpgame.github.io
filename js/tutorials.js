@@ -114,6 +114,592 @@
     };
   }
 
+  function isTutorialPreviewImageReady(image, expectedWidth, expectedHeight) {
+    return Boolean(
+      image?.complete &&
+      image.naturalWidth === expectedWidth &&
+      image.naturalHeight === expectedHeight
+    );
+  }
+
+  function getTutorialPopupLayout(x, y, width, height) {
+    const borderWidth = 3;
+    const safeInset = Math.ceil(borderWidth / 2 + 5);
+    const textX = x + 132;
+    const illustrationTextGap = 5;
+    const contentBounds = Object.freeze({
+      left: x + safeInset,
+      top: y + safeInset,
+      right: x + width - safeInset,
+      bottom: y + height - safeInset
+    });
+    return Object.freeze({
+      borderWidth,
+      contentBounds,
+      illustrationBounds: Object.freeze({
+        left: contentBounds.left,
+        top: y + 34,
+        right: textX - illustrationTextGap,
+        bottom: contentBounds.bottom
+      }),
+      textX,
+      iconX: x + 67,
+      iconY: y + 73
+    });
+  }
+
+  let fairyTaleTutorialPreviewBuffer = null;
+
+  function getFairyTaleTutorialPreviewBuffer() {
+    if (fairyTaleTutorialPreviewBuffer) return fairyTaleTutorialPreviewBuffer;
+    if (typeof document === "undefined" || !document.createElement) return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 256;
+    const context = canvas.getContext("2d");
+    if (!context) return null;
+    fairyTaleTutorialPreviewBuffer = Object.freeze({canvas, context});
+    return fairyTaleTutorialPreviewBuffer;
+  }
+
+  function getFairyTaleTutorialPlatformVisuals(levelNumber) {
+    if (
+      typeof getBiomeForLevel !== "function" ||
+      typeof BIOME_PLATFORM_VISUALS === "undefined"
+    ) return null;
+    const biome = getBiomeForLevel(levelNumber);
+    if (!biome?.id) return null;
+    const visuals = BIOME_PLATFORM_VISUALS.resolve(biome.id);
+    const platformKit = typeof visuals?.getPlatformKit === "function"
+      ? visuals.getPlatformKit()
+      : visuals;
+    if (
+      typeof visuals?.drawPlatformBase !== "function" ||
+      typeof platformKit?.isWholeFamilyBReady !== "function" ||
+      !platformKit.isWholeFamilyBReady()
+    ) return null;
+    return visuals;
+  }
+
+  function drawFairyTaleTutorialNormalPlatform(
+    context,
+    visuals,
+    platform,
+    levelNumber
+  ) {
+    return visuals.drawPlatformBase(
+      context,
+      platform,
+      platform.x,
+      currentLevel()?.seed ?? levelNumber
+    ) === true;
+  }
+
+  function drawTutorialPreviewArrow(
+    context,
+    startX,
+    startY,
+    endX,
+    endY,
+    color,
+    width = 5,
+    headLength = 11,
+    headHalfWidth = 7
+  ) {
+    const dx = endX - startX;
+    const dy = endY - startY;
+    const length = Math.hypot(dx, dy);
+    if (length <= Number.EPSILON) return;
+    const ux = dx / length;
+    const uy = dy / length;
+    const px = -uy;
+    const py = ux;
+    const baseX = endX - ux * headLength;
+    const baseY = endY - uy * headLength;
+
+    context.strokeStyle = color;
+    context.fillStyle = color;
+    context.lineWidth = width;
+    context.lineCap = "round";
+    context.beginPath();
+    context.moveTo(startX, startY);
+    context.lineTo(endX - ux * 3, endY - uy * 3);
+    context.stroke();
+    context.beginPath();
+    context.moveTo(endX, endY);
+    context.lineTo(baseX + px * headHalfWidth, baseY + py * headHalfWidth);
+    context.lineTo(baseX - px * headHalfWidth, baseY - py * headHalfWidth);
+    context.closePath();
+    context.fill();
+  }
+
+  function drawTutorialFallingCue(context, iconX, iconY) {
+    drawTutorialPreviewArrow(
+      context,
+      iconX,
+      iconY + 24,
+      iconX,
+      iconY + 40,
+      "#ffad70"
+    );
+  }
+
+  function drawTutorialMovingCue(context, platform) {
+    const centerX = platform.x + platform.w / 2;
+    const centerY = platform.y + platform.h / 2;
+    const gap = 5;
+    const arrowLength = 13;
+    const drawFilledArrow = (tailX, tailY, tipX, tipY) => {
+      const dx = tipX - tailX;
+      const dy = tipY - tailY;
+      const length = Math.hypot(dx, dy);
+      const ux = dx / length;
+      const uy = dy / length;
+      const px = -uy;
+      const py = ux;
+      const shaftHalfWidth = 2.25;
+      const headLength = 6;
+      const headHalfWidth = 5;
+      const headBaseX = tipX - ux * headLength;
+      const headBaseY = tipY - uy * headLength;
+
+      context.fillStyle = "#a7d2ff";
+      context.beginPath();
+      context.moveTo(tailX + px * shaftHalfWidth, tailY + py * shaftHalfWidth);
+      context.lineTo(
+        headBaseX + px * shaftHalfWidth,
+        headBaseY + py * shaftHalfWidth
+      );
+      context.lineTo(
+        headBaseX + px * headHalfWidth,
+        headBaseY + py * headHalfWidth
+      );
+      context.lineTo(tipX, tipY);
+      context.lineTo(
+        headBaseX - px * headHalfWidth,
+        headBaseY - py * headHalfWidth
+      );
+      context.lineTo(
+        headBaseX - px * shaftHalfWidth,
+        headBaseY - py * shaftHalfWidth
+      );
+      context.lineTo(tailX - px * shaftHalfWidth, tailY - py * shaftHalfWidth);
+      context.closePath();
+      context.fill();
+    };
+
+    drawFilledArrow(
+      centerX,
+      platform.y - gap,
+      centerX,
+      platform.y - gap - arrowLength
+    );
+    drawFilledArrow(
+      centerX,
+      platform.y + platform.h + gap,
+      centerX,
+      platform.y + platform.h + gap + arrowLength
+    );
+    drawFilledArrow(
+      platform.x - gap,
+      centerY,
+      platform.x - gap - arrowLength,
+      centerY
+    );
+    drawFilledArrow(
+      platform.x + platform.w + gap,
+      centerY,
+      platform.x + platform.w + gap + arrowLength,
+      centerY
+    );
+  }
+
+  function drawTutorialIceCue(context, iconX, iconY) {
+    drawTutorialPreviewArrow(
+      context,
+      iconX - 39,
+      iconY + 34,
+      iconX + 40,
+      iconY + 34,
+      "#9feeff",
+      4
+    );
+  }
+
+  function drawTutorialPreviewLabel(
+    context,
+    text,
+    iconX,
+    illustrationBounds,
+    color,
+    fontSize
+  ) {
+    context.fillStyle = color;
+    context.font = `900 ${fontSize}px system-ui`;
+    context.textAlign = "center";
+    context.fillText(text, iconX, illustrationBounds.bottom - 3);
+  }
+
+  function drawFairyTaleTutorialGhost(context, type, iconX, iconY) {
+    if (
+      typeof GHOST_VISUALS === "undefined" ||
+      typeof ghostImages === "undefined" ||
+      typeof getGhostImageDrawContract !== "function"
+    ) return false;
+    const visual = GHOST_VISUALS[type];
+    const image = ghostImages[type];
+    if (
+      !visual ||
+      !isTutorialPreviewImageReady(
+        image,
+        GHOST_IMAGE_SOURCE_SIZE,
+        GHOST_IMAGE_SOURCE_SIZE
+      )
+    ) return false;
+
+    const draw = getGhostImageDrawContract({r: 26}, visual);
+    context.save();
+    context.translate(iconX, iconY);
+    context.shadowColor = visual.glow;
+    context.shadowBlur = 8;
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    context.drawImage(
+      image,
+      -draw.drawSize / 2 + draw.offsetX,
+      -draw.drawSize / 2 + draw.offsetY,
+      draw.drawSize,
+      draw.drawSize
+    );
+    context.restore();
+    return true;
+  }
+
+  function drawFairyTaleTutorialPreview(
+    context,
+    type,
+    levelNumber,
+    iconX,
+    iconY,
+    illustrationBounds
+  ) {
+    if (type === "pad") {
+      const visuals = getFairyTaleTutorialPlatformVisuals(levelNumber);
+      if (
+        !visuals ||
+        typeof bouncePadImage === "undefined" ||
+        typeof BOUNCE_PAD_SOURCE_BOUNDS === "undefined" ||
+        !isTutorialPreviewImageReady(bouncePadImage, 256, 128)
+      ) return false;
+      const platform = {x: iconX - 49, y: iconY + 19, w: 98, h: 26};
+      if (!drawFairyTaleTutorialNormalPlatform(
+        context,
+        visuals,
+        platform,
+        levelNumber
+      )) {
+        return false;
+      }
+      const source = BOUNCE_PAD_SOURCE_BOUNDS;
+      context.save();
+      context.shadowColor = "#4ddcff";
+      context.shadowBlur = 14;
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+      context.drawImage(
+        bouncePadImage,
+        source.x,
+        source.y,
+        source.w,
+        source.h,
+        iconX - 33,
+        platform.y - 28,
+        66,
+        28
+      );
+      context.restore();
+      drawTutorialPreviewArrow(
+        context,
+        iconX,
+        iconY + 1,
+        iconX,
+        iconY - 27,
+        "#79ff8d"
+      );
+      return true;
+    }
+
+    if (type === "falling") {
+      if (
+        typeof areFallingPlatformAssetsReady !== "function" ||
+        typeof drawFallingPlatformAsset !== "function" ||
+        !areFallingPlatformAssetsReady()
+      ) return false;
+      const platform = {
+        x: iconX - 46,
+        y: iconY - 5,
+        w: 92,
+        h: 26,
+        fragile: true
+      };
+      if (!drawFallingPlatformAsset(context, platform, platform.x)) return false;
+      drawTutorialFallingCue(context, iconX, iconY);
+      return true;
+    }
+
+    if (type === "ghost") {
+      return drawFairyTaleTutorialGhost(context, "normal", iconX, iconY);
+    }
+
+    if (type === "moving") {
+      const visuals = getFairyTaleTutorialPlatformVisuals(levelNumber);
+      if (!visuals) return false;
+      const platform = {x: iconX - 40, y: iconY - 4, w: 80, h: 26};
+      context.save();
+      context.translate(0, 7);
+      const drawn = drawFairyTaleTutorialNormalPlatform(
+        context,
+        visuals,
+        platform,
+        levelNumber
+      );
+      context.restore();
+      if (!drawn) return false;
+      drawTutorialMovingCue(context, platform);
+      return true;
+    }
+
+    if (type === "conveyor") {
+      if (
+        typeof areConveyorPlatformAssetsReady !== "function" ||
+        typeof drawConveyorPlatformAsset !== "function" ||
+        typeof drawConveyorPlatformBeltOverlay !== "function" ||
+        !areConveyorPlatformAssetsReady()
+      ) return false;
+      const platform = {
+        x: iconX - 49,
+        y: iconY - 3,
+        w: 98,
+        h: 26,
+        conveyor: true,
+        conveyorSpeed: 42,
+        conveyorData: {phase: 0}
+      };
+      if (!drawConveyorPlatformAsset(context, platform, platform.x)) return false;
+      return drawConveyorPlatformBeltOverlay(context, platform, platform.x);
+    }
+
+    if (type === "fastGhost") {
+      if (!drawFairyTaleTutorialGhost(context, "fast", iconX, iconY)) return false;
+      context.strokeStyle = "#ffad45";
+      context.lineWidth = 4;
+      context.beginPath();
+      context.moveTo(iconX - 53, iconY - 15);
+      context.lineTo(iconX - 40, iconY - 15);
+      context.moveTo(iconX - 56, iconY);
+      context.lineTo(iconX - 42, iconY);
+      context.moveTo(iconX - 52, iconY + 15);
+      context.lineTo(iconX - 39, iconY + 15);
+      context.stroke();
+      return true;
+    }
+
+    if (type === "fade") {
+      const visuals = getFairyTaleTutorialPlatformVisuals(levelNumber);
+      if (!visuals) return false;
+      const platform = {x: iconX - 48, y: iconY - 4, w: 96, h: 26};
+      context.save();
+      context.globalAlpha = 0.62;
+      const drawn = drawFairyTaleTutorialNormalPlatform(
+        context,
+        visuals,
+        platform,
+        levelNumber
+      );
+      context.restore();
+      if (!drawn) return false;
+      drawTutorialPreviewLabel(
+        context,
+        "100% → 30% → 0%",
+        iconX,
+        illustrationBounds,
+        "#d5b9ff",
+        11
+      );
+      return true;
+    }
+
+    if (type === "ice") {
+      if (
+        typeof areIcePlatformAssetsReady !== "function" ||
+        typeof drawIcePlatformAsset !== "function" ||
+        !areIcePlatformAssetsReady()
+      ) return false;
+      const platform = {
+        x: iconX - 49,
+        y: iconY - 4,
+        w: 98,
+        h: 26,
+        ice: true
+      };
+      if (!drawIcePlatformAsset(context, platform, platform.x)) return false;
+      drawTutorialIceCue(context, iconX, iconY);
+      return true;
+    }
+
+    if (type === "spikePlatform") {
+      const visuals = getFairyTaleTutorialPlatformVisuals(levelNumber);
+      if (
+        !visuals ||
+        typeof isSpikePlatformAssetReady !== "function" ||
+        typeof drawSpikePlatformAsset !== "function" ||
+        !isSpikePlatformAssetReady()
+      ) return false;
+      const platform = {
+        x: iconX - 49,
+        y: iconY + 3,
+        w: 98,
+        h: 26
+      };
+      const spikePlatform = {
+        ...platform,
+        spikePlatform: true,
+        spikeData: {extension: 1, dangerous: true}
+      };
+      if (!drawFairyTaleTutorialNormalPlatform(
+        context,
+        visuals,
+        platform,
+        levelNumber
+      )) {
+        return false;
+      }
+      const count = 5;
+      if (!drawSpikePlatformAsset(
+        context,
+        spikePlatform,
+        spikePlatform.x,
+        count,
+        spikePlatform.w / count
+      )) return false;
+      drawTutorialPreviewLabel(
+        context,
+        "WARNUNG → STACHELN",
+        iconX,
+        illustrationBounds,
+        "#ffc15c",
+        10
+      );
+      return true;
+    }
+
+    return false;
+  }
+
+  function drawAtomicFairyTaleTutorialPreview(
+    type,
+    levelNumber,
+    iconX,
+    iconY,
+    illustrationBounds
+  ) {
+    const buffer = getFairyTaleTutorialPreviewBuffer();
+    if (!buffer) return false;
+    buffer.context.clearRect(0, 0, buffer.canvas.width, buffer.canvas.height);
+    if (!drawFairyTaleTutorialPreview(
+      buffer.context,
+      type,
+      levelNumber,
+      iconX,
+      iconY,
+      illustrationBounds
+    )) {
+      buffer.context.clearRect(0, 0, buffer.canvas.width, buffer.canvas.height);
+      return false;
+    }
+    ctx.drawImage(buffer.canvas, 0, 0);
+    return true;
+  }
+
+  function splitTutorialTextToken(context, token, maxWidth) {
+    const pieces = [];
+    let piece = "";
+    for (const character of token) {
+      const candidate = `${piece}${character}`;
+      if (piece && context.measureText(candidate).width > maxWidth) {
+        pieces.push(piece);
+        piece = character;
+      } else {
+        piece = candidate;
+      }
+    }
+    if (piece) pieces.push(piece);
+    return pieces;
+  }
+
+  function wrapTutorialText(context, text, maxWidth) {
+    const lines = [];
+    const words = String(text).trim().split(/\s+/).filter(Boolean);
+    let line = "";
+
+    for (const word of words) {
+      const pieces = context.measureText(word).width <= maxWidth
+        ? [word]
+        : splitTutorialTextToken(context, word, maxWidth);
+      for (const piece of pieces) {
+        const candidate = line ? `${line} ${piece}` : piece;
+        if (!line || context.measureText(candidate).width <= maxWidth) {
+          line = candidate;
+        } else {
+          lines.push(line);
+          line = piece;
+        }
+      }
+    }
+
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  function fitTutorialTextEllipsis(context, line, maxWidth) {
+    let fitted = line;
+    while (fitted && context.measureText(`${fitted}…`).width > maxWidth) {
+      fitted = fitted.slice(0, -1);
+    }
+    return `${fitted}…`;
+  }
+
+  function drawWrappedTutorialText(context, text, layout) {
+    const {x, firstBaseline, maxWidth, lineHeight, maxBottom} = layout;
+    const fontMetrics = context.measureText("Mg");
+    const descent = Number.isFinite(fontMetrics.actualBoundingBoxDescent)
+      ? Math.max(0, fontMetrics.actualBoundingBoxDescent)
+      : 4;
+    const maxBaseline = maxBottom - descent;
+    const maxLines = Math.max(
+      0,
+      Math.floor((maxBaseline - firstBaseline) / lineHeight) + 1
+    );
+    const wrappedLines = wrapTutorialText(context, text, maxWidth);
+    const visibleLines = wrappedLines.slice(0, maxLines);
+    const truncated = wrappedLines.length > visibleLines.length;
+
+    if (truncated && visibleLines.length) {
+      const lastIndex = visibleLines.length - 1;
+      visibleLines[lastIndex] = fitTutorialTextEllipsis(
+        context,
+        visibleLines[lastIndex],
+        maxWidth
+      );
+    }
+
+    visibleLines.forEach((line, index) => {
+      context.fillText(line, x, firstBaseline + index * lineHeight);
+    });
+
+    return {lines: visibleLines, truncated};
+  }
+
   function drawTutorialSketch() {
     if (state !== "playing" || shots > 0 || isTutorialStage() || levelIndex === 0) return;
 
@@ -225,8 +811,8 @@
       10: {
         type: "conveyor",
         title: "Neu: Förderband",
-        line1: "Die Pfeile zeigen, wohin",
-        line2: "das Band den Slime schiebt."
+        line1: "Die Animation zeigt dir die Richtung an.",
+        line2: ""
       },
       12: {
         type: "fastGhost",
@@ -261,13 +847,16 @@
     const y = 58;
     const w = 390;
     const h = 126;
-    const iconX = x + 67;
-    const iconY = y + 79;
+    const popupLayout = getTutorialPopupLayout(x, y, w, h);
+    const {iconX, iconY, illustrationBounds, textX} = popupLayout;
+    const textRightPadding = 16;
+    const textMaxWidth = x + w - textRightPadding - textX;
+    const textBottomPadding = 12;
 
     ctx.save();
     ctx.fillStyle = "rgba(5,15,27,0.9)";
     ctx.strokeStyle = "rgba(121,255,141,0.72)";
-    ctx.lineWidth = 3;
+    ctx.lineWidth = popupLayout.borderWidth;
     roundedRect(x, y, w, h, 18);
     ctx.fill();
     ctx.stroke();
@@ -279,12 +868,36 @@
 
     ctx.fillStyle = "#d8eaf6";
     ctx.font = "700 15px system-ui";
-    ctx.fillText(tutorial.line1, x + 132, y + 70);
-    ctx.fillText(tutorial.line2, x + 132, y + 94);
+    drawWrappedTutorialText(
+      ctx,
+      [tutorial.line1, tutorial.line2].filter(Boolean).join(" "),
+      {
+        x: textX,
+        firstBaseline: y + 70,
+        maxWidth: textMaxWidth,
+        lineHeight: 20,
+        maxBottom: y + h - textBottomPadding
+      }
+    );
+
+    if (
+      typeof isFairyTaleGraphicsMode === "function" &&
+      isFairyTaleGraphicsMode() &&
+      drawAtomicFairyTaleTutorialPreview(
+        tutorial.type,
+        levelNumber,
+        iconX,
+        iconY,
+        illustrationBounds
+      )
+    ) {
+      ctx.restore();
+      return;
+    }
 
     if (tutorial.type === "pad") {
       ctx.shadowColor = "#4ddcff";
-      ctx.shadowBlur = 14;
+      ctx.shadowBlur = 10;
       ctx.fillStyle = "#47cde9";
       roundedRect(iconX - 42, iconY + 10, 84, 24, 8);
       ctx.fill();
@@ -298,19 +911,14 @@
         ctx.closePath();
         ctx.fill();
       }
-      ctx.strokeStyle = "#79ff8d";
-      ctx.fillStyle = "#79ff8d";
-      ctx.lineWidth = 5;
-      ctx.beginPath();
-      ctx.moveTo(iconX, iconY + 2);
-      ctx.lineTo(iconX, iconY - 28);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(iconX, iconY - 31);
-      ctx.lineTo(iconX - 9, iconY - 17);
-      ctx.lineTo(iconX + 9, iconY - 17);
-      ctx.closePath();
-      ctx.fill();
+      drawTutorialPreviewArrow(
+        ctx,
+        iconX,
+        iconY + 1,
+        iconX,
+        iconY - 27,
+        "#79ff8d"
+      );
     } else if (tutorial.type === "falling") {
       ctx.fillStyle = "#815142";
       roundedRect(iconX - 46, iconY - 5, 92, 25, 8);
@@ -328,23 +936,11 @@
       ctx.lineTo(iconX + 8, iconY + 9);
       ctx.lineTo(iconX + 15, iconY + 18);
       ctx.stroke();
-      ctx.strokeStyle = "#ffad70";
-      ctx.fillStyle = "#ffad70";
-      ctx.lineWidth = 5;
-      ctx.beginPath();
-      ctx.moveTo(iconX, iconY + 29);
-      ctx.lineTo(iconX, iconY + 48);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(iconX, iconY + 52);
-      ctx.lineTo(iconX - 9, iconY + 38);
-      ctx.lineTo(iconX + 9, iconY + 38);
-      ctx.closePath();
-      ctx.fill();
+      drawTutorialFallingCue(ctx, iconX, iconY);
     } else if (tutorial.type === "ghost") {
       const r = 29;
       ctx.shadowColor = "#b46cff";
-      ctx.shadowBlur = 15;
+      ctx.shadowBlur = 8;
       ctx.fillStyle = "#d9bcff";
       ctx.strokeStyle = "#6d359e";
       ctx.lineWidth = 4;
@@ -375,58 +971,15 @@
       ctx.arc(iconX + 8, iconY + 1, 3.5, 0, Math.PI * 2);
       ctx.fill();
     } else if (tutorial.type === "moving") {
+      const platform = {x: iconX - 40, y: iconY - 4, w: 80, h: 26};
       ctx.fillStyle = "#5e7592";
-      roundedRect(iconX - 47, iconY - 4, 94, 26, 9);
+      roundedRect(platform.x, platform.y, platform.w, platform.h, 9);
       ctx.fill();
       ctx.fillStyle = "#a7d2ff";
-      roundedRect(iconX - 47, iconY - 4, 94, 11, 8);
+      roundedRect(platform.x, platform.y, platform.w, 11, 8);
       ctx.fill();
 
-      // Vier Richtungspfeile zeigen, dass Plattformen sich sowohl
-      // horizontal als auch vertikal bewegen können.
-      ctx.strokeStyle = "#a7d2ff";
-      ctx.fillStyle = "#a7d2ff";
-      ctx.lineWidth = 5;
-      ctx.lineCap = "round";
-
-      ctx.beginPath();
-      ctx.moveTo(iconX - 44, iconY + 39);
-      ctx.lineTo(iconX + 44, iconY + 39);
-      ctx.moveTo(iconX, iconY - 34);
-      ctx.lineTo(iconX, iconY + 57);
-      ctx.stroke();
-
-      // Links.
-      ctx.beginPath();
-      ctx.moveTo(iconX - 48, iconY + 39);
-      ctx.lineTo(iconX - 32, iconY + 29);
-      ctx.lineTo(iconX - 32, iconY + 49);
-      ctx.closePath();
-      ctx.fill();
-
-      // Rechts.
-      ctx.beginPath();
-      ctx.moveTo(iconX + 48, iconY + 39);
-      ctx.lineTo(iconX + 32, iconY + 29);
-      ctx.lineTo(iconX + 32, iconY + 49);
-      ctx.closePath();
-      ctx.fill();
-
-      // Oben.
-      ctx.beginPath();
-      ctx.moveTo(iconX, iconY - 39);
-      ctx.lineTo(iconX - 10, iconY - 23);
-      ctx.lineTo(iconX + 10, iconY - 23);
-      ctx.closePath();
-      ctx.fill();
-
-      // Unten.
-      ctx.beginPath();
-      ctx.moveTo(iconX, iconY + 62);
-      ctx.lineTo(iconX - 10, iconY + 46);
-      ctx.lineTo(iconX + 10, iconY + 46);
-      ctx.closePath();
-      ctx.fill();
+      drawTutorialMovingCue(ctx, platform);
     } else if (tutorial.type === "conveyor") {
       ctx.fillStyle = "#4a4f5b";
       roundedRect(iconX - 49, iconY - 3, 98, 28, 9);
@@ -466,10 +1019,14 @@
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.restore();
-      ctx.fillStyle = "#d5b9ff";
-      ctx.font = "900 15px system-ui";
-      ctx.textAlign = "center";
-      ctx.fillText("100% → 30% → 0%", iconX, iconY + 48);
+      drawTutorialPreviewLabel(
+        ctx,
+        "100% → 30% → 0%",
+        iconX,
+        illustrationBounds,
+        "#d5b9ff",
+        11
+      );
     } else if (tutorial.type === "ice") {
       ctx.fillStyle = "#75bad1";
       roundedRect(iconX - 49, iconY - 4, 98, 27, 9);
@@ -485,19 +1042,7 @@
         ctx.lineTo(px + 8, iconY - 1);
         ctx.stroke();
       }
-      ctx.strokeStyle = "#9feeff";
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(iconX - 45, iconY + 44);
-      ctx.lineTo(iconX + 36, iconY + 44);
-      ctx.stroke();
-      ctx.fillStyle = "#9feeff";
-      ctx.beginPath();
-      ctx.moveTo(iconX + 48, iconY + 44);
-      ctx.lineTo(iconX + 31, iconY + 34);
-      ctx.lineTo(iconX + 31, iconY + 54);
-      ctx.closePath();
-      ctx.fill();
+      drawTutorialIceCue(ctx, iconX, iconY);
     } else if (tutorial.type === "spikePlatform") {
       ctx.fillStyle = "#5b4e58";
       roundedRect(iconX - 49, iconY - 3, 98, 28, 9);
@@ -529,14 +1074,18 @@
         ctx.stroke();
       }
 
-      ctx.fillStyle = "#ffc15c";
-      ctx.font = "900 14px system-ui";
-      ctx.textAlign = "center";
-      ctx.fillText("WARNUNG → STACHELN", iconX, iconY + 48);
+      drawTutorialPreviewLabel(
+        ctx,
+        "WARNUNG → STACHELN",
+        iconX,
+        illustrationBounds,
+        "#ffc15c",
+        10
+      );
     } else if (tutorial.type === "fastGhost") {
       const r = 29;
       ctx.shadowColor = "#ff552f";
-      ctx.shadowBlur = 15;
+      ctx.shadowBlur = 8;
       ctx.fillStyle = "#ff9a5c";
       ctx.strokeStyle = "#9c321f";
       ctx.lineWidth = 4;
@@ -570,11 +1119,11 @@
       ctx.strokeStyle = "#ffad45";
       ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.moveTo(iconX - 58, iconY - 15);
+      ctx.moveTo(iconX - 53, iconY - 15);
       ctx.lineTo(iconX - 40, iconY - 15);
-      ctx.moveTo(iconX - 64, iconY);
+      ctx.moveTo(iconX - 56, iconY);
       ctx.lineTo(iconX - 42, iconY);
-      ctx.moveTo(iconX - 57, iconY + 15);
+      ctx.moveTo(iconX - 52, iconY + 15);
       ctx.lineTo(iconX - 39, iconY + 15);
       ctx.stroke();
     }

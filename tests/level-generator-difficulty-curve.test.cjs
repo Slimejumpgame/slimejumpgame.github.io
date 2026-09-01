@@ -15,7 +15,8 @@ const effectiveAssignment =
 const legacyAssignment = "const effectiveDifficultyLevel = levelNumber;";
 const selectedAuditLevels = Object.freeze([
   1, 10, 19, 20, 25, 34, 40, 50,
-  60, 75, 90, 99, 100, 101, 125, 150
+  60, 75, 90, 99, 100, 101, 125, 150,
+  180, 181, 200, 201
 ]);
 const specialPlatformCollections = Object.freeze([
   "movers",
@@ -183,6 +184,9 @@ function validateGeneratedLevel(level, realLevel, effectiveDifficultyLevel) {
     platform.x === 1060 && platform.w === 220
   ));
   assert.ok(level.goal && level.goal.x === 1140);
+  assert.deepEqual(level.spikes, [
+    {x: 235, y: 690, w: 825, h: 30, isBottomDeathHazard: true}
+  ]);
   assert.equal(
     level.stars.filter(star => star.isLuckyCharmBonus !== true).length,
     3
@@ -240,6 +244,8 @@ function validateGeneratedLevel(level, realLevel, effectiveDifficultyLevel) {
     assert.ok(mover.axis === "x" || mover.axis === "y");
     assert.ok(mover.range >= 0);
     assert.ok(mover.range <= 76 + 1e-9);
+    assert.ok(mover.speed >= 0.82 - 1e-9);
+    assert.ok(mover.speed <= 1.52 + 1e-9);
     if (mover.axis !== "x") continue;
     const index = mover.routeIndex;
     const leftNeighbour = routePlatforms[index - 1] || level.platforms[0];
@@ -252,6 +258,35 @@ function validateGeneratedLevel(level, realLevel, effectiveDifficultyLevel) {
       ) - 8
     );
     assert.ok(mover.range <= maximumHorizontalRange + 1e-9);
+  }
+
+  for (const platform of level.fallingPlatforms) {
+    assert.ok(platform.delay >= 0.85 - 1e-9);
+    assert.ok(platform.delay <= 1.4375 + 1e-9);
+  }
+
+  for (const conveyor of level.conveyors) {
+    assert.ok(conveyor.beltSpeed >= 36.8 - 1e-9);
+    assert.ok(conveyor.beltSpeed <= 69.6 + 1e-9);
+  }
+
+  for (const platform of level.fadePlatforms) {
+    assert.ok(platform.speed >= 1.02 - 1e-9);
+    assert.ok(platform.speed <= 1.40 + 1e-9);
+  }
+
+  assert.ok(level.enemies.length <= Math.max(0, routeCount - 1));
+  for (const enemy of level.enemies) {
+    assert.ok(enemy.type === "normal" || enemy.type === "fast");
+    assert.ok(enemy.range >= 34 - 1e-9);
+    assert.ok(enemy.range <= 86 + 1e-9);
+    if (enemy.type === "fast") {
+      assert.ok(enemy.speed >= 1.72 - 1e-9);
+      assert.ok(enemy.speed <= 2.70 + 1e-9);
+    } else {
+      assert.ok(enemy.speed >= 0.9 - 1e-9);
+      assert.ok(enemy.speed <= 1.70 + 1e-9);
+    }
   }
 
   return {
@@ -315,16 +350,25 @@ const mappingExpectations = new Map([
   [10, 10],
   [19, 19],
   [20, 20],
-  [21, 20.375],
-  [33, 24.875],
-  [34, 25.25],
-  [50, 31.25],
-  [75, 40.625],
-  [99, 49.625],
-  [100, 50],
-  [101, 50],
-  [125, 50],
-  [150, 50]
+  [21, 20 + 30 * 1 / 161],
+  [25, 20 + 30 * 5 / 161],
+  [46, 20 + 30 * 26 / 161],
+  [47, 20 + 30 * 27 / 161],
+  [50, 20 + 30 * 30 / 161],
+  [75, 20 + 30 * 55 / 161],
+  [100, 20 + 30 * 80 / 161],
+  [125, 20 + 30 * 105 / 161],
+  [150, 20 + 30 * 130 / 161],
+  [175, 20 + 30 * 155 / 161],
+  [180, 20 + 30 * 160 / 161],
+  [181, 50],
+  [190, 50],
+  [200, 50],
+  [201, 50],
+  [202, 50],
+  [250, 50],
+  [500, 50],
+  [1000, 50]
 ]);
 
 for (const [realLevel, expectedEffectiveLevel] of mappingExpectations) {
@@ -337,23 +381,48 @@ for (const [realLevel, expectedEffectiveLevel] of mappingExpectations) {
 
 const level20Factors = getDifficultyFactors(current.effectiveDifficultyLevel(20));
 const level100Factors = getDifficultyFactors(current.effectiveDifficultyLevel(100));
+const level180Factors = getDifficultyFactors(current.effectiveDifficultyLevel(180));
+const level181Factors = getDifficultyFactors(current.effectiveDifficultyLevel(181));
 closeTo(level20Factors.mixFactor, 0, "real level 20 mix factor");
-closeTo(level100Factors.intensityFactor, 1, "real level 100 intensity factor");
-closeTo(level100Factors.mixFactor, 1, "real level 100 mix factor");
-for (const levelNumber of [101, 125, 150, 500]) {
+closeTo(level100Factors.intensityFactor, 5459 / 7889, "real level 100 intensity factor");
+closeTo(level100Factors.mixFactor, 80 / 161, "real level 100 mix factor");
+assert.ok(level100Factors.intensityFactor < 1);
+assert.ok(level100Factors.mixFactor < 1);
+closeTo(level180Factors.intensityFactor, 7859 / 7889, "real level 180 intensity factor");
+closeTo(level180Factors.mixFactor, 160 / 161, "real level 180 mix factor");
+assert.ok(level180Factors.intensityFactor < 1);
+assert.ok(level180Factors.mixFactor < 1);
+closeTo(level181Factors.intensityFactor, 1, "real level 181 intensity factor");
+closeTo(level181Factors.mixFactor, 1, "real level 181 mix factor");
+for (const levelNumber of [190, 200, 201, 202, 250, 500, 1000]) {
   const factors = getDifficultyFactors(current.effectiveDifficultyLevel(levelNumber));
   closeTo(factors.intensityFactor, 1, `real level ${levelNumber} intensity cap`);
   closeTo(factors.mixFactor, 1, `real level ${levelNumber} mix cap`);
 }
 
+let previousEffectiveDifficultyLevel = -Infinity;
+for (let levelNumber = 1; levelNumber <= 1000; levelNumber++) {
+  const effectiveDifficultyLevel = current.effectiveDifficultyLevel(levelNumber);
+  const factors = getDifficultyFactors(effectiveDifficultyLevel);
+  assert.ok(
+    effectiveDifficultyLevel >= previousEffectiveDifficultyLevel,
+    `effective difficulty decreased at real level ${levelNumber}`
+  );
+  assert.ok(effectiveDifficultyLevel <= 50);
+  assert.ok(factors.intensityFactor <= 1);
+  assert.ok(factors.mixFactor <= 1);
+  if (levelNumber < 181) assert.ok(effectiveDifficultyLevel < 50);
+  previousEffectiveDifficultyLevel = effectiveDifficultyLevel;
+}
+
 let firstRealLevelAtLegacyRouteTier = null;
-for (let levelNumber = 1; levelNumber <= 100; levelNumber++) {
+for (let levelNumber = 1; levelNumber <= 181; levelNumber++) {
   if (current.effectiveDifficultyLevel(levelNumber) >= 25) {
     firstRealLevelAtLegacyRouteTier = levelNumber;
     break;
   }
 }
-assert.equal(firstRealLevelAtLegacyRouteTier, 34);
+assert.equal(firstRealLevelAtLegacyRouteTier, 47);
 
 for (let levelNumber = 1; levelNumber <= 20; levelNumber++) {
   closeTo(
@@ -371,19 +440,30 @@ for (let levelNumber = 1; levelNumber <= 20; levelNumber++) {
   }
 }
 
+for (const levelNumber of [1, 20, 21, 100, 180, 181, 201, 1000]) {
+  for (let index = 0; index < 32; index++) {
+    const seed = seedFor(levelNumber, index);
+    assert.deepEqual(
+      current.generate(levelNumber, seed),
+      current.generate(levelNumber, seed),
+      `real level ${levelNumber} is not deterministic for seed ${seed}`
+    );
+  }
+}
+
 for (let index = 0; index < 1000; index++) {
   const seed = comparisonSeed(index);
   assert.deepEqual(
-    current.generate(100, seed),
+    current.generate(181, seed),
     legacy.generate(50, seed),
-    `new level 100 differs from legacy level 50 for seed ${seed}`
+    `new level 181 differs from legacy level 50 for seed ${seed}`
   );
-  const cappedLevel = current.generate(100, seed);
-  for (const realLevel of [101, 125, 150]) {
+  const cappedLevel = current.generate(181, seed);
+  for (const realLevel of [190, 200, 201, 202, 250, 500, 1000]) {
     assert.deepEqual(
       current.generate(realLevel, seed),
       cappedLevel,
-      `real level ${realLevel} exceeds the level-100 envelope for seed ${seed}`
+      `real level ${realLevel} exceeds the level-181 envelope for seed ${seed}`
     );
   }
 }
@@ -437,6 +517,6 @@ assert.match(generatorSource, /else if \(levelNumber >= 20\)/);
 assert.match(generatorSource, /Math\.imul\(levelNumber, 2654435761\)/);
 
 console.log("Difficulty mapping and deterministic parity tests passed.");
-console.log("First real level at the legacy level-25 route tier: 34.");
+console.log("First real level at the legacy level-25 route tier: 47.");
 console.table(auditSummaries);
 console.log("Statistical generator audit passed: 1,000 seeds per selected level.");

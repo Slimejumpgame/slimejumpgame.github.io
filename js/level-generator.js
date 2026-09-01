@@ -2,7 +2,7 @@
 
   function getEffectiveDifficultyLevel(levelNumber) {
     if (levelNumber <= 20) return levelNumber;
-    return 20 + 30 * clamp((levelNumber - 20) / 80, 0, 1);
+    return 20 + 30 * clamp((levelNumber - 20) / 161, 0, 1);
   }
 
   function generateProceduralLevel(levelNumber) {
