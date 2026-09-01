@@ -338,9 +338,15 @@ function assertEngineAndScopeRemainStable() {
   assert.match(audioSource, /window\.AudioContext \|\| window\.webkitAudioContext/);
   assert.match(audioSource, /const noteIndex = musicStep % theme\.notes\.length/);
   assert.match(audioSource, /if \(musicStep % 4 === 0\)/);
-  assert.match(audioSource, /stopActiveMusicVoices\(\);[\s\S]*?musicStep = 0;[\s\S]*?scheduleMusicStep\(\);/);
+  assert.match(audioSource, /stopActiveMusicVoices\(\);[\s\S]*?musicStep = 0;[\s\S]*?startCurrentMusicSource\(\);/);
   assert.match(audioSource, /gain\.gain\.exponentialRampToValueAtTime\(0\.0001, now \+ duration\)/);
-  assert.doesNotMatch(audioSource, /\.(mp3|ogg|wav|m4a|aac|flac|opus)["']/i);
+  assert.deepEqual(
+    [...audioSource.matchAll(/["']([^"']+\.(?:mp3|ogg|wav|m4a|aac|flac|opus))["']/gi)]
+      .map(match => match[1]),
+    ["assets/music/menu/main_menu.mp3"]
+  );
+  assert.ok(audioSource.includes("`assets/music/biomes/${biomeId}.mp3`"));
+  assert.doesNotMatch(audioSource, /assets\/music\/biomes\/(?:meadow|coast)\.mp3/);
 
   for (const relativePath of [
     "js/level-generator.js",

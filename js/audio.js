@@ -49,6 +49,17 @@
 
   const SFX_VOLUME_MULTIPLIER = 1.30;
   const MUSIC_BUS_VOLUME = 0.33; // V1.9: +50 % gegenüber V1.8 (0.22 -> 0.33)
+  const EXTERNAL_BIOME_MUSIC_GAIN = 0.10;
+  const MAIN_MENU_MUSIC_PATH = "assets/music/menu/main_menu.mp3";
+
+  const menuExternalMusicTrack = {
+    path: MAIN_MENU_MUSIC_PATH,
+    audio: null,
+    source: null,
+    failed: false
+  };
+  const externalBiomeMusicTracks = new Map();
+  let externalBiomeMusicGainNode = null;
 
   function tone(freq, duration = 0.08, type = "sine", volume = 0.05, endFreq = null) {
     if (sfxMuted) return;
@@ -258,8 +269,107 @@
     activeMusicVoices.clear();
   }
 
+  function getExternalBiomeMusicTrack(biomeId) {
+    let track = externalBiomeMusicTracks.get(biomeId);
+    if (!track) {
+      track = {
+        path: `assets/music/biomes/${biomeId}.mp3`,
+        audio: null,
+        source: null,
+        failed: false
+      };
+      externalBiomeMusicTracks.set(biomeId, track);
+    }
+    return track;
+  }
+
+  function getExternalMusicTrack(mode) {
+    return mode === "menu"
+      ? menuExternalMusicTrack
+      : getExternalBiomeMusicTrack(mode);
+  }
+
+  function stopExternalMusic(mode) {
+    const track = getExternalMusicTrack(mode);
+    if (!track?.audio) return;
+    track.audio.pause();
+    try { track.audio.currentTime = 0; } catch (error) { /* Noch nicht abspielbereit. */ }
+  }
+
+  function markExternalMusicFailed(mode) {
+    const track = getExternalMusicTrack(mode);
+    if (!track || track.failed) return;
+    track.failed = true;
+    stopExternalMusic(mode);
+
+    if (musicStarted && musicMode === mode && !musicTimer) {
+      scheduleMusicStep();
+    }
+  }
+
+  function getExternalMusic(mode) {
+    const track = getExternalMusicTrack(mode);
+    if (!track || track.failed) return null;
+    if (track.audio) return track.audio;
+
+    try {
+      if (typeof window.Audio !== "function") throw new Error("Audio element unavailable");
+
+      track.audio = new window.Audio();
+      track.audio.loop = true;
+      track.audio.preload = "none";
+      track.audio.addEventListener("error", () => markExternalMusicFailed(mode), {once: true});
+
+      const a = getAudio();
+      const bus = getMusicBus();
+      if (!a || !bus || typeof a.createMediaElementSource !== "function") {
+        throw new Error("Media element audio source unavailable");
+      }
+
+      if (!externalBiomeMusicGainNode) {
+        externalBiomeMusicGainNode = a.createGain();
+        externalBiomeMusicGainNode.gain.value = EXTERNAL_BIOME_MUSIC_GAIN;
+        externalBiomeMusicGainNode.connect(bus);
+      }
+
+      track.source = a.createMediaElementSource(track.audio);
+      track.source.connect(externalBiomeMusicGainNode);
+      track.audio.src = track.path;
+      return track.audio;
+    } catch (error) {
+      markExternalMusicFailed(mode);
+      return null;
+    }
+  }
+
+  function playExternalMusic(mode) {
+    const audio = getExternalMusic(mode);
+    if (!audio) return false;
+
+    try {
+      const playAttempt = audio.play();
+      playAttempt?.catch?.(() => {
+        if (musicStarted && musicMode === mode) markExternalMusicFailed(mode);
+      });
+      return true;
+    } catch (error) {
+      markExternalMusicFailed(mode);
+      return false;
+    }
+  }
+
+  function startCurrentMusicSource() {
+    const track = getExternalMusicTrack(musicMode);
+    if (track && !track.failed) {
+      if (playExternalMusic(musicMode) || musicTimer) return;
+    }
+    scheduleMusicStep();
+  }
+
   function scheduleMusicStep() {
     if (!musicStarted) return;
+    const externalTrack = getExternalMusicTrack(musicMode);
+    if (externalTrack && !externalTrack.failed) return;
 
     const theme = MUSIC_THEMES[musicMode] || MUSIC_THEMES.menu;
     const noteIndex = musicStep % theme.notes.length;
@@ -297,11 +407,12 @@
     if (musicStarted) return;
     musicStarted = true;
     musicStep = 0;
-    scheduleMusicStep();
+    startCurrentMusicSource();
   }
 
   function setMusicMode(mode) {
     if (!MUSIC_THEMES[mode]) return;
+    const previousMode = musicMode;
     const changed = musicMode !== mode;
     musicMode = mode;
 
@@ -309,8 +420,9 @@
       if (musicTimer) window.clearTimeout(musicTimer);
       musicTimer = null;
       stopActiveMusicVoices();
+      stopExternalMusic(previousMode);
       musicStep = 0;
-      scheduleMusicStep();
+      startCurrentMusicSource();
     }
   }
 
