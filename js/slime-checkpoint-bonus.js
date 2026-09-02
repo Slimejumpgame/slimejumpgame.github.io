@@ -993,7 +993,8 @@
     }
     bindDevControls();
     const pending = recoverMissingCheckpoint(highest);
-    if (pending && !(REWARDS[pending.rewardId].kind === "life" &&
+    const storyBlocksPending = window.SlimeStory?.hasPendingCompletionStory?.() === true;
+    if (pending && !storyBlocksPending && !(REWARDS[pending.rewardId].kind === "life" &&
       gameBridge.isRunAvailable?.() !== true)) {
       window.setTimeout(() => openPending(), 0);
     }

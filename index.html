@@ -24,6 +24,7 @@
       <button id="devNextLevelBtn" data-dev-mode-only type="button">Nächstes Level</button>
       <button id="devModeToggleBtn" type="button" aria-pressed="true">DEV MODE: ON</button>
       <button id="devTutorialToggleBtn" data-dev-mode-only type="button" aria-pressed="true">Einführung: AN</button>
+      <button id="devStoryTestBtn" data-dev-mode-only type="button" aria-pressed="false">STORY TEST: AUS</button>
       <button id="devShopTestBtn" data-dev-mode-only type="button" aria-pressed="false">SHOP TEST</button>
       <button id="devGoldSlimeTestBtn" data-dev-mode-only type="button" aria-pressed="false">GOLD-SLIME TEST</button>
       <button id="devGoldHatsTestBtn" data-dev-mode-only type="button" aria-pressed="false">GOLD-HÜTE TEST</button>
@@ -735,6 +736,33 @@
     </span>
   </aside>
 
+  <section id="storyOverlay" class="storyOverlay hidden" aria-hidden="true" aria-label="Geschichte">
+    <div id="storySequencePanel" class="storySequencePanel hidden" role="dialog" aria-modal="true" aria-labelledby="storyText">
+      <div class="storyMediaFrame">
+        <img id="storyImage" class="storyImage hidden" alt="">
+        <div id="storyImageFallback" class="storyImageFallback" role="status">Illustration wird geladen …</div>
+        <span id="storyProgress" class="storyProgress">1 / 1</span>
+      </div>
+      <div class="storyCopyPanel">
+        <p id="storyText" class="storyText"></p>
+        <p id="storyEndingNote" class="storyEndingNote hidden"></p>
+        <div class="storyActions">
+          <button id="storySkipBtn" class="uiButton uiButton--secondary" type="button">Überspringen</button>
+          <button id="storyHideIntroBtn" class="uiButton uiButton--secondary hidden" type="button">Für diesen Prestige-Zyklus ausblenden</button>
+          <button id="storyNextBtn" class="uiButton uiButton--primary" type="button">Weiter</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="storyFragmentPanel" class="storyFragmentPanel hidden" role="dialog" aria-modal="true" aria-labelledby="storyFragmentTitle">
+      <h2 id="storyFragmentTitle">FRAGMENT GEFUNDEN!</h2>
+      <canvas id="storyFragmentCanvas" width="260" height="190" aria-hidden="true"></canvas>
+      <p id="storyFragmentText"></p>
+      <button id="storyFragmentContinueBtn" class="uiButton uiButton--primary" type="button">Weiter</button>
+    </div>
+  </section>
+
+  <script src="./js/slime-story.js"></script>
   <script src="./js/slime-progress-reset.js"></script>
   <script src="./js/slime-prestige.js"></script>
   <script src="./js/slime-run-recovery.js"></script>

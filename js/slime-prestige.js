@@ -588,6 +588,12 @@
       return false;
     }
     if (!resetPrestigeCycleStorage()) return false;
+    if (
+      typeof window.SlimeStory?.beginPrestigeCycle === "function" &&
+      window.SlimeStory.beginPrestigeCycle(normalizedTransaction.targetPrestige) !== true
+    ) {
+      return false;
+    }
     return removeVerifiedStorageValue(PRESTIGE_TRANSACTION_STORAGE_KEY);
   }
 
