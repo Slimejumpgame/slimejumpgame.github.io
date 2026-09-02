@@ -1,13 +1,13 @@
 {
   "android": {
-    "versionCode": 19,
-    "versionName": "2.74",
+    "versionCode": 20,
+    "versionName": "2.75",
     "notes": [
-      "⚡ Slime Soar v2.74 – deutlich schnellere Ladezeiten!",
-      "🚀 Grafik-Assets werden jetzt per Lazy Loading effizienter geladen.",
-      "🎯 Schwierigkeitskurve überarbeitet.",
-      "💡 Mechanik-Erklärungen optisch verbessert.",
-      "🛠️ Kleinere UI-Verbesserungen und Optimierungen."
+      "📖 Slime Soar v2.75 – die Story ist da!",
+      "🌟 Neue Story-Sequenzen begleiten Intro, Abenteuer und Finale.",
+      "🎵 Ein neuer Soundtrack begleitet Hauptmenü, alle 20 Biome und die Story.",
+      "⚡ Musik wird effizient geladen und wechselt passend zu Biom und Story.",
+      "🛠️ Fähigkeitstexte und weitere Details wurden überarbeitet."
     ]
   }
 }

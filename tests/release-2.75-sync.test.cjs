@@ -91,6 +91,7 @@ const REQUIRED_RUNTIME_FILES = Object.freeze([
   "js/slime-prestige.js",
   "js/slime-progress-reset.js",
   "js/slime-run-recovery.js",
+  "js/slime-story.js",
   "js/slime-wardrobe.js",
   "js/tutorials.js",
   "js/ui.js"
@@ -178,11 +179,11 @@ if (runAndroidContract) {
 }
 
 const gradle = read(projectRoot, "android/app/build.gradle");
-assert.match(gradle, /versionCode 19/);
-assert.match(gradle, /versionName "2\.74"/);
+assert.match(gradle, /versionCode 20/);
+assert.match(gradle, /versionName "2\.75"/);
 const publishedUpdate = JSON.parse(read(projectRoot, "android-update.json"));
-assert.equal(publishedUpdate.android.versionCode, 19);
-assert.equal(publishedUpdate.android.versionName, "2.74");
+assert.equal(publishedUpdate.android.versionCode, 20);
+assert.equal(publishedUpdate.android.versionName, "2.75");
 
 const index = read(projectRoot, "index.html");
 const biomes = read(projectRoot, "js/biomes.js");
@@ -300,7 +301,7 @@ assert.match(
   /@media \(orientation: landscape\) and \(hover: none\) and \(pointer: coarse\) \{[\s\S]*?#mainMenuScreen \.menuStatusBadge--rank\s*\{[\s\S]*?border-radius: clamp\(9px, 2\.5dvh, 13px\);[\s\S]*?background: rgba\(16, 28, 45, 0\.82\);/
 );
 const highscores = read(projectRoot, "js/slime-jump-highscores.js");
-assert.match(highscores, /const GAME_VERSION = "2\.74";/);
+assert.match(highscores, /const GAME_VERSION = "2\.75";/);
 
 const reset = read(projectRoot, "js/slime-progress-reset.js");
 const migration = read(projectRoot, "js/slime-perk-migration.js");
@@ -309,7 +310,7 @@ assert.match(reset, /const PREFERENCE_RESET_VERSION = "preferences-reset-2\.58";
 assert.match(migration, /const MIGRATION_VERSION = "perk-migration-2\.65";/);
 
 console.log(
-  `v2.74 release sync ${requestedPhase} passed (${rootPayloadFiles.length} web files, ` +
+  `v2.75 release sync ${requestedPhase} passed (${rootPayloadFiles.length} web files, ` +
   `${visualModuleFiles.length} visual modules, ${visualUpdatePngFiles.length} release PNGs, ` +
   `${biomeIds.length} biomes, ${newMusicThemeIds.length} new music themes, ` +
   `${achievementIds.length} achievements).`
